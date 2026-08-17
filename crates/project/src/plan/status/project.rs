@@ -118,7 +118,8 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     };
     let gaps = plan_gaps_body(plan, layout, &events)?;
     let milestones = Milestones {
-        ready: all_in_scope_refined(plan, layout, &inventory, &mut live)? && clean_gaps(&gaps),
+        ready: all_in_scope_refined(plan, layout, &inventory, &mut live, &events)?
+            && clean_gaps(&gaps),
         authorized: project_authorized(plan, layout, &events)?,
     };
     // The drain condition includes publication (RFC-95 D11): a plan
@@ -328,11 +329,12 @@ fn clean_gaps(gaps: &GapsBody) -> bool {
 /// vacuously refined.
 fn all_in_scope_refined(
     plan: &Plan, layout: Layout<'_>, inventory: &[artifacts::leads::Lead], live: &mut Live,
+    events: &[Event],
 ) -> Result<bool, Error> {
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = SliceMetadata::load_optional(&slice_dir)?;
-        if !in_scope(plan, entry, meta.as_ref()) {
+        if !in_scope(plan, entry, meta.as_ref(), events) {
             continue;
         }
         if BuildRecord::present(&slice_dir) {

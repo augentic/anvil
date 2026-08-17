@@ -10,6 +10,7 @@ use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
+use project::journal::{self, Event, EventKind};
 use project::plan::Plan;
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +61,19 @@ impl<P: Anchor> Operation<P> for Drop {
             .into());
         }
         let archive_dir = cx.layout().archive_dir();
+        // Scope authority precedes artifact movement (S7 / CC-03): the
+        // tombstone durably excludes the entry from gaps / Ready /
+        // execute even when the archival move below fails.
+        journal::append_one(
+            cx.layout(),
+            &Event::new(
+                cx.now(),
+                EventKind::SliceDropped {
+                    slice_name: name.as_str().into(),
+                    reason: reason.clone(),
+                },
+            ),
+        )?;
         let (metadata, archive_path) =
             slice::discard(&slice_dir, &archive_dir, reason.as_deref(), cx.now())?;
         Ok(DropBody {

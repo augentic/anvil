@@ -14,6 +14,10 @@ fn main() -> std::process::ExitCode {
         eprintln!("usage: definition <root> <target-locator>");
         return std::process::ExitCode::FAILURE;
     };
+    // Exact pins: bare names fill from the compiled first-party
+    // catalog, which has no row for the example adapters. The pinned
+    // versions are development placeholders — the seeded project-cache
+    // components answer the pins at every dispatch (cache always wins).
     let spec = mock::definition::Spec {
         definition: "demo".into(),
         wave: "deliver".into(),
@@ -21,11 +25,11 @@ fn main() -> std::process::ExitCode {
         targets: vec![mock::definition::Target {
             id: "app".into(),
             locator,
-            adapter: "target".into(),
+            adapter: "emery:target@0.0.0".into(),
         }],
         scopes: vec![mock::definition::Scope {
             source: "main".into(),
-            adapter: "source".into(),
+            adapter: "emery:source@0.0.0".into(),
             location: String::new(),
             lead: "greeting".into(),
             value: Some("The greeting service.".into()),

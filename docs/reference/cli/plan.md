@@ -35,7 +35,7 @@ emery plan author <name> --from <definition-home> --wave <id> [--force] [--chang
 | `--from` | Reviewed definition home. Relative values join the product root in-place (`.emery/system/` for a colocated degenerate definition) or the change home when detached. |
 | `--wave` | Wave id inside the definition named by `--from`. |
 | `--force` | Wholesale replace: rebind the same reviewed handoff and redo the decomposition. A changed wave needs a new handoff and review fact (`plan-author-handoff-changed`). `--force` is never the recover path — without it, re-entry on a bound-not-authored plan resumes the open and parked domains, and re-entry on a reconciled plan is a read-only no-op; only a *different plan name* over an existing plan refuses with `plan-already-exists`. `/emery:plan` confirms before passing it. |
-| `--change-dir <dir>` | Optional detached change root. Omitted, the nearest ancestor with `.emery/project.yaml` is in-place (`<product>/.emery/change/`); else cwd is the change home. No marker, no walk. |
+| `--change-dir <dir>` | Optional detached change root. Omitted, the nearest ancestor with `.emery/project.yaml` is in-place (`<product>/.emery/change/`); a miss refuses typed (`change-home-unanchored` / `not-initialized`) — the cwd is never inferred as a change home. |
 
 Exit codes: `0` success (including the read-only no-op re-entry); `2` for `plan-already-exists` (name mismatch), missing/ambiguous handoff, binding validation failures, a parked stop (`plan-author-stopped` — one or more domains parked after failed cuts; the stop card names them), and the fatal decomposition stops (`plan-author-budget-exhausted`, `plan-author-definition-revision`); `1` for ingest and I/O failures.
 
@@ -197,7 +197,7 @@ Abandon one plan entry's slice without merging.
 emery plan drop <entry> [--reason "<rationale>"]
 ```
 
-Stamps the slice `dropped` (persisting the reason in `metadata.yaml.drop_reason`) and moves the slice tree to `.emery/change/archive/`. The entry stays on the plan and projects the `slice-dropped` stop — a dropped slice remains in-scope for gap accounting (RFC-86 D24).
+Appends the durable `slice.dropped` journal tombstone (the scope authority, recorded before any artifact movement), stamps the slice `dropped` (persisting the reason in `metadata.yaml.drop_reason`), and moves the slice tree to `.emery/change/archive/`. The entry stays on the plan and projects the `slice-dropped` stop — a dropped slice leaves the in-scope set (gaps, Ready, execute) even when the archive move fails or the archived metadata is gone (RFC-86 D24).
 
 Exit codes: `0` success (the body carries the archive path); `1` for an unknown entry (`plan-entry-not-found`) or a never-refined entry with no slice tree (`plan-drop-no-slice` — curate that entry with `emery plan remove` instead).
 

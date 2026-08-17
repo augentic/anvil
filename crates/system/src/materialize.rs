@@ -52,7 +52,7 @@ async fn observe(
 ) -> Result<(SnapshotId, Option<String>), Error> {
     if project::vcs::is_remote(location) {
         let fetched = trees
-            .fetch(location.to_string(), TreeCredentials::Ambient, TreeLimits::unbounded())
+            .fetch(location.to_string(), TreeCredentials::Ambient, TreeLimits::archaeology())
             .await
             .map_err(|err: TreeError| access(location, &err.to_string()))?;
         let snapshot = workspaces.snapshot(fetched.root.clone()).await;

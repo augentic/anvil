@@ -125,7 +125,7 @@ pub async fn complete<T: Target + Workspaces, R: Resolver>(
         if node.is_leaf() {
             continue;
         }
-        if !children_done(&tree, plan, layout, &ladders, &rounds, node)? {
+        if !children_done(&tree, plan, layout, &ladders, &rounds, node, &events)? {
             continue;
         }
         let domain_targets = domain_targets(&tree, plan, &id)?;
@@ -362,12 +362,12 @@ fn nearest_domain(tree: &Decomposition, wave: &Wave) -> Result<Option<String>, E
 fn children_done(
     tree: &Decomposition, plan: &Plan, layout: Layout<'_>,
     ladders: &std::collections::HashMap<SliceName, Status>, rounds: &BTreeMap<String, DomainRound>,
-    node: &project::plan::decomposition::Node,
+    node: &project::plan::decomposition::Node, events: &[Event],
 ) -> Result<bool, Error> {
     for id in node.children.iter().chain(&node.depends_on) {
         let child = tree.node(id)?;
         if child.is_leaf() {
-            if !leaf_done(tree, plan, layout, ladders, id)? {
+            if !leaf_done(tree, plan, layout, ladders, id, events)? {
                 return Ok(false);
             }
         } else if rounds.get(id).is_none_or(|round| round.verdict == Verdict::Failed) {
@@ -381,7 +381,7 @@ fn children_done(
 /// slices, absent entries) contribute nothing and count as done.
 fn leaf_done(
     tree: &Decomposition, plan: &Plan, layout: Layout<'_>,
-    ladders: &std::collections::HashMap<SliceName, Status>, id: &str,
+    ladders: &std::collections::HashMap<SliceName, Status>, id: &str, events: &[Event],
 ) -> Result<bool, Error> {
     let slice = tree.leaf_slice(id)?;
     let Some(entry) = plan.entries.iter().find(|entry| entry.name == slice) else {
@@ -389,7 +389,7 @@ fn leaf_done(
     };
     let meta =
         project::slice::SliceMetadata::load_optional(&layout.slice_dir(entry.name.as_str()))?;
-    if !in_scope(plan, entry, meta.as_ref()) {
+    if !in_scope(plan, entry, meta.as_ref(), events) {
         return Ok(true);
     }
     Ok(ladders.get(&slice).copied() == Some(Status::Done))

@@ -20,6 +20,13 @@ use project::plan::decomposition::{Decomposition, Kind, Node};
 use project::plan::{Plan, TargetBinding};
 use project::snapshot::SnapshotId;
 
+#[expect(unsafe_code, reason = "EMERY_POOL is the launcher cap seam; nextest isolates the process")]
+fn set_cap(cap: &str) {
+    // SAFETY: nextest runs each test in its own process, and the env
+    // write happens before any pool dispatch reads the cap.
+    unsafe { std::env::set_var("EMERY_POOL", cap) };
+}
+
 async fn seed_cid(session: &Session, name: &str) -> SnapshotId {
     let home = session.root().parent().expect("session home");
     let seed = home.join(name);
@@ -126,6 +133,9 @@ fn recorded(session: &Session) -> Vec<(String, RoundKind, Verdict)> {
 // `targets/app/domains/`.
 #[tokio::test]
 async fn converged_drain() {
+    // Frozen wave membership is capped at the pool cap; the default is
+    // serial (Phase 0), so the two-member wave needs an explicit cap.
+    set_cap("2");
     let session = Session::scripted("mock", Vec::new());
     write_domain_fixture(&session, false).await;
 
@@ -152,6 +162,9 @@ async fn converged_drain() {
 // the recorded round (same stop, no second record).
 #[tokio::test]
 async fn frontier_failure_parks() {
+    // The frontier round only gates a multi-member wave — cap 2 lets
+    // the same-target ready pair freeze one (the default is serial).
+    set_cap("2");
     let session = Session::scripted("mock", Vec::new());
     write_domain_fixture(&session, false).await;
     support::marker(session.root(), mock::behaviour::DOMAIN_VERIFY_BLOCKED);

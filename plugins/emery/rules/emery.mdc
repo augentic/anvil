@@ -15,10 +15,10 @@ This plugin provides the core Emery workflow skills: initialize a project, plan 
 
 Adapters split into two roles:
 
-- **Source adapters** (`adapters/sources/<name>/`) supply input — `survey` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `typescript`, `screenshots`.
-- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `guidance`, the build-loop operations (`build`, `verify`, `repair`, `review` — dispatched one pass at a time by the engine), and `merge`. Examples: `omnia`, `vectis`, `contracts`.
+- **Source adapters** (`sources/<name>/` in `augentic/emery-adapters`) supply input — `survey` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `typescript`, `screenshots`.
+- **Target adapters** (`targets/<name>/` in `augentic/emery-adapters`) consume artifacts — `guidance`, the build-loop operations (`build`, `verify`, `repair`, `review` — dispatched one pass at a time by the engine), and `merge`. Examples: `omnia`, `vectis`, `contracts`.
 
-Each directory contains operation prompts under `prose/prompts/`; adapter identity and metadata come from the compiled component (`describe`), not a manifest file.
+Each adapter crate carries operation prompts under `prose/`; adapter identity and resolve-time metadata come from the compiled component's WIT `metadata` export, not a manifest file.
 
 ## Slice lifecycle
 
@@ -43,7 +43,9 @@ Per-entry `pending` / `in-progress` / `done` are the same kind of projection (cl
 ```text
 /emery:init <target>               (once per project)
 
-/emery:plan <name> source ...      (authors change.md + plan.yaml; exits for operator review)
+/emery:plan <name> --from <definition> --wave <id>
+                                   (binds the reviewed handoff, authors change.md + plan.yaml;
+                                   exits for operator review)
 
 /emery:refine [slice]...           (the specification drain; CLI equivalent: emery plan refine —
                                    writes per-slice refinement manifests, no code work)
@@ -57,7 +59,9 @@ Per-entry `pending` / `in-progress` / `done` are the same kind of projection (cl
 
 At any point, `/emery:status` (read-only, wraps `emery plan status`) reports where the plan stands and the literal next command — use it whenever unsure what to do next.
 
-There are no per-slice breakout commands. When authoring stops (`plan-author-stopped`), the stop card names the parked domains — re-run `emery plan author`; re-entry resumes only the open and parked domains. When the refine drain stops (`plan-refine-stopped`), fix the reported problem and re-run `emery plan refine` — fresh slices are skipped. When the execute loop stops (`refinement-required`, `build-failed`, `merge-conflict`, …), fix the reported problem and re-run the command the stop card names — `emery plan refine` to refresh missing or stale manifests (execute never refines), otherwise `emery plan execute` (the loop resumes at the parked phase). Other repair surfaces stay on the CLI:
+When the engagement starts from an existing estate, the definition loop runs upstream of delivery, over a hand-authored definition home (never a product checkout): `/emery:system-survey` (wraps `emery system survey` — coverage-accounted estate survey), `/emery:system-plan` (wraps `emery system plan` — initial architecture proposal, then view + handoff reprojection), and `/emery:system-review` (wraps `emery system review` — records the reviewed-wave fact). `emery system status` is the read-only projection. The reviewed handoff digest is what `/emery:plan --from <definition> --wave <id>` binds.
+
+There are no per-slice breakout commands. When authoring stops (`plan-author-stopped`), the stop card names the parked domains — re-run `emery plan author`; re-entry resumes only the open and parked domains. When the refine drain stops (`plan-refine-stopped`), fix the reported problem and re-run `emery plan refine` — fresh slices are skipped. When the execute loop stops (`plan-refinement-required`, `build-failed`, `merge-conflict`, …), fix the reported problem and re-run the command the stop card names — `emery plan refine` to refresh missing or stale manifests (execute never refines), otherwise `emery plan execute` (the loop resumes at the parked phase). Other repair surfaces stay on the CLI:
 
 - `emery plan drop <slice> [--reason "<why>"]` — abandon one entry's slice without merging.
 - `emery plan amend <slice> --allow-composition-replace true` — authorize a whole-document composition overwrite for that entry's merge.
@@ -135,6 +139,9 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 - [Execute SKILL.md](skills/execute/SKILL.md) — Drive the per-slice build → merge loop to completion
 - [Status SKILL.md](skills/status/SKILL.md) — Read-only "where am I / what next" probe
 - [Finalize SKILL.md](skills/finalize/SKILL.md) — Close out a change
+- [System Survey SKILL.md](skills/system-survey/SKILL.md) — Coverage-accounted estate survey into `system.yaml`
+- [System Plan SKILL.md](skills/system-plan/SKILL.md) — Architecture proposal + handoff reprojection
+- [System Review SKILL.md](skills/system-review/SKILL.md) — Record the reviewed-wave fact
 - [Emery Artifact Guidance Supplement](../../../docs/explanation/augentic-emery-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
 
 ## Specification

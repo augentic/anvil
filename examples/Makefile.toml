@@ -51,19 +51,45 @@ mkdir -p "$EMERY_HOME/project"
 # The sandbox sits inside this repo's checkout: give the project its own
 # git root so cursor-agent anchors the workspace (and .cursor/mcp.json
 # discovery — the adapter MCP reference grants) at the project, not here.
-git init -q "$EMERY_HOME/project"
+git init -q -b main "$EMERY_HOME/project"
 
 TARGET="$PWD/target"
 # Execute commands in the project directory, not the repository root.
 emery() { (cd "$EMERY_HOME/project" && "$TARGET/debug/emery" "$@"); }
 
-# Add source adapter to cache
+# Adapters into the cache; target admitted at init.
 emery adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
 emery adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
 emery init target --name change
 
-emery plan author change --source main="source:value:The greeting service."
+# A local Git origin standing in for the product repository: the
+# initialized project tree is the parent revision the delivery binding
+# pins (`plan author` validates `.emery/project.yaml` on the fetched
+# tree). The locator must be Git-shaped (`<url>@<revision>`) so the
+# bind fetch routes host-side through `emery:vcs` — a bare path locator
+# is read in-guest, where host paths do not exist. The directory must
+# not end in `.git` (the canonical Git-URL form strips that suffix).
+git init -q --bare -b main "$EMERY_HOME/origin"
+(cd "$EMERY_HOME/project" \
+  && echo "# demo" > README.md \
+  && git add README.md .emery/project.yaml \
+  && git -c user.name=operator -c user.email=operator@example.com \
+       commit -qm "seed" \
+  && git remote add origin "$EMERY_HOME/origin" \
+  && git push -q origin main)
+
+# Reviewed definition home with the delivery target bound to the origin
+# — `plan author` takes `--from`/`--wave` only; there is no ad-hoc
+# source flag.
+cargo run -q -p emery --example definition -- \
+  "$EMERY_HOME/definition" "$EMERY_HOME/origin@main"
+
+emery plan author change --from "$EMERY_HOME/definition" --wave deliver
+# Refinement is its own stage: execute never refines
+# (`plan-refinement-required`).
+emery plan refine
 emery plan execute
+emery plan status
 '''
 
 # RFC-95 publication scenario (operator-invoked; script only, never
@@ -86,30 +112,31 @@ export RUST_LOG="${RUST_LOG:-info,omnia_wasi_http=debug}"
 
 rm -rf "$EMERY_HOME"
 mkdir -p "$EMERY_HOME/project"
-git init -q "$EMERY_HOME/project"
+git init -q -b main "$EMERY_HOME/project"
 
 TARGET="$PWD/target"
 emery() { (cd "$EMERY_HOME/project" && "$TARGET/debug/emery" "$@"); }
-
-# A local Git origin standing in for the product repository: one seed
-# commit is the parent revision the publication branch starts at.
-git init -q --bare "$EMERY_HOME/origin.git"
-git clone -q "$EMERY_HOME/origin.git" "$EMERY_HOME/seed"
-(cd "$EMERY_HOME/seed" \
-  && echo "# demo" > README.md \
-  && git add README.md \
-  && git -c user.name=operator -c user.email=operator@example.com \
-       commit -qm "seed" \
-  && git push -q origin HEAD)
 
 # Adapters into the cache; target admitted at init.
 emery adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
 emery adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
 emery init target --name change
 
+# A local Git origin standing in for the product repository: the
+# initialized project tree is the parent revision the publication
+# branch starts at. Git-shaped locator, no `.git` suffix — see wasm-run.
+git init -q --bare -b main "$EMERY_HOME/origin"
+(cd "$EMERY_HOME/project" \
+  && echo "# demo" > README.md \
+  && git add README.md .emery/project.yaml \
+  && git -c user.name=operator -c user.email=operator@example.com \
+       commit -qm "seed" \
+  && git remote add origin "$EMERY_HOME/origin" \
+  && git push -q origin main)
+
 # Reviewed definition home with the delivery target bound to the origin.
 cargo run -q -p emery --example definition -- \
-  "$EMERY_HOME/definition" "$EMERY_HOME/origin.git"
+  "$EMERY_HOME/definition" "$EMERY_HOME/origin@main"
 
 emery plan author change --from "$EMERY_HOME/definition" --wave deliver
 emery plan refine

@@ -52,7 +52,7 @@ fn reanchor(paths: ExecutionPaths, argv: &[String]) -> ExecutionPaths {
     let Some(dir) = change_request(&rest).change_dir else {
         return paths;
     };
-    let roots = Roots::resolve(paths.project_root(), Some(&dir));
+    let roots = Roots::detached(paths.project_root(), &dir);
     ExecutionPaths::from_roots(&roots, paths.locations().clone())
 }
 

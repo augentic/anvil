@@ -112,7 +112,8 @@ async fn publication_gate<P: Anchor + Forge>(
     provider: &P, plan: &Plan, layout: project::config::Layout<'_>, unverified: bool,
     now: Timestamp,
 ) -> Result<Option<publication::Record>, Error> {
-    let entries = publication::in_scope_entries(plan, layout)?;
+    let events = collect_events(layout)?;
+    let entries = publication::in_scope_entries(plan, layout, &events)?;
     let findings = decomposition::contraction(&entries);
     if has_blocking(&findings) {
         let detail = findings.iter().map(|f| f.title.as_str()).collect::<Vec<_>>().join("; ");
@@ -121,7 +122,6 @@ async fn publication_gate<P: Anchor + Forge>(
             detail,
         });
     }
-    let events = collect_events(layout)?;
     if publication::members(plan, layout, &events)?.is_empty() {
         return Ok(None);
     }

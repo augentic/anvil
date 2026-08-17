@@ -582,6 +582,10 @@ impl seam::Workspaces for Provider {
     ) -> Result<usize, seam::Error> {
         self.store().sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
     }
+
+    async fn gc(&self, cutoff: std::time::SystemTime) -> Result<usize, seam::Error> {
+        workspace_kernel::gc(self.workspaces_root(), cutoff).map_err(|err| workspace_failure(&err))
+    }
 }
 
 /// Tree fetch runs in-process (RFC-95 `emery:vcs/trees`): host `git`
@@ -592,6 +596,9 @@ impl seam::Trees for Provider {
         &self, locator: String, credentials: seam::TreeCredentials, limits: seam::TreeLimits,
     ) -> Result<seam::TreeFetched, seam::TreeError> {
         let staging = self.paths.locations().staging_root();
+        // Opportunistic hygiene, mirroring the wasi-vcs backend: a
+        // crashed run's staged trees are swept before new staging.
+        project::vcs::sweep_stale(staging, std::time::Duration::from_hours(24));
         let fetched = project::vcs::fetch(staging, &locator, credentials, &limits)?;
         Ok(seam::TreeFetched {
             root: fetched.dir.display().to_string(),

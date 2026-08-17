@@ -164,6 +164,7 @@ mod source {
                     backing: Some(Backing::Payload(
                         "A password reset flow is mentioned with no defined behaviour.".to_string(),
                     )),
+                    extras: serde_json::Map::new(),
                 }],
             },
             (Profile::Code, "login-flow") => Evidence {
@@ -261,6 +262,14 @@ mod source {
         }
     }
 
+    /// Open per-kind body extras, mirroring the fields first-party
+    /// extract prompts emit (A8 — the seam must conserve them).
+    fn extras(key: &str, value: &str) -> serde_json::Map<String, serde_json::Value> {
+        let mut extras = serde_json::Map::new();
+        extras.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+        extras
+    }
+
     fn requirement(id: &str, synopsis: &str, statement: &str) -> Claim {
         Claim {
             kind: ClaimKind::Requirement,
@@ -268,6 +277,7 @@ mod source {
             path: None,
             synopsis: Some(synopsis.to_string()),
             backing: Some(Backing::Payload(statement.to_string())),
+            extras: extras("statement", statement),
         }
     }
 
@@ -278,6 +288,7 @@ mod source {
             path: None,
             synopsis: None,
             backing: Some(Backing::Payload(body.to_string())),
+            extras: extras("criterion", body),
         }
     }
 }

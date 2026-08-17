@@ -36,7 +36,7 @@ A markdown prompt file shipped by a source or target adapter that drives one ope
 ## C
 
 **Change**
-The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. In-place the change home is `.emery/change/`; detached, cwd (or `--change-dir`) *is* the change home. Driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
+The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. In-place the change home is `.emery/change/`; detached, the explicit `--change-dir` *is* the change home (never inferred from the cwd). Driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
 
 **Command**
 One operator-facing `emery` invocation (`emery plan status`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation shape](../standards/handler-shape.md).
@@ -158,7 +158,7 @@ An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. T
 The human driving Emery: binds sources, reviews the plan before execute, resolves conflicts through overrides, and owns everything Emery deliberately leaves outside its scope — Git commits and publication.
 
 **Operation**
-The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `<crate>::<domain>::handlers` submodules (in the `project`, `slice`, and `change` crates) beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation shape](../standards/handler-shape.md).
+The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `<crate>::<domain>::handlers` submodules (in the `project`, `slice`, and `change` crates) beside their kernels and are invoked through `Invoker<P>` by the explicit typed command router. See [Operation shape](../standards/handler-shape.md).
 
 ## P
 

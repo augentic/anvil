@@ -152,6 +152,12 @@ interface source {
     synopsis: option<string>,
     /// The backing data of the claim's evidence (either a path or a raw payload).
     backing: option<backing>,
+    /// Open per-kind body fields the closed record does not model
+    /// (`statement`, `criterion`, `replay-digest`, …), carried as
+    /// `(key, value)` pairs where each value is the field's canonical
+    /// JSON encoding. Synthesis reads these verbatim from the persisted
+    /// Evidence document (A8) — the seam must conserve them.
+    extras: list<tuple<string, string>>,
   }
 
   /// The evidence returned by the extract operation: the Evidence

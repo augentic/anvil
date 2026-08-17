@@ -199,12 +199,17 @@ fn unparseable_argv_anchors() {
 }
 
 #[test]
-fn detached_cwd() {
+fn unanchored_cwd_stays_in_place() {
+    // Refused inference (D2): no `project.yaml` ancestor and no
+    // `--change-dir` never anchors a detached change home at the
+    // working directory. The policy stays total — it boots in-place at
+    // the cwd (pre-init in-place, like the seed path) so `emery init`
+    // works and change verbs fail typed in-guest.
     let sandbox = Sandbox::new();
     let policy = sandbox.policy(&["plan", "status"]);
-    assert!(policy.is_detached());
+    assert!(!policy.is_detached());
     assert_eq!(policy.project_root(), sandbox.root);
-    assert_eq!(policy.change_root(), sandbox.root);
+    assert_eq!(policy.change_root(), sandbox.root.join(".emery/change"));
     assert_eq!(policy.definition_mount_name(), "/emery-definition");
 }
 
@@ -804,6 +809,59 @@ async fn cache_seed_shadows_all() {
         .resolve_component("target:mock")
         .await
         .expect("the cache seed resolves");
+    assert_eq!(bytes, std::fs::read(&seeded).expect("read seed"));
+}
+
+#[tokio::test]
+async fn settled_identity_journaled() {
+    // D5 containment: a non-durable settle (here a cache seed) appends
+    // an `adapter.identity.settled` observability fact when the change
+    // journal already exists — and never scaffolds one.
+    let sandbox = Sandbox::new();
+    sandbox.seed_cached_component("mock");
+    // An in-place project, so the carried layout journals at
+    // `.emery/change/events/`.
+    let emery = sandbox.root.join(".emery");
+    std::fs::create_dir_all(&emery).expect("mkdir .emery");
+    std::fs::write(
+        emery.join("project.yaml"),
+        format!(
+            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
+            env!("CARGO_PKG_VERSION")
+        ),
+    )
+    .expect("write project.yaml");
+
+    sandbox.resolver().resolve_component("target:mock").await.expect("seed resolves");
+    let events = sandbox.root.join(".emery/change/events");
+    assert!(!events.exists(), "the launcher must not scaffold a change journal");
+
+    std::fs::create_dir_all(&events).expect("mkdir events");
+    sandbox.resolver().resolve_component("target:mock").await.expect("seed resolves again");
+    let log = std::fs::read_to_string(events.join("launcher.jsonl")).expect("launcher log");
+    let event: serde_json::Value =
+        serde_json::from_str(log.lines().next().expect("one line")).expect("parseable event");
+    assert_eq!(event["event"], "adapter.identity.settled");
+    assert_eq!(event["payload"]["adapter"], "target:mock");
+    assert_eq!(event["payload"]["origin"], "cache seed");
+    assert!(event["payload"].get("version").is_none(), "a seed settles without a version");
+}
+
+#[tokio::test]
+async fn cache_seed_answers_pins() {
+    // The co-dev seed wins for a pinned identity too: detached
+    // topology records exact pins, so a seeded local build must not
+    // be shadowed by the store or the registry at post-author
+    // dispatch (no network attempt — the offline resolver would fail).
+    let sandbox = Sandbox::new();
+    let seeded = sandbox.seed_cached_component("mock");
+    sandbox.seed_store_adapter("mock", "1.0.0");
+
+    let bytes = sandbox
+        .offline_resolver()
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect("the cache seed answers the pin");
     assert_eq!(bytes, std::fs::read(&seeded).expect("read seed"));
 }
 

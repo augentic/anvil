@@ -78,6 +78,11 @@ pub async fn build(
         ));
     }
 
+    // A14: platforms are a build gate, not init-only — the declared
+    // project set must satisfy the target's capability at every
+    // assembly.
+    crate::build::platforms::enforce(layout, adapter)?;
+
     let request = write_request(layout, slice, &slice_dir, &adapter.inputs)?;
 
     journal::emit_best_effort(
@@ -167,15 +172,21 @@ async fn in_workspace(
             SliceName::from(slice),
             refinement,
             entry.depends_on.clone(),
-            covering_epoch(layout),
+            covering_epoch(layout)?,
         );
         (base, wave.open(layout, now)?.digest)
     };
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
+    // Pool-drop containment (S37 / D12): an inactivity timeout or
+    // cancel drops this future mid-flight, so the settle-path discard
+    // below never runs — the guard tears the materialized tree down
+    // synchronously instead.
+    let mut guard = project::workspace::DiscardGuard::arm(&workspace.root);
     let outcome =
         finalize(seam, layout, now, slice, slice_dir, adapter, request, &workspace, wave_digest)
             .await;
+    guard.disarm();
     if let Err(err) = seam.discard(workspace.id.clone()).await {
         tracing::warn!(workspace = %workspace.id, "workspace discard failed: {err}");
     }
@@ -295,21 +306,20 @@ pub async fn open_wave_group(
         })?
     };
     let wave =
-        Wave::new(target, base, members, depends.into_iter().collect(), covering_epoch(layout));
+        Wave::new(target, base, members, depends.into_iter().collect(), covering_epoch(layout)?);
     wave.open(layout, now)?;
     Ok(())
 }
 
 /// Newest `plan.execute.started` in the fact union, else an unbound
 /// `{ writer, sequence: 0 }` ref for breakout builds without an epoch.
-fn covering_epoch(layout: Layout<'_>) -> EpochRef {
-    let Ok(events) = journal::read_union(layout) else {
-        return EpochRef {
-            writer: journal::writer_id(),
-            sequence: 0,
-        };
-    };
-    events
+///
+/// Fails closed (S23 / CC-11): an unreadable journal is an error —
+/// fabricating the unbound ref there would stamp a wave with false
+/// authorization provenance.
+fn covering_epoch(layout: Layout<'_>) -> Result<EpochRef, Error> {
+    let events = journal::read_union(layout)?;
+    Ok(events
         .iter()
         .rev()
         .find_map(|event| match event.kind {
@@ -322,7 +332,7 @@ fn covering_epoch(layout: Layout<'_>) -> EpochRef {
         .unwrap_or_else(|| EpochRef {
             writer: journal::writer_id(),
             sequence: 0,
-        })
+        }))
 }
 
 /// Map a workspace-capability failure onto the build's diagnostic

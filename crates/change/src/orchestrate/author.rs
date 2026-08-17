@@ -521,15 +521,18 @@ fn entry_mode(
     Ok(Mode::Resume)
 }
 
-/// True when a `plan.reconcile.completed` fact names this plan.
+/// True when a `plan.reconcile.completed` fact names this plan and no
+/// park follows the latest reconcile — a force run that parked resumes
+/// (S26); it never no-ops on the stale reconcile fact.
 fn reconciled(layout: Layout<'_>, plan: &Plan) -> Result<bool, Error> {
     let events = journal::read_union(layout)?;
-    Ok(events.iter().any(|event| {
+    let named = events.iter().any(|event| {
         matches!(
             &event.kind,
             EventKind::PlanReconcileCompleted { plan_name, .. } if plan_name == &plan.name
         )
-    }))
+    });
+    Ok(named && pending_parks(&events).is_empty())
 }
 
 /// Parked domains not yet resolved: park facts appended after the
@@ -668,11 +671,17 @@ async fn bind_targets<P: Trees, W: Workspaces>(
     let mut targets = BTreeMap::new();
     for target in &reviewed.handoff.wave.targets {
         let locator = target.locator.clone();
-        let recorded = intern.get(&locator).cloned().or_else(|| {
-            existing.and_then(|plan| plan.targets.get(&target.id).map(|row| row.cid.clone()))
-        });
-        let prior = existing
-            .and_then(|plan| plan.targets.get(&target.id).and_then(|row| git_sha(&row.locator)));
+        // Reuse is locator-keyed, never id-keyed (P7): a changed locator
+        // under a stable target id must re-fetch, and a recorded pin may
+        // re-anchor a moved ref only when the repository matches.
+        let bound = existing
+            .and_then(|plan| plan.targets.get(&target.id))
+            .filter(|row| same_origin(&row.locator, &locator));
+        let recorded = intern
+            .get(&locator)
+            .cloned()
+            .or_else(|| bound.filter(|row| row.locator == locator).map(|row| row.cid.clone()));
+        let prior = bound.and_then(|row| git_sha(&row.locator));
         let fetched = project::binding::fetch_locator(
             session,
             trees,
@@ -843,5 +852,18 @@ fn git_sha(locator: &str) -> Option<String> {
     match parsed.locator {
         Locator::Git { revision, .. } if Locator::is_sha(&revision) => Some(revision),
         _ => None,
+    }
+}
+
+/// The stored row names the same origin as the requested locator — CID
+/// or pinned-revision reuse across a changed origin is the P7
+/// force-rebind defect.
+fn same_origin(stored: &str, requested: &str) -> bool {
+    match (Location::parse(stored, None), Location::parse(requested, None)) {
+        (Ok(stored), Ok(requested)) => match (&stored.locator, &requested.locator) {
+            (Locator::Git { url: a, .. }, Locator::Git { url: b, .. }) => a == b,
+            (a, b) => a.key() == b.key(),
+        },
+        _ => false,
     }
 }

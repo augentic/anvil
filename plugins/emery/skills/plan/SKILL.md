@@ -32,5 +32,5 @@ Authoring is a long-running orchestration — it runs bare (or with `--debug` wh
 - Surface the CLI output verbatim, including the projected `slices[]`. This skill never runs refine or execute itself — authoring exits so the operator can review the topology before `emery plan refine`.
 - On `plan-author-stopped` (exit 2), authoring parked one or more domains after failed cuts — the stop card on stdout names them beside the error envelope; relay both verbatim. The resume path is re-running this skill's verb bare — never `--force`.
 - On any other non-zero exit, surface the structured error verbatim and stop. Never hand-edit `plan.yaml`, `change.md`, `discovery.yaml`, `leads.md`, or `decomposition.yaml` — the CLI is the single writer for plan state.
-- When the Cursor workspace is not the change home, elicit `--change-dir` and pass it through. Detached homes have no ancestor walk: cwd (or `--change-dir`) *is* the change root.
+- When the Cursor workspace is not the change home, elicit `--change-dir` and pass it through. Detached homes have no ancestor walk and are never inferred: the explicit `--change-dir` *is* the change root.
 - Headless plan curation stays on the CLI: `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan drop`.

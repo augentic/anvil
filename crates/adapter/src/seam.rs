@@ -107,32 +107,48 @@ impl<'a> Context<'a> {
 }
 
 /// The adapter's own MCP references endpoint on the runtime's HTTP
-/// trigger: `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]`.
+/// trigger: `<base>/mcp/<axis>/<name>[@<version>]`.
 ///
-/// The port comes from the guest's `HTTP_ADDR` — injected by the
-/// runtime from the local address of the deployment's pre-bound
-/// listener, so grants and listener cannot drift apart. `None` when
-/// the variable is absent or unparseable: no listener means no shelf,
-/// and no grant is offered — degradation is coherent end to end,
-/// never a wrong-port guess.
+/// The base comes from the guest's `MCP_URL_BASE` — the fully-formed
+/// `http://127.0.0.1:<port>` the deployment injects when its pre-bound
+/// listener binds (D6), so grants and listener cannot drift apart.
+/// A deployment that predates the injection falls back to deriving
+/// the base from `HTTP_ADDR`. `None` when neither is usable: no
+/// listener means no shelf, and no grant is offered — degradation is
+/// coherent end to end, never a wrong-port guess.
 #[must_use]
 pub fn mcp_url(adapter_id: &str) -> Option<String> {
+    if let Ok(base) = std::env::var("MCP_URL_BASE") {
+        return mcp_url_with_base(&base, adapter_id);
+    }
     mcp_url_for(std::env::var("HTTP_ADDR").ok().as_deref(), adapter_id)
 }
 
-/// [`mcp_url`] over an explicit trigger address.
+/// [`mcp_url`] over the injected fully-formed base URL.
 ///
 /// The path mirrors the routed adapter id verbatim (`:` becomes `/`,
 /// the version pin stays), so the deployment's `http_paths` hook maps
 /// it back onto the exact identity this guest was faulted in under and
-/// the component's own `wasi:http` handler serves the shelf. Only the
-/// port is taken from `addr`: the host stays the `IPv4` loopback
-/// literal, not `localhost` — an agent whose resolver prefers `::1`
-/// would otherwise fail to connect.
+/// the component's own `wasi:http` handler serves the shelf.
+#[must_use]
+pub fn mcp_url_with_base(base: &str, adapter_id: &str) -> Option<String> {
+    let base = base.trim_end_matches('/');
+    if base.is_empty() {
+        return None;
+    }
+    Some(format!("{base}/mcp/{}", adapter_id.replacen(':', "/", 1)))
+}
+
+/// [`mcp_url`] over an explicit trigger address — the `HTTP_ADDR`
+/// fallback for deployments that inject no `MCP_URL_BASE`.
+///
+/// Only the port is taken from `addr`: the host stays the `IPv4`
+/// loopback literal, not `localhost` — an agent whose resolver prefers
+/// `::1` would otherwise fail to connect.
 #[must_use]
 pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
     let port = addr?.rsplit_once(':')?.1.parse::<u16>().ok()?;
-    Some(format!("http://127.0.0.1:{port}/mcp/{}", adapter_id.replacen(':', "/", 1)))
+    mcp_url_with_base(&format!("http://127.0.0.1:{port}"), adapter_id)
 }
 
 /// One slice-artifact payload — mirrors the WIT `payload` variant.

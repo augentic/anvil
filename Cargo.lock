@@ -1242,6 +1242,7 @@ dependencies = [
  "emery-project",
  "emery-slice",
  "emery-transport",
+ "jiff",
  "oci-client",
  "oci-wasm",
  "omnia",

@@ -172,12 +172,17 @@ impl From<crate::seam::Backing> for Backing {
 
 impl From<crate::seam::Claim> for Claim {
     fn from(claim: crate::seam::Claim) -> Self {
+        // Open body fields ride the wire as canonical JSON text (A8);
+        // `serde_json::Value` always encodes.
+        let extras =
+            claim.extras.into_iter().map(|(key, value)| (key, value.to_string())).collect();
         Self {
             kind: claim.kind.into(),
             id: claim.id,
             path: claim.path,
             synopsis: claim.synopsis,
             backing: claim.backing.map(Into::into),
+            extras,
         }
     }
 }

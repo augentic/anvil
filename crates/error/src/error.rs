@@ -101,7 +101,9 @@ impl Error {
     #[must_use]
     pub fn hint(&self) -> Option<&'static str> {
         match self {
-            Self::NotInitialized => Some("run `emery init <adapter>` to scaffold .emery/ first"),
+            Self::NotInitialized => Some(
+                "run `emery init <adapter>` to scaffold .emery/ first, or pass `--change-dir <dir>` to select a detached change home explicitly",
+            ),
             Self::ArtifactNotFound {
                 kind: "plan.yaml", ..
             } => Some(
@@ -141,6 +143,9 @@ impl Error {
                 ),
                 "guest-marker-held" => Some(
                     "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/change/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
+                ),
+                "change-home-unanchored" => Some(
+                    "run inside a product checkout (or `emery init` one), or pass `--change-dir <dir>` to select a detached change home explicitly",
                 ),
                 _ => None,
             },

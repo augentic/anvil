@@ -89,7 +89,7 @@ pub fn members(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<Vec<
     let mut order: Vec<String> = Vec::new();
     for entry in &plan.entries {
         let meta = SliceMetadata::load_optional(&layout.slice_dir(entry.name.as_str()))?;
-        if in_scope(plan, entry, meta.as_ref()) && !order.contains(&entry.target) {
+        if in_scope(plan, entry, meta.as_ref(), events) && !order.contains(&entry.target) {
             order.push(entry.target.clone());
         }
     }
@@ -106,7 +106,7 @@ pub fn members(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<Vec<
         let mut slices: Vec<&str> = Vec::new();
         for entry in plan.entries.iter().filter(|entry| entry.target == target) {
             let meta = SliceMetadata::load_optional(&layout.slice_dir(entry.name.as_str()))?;
-            if !in_scope(plan, entry, meta.as_ref()) {
+            if !in_scope(plan, entry, meta.as_ref(), events) {
                 continue;
             }
             slices.push(entry.name.as_str());
@@ -234,12 +234,12 @@ fn materialized_fact(
 ///
 /// Slice-metadata I/O failures.
 pub fn in_scope_entries(
-    plan: &Plan, layout: Layout<'_>,
+    plan: &Plan, layout: Layout<'_>, events: &[Event],
 ) -> Result<Vec<super::model::Entry>, Error> {
     let mut entries = Vec::new();
     for entry in &plan.entries {
         let meta = SliceMetadata::load_optional(&layout.slice_dir(entry.name.as_str()))?;
-        if in_scope(plan, entry, meta.as_ref()) {
+        if in_scope(plan, entry, meta.as_ref(), events) {
             entries.push(entry.clone());
         }
     }

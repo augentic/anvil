@@ -44,32 +44,70 @@ pub fn fetch(
         TreeError::Internal(format!("creating staging root {}: {err}", staging.display()))
     })?;
     match credentials {
-        TreeCredentials::Ambient => ambient(staging, locator),
+        TreeCredentials::Ambient => ambient(staging, locator, limits),
         TreeCredentials::None => hardened(staging, locator, limits),
     }
 }
 
-/// The ambient-credential archaeology leg (RFC-104 system survey).
-fn ambient(staging: &Path, locator: &str) -> Result<FetchedTree, TreeError> {
+/// The ambient-credential archaeology leg (RFC-104 system survey),
+/// metered like the hardened leg (D11): document bytes are bounded
+/// during the read, clone bytes are charged after the shallow clone,
+/// and both share the wall-clock budget. A failed or over-limit fetch
+/// never leaves a partial staged tree behind.
+fn ambient(staging: &Path, locator: &str, limits: &TreeLimits) -> Result<FetchedTree, TreeError> {
     if !is_remote(locator) {
         return Err(TreeError::InvalidRequest(format!(
             "`{locator}` is not a Git or HTTPS origin locator"
         )));
     }
+    let policy = policy_from(limits);
+    let mut meter = Meter::new();
     let name = mint_name();
     let dir = staging.join(&name);
-    if git_origin(locator) {
-        clone(locator, &dir)?;
-        let revision = revision(&dir);
-        Ok(FetchedTree { dir, name, revision })
+    let fetched = if git_origin(locator) {
+        clone(locator, &dir).and_then(|()| charge_tree(&dir, &mut meter, &policy)).map(|()| {
+            FetchedTree {
+                dir: dir.clone(),
+                name: name.clone(),
+                revision: revision(&dir),
+            }
+        })
     } else {
-        download(locator, &dir)?;
-        Ok(FetchedTree {
-            dir,
-            name,
+        download(locator, &dir, &policy, &mut meter).map(|()| FetchedTree {
+            dir: dir.clone(),
+            name: name.clone(),
             revision: None,
         })
+    };
+    if fetched.is_err() {
+        // A partial tree never survives its failed fetch (D11).
+        drop(std::fs::remove_dir_all(&dir));
     }
+    fetched
+}
+
+/// Charge every staged file's bytes against the fetch budget — the
+/// post-clone tree charge; a shallow clone cannot be bounded
+/// mid-transfer, so an oversize tree is discarded right after.
+fn charge_tree(dir: &Path, meter: &mut Meter, policy: &Policy) -> Result<(), TreeError> {
+    let mut total = 0_u64;
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(current) = pending.pop() {
+        let entries = std::fs::read_dir(&current)
+            .map_err(|err| TreeError::Internal(format!("listing {}: {err}", current.display())))?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(meta) = std::fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if meta.is_dir() {
+                pending.push(path);
+            } else if meta.is_file() {
+                total = total.saturating_add(meta.len());
+            }
+        }
+    }
+    meter.bytes(total, policy).map_err(|err| classify(&err))
 }
 
 /// The hardened credential-free bind leg (RFC-88 D9 delivery bind).
@@ -81,8 +119,11 @@ fn hardened(staging: &Path, locator: &str, limits: &TreeLimits) -> Result<Fetche
         Locator::Git { url, revision } => {
             let name = mint_name();
             let dir = staging.join(&name);
-            let sha =
-                checkout(url, revision, &dir, &policy, &mut meter).map_err(|err| classify(&err))?;
+            let sha = checkout(url, revision, &dir, &policy, &mut meter).map_err(|err| {
+                // A partial tree never survives its failed fetch (D11).
+                drop(std::fs::remove_dir_all(&dir));
+                classify(&err)
+            })?;
             Ok(FetchedTree {
                 dir,
                 name,
@@ -119,7 +160,7 @@ fn policy_from(limits: &TreeLimits) -> Policy {
         bindings: usize::MAX,
         api_requests: usize::MAX,
         time_ms: limits.time_ms,
-        inspected_bytes: u64::MAX,
+        inspected_bytes: limits.max_bytes,
         imported_trees: usize::MAX,
         https_redirects: usize::try_from(limits.max_redirects).unwrap_or(usize::MAX),
         https_body: usize::try_from(limits.max_bytes).unwrap_or(usize::MAX),
@@ -249,11 +290,23 @@ fn git<'a>(args: impl IntoIterator<Item = &'a str>) -> Result<String, String> {
 }
 
 /// Download an HTTP(S) document locator into `dir` as a one-file
-/// tree named by the locator's last path segment.
-fn download(locator: &str, dir: &Path) -> Result<(), TreeError> {
+/// tree named by the locator's last path segment, bounded by the
+/// fetch budget's body cap.
+fn download(
+    locator: &str, dir: &Path, policy: &Policy, meter: &mut Meter,
+) -> Result<(), TreeError> {
     let failed =
         |detail: String| TreeError::Access(format!("fetching `{locator}` failed: {detail}"));
-    let bytes = get(locator).map_err(failed)?;
+    let cap = policy.https_body;
+    let bytes = get(locator, cap.saturating_add(1)).map_err(failed)?;
+    if bytes.len() > cap {
+        return Err(TreeError::Limit(format!(
+            "document `{locator}` exceeds the {cap}-byte fetch budget"
+        )));
+    }
+    meter
+        .bytes(u64::try_from(bytes.len()).unwrap_or(u64::MAX), policy)
+        .map_err(|err| classify(&err))?;
     std::fs::create_dir_all(dir).map_err(|err| {
         TreeError::Internal(format!("creating staged tree {}: {err}", dir.display()))
     })?;
@@ -262,10 +315,11 @@ fn download(locator: &str, dir: &Path) -> Result<(), TreeError> {
         .map_err(|err| TreeError::Internal(format!("writing {}: {err}", file.display())))
 }
 
-/// One blocking GET on a dedicated thread: `reqwest::blocking`
-/// refuses to run on an async executor's worker, and callers may sit
-/// on one.
-fn get(locator: &str) -> Result<Vec<u8>, String> {
+/// One blocking GET on a dedicated thread, reading at most `cap`
+/// bytes: `reqwest::blocking` refuses to run on an async executor's
+/// worker, and callers may sit on one.
+fn get(locator: &str, cap: usize) -> Result<Vec<u8>, String> {
+    use std::io::Read as _;
     let locator = locator.to_string();
     std::thread::spawn(move || {
         let response = reqwest::blocking::get(&locator).map_err(|err| err.to_string())?;
@@ -273,7 +327,12 @@ fn get(locator: &str) -> Result<Vec<u8>, String> {
         if !status.is_success() {
             return Err(format!("origin answered {status}"));
         }
-        Ok(response.bytes().map_err(|err| err.to_string())?.to_vec())
+        let mut bytes = Vec::new();
+        response
+            .take(u64::try_from(cap).unwrap_or(u64::MAX))
+            .read_to_end(&mut bytes)
+            .map_err(|err| err.to_string())?;
+        Ok(bytes)
     })
     .join()
     .map_err(|_panic| "download thread panicked".to_string())?

@@ -98,7 +98,6 @@ const fn authority(authority: aseam::Authority) -> AuthorityClass {
     }
 }
 
-// Open per-kind claim fields do not cross the compact seam record.
 fn claim(claim: aseam::Claim) -> artifacts::evidence::Claim {
     let mut typed = artifacts::evidence::Claim::new(claim_kind(claim.kind));
     typed.id = claim.id;
@@ -108,6 +107,9 @@ fn claim(claim: aseam::Claim) -> artifacts::evidence::Claim {
         aseam::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
         aseam::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
     }));
+    // Open per-kind body fields (`statement`, `criterion`,
+    // `replay-digest`, …) cross the seam verbatim (A8).
+    typed.extras = claim.extras;
     typed
 }
 

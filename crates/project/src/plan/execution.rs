@@ -153,12 +153,19 @@ pub fn ensure_authored(layout: Layout<'_>, plan: &Plan) -> Result<(), Error> {
         return Ok(());
     }
     let events = collect_events(layout)?;
-    let authored = events.iter().any(|event| {
-        matches!(
-            &event.kind,
-            EventKind::PlanReconcileCompleted { plan_name, .. } if plan_name == &plan.name
-        )
-    });
+    // A park after the latest reconcile reopens authoring: a historical
+    // reconcile fact must not authorize topology verbs over the parked
+    // partial tree (S26).
+    let mut authored = false;
+    for event in &events {
+        match &event.kind {
+            EventKind::PlanReconcileCompleted { plan_name, .. } if plan_name == &plan.name => {
+                authored = true;
+            }
+            EventKind::PlanAuthorParked { .. } => authored = false,
+            _ => {}
+        }
+    }
     if authored {
         return Ok(());
     }
@@ -241,7 +248,7 @@ pub(super) fn resolve_entry(
 ) -> Result<Resolution, Error> {
     let slice_dir = layout.slice_dir(entry.name.as_str());
 
-    if is_dropped(&slice_dir)? {
+    if is_dropped(&slice_dir, &entry.name, events)? {
         return Ok(Resolution::stop_for(StopReason::SliceDropped, None, entry, None));
     }
 
@@ -358,10 +365,14 @@ const fn phase_max(left: Phase, right: Phase) -> Phase {
     }
 }
 
-/// Dropped when `metadata.yaml` carries `dropped_at` — the abandon
-/// stamp is an artifact field, not the lifecycle status enum (RFC-86
-/// D2 / D24).
-fn is_dropped(slice_dir: &Path) -> Result<bool, Error> {
+/// Dropped when a `slice.dropped` tombstone names the slice or
+/// `metadata.yaml` carries `dropped_at` — the journal fact is the
+/// durable authority (S7 / CC-03); the artifact stamp leaves the live
+/// tree when the slice archives.
+fn is_dropped(slice_dir: &Path, slice: &SliceName, events: &[Event]) -> Result<bool, Error> {
+    if super::scope::dropped(slice, events) {
+        return Ok(true);
+    }
     let meta = SliceMetadata::load_optional(slice_dir)?;
     Ok(meta.is_some_and(|metadata| metadata.dropped_at.is_some()))
 }

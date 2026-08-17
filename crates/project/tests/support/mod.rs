@@ -320,6 +320,11 @@ impl project::seam::Workspaces for KernelSeam {
             .map_err(|err| project::seam::Error::Internal(err.to_string()))
     }
 
+    async fn gc(&self, cutoff: std::time::SystemTime) -> Result<usize, project::seam::Error> {
+        project::workspace::gc(&self.workspaces, cutoff)
+            .map_err(|err| project::seam::Error::Internal(err.to_string()))
+    }
+
     async fn sweep(
         &self, dead: Vec<project::snapshot::SnapshotId>, live: Vec<project::snapshot::SnapshotId>,
     ) -> Result<usize, project::seam::Error> {

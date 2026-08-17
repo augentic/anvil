@@ -84,6 +84,17 @@ fn evidence_deserializes() {
     assert_eq!(example.id.as_deref(), Some("password-reset.expiry"));
     assert_eq!(example.path.as_deref(), Some("captures/reset.json#L3-L9"));
     assert_eq!(example.backing, Some(Backing::Path("captures/reset.json".to_string())));
+    // Open per-kind body fields are conserved, not dropped (A8).
+    assert_eq!(
+        example.extras.get("replay-digest").and_then(serde_json::Value::as_str),
+        Some(concat!(
+            "sha256:",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        )),
+    );
+    assert_eq!(example.extras["input"], serde_json::json!({"token": "stale"}));
+    assert_eq!(example.extras["output"], serde_json::json!({"status": 410}));
+    assert!(!example.extras.contains_key("synopsis"), "modeled keys stay typed");
     let claim = &evidence.claims[1];
     assert_eq!(claim.kind, ClaimKind::Type, "`type` deserializes despite being a keyword");
     assert_eq!(
@@ -91,6 +102,7 @@ fn evidence_deserializes() {
         Some(Backing::Payload("struct ResetToken { expiry: Instant }".to_string()))
     );
     assert!(claim.id.is_none() && claim.path.is_none() && claim.synopsis.is_none());
+    assert!(claim.extras.is_empty(), "no unmodeled keys, no extras");
 }
 
 // The answer schema does not pin the shape of `synopsis` / `backing`, so

@@ -109,7 +109,11 @@ impl Source for Provider {
             let evidence = source::extract(id, map_source_input(input)).await.map_err(map_error)?;
             Ok(Evidence {
                 authority: map_authority(evidence.authority),
-                claims: evidence.claims.into_iter().map(map_claim).collect(),
+                claims: evidence
+                    .claims
+                    .into_iter()
+                    .map(map_claim)
+                    .collect::<Result<Vec<_>, _>>()?,
             })
         }
     }
@@ -117,12 +121,19 @@ impl Source for Provider {
 
 impl Shelf for Provider {
     /// The engine's synthesis shelf on the deployment's pre-bound
-    /// listener (RFC-96 D9): only the port is taken from `HTTP_ADDR`
-    /// — the host stays the IPv4 loopback literal, mirroring the
-    /// adapter SDK's grant derivation. `None` when the variable is
-    /// absent or unparseable: no listener means no shelf, and the
-    /// synthesis prompt inlines the full playbook instead.
+    /// listener (RFC-96 D9): the injected fully-formed `MCP_URL_BASE`
+    /// when present (D6), else the port parsed from `HTTP_ADDR` onto
+    /// the IPv4 loopback literal — mirroring the adapter SDK's grant
+    /// derivation. `None` when neither is usable: no listener means no
+    /// shelf, and the synthesis prompt inlines the full playbook
+    /// instead.
     async fn synthesis_shelf(&self) -> Result<Option<String>, seam::Error> {
+        if let Ok(base) = std::env::var("MCP_URL_BASE") {
+            let base = base.trim_end_matches('/');
+            if !base.is_empty() {
+                return Ok(Some(format!("{base}{}", slice::shelf::PATH)));
+            }
+        }
         let addr = std::env::var("HTTP_ADDR").ok();
         let port = addr.as_deref().and_then(|addr| addr.rsplit_once(':')?.1.parse::<u16>().ok());
         Ok(port.map(|port| format!("http://127.0.0.1:{port}{}", slice::shelf::PATH)))
@@ -297,6 +308,15 @@ impl seam::Workspaces for Provider {
         async move {
             let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             store.sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
+        }
+    }
+
+    fn gc(
+        &self, cutoff: std::time::SystemTime,
+    ) -> impl Future<Output = Result<usize, seam::Error>> + Send {
+        async move {
+            project::workspace::gc(Path::new(GUEST_WORKSPACES_MOUNT), cutoff)
+                .map_err(|err| workspace_failure(&err))
         }
     }
 }
@@ -560,8 +580,15 @@ const fn map_authority(authority: source::Authority) -> AuthorityClass {
 /// Map a WIT claim record onto the typed [`artifacts::evidence::Claim`].
 ///
 /// The backing variant flattens onto the wire shape's `payload` /
-/// `backing-path` keys via [`artifacts::evidence::Claim::set_backing`].
-fn map_claim(claim: source::Claim) -> artifacts::evidence::Claim {
+/// `backing-path` keys via [`artifacts::evidence::Claim::set_backing`];
+/// open body extras arrive as `(key, canonical JSON)` pairs (A8) and
+/// decode back into the claim's open map.
+///
+/// # Errors
+///
+/// Fails closed when an extra's value is not decodable JSON — dropping
+/// it would silently lose evidence synthesis reads verbatim.
+fn map_claim(claim: source::Claim) -> Result<artifacts::evidence::Claim, seam::Error> {
     let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
     typed.id = claim.id;
     typed.path = claim.path;
@@ -570,7 +597,15 @@ fn map_claim(claim: source::Claim) -> artifacts::evidence::Claim {
         source::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
         source::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
     }));
-    typed
+    for (key, value) in claim.extras {
+        let value = serde_json::from_str(&value).map_err(|err| {
+            seam::Error::Internal(format!(
+                "claim extra `{key}` is not representable: its wire value is not JSON ({err})"
+            ))
+        })?;
+        typed.extras.insert(key, value);
+    }
+    Ok(typed)
 }
 
 const fn map_claim_kind(kind: source::ClaimKind) -> artifacts::evidence::ClaimKind {

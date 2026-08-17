@@ -176,7 +176,7 @@ mod kernel {
     #[test]
     fn ambient_fetch_refused() {
         // A refused origin is a typed fetch failure, not a panic or
-        // an empty tree.
+        // an empty tree — and no partial staged tree survives (D11).
         let staging = tempfile::tempdir().expect("tempdir");
         let locator = format!("http://{}/gone", serve_status("404 Not Found"));
         let err = vcs::fetch(
@@ -187,6 +187,37 @@ mod kernel {
         )
         .expect_err("a 404 origin fails");
         assert!(matches!(&err, TreeError::Access(_)), "{err}");
+        assert_staging_clean(staging.path());
+    }
+
+    #[test]
+    fn ambient_over_limit() {
+        // D11: the ambient document leg is metered — a body past the
+        // byte cap is a typed limit failure and staging stays clean.
+        let staging = tempfile::tempdir().expect("tempdir");
+        let body = "x".repeat(64);
+        let leaked: &'static str = Box::leak(body.into_boxed_str());
+        let locator = format!("http://{}/big.yaml", serve(leaked));
+        let limits = TreeLimits {
+            max_bytes: 16,
+            max_redirects: 4,
+            time_ms: 60_000,
+        };
+        let err = vcs::fetch(staging.path(), &locator, TreeCredentials::Ambient, &limits)
+            .expect_err("over-cap body fails");
+        assert!(matches!(&err, TreeError::Limit(_)), "{err}");
+        assert_staging_clean(staging.path());
+    }
+
+    /// No `vcs-*` staged tree survives a failed fetch.
+    fn assert_staging_clean(staging: &Path) {
+        let leftovers: Vec<String> = std::fs::read_dir(staging)
+            .expect("staging root")
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.starts_with("vcs-"))
+            .collect();
+        assert!(leftovers.is_empty(), "failed fetch left staged trees: {leftovers:?}");
     }
 
     #[test]

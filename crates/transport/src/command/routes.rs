@@ -263,7 +263,7 @@ where
         plan::DropArgs,
         ::change::plan::handlers::Drop,
         "Abandon one plan entry's slice without merging: stamp it `dropped` and archive the slice tree",
-        "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/change/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
+        "Abandon one plan entry's slice without merging: append the durable `slice.dropped` journal tombstone, stamp `dropped_at` on the slice's `metadata.yaml`, and archive the slice tree under `.emery/change/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
         ["plan", "author"],

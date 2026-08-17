@@ -221,7 +221,9 @@ fn append_stamps_writer() {
 #[test]
 fn append_skips_corrupt_tail() {
     // A corrupt trailing line must not reset the sequence to 1; the
-    // append walks back to the newest parseable event.
+    // append walks back to the newest parseable event. The union read
+    // stays strict: authority readers get a typed error until the
+    // corrupt line is repaired (S13 / CC-11).
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -235,12 +237,58 @@ fn append_skips_corrupt_tail() {
 
     append_for(layout, "operator-a", &[build_started(2, "gamma")]).expect("append after corrupt");
 
-    let events = read_union(layout).expect("union");
-    assert_eq!(
-        events.iter().map(|event| event.sequence).collect::<Vec<_>>(),
-        vec![1, 2, 3],
-        "sequence continues past the corrupt line"
-    );
+    let sequences: Vec<u64> = std::fs::read_to_string(&path)
+        .expect("writer log")
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Event>(line).ok())
+        .map(|event| event.sequence)
+        .collect();
+    assert_eq!(sequences, vec![1, 2, 3], "sequence continues past the corrupt line");
+
+    let err = read_union(layout).expect_err("strict union refuses the corrupt line");
+    match err {
+        error::Error::Diag { code, .. } => assert_eq!(code, "journal-line-malformed"),
+        other => panic!("expected Diag, got {other:?}"),
+    }
+}
+
+#[test]
+fn events_dir_unreadable_errs() {
+    // S13 / CC-11: an unreadable events directory is an I/O error on
+    // the authority read — never an empty union.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join(".emery/change")).expect("change home");
+    std::fs::write(root.join(".emery/change/events"), "not a directory").expect("blocker");
+    let err = read_union(layout(root)).expect_err("unreadable events dir");
+    assert!(matches!(err, error::Error::Io(_)), "expected Io, got {err:?}");
+}
+
+#[tokio::test]
+async fn show_stays_lenient() {
+    // `journal show` is the one lenient reader: the observability
+    // projection still lists the parseable events beside a corrupt
+    // line that fails every authority read.
+    let project = Session::scripted("demo", Vec::new());
+    let root = project.root();
+    let layout = layout(root);
+    append_for(layout, "alpha", &[build_started(0, "a1")]).expect("append");
+    let path = root.join(".emery/change/events/alpha.jsonl");
+    let mut contents = std::fs::read_to_string(&path).expect("writer log");
+    contents.push_str("{not json\n");
+    std::fs::write(&path, contents).expect("corrupt line");
+
+    read_union(layout).expect_err("authority read refuses");
+    let body = run::<handlers::Show, _, _>(
+        project.provider(),
+        handlers::ShowInput {
+            filter: None,
+            limit: None,
+        },
+    )
+    .await
+    .expect("show stays lenient");
+    assert_eq!(body.count, 1);
 }
 
 #[test]

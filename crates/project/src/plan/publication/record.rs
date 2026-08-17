@@ -113,7 +113,7 @@ pub async fn project<F: Forge>(
     forge: &F, plan: &Plan, layout: Layout<'_>, events: &[Event],
 ) -> Result<Projection, Error> {
     let members = members(plan, layout, events)?;
-    let entries = super::in_scope_entries(plan, layout)?;
+    let entries = super::in_scope_entries(plan, layout, events)?;
     let ranks = ranks(&entries);
     let branch = format!("change/{}", plan.name);
     let current_digest = Plan::file_digest(layout)?;

@@ -41,6 +41,13 @@ fn pair_plan(root: &std::path::Path, aux_adapter: &str) {
     );
 }
 
+#[expect(unsafe_code, reason = "EMERY_POOL is the launcher cap seam; nextest isolates the process")]
+fn set_cap(cap: &str) {
+    // SAFETY: nextest runs each test in its own process, and the env
+    // write happens before any pool dispatch reads the cap.
+    unsafe { std::env::set_var("EMERY_POOL", cap) };
+}
+
 fn manifest_path(root: &std::path::Path, slice: &str) -> std::path::PathBuf {
     root.join(".emery/change/slices").join(slice).join("refinement.yaml")
 }
@@ -269,6 +276,9 @@ async fn stop_then_resume() {
 // merge phase.
 #[tokio::test]
 async fn pair_execute_drains() {
+    // Frozen wave membership is capped at the pool cap; the default is
+    // serial (Phase 0), so the two-member wave needs an explicit cap.
+    set_cap("2");
     let session = Session::scripted(
         "mock",
         vec![synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],

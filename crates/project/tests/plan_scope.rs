@@ -101,14 +101,27 @@ fn scope_requires_plan() {
     let plan = plan(vec![entry("orders")]);
     let on_plan = &plan.entries[0];
 
-    assert!(in_scope(&plan, on_plan, None), "absent metadata is not dropped");
-    assert!(in_scope(&plan, on_plan, Some(&meta())), "live metadata stays in-scope");
+    assert!(in_scope(&plan, on_plan, None, &[]), "absent metadata is not dropped");
+    assert!(in_scope(&plan, on_plan, Some(&meta()), &[]), "live metadata stays in-scope");
     let mut dropped = meta();
     dropped.dropped_at = Some(Timestamp::from_second(1_700_000_000).expect("timestamp"));
-    assert!(!in_scope(&plan, on_plan, Some(&dropped)), "dropped_at excludes membership");
+    assert!(!in_scope(&plan, on_plan, Some(&dropped), &[]), "dropped_at excludes membership");
 
     let orphan = entry("ghost");
-    assert!(!in_scope(&plan, &orphan, None), "absent from the plan is not in-scope");
+    assert!(!in_scope(&plan, &orphan, None, &[]), "absent from the plan is not in-scope");
+
+    // S7 / CC-03: the journal tombstone is durable scope authority —
+    // it excludes the entry even when live metadata is gone (archived)
+    // or the archival move never completed.
+    let tombstone = [Event::new(
+        Timestamp::from_second(1_700_000_000).expect("timestamp"),
+        EventKind::SliceDropped {
+            slice_name: "orders".into(),
+            reason: None,
+        },
+    )];
+    assert!(!in_scope(&plan, on_plan, None, &tombstone), "tombstone survives archived metadata");
+    assert!(!in_scope(&plan, on_plan, Some(&meta()), &tombstone), "tombstone beats live metadata");
 }
 
 #[test]

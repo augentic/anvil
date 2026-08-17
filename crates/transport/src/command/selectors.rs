@@ -439,4 +439,8 @@ impl seam::Workspaces for Grammar {
     ) -> Result<usize, seam::Error> {
         never_dispatched!()
     }
+
+    async fn gc(&self, _cutoff: std::time::SystemTime) -> Result<usize, seam::Error> {
+        never_dispatched!()
+    }
 }
