@@ -12,7 +12,7 @@ use super::{prose, render_json, repaired};
 use crate::model::{State, Status};
 
 /// Wire version stamped on both envelopes.
-const CORRELATION_VERSION: u32 = 1;
+pub(crate) const CORRELATION_VERSION: u32 = 1;
 
 /// Correlation input envelope kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]

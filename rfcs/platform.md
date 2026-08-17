@@ -39,10 +39,8 @@ flowchart TD
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
-    classDef later fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
     class R86,R87,R88,R90,R91,R104,R95,R96 done
     class R92,R97,R94 nearterm
-    class R98 later
 ```
 
 RFC-92 patches the model-capability profile shape owned by implemented RFC-88: routes and usage facts land on the implemented substrate and fold into the profile.

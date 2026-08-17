@@ -1,4 +1,5 @@
-//! The client composition: tracing init and the `EVAL_LOG` file copy.
+//! The client composition: argv classification, sandbox binding,
+//! tracing init, and the `EVAL_LOG` file copy.
 #![cfg(feature = "client")]
 
 use std::ffi::OsStr;
@@ -23,6 +24,188 @@ fn setenv(key: &str, value: impl AsRef<OsStr>) {
 fn unsetenv(key: &str) {
     // SAFETY: callers run single-threaded, before the runtime spawns.
     unsafe { std::env::remove_var(key) };
+}
+
+mod classify {
+    use probe::client::{Invocation, classify};
+
+    fn argv(tokens: &[&str]) -> Vec<String> {
+        tokens.iter().map(ToString::to_string).collect()
+    }
+
+    fn ids() -> Vec<String> {
+        argv(&["auth", "omnia-r9k"])
+    }
+
+    #[test]
+    fn empty_lists() {
+        assert_eq!(classify(&[], &ids()), Invocation::Runner(argv(&["eval"])));
+    }
+
+    #[test]
+    fn explicit_eval() {
+        let rest = argv(&["eval", "auth", "--restart"]);
+        assert_eq!(classify(&rest, &ids()), Invocation::Runner(rest.clone()));
+    }
+
+    #[test]
+    fn verb_passes_through() {
+        let rest = argv(&["plan", "status"]);
+        assert_eq!(
+            classify(&rest, &ids()),
+            Invocation::Passthrough {
+                rest: rest.clone(),
+                case: None,
+            }
+        );
+    }
+
+    #[test]
+    fn case_id_runs() {
+        assert_eq!(
+            classify(&argv(&["auth", "--restart"]), &ids()),
+            Invocation::Runner(argv(&["eval", "auth", "--restart"]))
+        );
+        assert_eq!(
+            classify(&argv(&["auth", "--until", "plan"]), &ids()),
+            Invocation::Runner(argv(&["eval", "auth", "--until", "plan"]))
+        );
+        assert_eq!(classify(&argv(&["auth"]), &ids()), Invocation::Runner(argv(&["eval", "auth"])));
+    }
+
+    #[test]
+    fn case_id_verb_binds() {
+        assert_eq!(classify(&argv(&["auth", "plan", "execute"]), &ids()), {
+            Invocation::Passthrough {
+                rest: argv(&["plan", "execute"]),
+                case: Some("auth".to_string()),
+            }
+        });
+    }
+
+    #[test]
+    fn unknown_passes_through() {
+        // The native router owns the rejection (and help rendering).
+        let rest = argv(&["frobnicate"]);
+        assert_eq!(
+            classify(&rest, &ids()),
+            Invocation::Passthrough {
+                rest: rest.clone(),
+                case: None,
+            }
+        );
+        let help = argv(&["--help"]);
+        assert_eq!(
+            classify(&help, &ids()),
+            Invocation::Passthrough {
+                rest: help.clone(),
+                case: None,
+            }
+        );
+    }
+}
+
+mod filter {
+    use probe::client::{Filter, filter};
+
+    #[test]
+    fn precedence() {
+        // Explicit flag > ambient RUST_LOG > runner preset > info.
+        assert_eq!(filter(Some(Filter::Off), true, true), Filter::Off, "quiet wins outright");
+        assert_eq!(filter(Some(Filter::Debug), true, true), Filter::Debug, "debug beats ambient");
+        assert_eq!(filter(None, true, true), Filter::Ambient, "ambient beats the preset");
+        assert_eq!(filter(None, false, true), Filter::Debug, "runner defaults to debug");
+        assert_eq!(filter(None, false, false), Filter::Info, "passthrough defaults to info");
+    }
+}
+
+mod bind {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    use probe::client::passthrough_paths;
+    use tempfile::TempDir;
+
+    fn argv(tokens: &[&str]) -> Vec<String> {
+        tokens.iter().map(ToString::to_string).collect()
+    }
+
+    fn stage(tmp: &TempDir) -> (PathBuf, PathBuf) {
+        let root = tmp.path().canonicalize().expect("canonical root");
+        let dir = root.join("sandbox").join("auth");
+        fs::create_dir_all(&dir).expect("sandbox dir");
+        (root, dir)
+    }
+
+    #[test]
+    fn case_id_binds_sandbox() {
+        let tmp = TempDir::new().expect("tempdir");
+        let (root, dir) = stage(&tmp);
+        let (paths, model_root) =
+            passthrough_paths(&root, Some(Path::new("sandbox")), Some("auth"), &[])
+                .expect("a case id binds its sandbox");
+        assert!(paths.is_detached(), "a workflow sandbox binds detached");
+        assert!(
+            paths.locations().snapshots_root().starts_with(&dir),
+            "snapshots live inside the sandbox: {}",
+            paths.locations().snapshots_root().display()
+        );
+        assert_eq!(model_root, dir, "the model workspace is the sandbox");
+    }
+
+    #[test]
+    fn missing_sandbox_refuses() {
+        let tmp = TempDir::new().expect("tempdir");
+        let root = tmp.path().canonicalize().expect("canonical root");
+        let err = passthrough_paths(&root, Some(Path::new("sandbox")), Some("auth"), &[])
+            .expect_err("a bound case without a retained sandbox refuses");
+        assert!(format!("{err:#}").contains("no retained sandbox"), "{err:#}");
+    }
+
+    #[test]
+    fn change_dir_binds() {
+        let tmp = TempDir::new().expect("tempdir");
+        let (root, dir) = stage(&tmp);
+        let rest = argv(&["plan", "status", "--change-dir", "sandbox/auth"]);
+        let (paths, model_root) = passthrough_paths(&root, Some(Path::new("sandbox")), None, &rest)
+            .expect("a sandbox --change-dir binds its locations");
+        // `.` stays at the invocation root — the command layer re-anchors
+        // the relative `--change-dir` itself; only the value locations move.
+        assert_eq!(paths.project_root(), root);
+        assert!(
+            paths.locations().snapshots_root().starts_with(&dir),
+            "snapshots live inside the sandbox: {}",
+            paths.locations().snapshots_root().display()
+        );
+        assert_eq!(model_root, dir);
+    }
+
+    #[test]
+    fn sandbox_root_binds() {
+        let tmp = TempDir::new().expect("tempdir");
+        let (root, dir) = stage(&tmp);
+        let (paths, model_root) =
+            passthrough_paths(&dir, Some(&root.join("sandbox")), None, &argv(&["slice", "list"]))
+                .expect("a --project-dir that is a sandbox binds it");
+        assert!(paths.locations().snapshots_root().starts_with(&dir));
+        assert_eq!(model_root, dir);
+    }
+
+    #[test]
+    fn arbitrary_tree_operator() {
+        let tmp = TempDir::new().expect("tempdir");
+        let (root, dir) = stage(&tmp);
+        let elsewhere = root.join("elsewhere");
+        fs::create_dir_all(&elsewhere).expect("mkdir");
+        let rest = argv(&["plan", "status", "--change-dir", "elsewhere"]);
+        let (paths, model_root) = passthrough_paths(&root, Some(Path::new("sandbox")), None, &rest)
+            .expect("an arbitrary change dir keeps operator locations");
+        assert!(
+            !paths.locations().snapshots_root().starts_with(&dir),
+            "operator locations never point into the sandbox"
+        );
+        assert_eq!(model_root, root, "the model workspace stays at the invocation root");
+    }
 }
 
 #[test]

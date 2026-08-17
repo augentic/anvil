@@ -1,7 +1,7 @@
 //! Data-directory eval cases over real `emery` verbs.
 //!
-//! Every command runs through [`native::command::execute`] — production
-//! paths, never reconstructed here; rerun from fresh state with `--restart`.
+//! Every command runs through [`native::command::execute`]; an authored
+//! workflow sandbox resumes at `plan refine`, `--restart` the only reset.
 
 use std::collections::HashSet;
 use std::fs;
@@ -22,6 +22,7 @@ use crate::{fs as evalfs, grade, sandbox};
 
 mod spec;
 
+pub(crate) use spec::ids;
 pub use spec::{Build, Case, CloneSpec, Workflow, WorkflowUntil, load, parse};
 use spec::{list, validate_entry};
 
@@ -34,13 +35,15 @@ pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<DynModel> + Send + Sync>;
 ///
 /// `root` is the composition root's `cases/` directory; `sandbox` is
 /// the retained per-case sandbox root beside it. `until` overrides a
-/// workflow case's configured stop rung and is refused for build
-/// cases.
+/// workflow case's stop rung (refused for build cases). Without
+/// `restart`, a workflow sandbox holding an authored plan resumes at
+/// `plan refine`; build and author-incomplete sandboxes refuse.
 ///
 /// # Errors
 ///
-/// Returns an unknown or malformed case, an existing sandbox without
-/// `--restart`, command failures, and every gate failure.
+/// Returns an unknown or malformed case, an existing sandbox that
+/// cannot resume without `--restart`, command failures, and every
+/// gate failure.
 pub async fn run(
     root: &Path, sandbox: &Path, id: Option<&str>, until: Option<WorkflowUntil>, restart: bool,
     catalog: &Catalog, factory: &ModelFactory,
@@ -64,9 +67,9 @@ pub async fn run(
         .await
 }
 
-// The dispatch behind [`run`]'s `eval.case` span: sandbox policy,
-// clone-on-miss fixture population, fixture materialization, then
-// the case kind's driver.
+// The dispatch behind [`run`]'s `eval.case` span: sandbox policy
+// (fresh, resume, or refuse), clone-on-miss fixture population,
+// fixture materialization, then the case kind's driver.
 #[expect(clippy::too_many_arguments, reason = "internal dispatch kernel; callers use `run`")]
 async fn execute(
     root: &Path, sandbox: &Path, id: &str, case: &Case, until: Option<WorkflowUntil>,
@@ -74,29 +77,43 @@ async fn execute(
 ) -> Result<()> {
     let dir = sandbox.join(id);
     let _lock = sandbox::single_writer(&dir)?;
-    if dir.exists() && !restart {
-        bail!(
-            "sandbox {} already exists; rerun from fresh state with `--restart`, or \
-             continue/debug it explicitly with `cargo make lab -- --change-dir {} …`",
-            dir.display(),
-            dir.display()
-        );
+    let resume = dir.exists() && !restart;
+    if resume {
+        match case {
+            Case::Build(_) => bail!(
+                "sandbox {} already exists; a build case has no resume — rerun from \
+                 fresh state with `cargo make eval {id} --restart`, or inspect the tree \
+                 with `cargo make eval {id} slice list`",
+                dir.display()
+            ),
+            Case::Workflow(_) => ensure!(
+                sandbox::read_plan(&dir).is_ok(),
+                "sandbox {} holds no authored plan (the previous run stopped during \
+                 author); reset with `cargo make eval {id} --restart`",
+                dir.display()
+            ),
+        }
     }
-    if let Case::Workflow(Workflow {
-        clone: Some(clone), ..
-    }) = case
-    {
-        clone_into(&root.join(id).join("fixture"), clone)?;
-    }
-    let scratch = sandbox::replace(&dir)?;
-    if let Some(fixture) = fixture_dir(root, id, case)? {
-        evalfs::copy_tree(&fixture, &scratch)
-            .with_context(|| format!("materializing the fixture {}", fixture.display()))?;
-    }
-    if let Some(home) = case_definition_dir(root, id, case) {
-        evalfs::copy_tree(&home, &scratch.join("definition"))
-            .with_context(|| format!("materializing the definition home {}", home.display()))?;
-    }
+    let scratch = if resume {
+        dir.canonicalize().context("canonical case sandbox root")?
+    } else {
+        if let Case::Workflow(Workflow {
+            clone: Some(clone), ..
+        }) = case
+        {
+            clone_into(&root.join(id).join("fixture"), clone)?;
+        }
+        let scratch = sandbox::replace(&dir)?;
+        if let Some(fixture) = fixture_dir(root, id, case)? {
+            evalfs::copy_tree(&fixture, &scratch)
+                .with_context(|| format!("materializing the fixture {}", fixture.display()))?;
+        }
+        if let Some(home) = case_definition_dir(root, id, case) {
+            evalfs::copy_tree(&home, &scratch.join("definition"))
+                .with_context(|| format!("materializing the definition home {}", home.display()))?;
+        }
+        scratch
+    };
 
     let telemetry = Telemetry::new(factory(&scratch)?);
     let model = DynModel::new(telemetry.clone());
@@ -115,13 +132,32 @@ async fn execute(
                     grade::load_blind(&path)
                 })
                 .transpose()?;
-            println!(
-                "eval case {id}: workflow until {} sandbox {}",
-                until.label(),
-                scratch.display()
-            );
-            run_workflow(id, workflow, until, &scratch, &model, catalog, &telemetry, blind.as_ref())
-                .await
+            if resume {
+                println!(
+                    "eval case {id}: workflow resume until {} sandbox {} (telemetry covers \
+                     this run only)",
+                    until.label(),
+                    scratch.display()
+                );
+            } else {
+                println!(
+                    "eval case {id}: workflow until {} sandbox {}",
+                    until.label(),
+                    scratch.display()
+                );
+            }
+            run_workflow(
+                id,
+                workflow,
+                until,
+                &scratch,
+                &model,
+                catalog,
+                &telemetry,
+                blind.as_ref(),
+                resume,
+            )
+            .await
         }
         Case::Build(build) => {
             println!("eval case {id}: build slice {} sandbox {}", build.slice, scratch.display());
@@ -144,59 +180,76 @@ fn apply_cap(cap: Option<usize>) {
 #[expect(clippy::too_many_arguments, reason = "internal driver; callers use `run`")]
 async fn run_workflow(
     id: &str, case: &Workflow, until: WorkflowUntil, root: &Path, model: &DynModel,
-    catalog: &Catalog, telemetry: &Telemetry<DynModel>, blind: Option<&grade::Blind>,
+    catalog: &Catalog, telemetry: &Telemetry<DynModel>, blind: Option<&grade::Blind>, resume: bool,
 ) -> Result<()> {
-    let supplied = definition_home(root, case);
-    if supplied.is_none() {
+    if resume {
+        // The plan is authored (the resume gate proved it); the drains
+        // downstream are the engine's own re-run contract.
+        if until == WorkflowUntil::Plan {
+            println!(
+                "eval case {id}: nothing to resume before `--until plan` — the plan is \
+                 already authored; inspect with `cargo make eval {id} plan status`"
+            );
+            return Ok(());
+        }
+    } else {
+        let supplied = definition_home(root, case);
+        if supplied.is_none() {
+            ensure!(
+                !case.target.trim().is_empty(),
+                "in-place workflow mint needs `target` for `emery init`"
+            );
+            invoke(root, model, catalog, &["init", &case.target]).await?;
+        }
+        let (from, wave) = seed_definition(root, case)?;
+        if supplied.is_some() {
+            ensure_target_trees(root, &from, &wave, model, catalog).await?;
+        }
+        invoke(
+            root,
+            model,
+            catalog,
+            &["plan", "author", &case.change, "--from", &from.to_string_lossy(), "--wave", &wave],
+        )
+        .await?;
+
+        let authored = case_layout(root);
+        let plan = sandbox::read_plan(root)?;
+        ensure!(!plan.entries.is_empty(), "plan author produced no entries");
+        let events = project::plan::collect_events(authored)?;
+        let ladders = project::plan::project_ladders(&plan, &events);
         ensure!(
-            !case.target.trim().is_empty(),
-            "in-place workflow mint needs `target` for `emery init`"
+            ladders.values().all(|status| *status == Status::Pending),
+            "plan author must leave every entry pending: ladders={ladders:?}; entries={:?}",
+            plan.entries
         );
-        invoke(root, model, catalog, &["init", &case.target]).await?;
-    }
-    let (from, wave) = seed_definition(root, case)?;
-    if supplied.is_some() {
-        ensure_target_trees(root, &from, &wave, model, catalog).await?;
-    }
-    invoke(
-        root,
-        model,
-        catalog,
-        &["plan", "author", &case.change, "--from", &from.to_string_lossy(), "--wave", &wave],
-    )
-    .await?;
-
-    let authored = case_layout(root);
-    let plan = sandbox::read_plan(root)?;
-    ensure!(!plan.entries.is_empty(), "plan author produced no entries");
-    let events = project::plan::collect_events(authored)?;
-    let ladders = project::plan::project_ladders(&plan, &events);
-    ensure!(
-        ladders.values().all(|status| *status == Status::Pending),
-        "plan author must leave every entry pending: ladders={ladders:?}; entries={:?}",
-        plan.entries
-    );
-    let slices_dir = authored.slices_dir();
-    let no_slices = fs::read_dir(&slices_dir).map_or(true, |mut entries| entries.next().is_none());
-    ensure!(no_slices, "plan author must not create slices — refinement belongs to `plan refine`");
-
-    if until == WorkflowUntil::Plan {
-        telemetry::report(&telemetry.counts(), plan.entries.len());
-        println!(
-            "eval case {id}: stopped after plan author; continue with \
-             `cargo make lab -- --change-dir {} plan refine`",
-            root.display()
+        let slices_dir = authored.slices_dir();
+        let no_slices =
+            fs::read_dir(&slices_dir).map_or(true, |mut entries| entries.next().is_none());
+        ensure!(
+            no_slices,
+            "plan author must not create slices — refinement belongs to `plan refine`"
         );
-        return Ok(());
+
+        if until == WorkflowUntil::Plan {
+            telemetry::report(&telemetry.counts(), plan.entries.len());
+            println!(
+                "eval case {id}: stopped after plan author; continue with \
+                 `cargo make eval {id}` (resumes at refine), or inspect with \
+                 `cargo make eval {id} plan status`"
+            );
+            return Ok(());
+        }
     }
 
     invoke(root, model, catalog, &["plan", "refine"]).await?;
     if until == WorkflowUntil::Refine {
+        let plan = sandbox::read_plan(root)?;
         telemetry::report(&telemetry.counts(), plan.entries.len());
         println!(
             "eval case {id}: stopped after plan refine; continue with \
-             `cargo make lab -- --change-dir {} plan execute`",
-            root.display()
+             `cargo make eval {id}` (resumes at execute), or inspect with \
+             `cargo make eval {id} plan status`"
         );
         return Ok(());
     }
@@ -440,7 +493,7 @@ fn case_layout(root: &Path) -> Layout<'_> {
     if in_place(root) { Layout::new(root) } else { Layout::detached(root) }
 }
 
-fn in_place(root: &Path) -> bool {
+pub(crate) fn in_place(root: &Path) -> bool {
     root.join(".emery").join("project.yaml").is_file()
 }
 
@@ -475,18 +528,23 @@ async fn build_phase(root: &Path, model: &DynModel, catalog: &Catalog, slice: &s
     outcome.with_context(|| format!("build phase for slice `{slice}`"))
 }
 
-// The sandbox-relative execution layout every case verb runs under:
-// store, cache, snapshot, and workspaces roots all live inside the
-// retained sandbox, so a case leaves one self-contained tree behind.
-fn paths(root: &Path) -> ExecutionPaths {
-    let locations = Locations::explicit(
+// The sandbox-local location roots (store, cache, snapshots,
+// workspaces) every case verb runs under, all inside the retained
+// sandbox; the client binds bound passthrough verbs to the same roots.
+pub(crate) fn locations(root: &Path) -> Locations {
+    Locations::explicit(
         root.join("adapter-store"),
         CachePlacement::Parent(root.join("project-cache")),
-    );
+    )
+}
+
+// The sandbox-relative execution layout over [`locations`], anchored
+// in-place or detached by the sandbox's own shape.
+pub(crate) fn paths(root: &Path) -> ExecutionPaths {
     if in_place(root) {
-        ExecutionPaths::new(root, locations)
+        ExecutionPaths::new(root, locations(root))
     } else {
-        ExecutionPaths::detached(root, locations)
+        ExecutionPaths::detached(root, locations(root))
     }
 }
 

@@ -27,3 +27,15 @@ fn correlation_golden() {
 fn proposal_golden() {
     assert_golden("proposal.schema.json", &project::answers::render(&system::answers::proposal()));
 }
+
+/// The `version` property is pinned to each wire constant, so the
+/// model reads the literal off the schema instead of hunting for it.
+#[test]
+fn version_consts() {
+    for schema in [system::answers::correlation(), system::answers::proposal()] {
+        assert_eq!(
+            schema.pointer("/properties/version/const").expect("version const"),
+            &serde_json::json!(1)
+        );
+    }
+}
