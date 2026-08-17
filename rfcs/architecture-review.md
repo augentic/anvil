@@ -31,7 +31,7 @@ Scale is the plainest evidence. The engine is ~101k lines of Rust plus ~27k line
 Five product decisions therefore precede Cuts 1–5, and a target-architecture document recording them — written forward from the operator journey, naming the kept kernels and the deleted planes — must lead the corrective programme. Findings-driven repair without that destination converges on the same system, hardened.
 
 1. **State model** — one transactional state store per change home vs a hardened event store (S1; the amended recommendation there names the dissolved findings).
-2. **Deployment** — native-only now vs dual native/Wasm (D1; decide, do not defer — it is the highest-leverage subtraction available).
+2. **Deployment** — native-only now vs dual native/Wasm (D1; decide, do not defer — it is the highest-leverage subtraction available). *Decided:* [ADR-0002](decisions/0002-deployment.md) (accepted 2026-08-17) resolves this **Wasm-primary** — the component seam is foundational (dynamic adapter admission; desktop + web-service duality, which a prior non-Wasm generation failed on); the subtraction taken is the native provider and the resolution matrix, not the platform.
 3. **Lifecycles** — one spec-mining loop over ordinary sources vs a mandatory definition product upstream of delivery (P1).
 4. **Conflict disposition** — an operator gate for `[conflict]` vs auto-defer (P3).
 5. **Change-home shape** — detached-only, decided now rather than discovered at Cut 5 (D2).
@@ -352,6 +352,8 @@ Semantic divergence already exists:
 
 If the decision instead retains Wasm, the minimum is a CI-runnable Wasm smoke test with a *scripted* model: metadata, one source round-trip, one target phase report, one `read_doc` MCP hop — the single cheapest de-risking in either repo.
 
+**Resolution.** [ADR-0002](decisions/0002-deployment.md) (accepted 2026-08-17) takes the second branch, strengthened: **Wasm-primary**. Dynamic adapter admission and desktop/web-service duality are foundational requirements a prior non-Wasm generation failed on, so the duality is removed in the other direction — the native provider and the five-mode resolution matrix are deleted, the component seam becomes the sole (and CI-tested) seam, first-party components embed in the binary, and D7/D8/T1 are re-priced as scheduled platform-hardening features rather than deferred costs. This finding's diagnosis (two products; the tested seam is not the shipped seam) stands; only the default remedy proposed above is superseded.
+
 ### D2 — In-place vs detached is encoded five times — **major**
 
 Mode is decided in `Roots::resolve`, then re-encoded as path-equality on `Layout`, an explicit `detached` bool on `ExecutionPaths`, ambient env (`EMERY_DETACHED` / `EMERY_CHANGE_ROOT` / `EMERY_PROJECT_ROOT` via `unsafe set_var`), `allow-in-place` on the worktree WIT record, and duplicated `target-base-freeze-detached` strings in both providers.
@@ -600,7 +602,7 @@ Do not add another host WIT package (`emery:verification`, `emery:publication`) 
 
 This is a dependency order, not a new RFC stack. Freeze feature work while Cuts 0–3 land. Prefer hard replacement over compatibility layers: the product is pre-production, and preserving ambiguous historical state would defeat the repair.
 
-A **decision gate** sits between Cut 0 and Cut 1 (see "The yardstick" above): the product-definition and target-architecture documents, plus the recorded decisions on state model (S1), deployment (D1), lifecycles (P1), conflict disposition (P3), and change-home shape (D2). The gate artefacts now exist: [product.md](product.md), [decisions/](decisions/) ADR-0001…0006, [target-architecture.md](target-architecture.md) (draft v0), [CONSTITUTION.md](../CONSTITUTION.md), and [remediation-plan.md](remediation-plan.md), which sequences execution. Cuts 1–5 as written below assume the event-store and dual-deployment answers; under the preferred answers (transactional state store, native-only, one lifecycle) large parts of Cuts 1, 2, and 4 dissolve into deletions, and the remainder is re-derived from the target document rather than executed from this list.
+A **decision gate** sits between Cut 0 and Cut 1 (see "The yardstick" above): the product-definition and target-architecture documents, plus the recorded decisions on state model (S1), deployment (D1), lifecycles (P1), conflict disposition (P3), and change-home shape (D2). The gate artefacts now exist: [product.md](product.md), [decisions/](decisions/) ADR-0001…0006, [target-architecture.md](target-architecture.md) (draft v0), [CONSTITUTION.md](../CONSTITUTION.md), and [remediation-plan.md](remediation-plan.md), which sequences execution. Cuts 1–5 as written below assume the event-store and dual-deployment answers; under the accepted and preferred answers (transactional state store; **Wasm-primary per ADR-0002** — the native provider and resolver matrix delete, the seam hardens; one lifecycle) large parts of Cuts 1, 2, and 4 dissolve into deletions, and the remainder is re-derived from the target document rather than executed from this list.
 
 The [addendum](architecture-review-addendum.md) additionally widens Cuts 1–5 — the authoring generation set (S19/S25/S26), wave/refine/publication as first-class executor stages (S32–S40), the inverse definition coupling and observation receipts (P11/P12, S41–S45), the one open claim family (A8/A16), and one topology compiler (P10/S31) — see its "Corrective programme — what changes". Its exceptions table also bounds the state-store dissolution claim: missing *types and seams* do not dissolve and stay on the cuts.
 
@@ -702,7 +704,7 @@ The reliability gate (T5) does not wait for this cut: the graded eval suite land
 | S9 | Synthesis event can project false completion | Receipt-after-commit transition | 2 |
 | S10 | Build authority is directory presence | Verified content-addressed index | 1 |
 | S11 | Decision promotion is not retry-idempotent | Atomic catalogue receipt | 1 |
-| D1 | Native proven, Wasm shipped | Decide at gate: default native-only (deletes D5–D8, most of A1, T1); else CI smoke | gate/0 |
+| D1 | Native proven, Wasm shipped | **Decided (ADR-0002): Wasm-primary** — delete native provider + resolver matrix; CI seam rung; D7/D8 scheduled | gate/0 |
 | D2 | In-place/detached × 5 | Ground-up: detached-only | 5 |
 | D3 | In-guest workspace cost is unproven | Benchmark, then retain or move | 4 |
 | D4 | Workflow nouns in host WIT | Ground-up effect-shaped seam | 4 |

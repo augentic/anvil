@@ -61,11 +61,20 @@ The graded eval suite gates release. A regression in these numbers blocks a rele
 
 First-party only: **Omnia** backend services and **Vectis** frontend apps, plus **contracts** (API contract authoring/validation). Sources: intent, documentation, code, contracts, screenshots, captures, designs.
 
+## Foundational architecture commitments
+
+Two requirements shape the platform beneath this product and are settled ([ADR-0002](decisions/0002-deployment.md)); they are invisible to the operator journey above but not negotiable beneath it:
+
+- **Adapters are Wasm components added dynamically** — a new source or target reaches a running installation without rebuilding the host. A prior non-Wasm generation failed on exactly this.
+- **One core runs as a desktop CLI and as a web service.** Deployment duality is a platform property, not two products.
+
+The *distribution machinery* around components (registries, pull-on-miss, marketplaces) is a non-goal below; the component seam itself is not.
+
 ## Non-goals
 
 These fail the product test and are not on any roadmap by default (evidence triggers can reopen them via ADR):
 
-- A third-party adapter marketplace or dynamic component distribution platform.
+- A third-party adapter marketplace or component *distribution* platform (registries, pull-on-miss, bare-version resolution). Dynamic admission of a component at an exact version is foundational and stays; the distribution UX around it is not a product surface.
 - Multi-node or distributed execution; hosted fleets; streaming execution.
 - Unattended merge or autonomous accepted-state mutation.
 - An SDLC-wide automation platform.

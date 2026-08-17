@@ -21,15 +21,17 @@ Omnia — the hand-written comparison point — is ~30k lines for an entire runt
 
 **Option C, biased toward A.** The regions where finding density is highest (authoring generation machine, executor/wave/merge transaction, definition persistence, journal authority) are exactly the regions Cut 1–2 would rewrite anyway; rewriting them *against the target document* instead of *against the finding list* is the difference between building to an architecture and repairing toward one. The periphery (clap grammar, diagnostics, artifact types, adapter crates) is healthy enough to move.
 
-Decide finally after the two spikes: ADR-0001's store spike measures how much executor code survives contact with the new authority model; ADR-0002's native spike measures how much of the deployment layer simply deletes.
+Decide finally after the two spikes: ADR-0001's store spike measures how much executor code survives contact with the new authority model; ADR-0002's component-seam spike measures what the Wasm-primary journey costs in CI and how much of the resolution/dual-provider layer simply deletes.
 
 ## Deletions
 
-Under C: the journal-authority reducers, the authoring mode machine, the current execute loop, `crates/system` as a product (per ADR-0003), the Wasm deployment layer (per ADR-0002) — replaced, not migrated. Pre-1.0 hard reset; no compatibility layer, no migration framework (already repo policy).
+Under C: the journal-authority reducers, the authoring mode machine, the current execute loop, `crates/system` as a product (per ADR-0003), and — per the accepted ADR-0002 (Wasm-primary) — the **native provider and the adapter resolution matrix** (the Wasm seam is kept and hardened, not deleted) — replaced, not migrated. Pre-1.0 hard reset; no compatibility layer, no migration framework (already repo policy).
 
 ## Consequences
 
 A period where the new spine and old tree coexist; the walking-skeleton CI journey (see [remediation-plan.md](../remediation-plan.md) Phase 2) is the only definition of progress during it. Feature work stays frozen until the skeleton is green.
+
+The work happens **in place, in this repository** — new spine crates, legacy crates quarantined under a decrease-only ratchet, deleted as parity lands (see the plan's "Working in place" discipline). The one new-repo trigger considered (consolidating `emery-adapters` as compiled-in crates) dissolved with ADR-0002's Wasm-primary acceptance.
 
 ## Revisit trigger
 

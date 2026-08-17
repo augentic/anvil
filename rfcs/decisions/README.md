@@ -30,7 +30,7 @@ ADR-0001 through ADR-0006 are the **decision gate** from [architecture-review.md
 | ADR | Decision | Spike required |
 | --- | --- | --- |
 | [0001](0001-state-model.md) | Transactional state store vs hardened event store | Yes |
-| [0002](0002-deployment.md) | Native-only vs dual native/Wasm | Yes |
+| [0002](0002-deployment.md) | **Accepted: Wasm-primary** — one seam, one admission mode; native provider deleted | Yes (component-seam CI journey; scopes cost, not direction) |
 | [0003](0003-lifecycles.md) | One spec-mining loop vs definition + delivery | No |
 | [0004](0004-conflict-disposition.md) | Operator gate for conflicts vs auto-defer | No |
 | [0005](0005-change-home.md) | Detached-only change homes | No |
