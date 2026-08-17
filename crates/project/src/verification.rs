@@ -1,6 +1,6 @@
-//! Closed host-verification vocabulary and D3 fail-closed codes.
+//! Closed host-verification vocabulary, profile reports, and D3 codes.
 //!
-//! Types only: no verifier, WIT, or phase-machine wiring.
+//! Types and attempt-local persist only: no verifier or phase-machine wiring.
 
 use std::fmt;
 use std::str::FromStr;
@@ -8,6 +8,13 @@ use std::str::FromStr;
 use error::Error;
 use serde::{Deserialize, Serialize};
 use strum::VariantArray;
+
+mod report;
+
+pub use report::{
+    Context, Edit, Handle, ProfileReport, RawOutput, SuggestionGroup, ToolPin, regression,
+    unchanged_failure_set,
+};
 
 /// Finding-granularity sibling of `target-phase-source-tool`.
 pub const FINDING_SOURCE_TOOL: &str = "target-phase-finding-source-tool";

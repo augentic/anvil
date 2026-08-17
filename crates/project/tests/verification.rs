@@ -1,11 +1,15 @@
-//! Closed RFC-97 Phase A verification vocabulary.
+//! Closed RFC-97 Phase A verification vocabulary and profile reports.
 
 use std::str::FromStr;
 
+use diagnostics::{Artifact, Diagnostic, Severity};
 use error::Error;
+use project::Platform;
+use project::snapshot::SnapshotId;
 use project::verification::{
-    Discriminant, ExecutionAssurance, FINDING_SOURCE_TOOL, OracleAssurance, ProfileName,
-    SandboxFeature, VerificationContextKind, ci_exclusive, finding_source_tool,
+    Context, Discriminant, Edit, ExecutionAssurance, FINDING_SOURCE_TOOL, Handle, OracleAssurance,
+    ProfileName, ProfileReport, RawOutput, SandboxFeature, SuggestionGroup, ToolPin,
+    VerificationContextKind, ci_exclusive, finding_source_tool, regression, unchanged_failure_set,
 };
 use strum::VariantArray;
 
@@ -77,18 +81,12 @@ mod wire {
         }
         assert_eq!(SandboxFeature::WorkdirBind.to_string(), "workdir-bind");
         assert_eq!(SandboxFeature::EnvAllowlist.to_string(), "env-allowlist");
-        assert_eq!(
-            SandboxFeature::NoInheritedCredentials.to_string(),
-            "no-inherited-credentials"
-        );
+        assert_eq!(SandboxFeature::NoInheritedCredentials.to_string(), "no-inherited-credentials");
         assert_eq!(SandboxFeature::EgressDeny.to_string(), "egress-deny");
         assert_eq!(SandboxFeature::ResourceLimits.to_string(), "resource-limits");
         assert_eq!(SandboxFeature::ProcessTreeReap.to_string(), "process-tree-reap");
         assert_eq!(SandboxFeature::EphemeralWriteRoots.to_string(), "ephemeral-write-roots");
-        assert_eq!(
-            SandboxFeature::ProtectedInputReadonly.to_string(),
-            "protected-input-readonly"
-        );
+        assert_eq!(SandboxFeature::ProtectedInputReadonly.to_string(), "protected-input-readonly");
     }
 }
 
@@ -97,10 +95,7 @@ mod ci {
 
     #[test]
     fn exclusive() {
-        assert!(
-            ci_exclusive(&[ProfileName::Fmt, ProfileName::Ci]),
-            "fmt+ci is incoherent"
-        );
+        assert!(ci_exclusive(&[ProfileName::Fmt, ProfileName::Ci]), "fmt+ci is incoherent");
         assert!(
             ci_exclusive(&[ProfileName::Ci, ProfileName::Test, ProfileName::Build]),
             "ci with any other name is incoherent"
@@ -173,5 +168,167 @@ mod discriminants {
         assert_eq!(err.variant_str(), FINDING_SOURCE_TOOL);
         assert_eq!(FINDING_SOURCE_TOOL, "target-phase-finding-source-tool");
         assert!(matches!(err, Error::Diag { .. }));
+    }
+}
+
+fn digest(fill: char) -> SnapshotId {
+    SnapshotId::from_digest(&fill.to_string().repeat(64))
+}
+
+fn finding(severity: Severity, fill: char) -> Diagnostic {
+    let mut diagnostic =
+        Diagnostic::violation("test.rule", "title", "detail", Artifact::Code, None);
+    diagnostic.severity = severity;
+    diagnostic.fingerprint = digest(fill).to_string();
+    diagnostic
+}
+
+fn report(findings: Vec<Diagnostic>) -> ProfileReport {
+    ProfileReport {
+        profile: ProfileName::Fmt,
+        platform: Platform::Core,
+        context: Context {
+            kind: VerificationContextKind::SliceAttempt,
+            change: "demo".into(),
+            slice: "greeting".into(),
+            attempt: 1,
+        },
+        candidate: digest('c'),
+        policy_digest: digest('1'),
+        report_digest: digest('2'),
+        oracle_assurance: OracleAssurance::Candidate,
+        protected_inputs: Vec::new(),
+        oracles: Vec::new(),
+        enforced_sandbox: vec![SandboxFeature::WorkdirBind, SandboxFeature::EnvAllowlist],
+        toolchain_identity: vec![ToolPin {
+            name: "rustc".into(),
+            version: "1.80.0".into(),
+            digest: digest('3'),
+        }],
+        findings,
+        suggestion_group: Some(SuggestionGroup {
+            edits: vec![Edit {
+                path: "src/lib.rs".into(),
+                preimage_digest: digest('a'),
+                result_digest: digest('b'),
+            }],
+        }),
+        raw: Some(RawOutput {
+            digest: digest('d'),
+            tail: "error: unused import".into(),
+        }),
+    }
+}
+
+mod report {
+    use super::*;
+
+    #[test]
+    fn yaml_round_trip() {
+        let original = report(vec![finding(Severity::Important, '1')]);
+        let yaml = original.canonical_yaml().expect("yaml");
+        assert!(yaml.contains("oracle-assurance:"));
+        assert!(yaml.contains("policy-digest:"));
+        assert!(yaml.contains("report-digest:"));
+        assert!(yaml.contains("protected-inputs:"));
+        assert!(yaml.contains("enforced-sandbox:"));
+        assert!(yaml.contains("toolchain-identity:"));
+        assert!(yaml.contains("suggestion-group:"));
+        assert!(yaml.contains("preimage-digest:"));
+        assert!(!yaml.contains("execution-assurance"));
+        let parsed: ProfileReport = serde_saphyr::from_str(&yaml).expect("parse");
+        assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn digest_stable() {
+        let original = report(vec![finding(Severity::Critical, '1')]);
+        let yaml = original.canonical_yaml().expect("yaml");
+        let reordered =
+            yaml.replacen("profile: fmt\nplatform: core\n", "platform: core\nprofile: fmt\n", 1);
+        assert_ne!(reordered, yaml, "fixture must actually reorder fields");
+        let parsed: ProfileReport = serde_saphyr::from_str(&reordered).expect("parse reordered");
+        assert_eq!(parsed, original);
+        assert_eq!(parsed.canonical_yaml().expect("reserialise"), yaml);
+        assert_eq!(parsed.handle().expect("handle"), original.handle().expect("handle"));
+    }
+
+    #[test]
+    fn unknown_field_rejected() {
+        let mut yaml = report(Vec::new()).canonical_yaml().expect("yaml");
+        yaml.push_str("execution-assurance: host-attested\n");
+        serde_saphyr::from_str::<ProfileReport>(&yaml).unwrap_err();
+    }
+}
+
+mod compare {
+    use super::*;
+
+    #[test]
+    fn predicates() {
+        let critical = finding(Severity::Critical, '1');
+        let important = finding(Severity::Important, '2');
+        let suggestion = finding(Severity::Suggestion, '3');
+        let same_block = report(vec![critical.clone(), suggestion.clone()]);
+        let same_block_extra =
+            report(vec![critical.clone(), suggestion, finding(Severity::Optional, '4')]);
+        assert!(
+            unchanged_failure_set(&same_block, &same_block_extra),
+            "non-blocking findings do not change the failure set"
+        );
+
+        let other_block = report(vec![important.clone()]);
+        assert!(!unchanged_failure_set(&same_block, &other_block));
+
+        let best = report(vec![important]);
+        let worse = report(vec![critical]);
+        assert!(regression(&worse, &best), "more criticals is a regression");
+        assert!(!regression(&best, &worse));
+        assert!(!regression(&best, &best), "equal counts are not a regression");
+    }
+}
+
+mod store {
+    use super::*;
+
+    #[test]
+    fn persist_path_layout() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let attempt = tmp.path().join("build").join("attempts").join("0001");
+        std::fs::create_dir_all(&attempt).expect("attempt dir");
+        let original = report(vec![finding(Severity::Important, '1')]);
+        let handle = original.persist(&attempt).expect("persist");
+        let path = handle.path(&attempt);
+        assert_eq!(
+            path,
+            attempt.join("attestations").join(handle.as_str()),
+            "attestations live beside phases/ under the attempt"
+        );
+        assert!(handle.as_str().starts_with("sha256:"));
+        assert_eq!(handle, original.handle().expect("handle"));
+        assert_eq!(Handle::from_bytes(std::fs::read(&path).expect("bytes").as_slice()), handle);
+        let loaded = ProfileReport::load(&attempt, &handle).expect("load");
+        assert_eq!(loaded, original);
+    }
+
+    #[test]
+    fn persist_failed() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let attempt = tmp.path().join("not-a-dir");
+        std::fs::write(&attempt, b"file").expect("blocker");
+        let err = report(Vec::new()).persist(&attempt).expect_err("persist must fail");
+        assert_eq!(err.variant_str(), "verification-attestation-persist-failed");
+        assert!(matches!(err, Error::Diag { .. }));
+    }
+
+    #[test]
+    fn load_mismatch() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let attempt = tmp.path().join("build").join("attempts").join("0001");
+        let original = report(Vec::new());
+        let handle = original.persist(&attempt).expect("persist");
+        std::fs::write(handle.path(&attempt), b"tampered\n").expect("tamper");
+        let err = ProfileReport::load(&attempt, &handle).expect_err("tamper must fail");
+        assert_eq!(err.variant_str(), "verification-attestation-mismatch");
     }
 }
