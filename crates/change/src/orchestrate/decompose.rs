@@ -290,12 +290,7 @@ where
                     // A never-run sibling is not a failed cut: the
                     // domain stays open in the persisted tree — park
                     // it so re-entry resumes it instead of aborting.
-                    if matches!(
-                        &err,
-                        Error::Diag { code, .. }
-                            if *code == "plan-author-partition-cancelled"
-                                || *code == "plan-author-partition-timeout"
-                    ) {
+                    if never_ran(&err) {
                         park(paths, now, state, id, err.to_string())?;
                         continue;
                     }
@@ -498,6 +493,17 @@ where
         }
         Err(gate) => Err(gate),
     }
+}
+
+/// A partition that never produced a judgment: skipped after a
+/// sibling failure or dropped on its inactivity budget.
+fn never_ran(err: &Error) -> bool {
+    matches!(
+        err,
+        Error::Diag { code, .. }
+            if *code == "plan-author-partition-cancelled"
+                || *code == "plan-author-partition-timeout"
+    )
 }
 
 /// Closed failed-cut class: the cut is illegal but the domain is
