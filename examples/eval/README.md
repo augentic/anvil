@@ -44,8 +44,8 @@ cargo make eval auth plan status
 ```
 
 The reserved `--debug` / `--quiet` host log flags (peeled before
-dispatch; a flag wins over `RUST_LOG`, case runs default to the debug
-preset, flagless passthrough defaults to `info`) and the `CURSOR_MODEL`,
+dispatch; a flag wins over `RUST_LOG`, flagless invocations default
+to `info`) and the `CURSOR_MODEL`,
 `CURSOR_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG` env knobs are
 documented in [`crates/probe/README.md`](../../crates/probe/README.md);
 `cargo make eval` defaults the timeout to 300s.

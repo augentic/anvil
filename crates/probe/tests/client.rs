@@ -110,12 +110,11 @@ mod filter {
 
     #[test]
     fn precedence() {
-        // Explicit flag > ambient RUST_LOG > runner preset > info.
-        assert_eq!(filter(Some(Filter::Off), true, true), Filter::Off, "quiet wins outright");
-        assert_eq!(filter(Some(Filter::Debug), true, true), Filter::Debug, "debug beats ambient");
-        assert_eq!(filter(None, true, true), Filter::Ambient, "ambient beats the preset");
-        assert_eq!(filter(None, false, true), Filter::Debug, "runner defaults to debug");
-        assert_eq!(filter(None, false, false), Filter::Info, "passthrough defaults to info");
+        // Explicit flag > ambient RUST_LOG > info.
+        assert_eq!(filter(Some(Filter::Off), true), Filter::Off, "quiet wins outright");
+        assert_eq!(filter(Some(Filter::Debug), true), Filter::Debug, "debug beats ambient");
+        assert_eq!(filter(None, true), Filter::Ambient, "ambient beats the default");
+        assert_eq!(filter(None, false), Filter::Info, "flagless defaults to info");
     }
 }
 

@@ -78,6 +78,7 @@ where
         prose::propose(),
         user,
         "proposal",
+        gate.map(|context| context.plan),
         &schema,
         project::judgment::Lent::default(),
         |answer| {

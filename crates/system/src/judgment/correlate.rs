@@ -109,6 +109,7 @@ pub async fn correlate<P: Model>(
         prose::correlate_system(),
         user,
         "correlation",
+        None,
         &schema,
         project::judgment::Lent::default(),
         |answer| {

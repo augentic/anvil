@@ -31,6 +31,7 @@ where
         prose::review(),
         user,
         "boundary-review",
+        request.get("domain").and_then(serde_json::Value::as_str),
         &schema,
         project::judgment::Lent::default(),
         |answer| {

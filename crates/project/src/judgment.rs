@@ -33,22 +33,35 @@ pub struct Lent {
 /// never repaired. The host `create` gate enforces the schema live;
 /// the tail's typed parse covers the scripted backends. `lent` is the
 /// agent-facing surface — MCP grants plus the lent workspace.
+/// `subject` is the bounded id of what the leg judges (a domain, a
+/// plan, a slice) — a span label and repair-line prefix, never prose.
 ///
 /// # Errors
 ///
 /// The mapped model failure or the last tail failure once the repair
 /// budget is exhausted.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one leg is one call: prompt channels, identity, and lent surface travel together"
+)]
 pub async fn repaired<P, T, F>(
-    model: &P, system: &str, user: String, schema_name: &str, schema: &str, lent: Lent, mut tail: F,
+    model: &P, system: &str, user: String, schema_name: &str, subject: Option<&str>, schema: &str,
+    lent: Lent, mut tail: F,
 ) -> Result<T, Error>
 where
     P: Model,
     F: FnMut(&str) -> Result<T, Error>,
 {
-    // The span carries only the bounded leg name and repair count —
-    // never prompts or answers.
-    let span =
-        tracing::info_span!("judgment.leg", leg = %schema_name, repairs = tracing::field::Empty);
+    // The span carries only the bounded leg name, subject id, and
+    // repair count — never prompts or answers.
+    let span = tracing::info_span!(
+        "judgment.leg",
+        leg = %schema_name,
+        subject = subject.unwrap_or(""),
+        repairs = tracing::field::Empty,
+    );
+    let label = subject
+        .map_or_else(|| schema_name.to_string(), |subject| format!("{schema_name} {subject}"));
     async {
         let mut prompt = user.clone();
         let mut attempt = 0;
@@ -62,6 +75,8 @@ where
                 }
                 Err(err) if attempt < MAX_REPAIRS => {
                     attempt += 1;
+                    tracing::Span::current().record("repairs", attempt);
+                    tracing::info!("{label} — repair {attempt}: {}", err.variant_str());
                     prompt = repair_prompt(&user, &reply.answer, &err);
                 }
                 Err(err) => {

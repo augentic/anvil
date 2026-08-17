@@ -34,6 +34,7 @@ where
         prose::partition(),
         user,
         "partition",
+        request.get("domain").and_then(serde_json::Value::as_str),
         &schema,
         project::judgment::Lent::default(),
         |answer| {

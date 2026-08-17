@@ -87,7 +87,8 @@ pub async fn synthesize<P: Model>(
         grants,
         workspace: Some(stage.to_string()),
     };
-    repaired(model, &system, user, "synthesis", &schema, lent, |answer| {
+    let slice = kernel.header.slice.clone();
+    repaired(model, &system, user, "synthesis", Some(slice.as_str()), &schema, lent, |answer| {
         check(answer, kernel, &root)
     })
     .await

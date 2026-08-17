@@ -43,25 +43,27 @@ Driver-side knobs (read by `probe::client`):
 
 | Knob                      | Effect                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins over `RUST_LOG`; a case run without a flag or `RUST_LOG` defaults to the same debug preset, and flagless passthrough defaults to `info`. |
+| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug` (prompt paths, previews, and stream chunks). A flag wins over `RUST_LOG`; flagless invocations — case runs and passthrough alike — default to `info`. |
 | `CURSOR_MODEL=<model-id>` | Default model when a request leaves `model` unset; blank/unset lets `cursor-agent` choose. Read by `omnia_cursor::ConnectOptions`. |
 | `CURSOR_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds), read by `omnia_cursor::ConnectOptions`. Unset → backend default 600. `cargo make eval` sets `300`. |
-| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug`. Beats the case runner's flagless debug preset. |
+| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug`. Beats the flagless `info` default. |
 | `EVAL_LOG=<path>`         | Log-file override. When unset, a case run naming a case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
 
 Console tracing goes to stderr; stdout stays the semantic command
 output.
 
 A run's spans — `eval.case` (this crate), `emery.command` (the
-transport router), the engine orchestration spans (`plan.author`,
+transport router), and the engine orchestration spans (`plan.author`,
 `plan.execute.entry`, `slice.refine` / `slice.build` / `slice.merge`,
-`source.survey` / `source.extract`, `judgment.leg`), and
-`model.request` (the cursor backend) — carry only bounded labels (case
-id/kind, command label, slice/adapter ids, judgment leg, repair count,
-effective model id, exit code), never raw argv, intent/source values,
-prompts, or project paths. The lab exports no OTLP telemetry: the
-client installs a console subscriber (plus the optional `EVAL_LOG`
-file copy), and OTLP export stays with the shipped runtime binary.
+`source.survey` / `source.extract`, `judgment.leg`) — carry only
+bounded labels (case id/kind, command label, slice/adapter ids,
+judgment leg and subject, repair count, exit code), never raw argv,
+intent/source values, prompts, or project paths. The console renders
+compact (span fields without the span-name chain); the `EVAL_LOG`
+file copy keeps the full span context. The lab exports no OTLP
+telemetry: the client installs a console subscriber (plus the
+optional `EVAL_LOG` file copy), and OTLP export stays with the
+shipped runtime binary.
 
 ## Cases
 

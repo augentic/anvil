@@ -8,9 +8,10 @@
 # state), any emery verb passes through (`cargo make eval <id> plan
 # status` binds the case's retained sandbox). Case data lives in
 # `eval/cases/<id>/case.toml`; the retained sandbox in
-# `eval/sandbox/<id>/`. The probe client owns the log presets (case
-# runs default to the debug preset, passthrough to `info`); cargo-make
-# needs `--` only when the first token is a cargo-make flag.
+# `eval/sandbox/<id>/`. The probe client owns the log presets
+# (flagless invocations default to `info`, `--debug` adds the backend
+# dumps); cargo-make needs `--` only when the first token is a
+# cargo-make flag.
 [tasks.eval]
 env_files = [".env"]
 script = '''
