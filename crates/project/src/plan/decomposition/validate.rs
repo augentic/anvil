@@ -342,13 +342,17 @@ fn child_targets(tree: &Decomposition, id: &str, node: &Node) -> BTreeSet<String
 
 fn reduction(tree: &Decomposition, id: &str, node: &Node) -> Vec<Diagnostic> {
     let parent = measure(tree, id, node);
+    // A single-child cut cannot reduce by definition — the child
+    // inherits the whole scope — so a tie is structural there; only
+    // genuine growth is a finding.
+    let single = node.children.len() == 1;
     let mut out = Vec::new();
     for child in &node.children {
         let Some(child_node) = tree.nodes.get(child) else {
             continue;
         };
         let measured = measure(tree, child, child_node);
-        if measured >= parent {
+        if measured > parent || (!single && measured == parent) {
             let relation = if measured == parent { "tied on every dimension" } else { "grew" };
             out.push(diag(
                 "decomposition-non-reducing",

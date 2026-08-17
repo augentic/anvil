@@ -287,6 +287,18 @@ where
             let response = match settle_partition(outcome, id) {
                 Ok(response) => response,
                 Err(err) if persist => {
+                    // A never-run sibling is not a failed cut: the
+                    // domain stays open in the persisted tree — park
+                    // it so re-entry resumes it instead of aborting.
+                    if matches!(
+                        &err,
+                        Error::Diag { code, .. }
+                            if *code == "plan-author-partition-cancelled"
+                                || *code == "plan-author-partition-timeout"
+                    ) {
+                        park(paths, now, state, id, err.to_string())?;
+                        continue;
+                    }
                     let last = slot.lock().ok().and_then(|mut slot| slot.take());
                     dispose(provider, paths, now, plan, catalog, state, id, err, last).await?;
                     continue;
