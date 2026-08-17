@@ -29,6 +29,7 @@ pub mod slice;
 pub mod snapshot;
 pub mod target_policy;
 pub mod vcs;
+pub mod verification;
 pub mod wave;
 pub mod workspace;
 
