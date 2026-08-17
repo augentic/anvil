@@ -139,10 +139,19 @@ impl Handle {
         self.0.as_str()
     }
 
-    /// Attempt-local path: `<attempt_dir>/attestations/<handle>`.
+    /// The bare lowercase-hex digest without the scheme prefix.
+    #[must_use]
+    pub fn digest(&self) -> &str {
+        self.0.digest()
+    }
+
+    /// Attempt-local path: `<attempt_dir>/attestations/<digest>`.
+    ///
+    /// Filename is the bare hex — `:` in the wire handle is not a legal
+    /// Windows path component.
     #[must_use]
     pub fn path(&self, attempt_dir: &Path) -> PathBuf {
-        attempt_dir.join("attestations").join(self.as_str())
+        attempt_dir.join("attestations").join(self.digest())
     }
 }
 
@@ -171,7 +180,7 @@ impl ProfileReport {
         Ok(Handle::from_bytes(self.canonical_yaml()?.as_bytes()))
     }
 
-    /// Persist at `<attempt_dir>/attestations/<handle>`.
+    /// Persist at `<attempt_dir>/attestations/<digest>`.
     ///
     /// # Errors
     ///

@@ -301,10 +301,11 @@ mod store {
         let path = handle.path(&attempt);
         assert_eq!(
             path,
-            attempt.join("attestations").join(handle.as_str()),
+            attempt.join("attestations").join(handle.digest()),
             "attestations live beside phases/ under the attempt"
         );
-        assert!(handle.as_str().starts_with("sha256:"));
+        assert_eq!(handle.as_str(), format!("sha256:{}", handle.digest()));
+        assert_eq!(path.file_name().and_then(|name| name.to_str()), Some(handle.digest()));
         assert_eq!(handle, original.handle().expect("handle"));
         assert_eq!(Handle::from_bytes(std::fs::read(&path).expect("bytes").as_slice()), handle);
         let loaded = ProfileReport::load(&attempt, &handle).expect("load");
