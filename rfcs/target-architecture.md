@@ -3,6 +3,8 @@
 > Status: **Draft v0 — provisional until the decision gate ([decisions/](decisions/) ADR-0001…0006) is accepted.** Sections marked `[ADR-NNNN]` take their final shape from that decision; ADR-0002 (Wasm-primary) is already accepted, and this draft reflects it. This document is written forward from the operator journey in [product.md](product.md), not backward from the current implementation. It becomes v1 in remediation Phase 2 and is thereafter the document every agent task brief cites.
 >
 > The prior generation's failure mode was findings-driven repair with no destination ([architecture-review.md](architecture-review.md)). This document is the destination.
+>
+> [capability-conservation.md](capability-conservation.md) is the remediation traceability contract: target architecture v1 must map each conserved implemented capability to a section here and executable Phase 3/4 acceptance evidence, or to an accepted ADR that explicitly deletes it. The ledger does not override this document and retires after remediation closes.
 
 ## 1. The journey, restated as architecture
 
@@ -109,5 +111,6 @@ The executable definition of this document. Scripted model, offline, temp change
 ## See also
 
 - [product.md](product.md) — the yardstick this document serves
+- [capability-conservation.md](capability-conservation.md) — capability parity and deferred Phase 4 obligations
 - [remediation-plan.md](remediation-plan.md) — the path from the current tree to this document
 - [architecture-review.md](architecture-review.md) / [architecture-review-addendum.md](architecture-review-addendum.md) — the evidence base; finding ids cited above resolve there

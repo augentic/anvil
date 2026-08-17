@@ -23,6 +23,8 @@ Omnia — the hand-written comparison point — is ~30k lines for an entire runt
 
 Decide finally after the two spikes: ADR-0001's store spike measures how much executor code survives contact with the new authority model; ADR-0002's component-seam spike measures what the Wasm-primary journey costs in CI and how much of the resolution/dual-provider layer simply deletes.
 
+The [capability conservation ledger](../capability-conservation.md) is the deletion gate. A legacy implementation may leave only after its replacement capability passes the ledger's acceptance evidence, or an accepted ADR explicitly deletes the capability and records the consequence. Walking-skeleton greenness alone is not parity for deferred capabilities.
+
 ## Deletions
 
 Under C: the journal-authority reducers, the authoring mode machine, the current execute loop, `crates/system` as a product (per ADR-0003), and — per the accepted ADR-0002 (Wasm-primary) — the **native provider and the adapter resolution matrix** (the Wasm seam is kept and hardened, not deleted) — replaced, not migrated. Pre-1.0 hard reset; no compatibility layer, no migration framework (already repo policy).

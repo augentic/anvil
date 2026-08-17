@@ -11,6 +11,7 @@
 | [product.md](product.md) | Product yardstick: journey, verbs, concept budget, measured qualities, non-goals | Operator | Written — confirm targets |
 | [decisions/](decisions/) | ADR log; ADR-0001…0006 are the decision gate | Operator decides; agents pre-fill evidence | Six proposed |
 | [target-architecture.md](target-architecture.md) | The destination; agents implement against it | Human-owned, agent-drafted | Draft v0 → v1 in Phase 2 |
+| [capability-conservation.md](capability-conservation.md) | Traceability contract: implemented capability → target section → acceptance evidence or explicit deletion | Human-owned through remediation | Draft — close in Phase 5 |
 | [CONSTITUTION.md](../CONSTITUTION.md) | Standing invariants + mechanical enforcement | Human | Written |
 | [architecture-review.md](architecture-review.md) | Findings + corrective cuts + acceptance scorecard | Review of record | Amended, absorbing the addendum's programme items |
 | [architecture-review-addendum.md](architecture-review-addendum.md) | Second-pass findings (P10…, S12…, D12…, A8…, T6, C3…) | Authoritative finding list until folded | Standing; fold per its "How to merge" |
@@ -42,6 +43,7 @@ Then decide 0003 (one lifecycle), 0004 (conflict gate), 0005 (detached-only) on 
 1. Rewrite [target-architecture.md](target-architecture.md) from draft v0 to v1 against the accepted ADRs. Resolve every `[ADR-NNNN]` marker; fix the module map, budgets, and the closed noun list.
 2. **Land the fitness functions** (CONSTITUTION.md table) *before* the build starts: journey-test harness (red is fine initially — it is the Phase 3 exit criterion), route budget, LOC ratchet (`scripts/ratchet.toml` baseline from today's counts), layering test, seam-copy counter, gate tripwires for ADR-0004, prose budgets, ADR-required-paths check.
 3. Specify the walking-skeleton script (target-architecture §8) as an executable test, scripted model, offline, across the component seam.
+4. Close every entry in the [capability conservation ledger](capability-conservation.md) onto a target-architecture section and Phase 3/4 acceptance test, or an accepted ADR that explicitly deletes the capability. A green walking skeleton is not parity for a deferred capability.
 
 ## Phase 2b — Platform hardening (ADR-0002; ~4–8 weeks, may overlap Phase 3's store work)
 
@@ -81,7 +83,7 @@ The remediation happens in this repository — decided over a new repo for the g
 1. **New spine, new crates.** The target-architecture §4 modules (`store`, `engine`, …) land as *new* workspace members. The skeleton never lives inside `crates/change` or `crates/project`; it borrows from them by explicit port, reviewed against the target document.
 2. **Quarantine the legacy tree.** Superseded crates are frozen: ratchet ceilings pinned at current LOC with only decreases allowed, a `LEGACY` note per crate, and an AGENTS.md line that agents must not use them as pattern references (the "map, not spec" header already establishes the posture).
 3. **The journey test runs only against the new spine.** Legacy code can never silently become load-bearing for the acceptance path (the T3 pattern).
-4. **Delete as parity lands.** Deletion — not relocation — is how the old architecture leaves. A legacy crate surviving Phase 4 is a monthly-scorecard finding.
+4. **Delete as parity lands.** Parity means the corresponding [capability ledger](capability-conservation.md) evidence is green, not merely that the walking skeleton passes. Deletion — not relocation — is how the old architecture leaves. A legacy crate surviving Phase 4 is a monthly-scorecard finding.
 
 The one scenario where a new repo would have won — folding `emery-adapters` in as compiled-in crates — was conditioned on native-only and dissolved with ADR-0002's acceptance: under Wasm-primary the adapters repo stays a sibling producing components. Do not re-derive it.
 
