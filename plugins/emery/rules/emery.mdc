@@ -57,9 +57,8 @@ Per-entry `pending` / `in-progress` / `done` are the same kind of projection (cl
 
 At any point, `/emery:status` (read-only, wraps `emery plan status`) reports where the plan stands and the literal next command — use it whenever unsure what to do next.
 
-There are no per-slice breakout commands. When authoring stops (`plan-author-stopped`), the stop card names the parked domains — optionally record guidance with `emery plan correct` (`/emery:correct`), then re-run `emery plan author`; re-entry resumes only the open and parked domains. When the refine drain stops (`plan-refine-stopped`), fix the reported problem and re-run `emery plan refine` — fresh slices are skipped. When the execute loop stops (`refinement-required`, `build-failed`, `merge-conflict`, …), fix the reported problem and re-run the command the stop card names — `emery plan refine` to refresh missing or stale manifests (execute never refines), otherwise `emery plan execute` (the loop resumes at the parked phase). Other repair surfaces stay on the CLI:
+There are no per-slice breakout commands. When authoring stops (`plan-author-stopped`), the stop card names the parked domains — re-run `emery plan author`; re-entry resumes only the open and parked domains. When the refine drain stops (`plan-refine-stopped`), fix the reported problem and re-run `emery plan refine` — fresh slices are skipped. When the execute loop stops (`refinement-required`, `build-failed`, `merge-conflict`, …), fix the reported problem and re-run the command the stop card names — `emery plan refine` to refresh missing or stale manifests (execute never refines), otherwise `emery plan execute` (the loop resumes at the parked phase). Other repair surfaces stay on the CLI:
 
-- `emery plan correct [--domain <id>] [--constraint <close-as-leaf|split>] [--child <id>]... --intent "…"` — record a durable operator correction: fact-only on a parked author (honored at `plan author` re-entry), fact + amendment proposal on an authored plan (`emery plan amend --proposal <digest>` applies it).
 - `emery plan drop <slice> [--reason "<why>"]` — abandon one entry's slice without merging.
 - `emery plan amend <slice> --allow-composition-replace true` — authorize a whole-document composition overwrite for that entry's merge.
 - `emery plan gaps` — read-only typed gap inventory with per-row `open | deferred` dispositions; open gaps never block build (the gate auto-defers them as durable `gap.deferred` facts).
@@ -104,7 +103,7 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 | `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall via the installer script (the hint prints the literal command), then rerun |
 | `adapter-cli-too-old` | An adapter requires a newer binary than the one installed | Reinstall the binary; if the adapter itself is stale, `emery adapter upgrade <name>` |
 | `plan-already-exists` | `/emery:plan` on a project that already has a `plan.yaml` | Continue the existing plan (`/emery:status`) or confirm the replace and re-run with `--force` |
-| `plan-author-stopped` | Authoring parked one or more domains after failed cuts; closed leaves are kept | Optionally `emery plan correct --domain <id> --intent "…"`, then re-run `emery plan author` — re-entry resumes only the open and parked domains |
+| `plan-author-stopped` | Authoring parked one or more domains after failed cuts; closed leaves are kept | Re-run `emery plan author` — re-entry resumes only the open and parked domains |
 | `plan-author-incomplete` | A topology verb ran on a bound-not-authored change home | Re-run `emery plan author` to finish decomposition first |
 | `plan-refine-stopped` | The refinement drain halted on a failed refinement; the stop card names the slice | Fix the reported problem, then re-run `emery plan refine` — fresh slices are skipped |
 | `plan-refinement-required` | Execute reached a slice without a fresh refinement manifest — execute never refines | Run `emery plan refine`, then re-run `emery plan execute` |
@@ -132,7 +131,6 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 - See the project root `AGENTS.md` for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) — Initialize Emery
 - [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
-- [Correct SKILL.md](skills/correct/SKILL.md) — Record a durable operator correction for a decomposition domain
 - [Refine SKILL.md](skills/refine/SKILL.md) — Drain specification refinement over the closed plan
 - [Execute SKILL.md](skills/execute/SKILL.md) — Drive the per-slice build → merge loop to completion
 - [Status SKILL.md](skills/status/SKILL.md) — Read-only "where am I / what next" probe

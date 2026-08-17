@@ -23,7 +23,6 @@ Canonical skill bodies live under [`plugins/emery/skills/`](../../../plugins/eme
 | ----- | ------- | -------------- | --- |
 | `/emery:init` | One-time project setup (`.emery/`, `project.yaml`, cache, `AGENTS.md`) | [`init/SKILL.md`](../../../plugins/emery/skills/init/SKILL.md) | [emery init](../cli/init.md) |
 | `/emery:plan` | Bind a reviewed handoff (`--from` / `--wave`), import surface leads, decompose, exit at `pending` | [`plan/SKILL.md`](../../../plugins/emery/skills/plan/SKILL.md) | [emery plan](../cli/plan.md) |
-| `/emery:correct` | Record a durable operator correction for a parked or authored decomposition domain | [`correct/SKILL.md`](../../../plugins/emery/skills/correct/SKILL.md) | [plan correct](../cli/plan.md#emery-plan-correct) |
 | `/emery:refine` | Drain specification refinement over the closed plan (no code work) | [`refine/SKILL.md`](../../../plugins/emery/skills/refine/SKILL.md) | [plan refine](../cli/plan.md#emery-plan-refine) |
 | `/emery:execute` | Drive the plan through build → merge (opens the authorization epoch over the refinement digests) | [`execute/SKILL.md`](../../../plugins/emery/skills/execute/SKILL.md) | [plan execute](../cli/plan.md#emery-plan-execute) |
 | `/emery:status` | Report where the plan stands and the literal next command (read-only) | [`status/SKILL.md`](../../../plugins/emery/skills/status/SKILL.md) | [plan status](../cli/plan.md#emery-plan-status) |

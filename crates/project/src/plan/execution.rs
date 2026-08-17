@@ -166,7 +166,7 @@ pub fn ensure_authored(layout: Layout<'_>, plan: &Plan) -> Result<(), Error> {
         code: "plan-author-incomplete",
         detail: format!(
             "plan `{name}` is bound but not authored; re-run `emery plan author` to finish \
-             decomposition (optionally after `emery plan correct`)",
+             decomposition",
             name = plan.name
         ),
     })

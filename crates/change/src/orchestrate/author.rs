@@ -268,9 +268,7 @@ where
 {
     let leads = Leads::load(&layout.leads_path())?;
     let plan = Plan::load(&layout.plan_path())?;
-    let corrections = project::plan::active_corrections(&journal::read_union(layout)?);
-    let decomposed =
-        decompose::decompose(provider, paths, now, &plan, &leads, &corrections).await?;
+    let decomposed = decompose::decompose(provider, paths, now, &plan, &leads).await?;
     let publish = Publish {
         name: name.to_string(),
         discovery_digest,
@@ -302,10 +300,8 @@ where
     let leads_digest = plan.leads_digest.clone().ok_or_else(|| missing("leads-digest"))?;
     let leads = Leads::load(&layout.leads_path())?;
     let events = journal::read_union(layout)?;
-    let corrections = project::plan::active_corrections(&events);
     let parked = pending_parks(&events);
-    let decomposed =
-        decompose::resume(provider, paths, now, &plan, &leads, &parked, &corrections).await?;
+    let decomposed = decompose::resume(provider, paths, now, &plan, &leads, &parked).await?;
     let publish = Publish {
         name: name.to_string(),
         discovery_digest,

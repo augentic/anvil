@@ -76,7 +76,7 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 
 ### `emery plan author`
 
-The guest-routed authoring phase: import a reviewed handoff, decompose the bound catalog into a complete tree, and publish `decomposition.yaml` + `plan.yaml` together. `slices` is the projected leaf list in tree order. A park surfaces on the error envelope instead (`error: "plan-author-stopped"`, exit 2, with the canonical plan-status stop card on stdout, mirroring the refine stop shape): the tree persists partial, closed leaves project into `plan.entries`, and re-running `emery plan author` (optionally after `emery plan correct`) resumes the open and parked domains.
+The guest-routed authoring phase: import a reviewed handoff, decompose the bound catalog into a complete tree, and publish `decomposition.yaml` + `plan.yaml` together. `slices` is the projected leaf list in tree order. A park surfaces on the error envelope instead (`error: "plan-author-stopped"`, exit 2, with the canonical plan-status stop card on stdout, mirroring the refine stop shape): the tree persists partial, closed leaves project into `plan.entries`, and re-running `emery plan author` resumes the open and parked domains.
 
 ```json
 {
@@ -87,18 +87,6 @@ The guest-routed authoring phase: import a reviewed handoff, decompose the bound
   "targets": ["app"],
   "sources": ["intent"],
   "slices": ["identity-contracts", "identity-service"]
-}
-```
-
-### `emery plan correct`
-
-One durable operator correction (`plan.correction.recorded`). `status` is `recorded` on the parked-author path (the fact alone; `plan author` re-entry honors it) or `proposed` on the authored path, where `proposal` carries the retained boundary-proposal digest for `emery plan amend --proposal`. Text mode prints the settled line plus the literal follow-up command.
-
-```json
-{
-  "status": "proposed",
-  "domain": "identity-service",
-  "proposal": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 }
 ```
 

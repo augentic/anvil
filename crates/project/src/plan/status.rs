@@ -65,7 +65,7 @@ pub enum StopReason {
     /// `plan author` parked one or more domains after failed cuts. The
     /// persisted partial `decomposition.yaml` plus the park facts are
     /// the park state; re-running `emery plan author` resumes the
-    /// open-domain queue (optionally after `emery plan correct`).
+    /// open-domain queue.
     PartitionParked,
     /// The awaited refine phase last ended in `slice.synthesize.failed`.
     RefineFailed,
@@ -123,8 +123,7 @@ impl StopReason {
                  re-entry resumes decomposition from the persisted state (never --force)."
             }
             Self::PartitionParked => {
-                "One or more domains parked after failed cuts. Optionally record guidance with \
-                 emery plan correct --domain <id> --intent \"…\", then re-run emery plan author — \
+                "One or more domains parked after failed cuts. Re-run emery plan author — \
                  re-entry resumes only the open and parked domains."
             }
             Self::RefineFailed => {

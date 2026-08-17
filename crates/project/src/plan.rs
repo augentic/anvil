@@ -7,7 +7,6 @@ pub mod advance;
 pub mod amend;
 pub mod archive;
 pub mod authority_override;
-pub mod correction;
 pub mod create;
 pub mod decomposition;
 pub mod discovery;
@@ -33,7 +32,6 @@ pub mod verify;
 
 pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
-pub use correction::{Correction, active as active_corrections};
 pub use decomposition::{
     BoundaryReview, Child, Decomposition, FocusParent, PARTITION_VERSION, PartitionKind,
     PartitionResponse, ReviewVerdict, VERSION as DECOMPOSITION_VERSION, closed_slices,

@@ -70,10 +70,7 @@ impl<P: Anchor + Model + Resolver + Inventory + Profiles + Trees + Source + Work
                 let source = error::Error::validation_failed(
                     "plan-author-stopped",
                     "decomposition partitions every domain",
-                    format!(
-                        "authoring parked at {domains}; re-run emery plan author to resume \
-                             (optionally after emery plan correct)"
-                    ),
+                    format!("authoring parked at {domains}; re-run emery plan author to resume"),
                 );
                 let layout = paths.layout();
                 let plan = project::plan::Plan::load(&layout.plan_path())?;

@@ -25,9 +25,9 @@ Always supply the closed five-dimension assessment (integers 0–10): `behaviour
 
 Bind only a target named in the request. A target absent from the reviewed wave is a definition-revision request, not a silent substitution.
 
-## Corrections and findings
+## Findings
 
-A request may carry `corrections[]` — durable operator directives recorded by `emery plan correct`. Each has verbatim `intent` text and may carry a closed `constraint` (`close-as-leaf` or `split`, optionally with named `children`). Corrections are hard constraints, not suggestions: obey the intent, and never emit an answer the constraint forbids — the deterministic tail rejects it. A request may also carry `findings[]`: validator diagnostics from a previous failed cut on this domain. Read them before answering; they name exactly which rule the last cut broke.
+A request may carry `findings[]`: validator diagnostics from a previous failed cut on this domain. Read them before answering; they name exactly which rule the last cut broke.
 
 ## Rationale
 

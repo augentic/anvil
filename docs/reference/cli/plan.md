@@ -7,7 +7,6 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 | Verb | When to use |
 |------|-------------|
 | [`author`](#emery-plan-author) | Bind a reviewed handoff from `emery system review` (`--from` / `--wave`), import its surface leads, decompose it, and publish `decomposition.yaml` + `plan.yaml` together. Persists the tree incrementally and parks failed cuts instead of aborting; re-entry resumes open and parked domains, a reconciled plan is a read-only no-op, and `--force` is the wholesale replace. Invoked by `/emery:plan`. |
-| [`correct`](#emery-plan-correct) | Record a durable operator correction for a decomposition domain: fact-only on a parked author (honored at `plan author` re-entry), fact + inert boundary proposal on an authored plan (`plan amend --proposal` applies it). Invoked by `/emery:correct`. |
 | [`refine`](#emery-plan-refine) | Guest-routed serial refinement drain: per in-scope leaf in dependency order, extract every bound source, synthesize + validate the slice artifacts, atomically write `refinement.yaml`. Fresh manifests are skipped; no code work. Invoked by `/emery:refine`. Optional repeated `--slice` selectors. |
 | [`execute`](#emery-plan-execute) | Guest-routed driver loop: requires a fresh refinement manifest per in-scope leaf, at start appends `plan.execute.started` (authorization epoch covering the exact refinement digests), then claims → builds → merges per entry under gap gates until `drained` or a stop. Holds the `.emery/change/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan (projects `pending` until claimed). |
@@ -45,33 +44,9 @@ JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-pl
 Behavior notes:
 
 - **Order of operations.** Resolve the current reviewed handoff (`system::review::current_handoff`, verify-on-read), copy byte-identical envelopes under `imports/`, re-resolve each coverage locator and pin the delivery CID (a handoff `observed-cid` is imported provenance and does not authorize the pin), fill a declared adapter name and keep a handoff pin, write `discovery.yaml`, import the wave's surface leads (focused child survey only when an imported lead is still coarser than a buildable boundary), decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together.
-- **Dispositions, not aborts.** The tree persists after every applied cut. After the repair budget, a failed cut (non-reducing, uncovered/dropped lead, unordered overlap) is a disposition: the engine closes the domain as a leaf through the same profile gate a model-emitted leaf gets (journaling `domain.partition.closed` with the findings and a `change.md` caveat), else parks that domain (`plan.author.parked`) and keeps draining independent domains. A park projects already-closed leaves into `plan.entries` without a `plan.reconcile.completed` fact and exits 2 with `plan-author-stopped`; `plan status` shows `stop partition-parked`, and the resume pair is `emery plan correct` (optional) + `emery plan author`. Topology verbs (`add` / `amend` / `remove` / `gaps`) refuse `plan-author-incomplete` until authoring completes.
+- **Dispositions, not aborts.** The tree persists after every applied cut. After the repair budget, a failed cut (non-reducing, uncovered/dropped lead, unordered overlap) is a disposition: the engine closes the domain as a leaf through the same profile gate a model-emitted leaf gets (journaling `domain.partition.closed` with the findings and a `change.md` caveat), else parks that domain (`plan.author.parked`) and keeps draining independent domains. A park projects already-closed leaves into `plan.entries` without a `plan.reconcile.completed` fact and exits 2 with `plan-author-stopped`; `plan status` shows `stop partition-parked`, and re-running `emery plan author` is the resume path. Topology verbs (`add` / `amend` / `remove` / `gaps`) refuse `plan-author-incomplete` until authoring completes.
 - **Intent** arrives only through the handoff (reserved key `intent`, value-only, no locator, no CID). There is no `--intent` or `--source` authoring flag.
 - **Exact pins.** Every bound source and target records `emery:<name>@<semver>`. A handoff pin is frozen; a declared name is filled at bind time. Bare names are refused on the persisted plan topology.
-
-### emery plan correct
-
-Record one durable operator correction for a decomposition domain. Invoked by `/emery:correct`.
-
-```bash
-emery plan correct [--domain <id>] [--constraint <close-as-leaf|split>] [--child <id>]... --intent "…" [--change-dir <dir>]
-```
-
-| Flag | Description |
-|------|-------------|
-| `--domain <id>` | Decomposition node id (or a leaf slice name on an authored plan, resolving to its nearest domain). Omitted, the correction targets the sole parked domain — refusing with `plan-correct-domain-required` / `plan-correct-domain-ambiguous` when none or several are parked. |
-| `--constraint` | Closed structural constraint the deterministic tail enforces: `close-as-leaf` refuses a split answer; `split` refuses a leaf answer and requires any `--child` ids to appear. Free-text intent alone is model guidance. |
-| `--child <id>` | Repeatable. Child domain ids a `split` constraint requires. Needs `--constraint split`. |
-| `--intent "…"` | Required. Operator intent, verbatim — the partition judgment treats it as a hard constraint. |
-
-Phase-split semantics:
-
-- **Bound-not-authored (parked author):** record the `plan.correction.recorded` fact only — no model call, no proposal, no artifact write. Re-running `emery plan author` carries every active correction into the parked domain's partition request. Always works regardless of how many domains are open, and spends no judgment budget.
-- **Authored plan:** the escalate-shaped path — re-decompose the named domain with the correction in the request into an inert boundary proposal at `planning/proposals/<digest>.yaml`, journal the fact with the digest, and leave live planning artifacts unchanged until `emery plan amend --proposal <digest>` applies it. A re-cut that would uncover a lead or fail to reduce refuses with `plan-correction-non-reducing` without mutating the live tree.
-
-Corrections are durable, append-only facts; activity is projected (a bound-path fact stays active until the next `plan.reconcile.completed`; an authored-path fact rides its proposal through `plan amend`).
-
-Exit codes: `0` success (the body carries `status: recorded | proposed`, the domain, and the proposal digest on the authored path); `2` for domain-resolution refusals (`plan-correct-domain-required`, `plan-correct-domain-ambiguous`, `decomposition-node-unknown`), incoherent constraints, and `plan-correction-non-reducing`.
 
 ### emery plan refine
 

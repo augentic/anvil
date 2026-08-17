@@ -11,7 +11,6 @@ The pause between plan authoring and refinement is the topology-review step. `/e
 | Goal | Prefer |
 | --- | --- |
 | Rethink cross-source grouping | Re-run `emery plan author --force` (or `/emery:plan`, which confirms) — replaces a pending plan wholesale |
-| Guide a parked or misjudged decomposition domain | `emery plan correct [--domain <id>] --intent "…"` — a durable fact on a parked author (honored at `plan author` re-entry), a boundary proposal on an authored plan |
 | Defer a [lead](../appendices/glossary.md#l) out of this change | `emery plan remove <entry>` |
 | Split or merge entries | `emery plan add` + `emery plan amend` + `emery plan remove` — see the [plan command reference](../reference/cli/plan.md) |
 | Apply a retained amendment | `emery plan amend --proposal <digest>` (journals `plan.amend.applied`) |
@@ -51,10 +50,6 @@ emery plan amend <entry> --divergence accepted
 
 # Override authority for a claim kind on this entry
 emery plan amend <entry> --authority-override <kind>=<source>
-
-# Re-cut a domain under operator direction (mints a boundary proposal
-# on an authored plan; apply it with --proposal below)
-emery plan correct --domain <id> --constraint split --intent "Split by delivery boundary."
 
 # Apply a retained boundary or ownership proposal
 emery plan amend --proposal <digest>

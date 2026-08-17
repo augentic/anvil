@@ -11,10 +11,9 @@ use jiff::Timestamp;
 use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::handler::ExecutionPaths;
-use project::journal::{self, ClosedReason, CorrectionConstraint, Event, EventKind};
+use project::journal::{self, ClosedReason, Event, EventKind};
 use project::name::is_kebab;
 use project::plan::Plan;
-use project::plan::correction::Correction;
 use project::plan::decomposition::{
     BoundProfile, Child, Decomposition, Kind, MAX_JUDGMENTS, Node, PARTITION_VERSION,
     PartitionKind, PartitionResponse, ReviewVerdict, Scope, VERSION,
@@ -67,7 +66,6 @@ struct State {
 /// after repair on the candidate path, and tree-validation failures.
 pub async fn decompose<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, leads: &Leads,
-    corrections: &BTreeMap<String, Vec<Correction>>,
 ) -> Result<Decomposed, Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
@@ -75,7 +73,7 @@ where
     let mut catalog = leads.clone();
     let tree = seed(plan, &catalog, provider.profiles())?;
     let queue = VecDeque::from([tree.root.clone()]);
-    run(provider, paths, now, plan, &mut catalog, tree, queue, true, corrections).await
+    run(provider, paths, now, plan, &mut catalog, tree, queue, true).await
 }
 
 /// Resume authoring over a persisted partial tree: rebuild the queue
@@ -87,7 +85,7 @@ where
 /// Load/parse failures and the same loop failures as [`decompose`].
 pub async fn resume<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, leads: &Leads,
-    parked: &[String], corrections: &BTreeMap<String, Vec<Correction>>,
+    parked: &[String],
 ) -> Result<Decomposed, Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
@@ -112,7 +110,7 @@ where
         let queue = VecDeque::from([tree.root.clone()]);
         (tree, queue)
     };
-    run(provider, paths, now, plan, &mut catalog, tree, queue, true, corrections).await
+    run(provider, paths, now, plan, &mut catalog, tree, queue, true).await
 }
 
 /// Open domains (no cut yet), shallowest first, id-ordered within a
@@ -142,44 +140,11 @@ pub async fn nearest<P>(
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
 {
-    let corrections = BTreeMap::new();
-    candidate(provider, paths, now, plan, leaf, catalog, &corrections).await
-}
-
-/// Re-decompose one domain (a node id, or the nearest domain of a
-/// leaf slice name) into an inert candidate, honoring `corrections`.
-/// Never writes `leads.md` or `decomposition.yaml`.
-///
-/// # Errors
-///
-/// Missing decomposition, unknown domain, and the same loop failures
-/// as [`decompose`].
-pub async fn candidate<P>(
-    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, domain: &str,
-    catalog: &mut Leads, corrections: &BTreeMap<String, Vec<Correction>>,
-) -> Result<Decomposed, Error>
-where
-    P: Model + Profiles + Resolver + Source + Workspaces,
-{
     let mut tree = Decomposition::load(&paths.layout().decomposition_path())?;
-    let start = if is_slice(&tree, domain) {
-        reopen(&mut tree, domain, catalog)?
-    } else if tree.nodes.contains_key(domain) {
-        reopen_node(&mut tree, domain, catalog)?;
-        domain.to_string()
-    } else {
-        return Err(Error::Diag {
-            code: "decomposition-node-unknown",
-            detail: format!("no decomposition node or leaf slice `{domain}`"),
-        });
-    };
+    let start = reopen(&mut tree, leaf, catalog)?;
     tree.leads_digest = project::snapshot::SnapshotId::from_digest(&catalog.digest_hex()?);
     let queue = VecDeque::from([start]);
-    run(provider, paths, now, plan, catalog, tree, queue, false, corrections).await
-}
-
-fn is_slice(tree: &Decomposition, name: &str) -> bool {
-    tree.nodes.values().any(|node| node.slice.as_ref().is_some_and(|slice| slice.as_str() == name))
+    run(provider, paths, now, plan, catalog, tree, queue, false).await
 }
 
 #[expect(
@@ -189,7 +154,6 @@ fn is_slice(tree: &Decomposition, name: &str) -> bool {
 async fn run<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
     tree: Decomposition, queue: VecDeque<String>, persist: bool,
-    corrections: &BTreeMap<String, Vec<Correction>>,
 ) -> Result<Decomposed, Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
@@ -206,8 +170,7 @@ where
     let mut final_rejudged = false;
 
     loop {
-        drain(provider, paths, now, plan, catalog, &mut state, persist, corrections, &notes)
-            .await?;
+        drain(provider, paths, now, plan, catalog, &mut state, persist, &notes).await?;
         if !state.parked.is_empty() {
             // A parked domain leaves the tree partial by design — the
             // caller publishes closed leaves and stops for the operator.
@@ -265,8 +228,7 @@ fn offending_domain(tree: &Decomposition, findings: &[diagnostics::Diagnostic]) 
 )]
 async fn drain<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
-    state: &mut State, persist: bool, corrections: &BTreeMap<String, Vec<Correction>>,
-    notes: &BTreeMap<String, Vec<String>>,
+    state: &mut State, persist: bool, notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<(), Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
@@ -283,7 +245,7 @@ where
         }
         let take = state.queue.len().min(remaining);
         let round: Vec<String> = state.queue.drain(..take).collect();
-        let requests = round_requests(state, catalog, plan, &round, corrections, notes)?;
+        let requests = round_requests(state, catalog, plan, &round, notes)?;
         state.judgments += round.len();
 
         // Each job records its last parsed answer so a failed cut can
@@ -307,7 +269,6 @@ where
                     if let Ok(mut last) = slot.lock() {
                         *last = Some(answer.clone());
                     }
-                    check_constraint(corrections.get(id.as_str()), id, answer)?;
                     check_targets(plan, answer)?;
                     let mut trial = tree.clone();
                     apply(&mut trial, id, answer)?;
@@ -383,21 +344,13 @@ where
 /// One partition request per round member, numbered in queue order.
 fn round_requests(
     state: &State, catalog: &Leads, plan: &Plan, round: &[String],
-    corrections: &BTreeMap<String, Vec<Correction>>, notes: &BTreeMap<String, Vec<String>>,
+    notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<Vec<serde_json::Value>, Error> {
     round
         .iter()
         .enumerate()
         .map(|(offset, id)| {
-            partition_request(
-                &state.tree,
-                id,
-                catalog,
-                plan,
-                state.judgments + offset + 1,
-                corrections,
-                notes,
-            )
+            partition_request(&state.tree, id, catalog, plan, state.judgments + offset + 1, notes)
         })
         .collect()
 }
@@ -963,48 +916,6 @@ fn check_targets(plan: &Plan, response: &PartitionResponse) -> Result<(), Error>
     Ok(())
 }
 
-/// Enforce the closed structural constraint of active operator
-/// corrections in the deterministic tail. Free-text intent is model
-/// guidance only.
-fn check_constraint(
-    rows: Option<&Vec<Correction>>, id: &str, response: &PartitionResponse,
-) -> Result<(), Error> {
-    for row in rows.into_iter().flatten() {
-        match row.constraint {
-            Some(CorrectionConstraint::CloseAsLeaf) if response.kind == PartitionKind::Split => {
-                return Err(Error::validation_failed(
-                    "plan-correction-constraint",
-                    "an operator correction binds the cut",
-                    format!("the correction requires `{id}` to close as a leaf; the answer split"),
-                ));
-            }
-            Some(CorrectionConstraint::Split) => {
-                if response.kind == PartitionKind::Leaf {
-                    return Err(Error::validation_failed(
-                        "plan-correction-constraint",
-                        "an operator correction binds the cut",
-                        format!("the correction requires `{id}` to split; the answer is a leaf"),
-                    ));
-                }
-                for child in &row.children {
-                    if !response.children.iter().any(|named| &named.id == child) {
-                        return Err(Error::validation_failed(
-                            "plan-correction-constraint",
-                            "an operator correction binds the cut",
-                            format!(
-                                "the correction names child `{child}` which is missing from \
-                                 the split of `{id}`"
-                            ),
-                        ));
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    Ok(())
-}
-
 fn check_focus(catalog: &Leads, review: &project::plan::BoundaryReview) -> Result<(), Error> {
     for parent in &review.focus {
         if !catalog
@@ -1158,7 +1069,7 @@ fn leaf_node(
 
 fn partition_request(
     tree: &Decomposition, id: &str, catalog: &Leads, plan: &Plan, used: usize,
-    corrections: &BTreeMap<String, Vec<Correction>>, notes: &BTreeMap<String, Vec<String>>,
+    notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<serde_json::Value, Error> {
     let node = tree.node(id)?;
     let leads: Vec<serde_json::Value> = catalog
@@ -1185,19 +1096,6 @@ fn partition_request(
         "plan-targets": plan.targets.keys().collect::<Vec<_>>(),
         "judgments-remaining": MAX_JUDGMENTS.saturating_sub(used),
     });
-    if let Some(rows) = corrections.get(id) {
-        request["corrections"] = serde_json::Value::Array(
-            rows.iter()
-                .map(|row| {
-                    json!({
-                        "intent": row.intent,
-                        "constraint": row.constraint.map(|kind| kind.to_string()),
-                        "children": row.children,
-                    })
-                })
-                .collect(),
-        );
-    }
     if let Some(rows) = notes.get(id) {
         request["findings"] = json!(rows);
     }
