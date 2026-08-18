@@ -26,7 +26,7 @@ Operator surface: `emery init`, `emery specify`. Two verbs is phasing, not a new
 | Artefact | Role | State |
 | --- | --- | --- |
 | [product.md](product.md) | Product yardstick; the spec generator is its `spec` verb | Written; programme scope note |
-| [decisions/](decisions/) | ADR log | 0002/0003/0006/0008 accepted; 0001/0004/0005 re-scoped |
+| [decisions/](decisions/) | ADR log | All accepted; 0001/0004/0005 as re-scoped (2026-08-19) |
 | [target-architecture.md](target-architecture.md) | Destination for this programme; build/fix in the deferred annex | Draft v0.1 |
 | [capability-conservation.md](capability-conservation.md) | Live entries for the generator; the rest deferred with the build programme | Re-scoped |
 | [CONSTITUTION.md](../CONSTITUTION.md) | Standing invariants + mechanical enforcement | Invariant 1 re-scoped to the spec journey |
@@ -49,9 +49,9 @@ The prior containment phase repaired planes now being frozen rather than shipped
 - **ADR-0003 (one lifecycle):** **accepted.** `crates/system` stays in the archive; architecture modelling returns, if ever, as a projection over the mined corpus.
 - **ADR-0006 (rebuild shape):** **accepted, narrowed.** New spine for extract + synthesise only; the archive is tag `v1`, not an in-tree quarantine.
 - **ADR-0008 (this programme):** **accepted.** The live journey is sources → specification. Survey collapses into extract. First artifacts are `spec.md` / `design.md`.
-- **ADR-0001 (state store):** **re-scoped, still proposed.** A spec generator's state is source bindings, extract receipts, and the spec set. Atomically swapped documents; no SQLite spike, no merge-commit matrix.
-- **ADR-0004 (conflict disposition):** **re-scoped, still proposed.** Conflicts appear inline (`[conflict]`). There is no build gate yet, so there is no auto-defer vs operator-gate fight. Disposition-before-build returns with the build programme.
-- **ADR-0005 (change home):** **re-scoped, still proposed.** One output home for specs. Do not spend this programme encoding in-place vs detached.
+- **ADR-0001 (state store):** **accepted as re-scoped (2026-08-19).** A spec generator's state is source bindings, extract receipts, and the spec set. Atomically swapped documents committed by a generation-pointer swap; observability is `wasi:otel` and the journal is deleted outright; no SQLite spike, no merge-commit matrix.
+- **ADR-0004 (conflict disposition):** **accepted as re-scoped (2026-08-19).** Conflicts appear inline (`[conflict]`). There is no build gate yet, so there is no auto-defer vs operator-gate fight. Disposition-before-build returns with the build programme.
+- **ADR-0005 (change home):** **accepted as re-scoped (2026-08-19).** One output home for specs. Do not spend this programme encoding in-place vs detached.
 
 ## Phase 2 — Destination + a red journey test (~1 week)
 

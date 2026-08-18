@@ -44,8 +44,8 @@ Atomically swapped documents at the output home (ADR-0001 Option C): source bind
 
 - **One authority per question.** Bindings and receipts are documents, not directory-presence or mtime.
 - **Fail closed.** Any authority read error is `Err`, never an empty set.
-- **Resume is re-run `emery specify`.** A crash mid-write leaves the previous set.
-- **No journal-as-authority.** If an observability log exists, nothing reads it back for lifecycle.
+- **Resume is re-run `emery specify`.** A crash mid-write leaves the previous set: each run commits a fresh generation directory behind one atomically swapped `current` pointer, and readers trust only what the pointer names.
+- **No journal, no journal-as-authority.** Observability is `wasi:otel` spans — emit-only from the guest, so nothing can read telemetry back for lifecycle; no log file exists in the output home.
 
 A transactional store for waves, merges, and workspaces is a build-programme question.
 

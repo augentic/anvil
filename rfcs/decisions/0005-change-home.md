@@ -1,6 +1,6 @@
 # ADR-0005: Change-home shape — detached-only
 
-> Status: Proposed — re-scoped 2026-08-18 for the spec-generator programme ([ADR-0008](0008-spec-generator-programme.md)); pending operator acceptance of the narrowed decision
+> Status: **Accepted** (operator decision, 2026-08-19) — Option C as re-scoped 2026-08-18 for the spec-generator programme ([ADR-0008](0008-spec-generator-programme.md)).
 > Date: 2026-08-17
 
 ## Context
@@ -15,7 +15,7 @@ In-place vs detached mode is encoded five ways (path equality, an explicit bool,
 - **B. Keep both modes**, fixing each encoding.
 - **C. One output home (this programme).** `emery init` scaffolds one directory for source bindings and the spec set. There is no in-place/detached distinction because there is no product checkout to be in-place *in*. Running in an unrelated directory does not silently create state. Option A remains the standing preference when the build programme needs a change home again.
 
-## Decision (proposed)
+## Decision
 
 **Option C for this programme.** One shape, one scaffold, typed re-entry. Do not spend this programme encoding five ways to tell in-place from detached.
 

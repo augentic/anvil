@@ -1,6 +1,6 @@
 # ADR-0004: Conflict disposition — operator gate vs auto-defer
 
-> Status: Proposed — re-scoped 2026-08-18 for the spec-generator programme ([ADR-0008](0008-spec-generator-programme.md)); pending operator acceptance of the narrowed decision
+> Status: **Accepted** (operator decision, 2026-08-19) — Option D as re-scoped 2026-08-18 for the spec-generator programme ([ADR-0008](0008-spec-generator-programme.md)).
 > Date: 2026-08-17
 
 ## Context
@@ -16,7 +16,7 @@ RFC-86a's build gate auto-defers every open `[unknown]` **and** `[conflict]` row
 - **C. Strict for both** — every open row blocks build until dispositioned.
 - **D. Inline, no gate (this programme).** Authority precedence (`intent` > `documentation` > `behaviour`) resolves what it can and records the rest as `[divergence]` or `[conflict]` on the spec. `[unknown]` stays `[unknown]`. Nothing is auto-deferred. Nothing blocks a verb that does not exist yet. Disposition-before-build is a build-programme question (then A is the standing preference).
 
-## Decision (proposed)
+## Decision
 
 **Option D for this programme.** A conflict is visible in the reviewable specification. Universal auto-defer (B) made the review claim false and is not revived. Options A and C describe a build gate this programme does not have.
 
