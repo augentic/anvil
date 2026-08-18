@@ -94,7 +94,7 @@ fn section(root: &Path, wanted: &str) -> BTreeMap<String, usize> {
             continue;
         }
         if let Some(name) = line.strip_prefix('[').and_then(|rest| rest.strip_suffix(']')) {
-            current = name.to_owned();
+            name.clone_into(&mut current);
             continue;
         }
         if current != wanted {
