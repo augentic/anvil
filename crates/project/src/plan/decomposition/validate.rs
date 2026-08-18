@@ -370,15 +370,13 @@ fn reduction(tree: &Decomposition, id: &str, node: &Node) -> Vec<Diagnostic> {
 
 /// Compare a child measure against its parent as `(grew, tied)`.
 ///
-/// When both envelopes are known the full lexicographic
-/// `(leads, targets, paths)` compare applies. A node with unknown
-/// paths (no declared ownership and at least one open terminal) has
-/// an *unspecified* envelope, not an empty one: only the known scope
-/// dimensions compare, a child declaring the first ownership paths
-/// under an unspecified parent is progress rather than growth, and a
-/// tie needs the child to be equally unspecified or pathless. A
-/// known parent against a still-unspecified child defers to the
-/// complete-tree check.
+/// Known envelopes on both sides compare lexicographically over
+/// `(leads, targets, paths)`. Unknown paths mean an *unspecified*
+/// envelope, not an empty one: only the scope dimensions compare, a
+/// child declaring the first ownership under an unspecified parent
+/// is progress rather than growth, a tie needs the child equally
+/// unspecified or pathless, and a known parent against an
+/// unspecified child defers to the complete-tree check.
 fn compare(parent: Measure, child: Measure) -> (bool, bool) {
     if let (Some(parent_paths), Some(child_paths)) = (parent.paths, child.paths) {
         let p = (parent.leads, parent.targets, parent_paths);

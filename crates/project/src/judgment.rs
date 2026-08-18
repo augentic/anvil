@@ -51,16 +51,17 @@ pub async fn repaired<P, T, F>(
 ) -> Result<T, Error>
 where
     P: Model,
-    F: FnMut(&str) -> Result<T, Error>,
+    F: FnMut(&str) -> Result<T, Error> + Send,
 {
     repaired_where(model, system, user, schema_name, subject, schema, lent, |_| true, tail).await
 }
 
-/// [`repaired`] with a repairability predicate: a tail failure the
-/// predicate rejects surfaces on the first answer instead of
-/// re-prompting — for findings whose disposition belongs to the
-/// caller and a re-prompt cannot fix cheaper (e.g. a structurally
-/// non-reducing cut).
+/// [`repaired`] with a repairability predicate.
+///
+/// A tail failure the predicate rejects surfaces on the first answer
+/// instead of re-prompting — for findings whose disposition belongs
+/// to the caller and a re-prompt cannot fix cheaper (e.g. a
+/// structurally non-reducing cut).
 ///
 /// # Errors
 ///
@@ -76,8 +77,8 @@ pub async fn repaired_where<P, T, F, R>(
 ) -> Result<T, Error>
 where
     P: Model,
-    F: FnMut(&str) -> Result<T, Error>,
-    R: Fn(&Error) -> bool,
+    F: FnMut(&str) -> Result<T, Error> + Send,
+    R: Fn(&Error) -> bool + Send + Sync,
 {
     // The span carries only the bounded leg name, subject id, and
     // repair count — never prompts or answers.

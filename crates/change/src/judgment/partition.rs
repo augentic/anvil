@@ -27,7 +27,7 @@ pub async fn partition<P, F>(
 ) -> Result<PartitionResponse, Error>
 where
     P: Model,
-    F: FnMut(&PartitionResponse) -> Result<(), Error>,
+    F: FnMut(&PartitionResponse) -> Result<(), Error> + Send,
 {
     let schema = project::answers::render(&project::answers::partition());
     let user = format!(

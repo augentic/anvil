@@ -19,7 +19,7 @@ pub async fn review<P, F>(
 ) -> Result<BoundaryReview, Error>
 where
     P: Model,
-    F: FnMut(&BoundaryReview) -> Result<(), Error>,
+    F: FnMut(&BoundaryReview) -> Result<(), Error> + Send,
 {
     let schema = project::answers::render(&project::answers::boundary_review());
     let user = format!(

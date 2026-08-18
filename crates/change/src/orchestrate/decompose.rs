@@ -1108,10 +1108,9 @@ fn partition_request(
     notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<serde_json::Value, Error> {
     let node = tree.node(id)?;
-    // Only the domain's contributing sources reach the request: a
-    // focused child may substitute a different lead from the same
-    // source, so same-source catalog rows ride along; foreign-source
-    // rows are noise the cut cannot bind.
+    // Only the domain's contributing sources reach the request:
+    // same-source rows ride along for focused substitution;
+    // foreign-source rows are noise the cut cannot bind.
     let contributing: std::collections::BTreeSet<&str> =
         node.sources.iter().map(|scope| scope.source.as_str()).collect();
     let leads: Vec<serde_json::Value> = catalog
