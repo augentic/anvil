@@ -1,6 +1,6 @@
 //! The mock adapter's deterministic, model-free behaviour core:
 //! behaviour keys off the routed adapter id (`docs` / `code` /
-//! `fail-*` substrings, else the minimal `greeting` profile).
+//! `intent` / `fail-*` substrings, else the `greeting` profile).
 
 pub use source::extract;
 
@@ -15,6 +15,21 @@ mod source {
     pub fn extract(id: &str, _input: &SourceInput) -> Result<Evidence, Error> {
         if id.contains("fail-extract") {
             return Err(Error::Internal(format!("mock extract failure for `{id}`")));
+        }
+        // The A8 violation profile: a requirement claim without its
+        // required `statement` extra, for the engine's fail-closed gate.
+        if id.contains("missing-extras") {
+            return Ok(Evidence {
+                authority: Authority::Documentation,
+                claims: vec![Claim {
+                    kind: ClaimKind::Requirement,
+                    id: Some("greeting.behaviour".to_string()),
+                    path: None,
+                    synopsis: Some("A requirement without its statement".to_string()),
+                    backing: None,
+                    extras: serde_json::Map::new(),
+                }],
+            });
         }
         Ok(evidence_for(profile(id)))
     }
@@ -57,6 +72,17 @@ mod source {
                     ),
                 ],
             },
+            // The operator directive: intent outranks both halves of
+            // the adversarial pair, resolving the session-timeout
+            // disagreement by authority precedence.
+            Profile::Intent => Evidence {
+                authority: Authority::Intent,
+                claims: vec![requirement(
+                    "session.timeout",
+                    "Operator directive on session expiry",
+                    "Sessions must expire after 30 minutes of inactivity.",
+                )],
+            },
             Profile::Minimal => Evidence {
                 authority: Authority::Documentation,
                 claims: vec![requirement(
@@ -75,6 +101,8 @@ mod source {
         Docs,
         /// Behaviour (code) half of the adversarial pair.
         Code,
+        /// The inline operator-intent source.
+        Intent,
         /// The single-claim `greeting` profile.
         Minimal,
     }
@@ -84,6 +112,8 @@ mod source {
             Profile::Docs
         } else if id.contains("code") {
             Profile::Code
+        } else if id.contains("intent") {
+            Profile::Intent
         } else {
             Profile::Minimal
         }

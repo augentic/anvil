@@ -20,6 +20,6 @@ curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install
 
 | Verb | Purpose |
 |------|---------|
-| [emery init](init.md) | Project scaffold; `--upgrade` re-entry bumps the version pin |
-| `emery specify` | Reserved for the spec generator (ADR-0008); fails typed `specify-not-implemented` until the walking skeleton lands |
+| [emery init](init.md) | Project scaffold over the authored source bindings; `--upgrade` re-entry bumps the version pin |
+| `emery specify` | Generate `spec.md` / `design.md` from the bound sources and commit them behind the generation pointer (ADR-0008, ADR-0009) |
 | `emery completions <shell>` | Print a shell-completion script; auto-derived from the live clap surface |

@@ -1,34 +1,18 @@
 //! Typed command grammar, conversion, and HTTP parity coverage over
-//! the pruned two-verb surface (ADR-0008 §3): `init`, the `specify`
-//! stub, and the auto-derived `completions`.
+//! the two-verb surface (ADR-0008 §3): `init`, the live `specify`
+//! generator, and the auto-derived `completions`.
+
+mod support;
 
 use std::fs;
 use std::path::PathBuf;
 
-use native::{DynModel, Provider};
-use omnia_guest::api::invoke::Invoker;
-use omnia_testkit::model::Harness;
-
 // Grammar and parity coverage only: no test dispatches judgment or an
-// adapter seam, so the scripted provider's empty script never runs and
-// the explicit inert locations are never resolved.
-fn provider(root: impl Into<PathBuf>) -> Provider {
-    let root = root.into();
-    let locations = project::handler::Locations::explicit(
-        root.join("store"),
-        project::handler::CachePlacement::Parent(root.join("project-cache")),
-    );
-    Provider::new(
-        project::handler::ExecutionPaths::new(root, locations),
-        DynModel::new(Harness::answering(Vec::<String>::new())),
-        mock::catalog(),
-    )
-}
-
+// adapter seam, so the inert provider's capabilities are never reached.
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<Provider, transport::command::Globals> {
-    transport::command::router(Invoker::new("emery", provider(root))).expect("router")
+) -> omnia_guest::api::command::Router<support::Inert, transport::command::Globals> {
+    support::router(root)
 }
 
 // Gate tripwire for ADR-0002 §5 / finding C3: the guest HTTP listener
@@ -117,26 +101,29 @@ async fn adr_0008_route_budget() {
     }
 }
 
-// The reserved verb parses and fails typed — no orchestration, no
-// output-home scaffolding, no artifacts.
+// The live generator fails closed outside an initialised project — no
+// orchestration, no output-home scaffolding, no artifacts.
 #[tokio::test]
-async fn specify_stub() {
+async fn specify_uninitialized() {
     let home = tempfile::tempdir().expect("tempdir");
     let router = command_router(home.path());
 
     let response = router.execute(["emery", "specify"]).await;
     assert_eq!(response.exit, 1);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("specify"), "{stderr}");
+    assert!(stderr.contains("not-initialized"), "{stderr}");
 
     let json = router.execute(["emery", "--format", "json", "specify"]).await;
     assert_eq!(json.exit, 1);
     let stderr = String::from_utf8(json.stderr).expect("stderr utf-8");
     let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("one JSON envelope");
-    assert_eq!(envelope["error"], "specify-not-implemented");
+    assert_eq!(envelope["error"], "not-initialized");
     assert_eq!(envelope["exit-code"], 1);
 
-    assert!(fs::read_dir(home.path()).expect("home").next().is_none(), "the stub writes nothing");
+    assert!(
+        fs::read_dir(home.path()).expect("home").next().is_none(),
+        "a refused run writes nothing"
+    );
 }
 
 #[tokio::test]
@@ -214,19 +201,19 @@ const fn cases() -> [Case; 5] {
             json_channels: false,
         },
         Case {
-            name: "init adapter required",
+            name: "init source required",
             argv: &["emery", "init"],
             exit: 2,
             stdout: "",
-            stderr: "init-adapter-required",
+            stderr: "init-source-required",
             json_channels: false,
         },
         Case {
-            name: "specify stub",
+            name: "specify uninitialized",
             argv: &["emery", "--format", "json", "specify"],
             exit: 1,
             stdout: "",
-            stderr: "specify-not-implemented",
+            stderr: "not-initialized",
             json_channels: true,
         },
     ]

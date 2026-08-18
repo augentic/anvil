@@ -27,9 +27,9 @@ interface types {
 /// own reference route and a workspace lend of the source view (or no
 /// lend for an inline value), and deserializes the schema-gated answer.
 ///
-/// Phase 3 seam design inputs (recorded, not implemented — A8/A16):
-/// extract's return becomes the specification IR, and the engine fails
-/// closed when a claim kind's required extras are absent.
+/// Extract's return is the specification IR (A8/A16, ADR-0009 §3):
+/// the engine fails closed when a claim kind's required extras are
+/// absent, and every open extra crosses the seam verbatim.
 interface source {
   use types.{ adapter-id, error };
 

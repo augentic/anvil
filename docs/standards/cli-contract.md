@@ -14,8 +14,8 @@ Never hand-edit `.emery/` state files (`project.yaml`, the component cache); nev
 
 ## Verb tree
 
-- `emery init <adapter>` — scaffold `.emery/`, resolve/cache the adapter identifier, and write `project.yaml` with `adapter:` set. `emery init` invoked without an adapter exits `2` with `init-adapter-required`. `emery init --upgrade` is the re-entry path.
-- `emery specify` — reserved for the spec generator (ADR-0008 §3); a typed stub failing `specify-not-implemented` (exit `1`) until the Phase 3 walking skeleton lands. No orchestration, no output-home scaffolding, no artifacts.
+- `emery init <adapter>... [--value <adapter>=<text>]` — scaffold `.emery/`, resolve/cache each source adapter, and write `project.yaml` with the authored `sources:` bindings (ADR-0009 §1). `emery init` invoked without a source exits `2` with `init-source-required`. `emery init --upgrade` is the re-entry path.
+- `emery specify` — the spec generator (ADR-0008 §3): extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. Outside an initialised project it fails `not-initialized` (exit `1`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
 ## JSON envelope
@@ -28,8 +28,8 @@ The canonical envelope shapes live in [docs/reference/cli-output-shapes.md](../r
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `init-adapter-required` — `emery init` without an adapter.
-- `specify-not-implemented` — the reserved verb's typed stub.
+- `init-source-required` — `emery init` without a source binding.
+- `not-initialized` — `emery specify` outside an initialised project.
 - `emery-version-too-old` — the project's `emery` pin is newer than the running binary.
 
 ## Exit codes

@@ -6,27 +6,21 @@
 use serde::Serialize;
 
 use super::output::{Render, ReportBody};
-use crate::plan::StatusBody;
 
 /// The stdout payload an [`Error::Report`] carries beside the failure
-/// envelope — a closed set so the transport renders one of the two
-/// known report currencies without a trait object.
+/// envelope — a closed set so the transport renders the known report
+/// currency without a trait object.
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum FailureBody {
     /// Diagnostic findings (the validate gates' contract).
     Findings(ReportBody),
-    /// The plan-status stop card (`plan execute`'s stop contract —
-    /// the same `stop:` / `hint:` / `resume:` projection `emery plan
-    /// status` renders).
-    Status(Box<StatusBody>),
 }
 
 impl Render for FailureBody {
     fn render(&self, w: &mut dyn std::io::Write) -> std::io::Result<()> {
         match self {
             Self::Findings(body) => body.render(w),
-            Self::Status(body) => body.render(w),
         }
     }
 }
@@ -70,17 +64,6 @@ impl Error {
         Self::Report {
             body: FailureBody::Findings(body),
             source: error::Error::validation_failed(code, rule, detail),
-        }
-    }
-
-    /// Construct [`Error::Report`] carrying the plan-status stop card:
-    /// the canonical `stop:` / `hint:` / `resume:` projection on
-    /// stdout, `source` on stderr.
-    #[must_use]
-    pub fn stopped(status: StatusBody, source: error::Error) -> Self {
-        Self::Report {
-            body: FailureBody::Status(Box::new(status)),
-            source,
         }
     }
 }

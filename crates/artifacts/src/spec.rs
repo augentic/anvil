@@ -1,11 +1,12 @@
-//! Spec-format parsing for requirement blocks, scenarios, and delta
-//! sections. Public functions are pure, infallible, and deliberately
-//! lenient — coherence checks belong to the merge engine.
+//! Spec-format parsing. [`ast`] is the one fail-closed load gate
+//! (A17); the remaining lenient v1 helpers here and in [`provenance`]
+//! fall with their `crates/project` consumers at the Phase 3 spine cut.
 
 use std::sync::OnceLock;
 
 use regex::Regex;
 
+pub mod ast;
 pub mod provenance;
 
 // Hard-coded spec format constants (matches

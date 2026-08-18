@@ -1,16 +1,17 @@
-//! The exhaustive route inventory (ADR-0008 §3): `init`, the reserved
-//! `specify` stub, and the auto-derived `completions`. Deleted verbs
-//! are gone from the grammar — no hidden routes, no aliases.
+//! The exhaustive route inventory (ADR-0008 §3): `init`, the live
+//! `specify` generator, and the auto-derived `completions`. Deleted
+//! verbs are gone from the grammar — no hidden routes, no aliases.
 
 use clap::Args;
+use engine::extract::Extract;
+use engine::handler::Anchor;
+use engine::resolve::Resolver;
+use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
 use omnia_guest::api::invoke::Invoker;
-use project::adapter::Resolver;
-use project::handler::Anchor;
 
-use super::specify::SpecifyArgs;
-use super::{EmeryProjector, Globals, specify};
+use super::{EmeryProjector, Globals};
 
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
@@ -18,20 +19,34 @@ const ABOUT: &str = "Deterministic primitives for spec-driven development";
 /// Flags for `emery init`.
 #[derive(Debug, Args)]
 pub(super) struct InitArgs {
-    /// Adapter identifier or local component path.
-    pub(super) adapter: Option<String>,
+    /// Source adapter identifiers or local component paths, each bound
+    /// as a workspace-backed source.
+    pub(super) adapters: Vec<String>,
+    /// Inline value-backed source binding (`<adapter>=<text>`; repeatable).
+    #[arg(long = "value")]
+    values: Vec<String>,
     /// Project name.
     #[arg(long)]
     name: Option<String>,
     /// Project description.
     #[arg(long)]
     description: Option<String>,
-    /// Comma-separated target platforms.
-    #[arg(long)]
-    platforms: Option<String>,
     /// Re-enter initialization to bump the Emery version pin.
-    #[arg(long, conflicts_with_all = ["adapter", "name", "description"])]
+    #[arg(long, conflicts_with_all = ["adapters", "values", "name", "description"])]
     pub(super) upgrade: bool,
+}
+
+/// Flags for `emery specify` (none — ADR-0008 §3).
+#[derive(Debug, Args)]
+pub(super) struct SpecifyArgs;
+
+impl TryFrom<SpecifyArgs> for engine::specify::SpecifyInput {
+    type Error = error::Error;
+
+    fn try_from(args: SpecifyArgs) -> Result<Self, Self::Error> {
+        let SpecifyArgs = args;
+        Ok(Self)
+    }
 }
 
 /// Assemble the complete Emery command router.
@@ -41,7 +56,7 @@ pub(super) struct InitArgs {
 /// Returns a deterministic route or argument conflict.
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Resolver,
+    P: Provider + Anchor + Resolver + Extract + Model,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -66,16 +81,16 @@ where
     route!(
         ["init"],
         InitArgs,
-        project::init::handlers::Init,
-        "Initialize .emery/ in a project",
-        "Initialize .emery/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path). A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
+        engine::init::Init,
+        "Initialize .emery/ with source bindings",
+        "Initialize .emery/ with source bindings.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources. No sources fails typed with `init-source-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
     );
     route!(
         ["specify"],
         SpecifyArgs,
-        specify::Specify,
-        "Generate specifications from bound sources (reserved — not yet implemented)",
-        "Generate specifications from bound sources.\n\nReserved for the spec generator (ADR-0008); until the walking skeleton lands this verb fails typed with `specify-not-implemented` (exit 1)."
+        engine::specify::Specify,
+        "Generate spec.md and design.md from the bound sources",
+        "Generate spec.md and design.md from the bound sources.\n\nExtracts every source binding over the adapter seam, reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable."
     );
     router.build()
 }
@@ -95,4 +110,4 @@ macro_rules! convert {
     };
 }
 
-convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });
+convert!(InitArgs => engine::init::InitInput { adapters, values, name, description, upgrade });

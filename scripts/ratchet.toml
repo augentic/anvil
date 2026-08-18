@@ -10,22 +10,36 @@
 [rust]
 "src" = 46
 "crates/adapter" = 912
-"crates/artifacts" = 3191
+# Phase 3 (ADR-0009 §4): artifacts carries the fail-closed spec AST
+# alongside the lenient v1 parsers it replaces until the spine cut
+# deletes them with their `crates/project` consumers.
+"crates/artifacts" = 3480
 "crates/diagnostics" = 884
+# New-spine crate (remediation Phase 3, ADR-0009 §6): the loop plus the
+# handler/resolver kernels ported at the T9 spine cut.
+"crates/engine" = 2600
 "crates/error" = 267
-"crates/guest" = 148
-"crates/launcher" = 700
-"crates/mock" = 343
+"crates/guest" = 220
+# Dev-only journey harness (ADR-0009 §5): one runtime! plus the
+# scripted model backend.
+"crates/journey-host" = 150
+# Post-T10 ceilings (ADR-0009 §6): the native provider and the
+# launcher distribution machinery are deleted; the launcher is
+# local-only resolution and the mock is the wasm-free adapter core.
+"crates/launcher" = 275
+"crates/mock" = 215
 "crates/mock-component" = 10
-"crates/native" = 490
-"crates/project" = 24535
 "crates/prose" = 147
-"crates/transport" = 578
+"crates/transport" = 425
 
 # Non-blank Markdown line ceilings: the prose-budget half of the
 # ratchet (CONSTITUTION.md invariant 2). Files are counted alone;
 # directories count every `.md` / `.mdc` beneath them.
 [prose]
-"AGENTS.md" = 83
+# +2 lines for the engine and journey-host workspace-map entries
+# (ADR-0009).
+"AGENTS.md" = 85
 "CONSTITUTION.md" = 26
+# The reviewed v1 synthesis-prompt port (remediation Phase 3, ADR-0009 §4).
+"crates/engine/prose" = 140
 "plugins/emery" = 69

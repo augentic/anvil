@@ -2,82 +2,54 @@
 //! mount and resolver expressions evaluated by `src/main.rs`. One
 //! invocation captures the layout exactly once ([`Policy::new`]).
 
-use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use project::adapter::{AdapterSelector, RoutedId};
-use project::config::ProjectConfig;
-use project::handler::{
-    CHANGE_ROOT_ENV, DETACHED_ENV, ExecutionPaths, GUEST_CACHE_MOUNT, Locations, PROJECT_ROOT_ENV,
-};
-use transport::command::selectors::refresh_request;
+use engine::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations, PROJECT_ROOT_ENV};
+use engine::resolve::RoutedId;
 
 mod anchor;
-mod install;
 mod resolver;
 
-pub use install::Registry;
 pub use resolver::Resolver;
 
 /// Guest-visible preopen name of the per-project derived cache.
 pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
 
-/// One invocation's deployment policy: the anchored layout plus the
-/// adapter refresh set.
+/// One invocation's deployment policy: the anchored layout.
 ///
 /// [`Policy::new`] is the pure assembly over explicit inputs (the
 /// integration seam); the module-level accessors evaluate it exactly
-/// once per process over argv, the working directory, and
+/// once per process over the working directory and
 /// `Locations::from_env`.
 #[derive(Debug)]
 pub struct Policy {
     paths: ExecutionPaths,
-    /// Bare adapter names this invocation explicitly upgrades — the
-    /// resolver's registry check runs for these even when a store
-    /// entry exists. Derived from argv (`init <bare-name>`) plus the
-    /// recorded `project.yaml` binding for `init --upgrade`.
-    refresh: BTreeSet<String>,
 }
 
 impl Policy {
     /// Assemble the policy for one invocation: anchor the project
-    /// root, capture the layout, create the writable mount
-    /// directories, and derive the refresh set.
+    /// root, capture the layout, and create the writable mount
+    /// directories.
     ///
     /// Total by design — the runtime must always boot so the guest
-    /// renders every diagnostic: argv the grammar refuses anchors at
-    /// the walked working directory, and mount-directory creation
-    /// failures are left for the runtime's own preopen error.
+    /// renders every diagnostic: an unanchored invocation boots
+    /// in-place, and mount-directory creation failures are left for
+    /// the runtime's own preopen error.
     #[must_use]
-    pub fn new(invoked_dir: &Path, argv: &[String], locations: Locations) -> Self {
-        // The refresh projection parses the guest grammar, so it must
-        // see the same peeled view Omnia gives the guest — a stray
-        // `--debug` would fail the parse and drop the anchoring.
-        let argv: Vec<String> =
-            argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
-        let roots = anchor::roots(invoked_dir);
-        let paths = ExecutionPaths::from_roots(&roots, locations);
-        // The global store is host-owned (no guest mount); the install
-        // leg creates it on demand.
+    pub fn new(invoked_dir: &Path, locations: Locations) -> Self {
+        let paths = ExecutionPaths::new(anchor::root(invoked_dir), locations);
+        // The global store is host-owned (no guest mount).
         for dir in [paths.cache_dir(), paths.project_root().to_path_buf()] {
             drop(std::fs::create_dir_all(dir));
         }
-        let refresh = refresh_names(&argv, paths.project_root());
-        Self { paths, refresh }
+        Self { paths }
     }
 
     /// Host directory of the writable `.` project mount.
     #[must_use]
     pub fn project_root(&self) -> &Path {
         self.paths.project_root()
-    }
-
-    /// Bare adapter names this invocation forces a registry check for
-    /// (the `init` refresh surface).
-    #[must_use]
-    pub const fn refresh(&self) -> &BTreeSet<String> {
-        &self.refresh
     }
 
     /// Host directory of the writable cache mount, named
@@ -88,29 +60,11 @@ impl Policy {
     }
 
     /// The fail-closed adapters-only guest resolver over this
-    /// invocation's captured layout and refresh set.
+    /// invocation's captured layout.
     #[must_use]
     pub fn resolver(&self) -> Resolver {
-        Resolver::new(self.paths.clone(), self.refresh.clone())
+        Resolver::new(self.paths.clone())
     }
-}
-
-/// The bare adapter names one invocation explicitly upgrades: argv's
-/// refresh projection, widened with the recorded `project.yaml`
-/// binding for `init --upgrade`. Best-effort by design — an unreadable
-/// or non-bare record simply refreshes nothing (the guest handler
-/// renders the diagnostic).
-fn refresh_names(argv: &[String], project_root: &Path) -> BTreeSet<String> {
-    let request = refresh_request(argv);
-    let mut names: BTreeSet<String> = request.names.into_iter().collect();
-    if request.recorded_adapter
-        && let Ok(config) = ProjectConfig::load(project_root)
-        && let Some(adapter) = config.adapter
-        && let Ok(AdapterSelector::Bare { name }) = AdapterSelector::parse(&adapter)
-    {
-        names.insert(name);
-    }
-    names
 }
 
 /// The process-wide policy, evaluated once across the macro's mount
@@ -122,11 +76,7 @@ fn current() -> &'static Policy {
     static POLICY: OnceLock<Policy> = OnceLock::new();
     POLICY.get_or_init(|| {
         let invoked_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        // Lossy is safe here: non-UTF-8 argv fails the grammar (no
-        // refresh) and the runtime itself refuses it with a typed error.
-        let argv: Vec<String> =
-            std::env::args_os().skip(1).map(|arg| arg.to_string_lossy().into_owned()).collect();
-        let policy = Policy::new(&invoked_dir, &argv, Locations::from_env());
+        let policy = Policy::new(&invoked_dir, Locations::from_env());
         export_roots(&policy.paths);
         policy
     })
@@ -139,20 +89,12 @@ fn current() -> &'static Policy {
 fn export_roots(paths: &ExecutionPaths) {
     let mount = std::path::absolute(paths.project_root())
         .unwrap_or_else(|_io| paths.project_root().to_path_buf());
-    let change = std::path::absolute(paths.change_root())
-        .unwrap_or_else(|_io| paths.change_root().to_path_buf());
     // SAFETY: one write during runtime assembly, before guest stores
     // snapshot the environment and before this process spawns any
     // concurrent environment reader.
-    #[expect(unsafe_code, reason = "the guest inherits the roots through the env")]
+    #[expect(unsafe_code, reason = "the guest inherits the root through the env")]
     let () = unsafe {
         std::env::set_var(PROJECT_ROOT_ENV, mount.as_os_str());
-        std::env::set_var(CHANGE_ROOT_ENV, change.as_os_str());
-        if paths.is_detached() {
-            std::env::set_var(DETACHED_ENV, "1");
-        } else {
-            std::env::remove_var(DETACHED_ENV);
-        }
     };
 }
 

@@ -71,9 +71,7 @@ impl AdapterSelector {
                 detail: format!(
                     "GitHub adapter URIs are not supported (`{value}`): a source checkout \
                      does not yield a usable adapter artifact. Pin a published component \
-                     (`emery:<name>@<semver>`), point at a local `.wasm` component file, or \
-                     seed one into the project component cache (`emery adapter add \
-                     <path/to/component.wasm>`)"
+                     (`emery:<name>@<semver>`) or point at a local `.wasm` component file"
                 ),
             });
         }
@@ -149,10 +147,10 @@ impl AdapterSelector {
         }
     }
 
-    /// The value init records on `project.yaml.adapter`: the wire form,
-    /// with a component path canonicalized (anchored at `project_dir`
-    /// when relative) so the recorded selector outlives the operator's
-    /// working directory. The selector kind is never rewritten.
+    /// The value init records on a `project.yaml` source binding: the
+    /// wire form, with a component path canonicalized (anchored at
+    /// `project_dir` when relative) so the recorded selector outlives
+    /// the operator's working directory. The kind is never rewritten.
     ///
     /// # Errors
     ///

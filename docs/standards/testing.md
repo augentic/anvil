@@ -12,19 +12,19 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The green rung is **native integration**: `cargo make test` drives the surviving surface (`init`, the `specify` stub, adapter resolution, the C3 HTTP refusal) through the engine crates' public operations, the `mock` catalog behind the offline `native` provider, and scripted model doubles. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
+The green rung is **native integration**: `cargo make test` drives the live surface (`init`, `specify`, adapter resolution, the C3 HTTP refusal) through the engine crates' public operations, the `mock` catalog behind the offline `native` provider, and scripted model doubles. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
 
-The red rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo make journey`): the shipped binary over the built mock source component (`cargo make mock-component`), asserting the target-architecture §8 journey across the production component seam. Red by design until remediation Phase 3 (ADR-0008); excluded from `cargo make test` by the nextest `default-filter` and run as a non-blocking CI job. Greening it is Phase 3's exit criterion — extend the scaffold, never weaken the assertions. The wasm32 guest is additionally compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`).
+The seam rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo make journey`): the dev-only journey host (`crates/journey-host` — the shipped runtime shape with a scripted `WasiModel` backend, ADR-0009 §5) over the built mock source components (`cargo make mock-component`), asserting the target-architecture §8 journey across the production component seam. The Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Extend the scaffold, never weaken the assertions. The wasm32 guest is additionally compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`).
 
 ### The mock crate
 
-`crates/mock` is Emery's single mock crate (`publish = false`, dev-dep'd by the suite-bearing crates — a legal Cargo dev-dependency cycle). It owns the SDK-native mock source adapter core (`mock::behaviour`): controlled evidence with stable authority and claim anchors, plus typed failure profiles registered as explicit catalog identities (`mock::catalog()`). Native tests reach it through the offline `native::Provider` via the host-only `mock::session::Session` and the generalized `mock::invoke::run`. Resolver / install / store suites use their suite-local provider under `crates/project/tests/support/` instead — component-metadata resolution is not a catalog concern. Do not add another mock adapter, mock model, or mock-adapter copy — extend the core and let every consumer inherit the behavior.
+`crates/mock` is Emery's single mock crate (`publish = false`, dev-dep'd by the suite-bearing crates — a legal Cargo dev-dependency cycle). It owns the SDK-native mock source adapter core (`mock::behaviour`): controlled evidence with stable authority and claim anchors, plus typed failure profiles registered as explicit catalog identities (`mock::catalog()`). Native tests reach it through the offline `native::Provider` via the host-only `mock::session::Session` and the generalized `mock::invoke::run`. The launcher's resolver / install / store suite (`crates/launcher/tests/`) builds its own fixture components instead — component-metadata resolution is not a catalog concern. Do not add another mock adapter, mock model, or mock-adapter copy — extend the core and let every consumer inherit the behavior.
 
 Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness`; `mock::session::Session` binds that harness. Emery owns only scenario content and assertions.
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/project/tests/init.rs`, `crates/transport/tests/router.rs`, and so on. Cross-crate helpers come from the `mock` and `native` dev-dependencies (`use mock::…`, `use native::…`); crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Developer Guide link integrity is `mdbook-linkcheck2`'s job (`cargo make links`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/engine/tests/specify.rs`, `crates/transport/tests/router.rs`, and so on. Cross-crate helpers come from the `mock` and `native` dev-dependencies (`use mock::…`, `use native::…`); crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Developer Guide link integrity is `mdbook-linkcheck2`'s job (`cargo make links`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -83,7 +83,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 ## Assertion ownership
 
 - A behavior reducible to a crate API, CLI result, filesystem predicate, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its seam.
-- Engine behavior belongs to the native suites; component-boundary wiring belongs to the journey rung (red until Phase 3). Name the seam an assertion owns before writing it.
+- Engine behavior belongs to the native suites; component-boundary wiring belongs to the journey rung. Name the seam an assertion owns before writing it.
 
 ## Test naming
 
@@ -99,7 +99,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 ## Patterns to follow
 
 - Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `mock` — `mock::session::Session` (its constructors mint the tempdir and pin the project cache) and the generalized `mock::invoke::run::<Op, _, _>` invoker helper.
-- Compare structured output against checked-in goldens (the crate-local `spec-*` cases under `crates/artifacts/tests/fixtures/`, the generated answer schemas under `crates/project/answers/` and `crates/adapter/schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
+- Compare structured output against checked-in goldens (the crate-local `spec-*` cases under `crates/artifacts/tests/fixtures/`, the committed answer schemas under `crates/adapter/schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
@@ -113,8 +113,8 @@ REGENERATE_GOLDENS=1 cargo nextest run -p <crate> --test <binary>
 
 `REGENERATE_GOLDENS=1` regenerates every checked-in golden — the structural artifact goldens and the generated answer schemas. After regenerating, run `git diff` on the outputs and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors)).
 
-| Crate                 | Test binary | Fixture / golden dir(s)                                       |
-| --------------------- | ----------- | ------------------------------------------------------------- |
-| `project` / `adapter` | `answers`   | `crates/project/answers/`, `crates/adapter/schemas/answers/` |
+| Crate     | Test binary | Fixture / golden dir(s)          |
+| --------- | ----------- | -------------------------------- |
+| `adapter` | `answers`   | `crates/adapter/schemas/answers/` |
 
 Binaries not listed here assert structurally and carry no regenerable goldens.

@@ -4,7 +4,6 @@
 //! closed enums and tag coherence; findings aggregate rather than fail fast.
 
 use diagnostics::{Artifact, Diagnostic, FindingLocation};
-use serde::{Deserialize, Serialize};
 
 mod checks;
 mod parse;
@@ -45,60 +44,7 @@ pub struct Requirement {
     pub span: Span,
 }
 
-/// Closed enum for the `Status:` line (workflow §Authority hierarchy).
-#[derive(
-    Debug,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    strum::Display,
-    strum::EnumString,
-    strum::IntoStaticStr,
-    schemars::JsonSchema,
-)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum RequirementStatus {
-    /// One source, or multiple sources that agree.
-    Agreed,
-    /// No contributing evidence.
-    Unknown,
-    /// Tied top-authority disagreement; operator must reconcile.
-    Conflict,
-    /// Authority-resolved disagreement; loser is commentary.
-    Divergence,
-}
-
-/// Inline heading tag attached to a `### Requirement:` line when the
-/// `Status:` value is anything other than `agreed`.
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString, strum::IntoStaticStr,
-)]
-#[strum(serialize_all = "kebab-case")]
-pub enum RequirementTag {
-    /// `[unknown]`.
-    Unknown,
-    /// `[conflict]`.
-    Conflict,
-    /// `[divergence]`.
-    Divergence,
-}
-
-impl RequirementTag {
-    /// The `Status:` value this tag must pair with per the workflow contract
-    /// §Authority hierarchy.
-    #[must_use]
-    pub const fn expected_status(self) -> RequirementStatus {
-        match self {
-            Self::Unknown => RequirementStatus::Unknown,
-            Self::Conflict => RequirementStatus::Conflict,
-            Self::Divergence => RequirementStatus::Divergence,
-        }
-    }
-}
+pub use super::ast::{Status as RequirementStatus, Tag as RequirementTag};
 
 /// Byte-anchored source-text span. `line_start` is 1-based.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

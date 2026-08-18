@@ -15,14 +15,12 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  # The walking-skeleton journey (target-architecture §8): red by
-  # design until the Phase 3 spec generator lands, so the job is
-  # non-blocking — visible red, never a gate. The Phase 3 exit flips
-  # it to required (ADR-0008; rfcs/remediation-plan.md Phase 2).
+  # The walking-skeleton journey (target-architecture §8): the Phase 3
+  # exit criterion — the spec generator over the component seam via
+  # the scripted-model journey host (ADR-0008, ADR-0009). Required.
   journey:
-    name: Journey (red until Phase 3)
+    name: Journey
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

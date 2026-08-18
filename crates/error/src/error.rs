@@ -13,7 +13,7 @@ use std::borrow::Cow;
 #[expect(missing_docs, reason = "variant-level docs cover self-explanatory error fields")]
 pub enum Error {
     /// The `.emery/project.yaml` file is missing.
-    #[error("not initialized: .emery/project.yaml not found")]
+    #[error("not-initialized: .emery/project.yaml not found")]
     NotInitialized,
 
     /// Structured catch-all for diagnostics that don't have a dedicated
@@ -132,9 +132,9 @@ impl Error {
                 "plan-ownership-overlap" => Some(
                     "quiesce affected work, then apply the inert ownership proposal with `emery plan amend --proposal <digest>`",
                 ),
-                "init-adapter-required" => {
-                    Some("`emery init <adapter>` scaffolds the project.\nsee: docs/init.md")
-                }
+                "init-source-required" => Some(
+                    "`emery init <adapter>...` scaffolds the project over its source bindings.\nsee: docs/init.md",
+                ),
                 "slice-claim-conflict" => Some(
                     "claim a different slice, or wait for the current owner to release / retract their claim",
                 ),
@@ -197,9 +197,6 @@ impl Error {
 
 fn diag_hint(code: &str) -> Option<&'static str> {
     match code {
-        "specify-not-implemented" => Some(
-            "the spec generator lands with the remediation programme's Phase 3 walking skeleton; see rfcs/remediation-plan.md",
-        ),
         "plan-has-outstanding-work" => {
             Some("complete or drop the listed entries, or rerun with --force to archive anyway")
         }

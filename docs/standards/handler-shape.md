@@ -1,14 +1,14 @@
 # Operation shape
 
-The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in the engine crates (today `project`), how `Ctx` is constructed from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
+The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/engine`, how `RequestContext` is assembled from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
 
-## Shared operation plumbing (`project::handler`)
+## Shared operation plumbing (`engine::handler`)
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
 - **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
-- **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
-- **`type Error = project::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
+- **`call(input, context)`** assembles `RequestContext` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
+- **`type Error = engine::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
 Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`, so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
 
@@ -20,8 +20,8 @@ impl<P: Anchor> Operation<P> for Frob {
     type Output = FrobBody;
 
     async fn call(input: Self::Input, context: CallContext<'_, P>) -> Result<Self::Output, Self::Error> {
-        let cx = Ctx::load(context.provider)?;
-        let outcome = some_crate::do_work(cx.layout(), &input)?;
+        let request = RequestContext::load(context.provider)?;
+        let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
         Ok(FrobBody::from(&outcome))
     }
 }
@@ -29,11 +29,11 @@ impl<P: Anchor> Operation<P> for Frob {
 
 Operations live in each domain module's `handlers` submodule beside its kernels.
 
-## Ctx construction and the Anchor
+## RequestContext and the Anchor (C5)
 
-Operations construct `project::handler::Ctx` inside `call` via `Ctx::load(context.provider)`. The project location comes from the provider's `Anchor`; operations never read the process CWD themselves.
+Project-scoped operations assemble the one `engine::handler::RequestContext` inside `call` via `RequestContext::load(context.provider)`: the provider's `Anchor` supplies the paths, and the project loads fail-closed (version floor included) exactly once. Operations never read the process CWD themselves.
 
-`emery init` is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `Ctx`.
+`emery init` is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `RequestContext`.
 
 ## Output: `Render + Serialize`
 
@@ -45,7 +45,7 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 ## Errors and their projections
 
-`project::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
+`engine::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
 
 ## Exit codes
 
@@ -86,4 +86,4 @@ Never put domain logic in `transport` or a shim's route match. Manual `Input { �
 
 ## Gotcha — `emery init` and the version floor
 
-`emery init` bypasses the `emery` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a route or operation site.
+`emery init` bypasses the `emery` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `RequestContext::load` (over `engine::project::Project::load`). Don't reimplement the floor check at a route or operation site.

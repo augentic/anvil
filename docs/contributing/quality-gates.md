@@ -4,7 +4,7 @@ Emery proves engine correctness from this repository alone: native integration t
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and binary integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it prove the shipped verb surface (`init`, the `specify` stub, `completions`) through the mock adapter over the offline native provider and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it prove the shipped verb surface (`init`, `specify`, `completions`) through the mock adapter over the offline native provider and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 

@@ -6,7 +6,7 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 - `--format json` responses are a **flat body**: every successful body is a single JSON object carrying the command-specific fields **at the top level** — there is no `ok` discriminant, no `data` wrapper, and no top-level envelope-version stamp.
 - Failures keep the same flat shape with three extra top-level keys:
-  - `error` — a **kebab-case discriminant string** (e.g. `"init-adapter-required"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the exit-code table.
+  - `error` — a **kebab-case discriminant string** (e.g. `"init-source-required"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the exit-code table.
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise.
@@ -36,30 +36,26 @@ The success body's `mode` is the closed run discriminant (`scaffolded` | `alread
 {
   "mode": "scaffolded",
   "config-path": "/work/app/.emery/project.yaml",
-  "adapter-name": "intent",
-  "adapter-binding": "intent",
-  "cache-present": false,
-  "directories-created": [".emery", ".emery/cache/components"],
-  "scaffolded-rule-keys": [],
-  "emery-version": "0.38.0",
-  "context-generated": true,
-  "context-skipped": false
+  "sources": ["documentation", "intent"],
+  "emery-version": "0.38.0"
 }
 ```
 
-`emery init` with no adapter fails with `error: "init-adapter-required"` (exit 2). A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"` (exit 2).
+`emery init` with no source fails with `error: "init-source-required"` (exit 2). A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"` (exit 2).
 
 ### `emery specify`
 
-Reserved for the Phase 3 spec generator; today the verb always fails typed:
+The success body names the committed generation and its reviewable set:
 
 ```json
 {
-  "error": "specify-not-implemented",
-  "message": "specify-not-implemented: `emery specify` is reserved for the spec generator; it lands with the remediation programme's Phase 3 walking skeleton",
-  "exit-code": 1
+  "generation": "9f8e7d6c…",
+  "requirements": 3,
+  "sources": 3
 }
 ```
+
+Outside an initialised project the verb fails with `error: "not-initialized"` (exit 1). Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
 
 ### `emery completions <shell>`
 
@@ -71,8 +67,8 @@ Every failing verb emits the same flat `ErrorBody` on stderr:
 
 ```json
 {
-  "error": "init-adapter-required",
-  "message": "emery init requires an adapter",
+  "error": "init-source-required",
+  "message": "emery init requires at least one source adapter",
   "exit-code": 2
 }
 ```

@@ -13,12 +13,14 @@ rust-version.workspace = true
 name = "guest"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+emery-adapter.workspace = true
+emery-engine.workspace = true
 emery-error.workspace = true
+serde_json.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-otel.workspace = true
-emery-project.workspace = true
 emery-transport.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true

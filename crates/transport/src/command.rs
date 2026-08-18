@@ -1,10 +1,10 @@
 //! Typed command grammar, conversions, and Emery projection policy.
 
 use clap::Args;
+use engine::handler::{Anchor, Render};
+use engine::resolve::Resolver;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
-use project::adapter::Resolver;
-use project::handler::{Anchor, Render};
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -14,8 +14,6 @@ pub use self::routes::router;
 
 mod output;
 mod routes;
-pub mod selectors;
-mod specify;
 
 /// Arguments shared by every command route.
 #[derive(Clone, Copy, Debug, Args)]
@@ -29,14 +27,14 @@ pub struct Globals {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EmeryProjector;
 
-impl<T> Projector<T, project::handler::Error, error::Error, Globals> for EmeryProjector
+impl<T> Projector<T, engine::handler::Error, error::Error, Globals> for EmeryProjector
 where
     T: Render + Serialize + Send + 'static,
 {
     type Error = error::Error;
 
     fn project(
-        &self, outcome: Outcome<T, project::handler::Error, error::Error>, globals: &Globals,
+        &self, outcome: Outcome<T, engine::handler::Error, error::Error>, globals: &Globals,
     ) -> Result<CommandResponse, Self::Error> {
         match outcome {
             Outcome::Output(output) => {
@@ -77,11 +75,11 @@ fn failure_response(format: Format, error: &error::Error) -> CommandResponse {
 }
 
 fn operation_response(
-    format: Format, error: project::handler::Error,
+    format: Format, error: engine::handler::Error,
 ) -> Result<CommandResponse, error::Error> {
     match error {
-        project::handler::Error::Core(source) => error_response(format, &source),
-        project::handler::Error::Report { body, source } => {
+        engine::handler::Error::Core(source) => error_response(format, &source),
+        engine::handler::Error::Report { body, source } => {
             let stdout = encode(format, &body, |w, v| v.render(w))?;
             let mut response = error_response(format, &source)?;
             response.stdout = stdout;

@@ -26,7 +26,7 @@ fn step(...) { ... }
 fn step(...) { ... }
 
 // GOOD — module-root suppression that legitimately covers every item below
-// crates/project/src/agents.rs
+// crates/engine/src/generated.rs
 #![allow(
     missing_docs,
     clippy::pedantic,
@@ -122,7 +122,7 @@ match format {
 Ok(SomeBody::from(&result))
 ```
 
-Text mode renders through the body's `project::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
+Text mode renders through the body's `engine::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
 
 ## One emit path
 

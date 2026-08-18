@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
-use super::core::{ResolvedSource, ResolvedTarget};
+use super::core::ResolvedSource;
 use super::resolver::{Component, Resolver as _, component_cache_entry};
 use super::selector::canonicalize_component;
 use super::{AdapterSelector, metadata, selector};
@@ -28,21 +28,6 @@ pub fn source(
 ) -> Result<ResolvedSource, Error> {
     provision(selector, paths, now)?;
     Component::new(runner).resolve_source(selector, paths)
-}
-
-/// Ensure a target selector for the component deployment: provision
-/// (mirror), then resolve through the component resolver.
-///
-/// # Errors
-///
-/// Provisioning failures (`adapter-component-missing`,
-/// `adapter-canonicalize-failed`) ahead of resolve failures.
-pub fn target(
-    runner: metadata::Runner, selector: &AdapterSelector, paths: &ExecutionPaths,
-    now: jiff::Timestamp,
-) -> Result<ResolvedTarget, Error> {
-    provision(selector, paths, now)?;
-    Component::new(runner).resolve_target(selector, paths)
 }
 
 /// Make one selector resolvable on the guest side of the seam: mirror
@@ -172,10 +157,10 @@ impl ComponentMeta {
     /// Load the provenance sidecar for `name`, when present and
     /// parseable. The recorded `source` is the canonical `file://`
     /// URI of the component the mirror was seeded from — the value
-    /// init persists on `project.yaml.adapter` for a component
-    /// selector, so a guest that cannot see the operator's host path
-    /// (the launcher mirrored it before the runtime started) still
-    /// records the host-canonical binding.
+    /// init persists on the source binding for a component selector,
+    /// so a guest that cannot see the operator's host path (the
+    /// launcher mirrored it before the runtime started) still records
+    /// the host-canonical binding.
     #[must_use]
     pub fn load(paths: &ExecutionPaths, name: &str) -> Option<Self> {
         let raw = fs::read_to_string(Self::path(paths, name)).ok()?;

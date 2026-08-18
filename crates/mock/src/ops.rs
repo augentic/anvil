@@ -62,8 +62,21 @@ pub struct Code;
 
 mock_source!(Code, "mock-code");
 
+/// The inline operator-intent source that outranks the pair.
+#[derive(Clone, Copy, Debug)]
+pub struct Intent;
+
+mock_source!(Intent, "mock-intent");
+
 /// A source whose `extract` fails with a typed internal error.
 #[derive(Clone, Copy, Debug)]
 pub struct FailExtract;
 
 mock_source!(FailExtract, "mock-fail-extract");
+
+/// A source violating A8: a requirement claim missing its required
+/// `statement` extra, for the engine's fail-closed gate.
+#[derive(Clone, Copy, Debug)]
+pub struct MissingExtras;
+
+mock_source!(MissingExtras, "mock-missing-extras");

@@ -140,20 +140,14 @@ verbose_file_reads = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.104"
-axum = "0.8.9"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 clap_complete = "4.6.9"
 glob = "0.3.4"
-ignore = "0.4.23"
 jiff = { version = "0.2.35", default-features = false, features = ["serde", "std"] }
-oci-client = { version = "0.17.0", default-features = false, features = ["rustls-tls"] }
-oci-wasm = { version = "0.6.0", default-features = false, features = ["rustls-tls"] }
-petgraph = "0.8.3"
 proptest = "1.11.0"
 regex = "1.13.1"
-reqwest = "0.13.4"
 schemars = "1.2.2"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
@@ -177,12 +171,12 @@ wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 emery-adapter = { path = "crates/adapter" }
 emery-artifacts = { path = "crates/artifacts" }
 emery-diagnostics = { path = "crates/diagnostics" }
+emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
 emery-guest = { path = "crates/guest" }
 emery-launcher = { path = "crates/launcher" }
 emery-mock = { path = "crates/mock" }
-emery-native = { path = "crates/native" }
-emery-project = { path = "crates/project" }
+emery-prose = { path = "crates/prose" }
 emery-transport = { path = "crates/transport" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }

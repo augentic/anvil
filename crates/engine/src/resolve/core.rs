@@ -1,26 +1,18 @@
-//! Axis-split adapter identity model and post-resolve coherence gates.
+//! Adapter identity model and post-resolve coherence gates.
 //!
-//! Identity lives in the package reference, axis in the exported world
-//! (`source` xor `target`); there is no on-disk manifest.
+//! Identity lives in the package reference, axis in the exported world;
+//! there is no on-disk manifest. Only the source axis is live (ADR-0008).
 
 use std::path::PathBuf;
 
 use error::Error;
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::operation::{SourceOperation, TargetOperation};
-
-mod platforms;
-
-pub use platforms::{PlatformsCapability, PlatformsSurface};
-
 /// Axis discriminator for an adapter component.
 ///
-/// Source vs target — see workflow §Adapter vocabulary. The closed enum
-/// routes the resolver dispatcher (`commands::resolve_adapter`) and the
-/// metadata dispatch; the in-memory adapters themselves are axis-typed
-/// ([`SourceAdapter`] / [`TargetAdapter`]) so internal call sites no
-/// longer carry the `axis` argument forward past the resolver boundary.
+/// Only [`Axis::Source`] is live; `Target` survives in the routed-id
+/// grammar so recorded target ids parse to a typed refusal rather than
+/// a grammar error (the target axis returns with the build programme).
 #[derive(
     Debug,
     Clone,
@@ -36,15 +28,14 @@ pub use platforms::{PlatformsCapability, PlatformsSurface};
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Axis {
-    /// Source adapter — `extract` + `survey`.
+    /// Source adapter — `extract` + `metadata`.
     Source,
-    /// Target adapter — `guidance` + `build` + `merge`.
+    /// Target adapter — deferred with the build programme.
     Target,
 }
 
 impl Axis {
-    /// Axis segment used by deployment guest ids and prose trees —
-    /// `"sources"` for source adapters, `"targets"` for target adapters.
+    /// Axis segment used by deployment guest ids and prose trees.
     #[must_use]
     pub const fn dir_segment(self) -> &'static str {
         match self {
@@ -64,50 +55,6 @@ impl Axis {
     }
 }
 
-/// One adapter-declared build input from the target's `metadata`
-/// answer.
-///
-/// Each entry names a path the target's `build` operation consumes,
-/// relative to the build request's `inputs.root` (the slice tree). The
-/// CLI assembles the request's `inputs.artifacts.additional[]` from
-/// this list and raises `target-build-input-missing` when a `required`
-/// path is absent. v1 keeps the declaration a flat path list — globs
-/// and conditional inputs are deferred.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct BuildInputDeclaration {
-    /// Slice-relative input path.
-    pub path: String,
-    /// Whether `build` requires this input; a missing `required` path
-    /// is a build-time abort.
-    pub required: bool,
-}
-
-/// Grant grammar for one writable slice artifact (RFC-90 D5),
-/// mirroring the WIT `writable-artifact-kind` enum.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub enum WritableArtifactKind {
-    /// The grant names exactly one slice-relative file.
-    File,
-    /// The grant names a directory and its descendants.
-    Tree,
-}
-
-/// One target-declared writable slice artifact from the metadata
-/// answer (RFC-90 D5), mirroring the WIT `writable-artifact` record.
-///
-/// Paths use `/`, must be relative, and admit no glob or `..`
-/// grammar. The engine rejects any staged-artifact change outside the
-/// declared grants, even when the phase omits it from `written`.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub struct ArtifactDeclaration {
-    /// Slice-relative path of the granted file or tree root.
-    pub path: String,
-    /// File or tree grant.
-    pub kind: WritableArtifactKind,
-}
-
 /// Where an adapter component was located on disk. The carried path is
 /// the single `.wasm` component file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,14 +62,14 @@ pub enum AdapterLocation {
     /// Resolved from the global content-addressed adapter store entry
     /// at `<store-root>/<name>@<version>.wasm` — the immutable,
     /// version-keyed install target resolved through the carried
-    /// `Locations` and populated by the wasm-pkg transport. Probed
-    /// whenever the selector carries a pinned version.
+    /// `Locations`. Probed whenever the selector carries a pinned
+    /// version.
     Store(PathBuf),
     /// Resolved from the project component cache
     /// (`<project-cache>/components/<name>.wasm`) — the seeded mirror
-    /// `emery adapter add` (or a local-component init) populated.
-    /// Probed for bare-name (unpinned) references and persisted
-    /// component selectors; never outside the carried cache placement.
+    /// a local-component init populated. Probed for bare-name
+    /// (unpinned) references and persisted component selectors; never
+    /// outside the carried cache placement.
     Cache(PathBuf),
 }
 
@@ -143,24 +90,22 @@ impl AdapterLocation {
             Self::Store(path) | Self::Cache(path) => path,
         }
     }
-}
 
-/// Deployment-neutral description of where an adapter resolved.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Origin {
-    /// Resolver-defined mechanism label (`store`, `dev`, `native`, …).
-    pub label: String,
-    /// Human-readable reference to the resolved implementation.
-    pub reference: String,
-}
-
-impl AdapterLocation {
     pub(super) fn origin(&self) -> Origin {
         Origin {
             label: self.label().to_string(),
             reference: self.path().display().to_string(),
         }
     }
+}
+
+/// Deployment-neutral description of where an adapter resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Origin {
+    /// Resolver-defined mechanism label (`store`, `cache`, `native`, …).
+    pub label: String,
+    /// Human-readable reference to the resolved implementation.
+    pub reference: String,
 }
 
 /// In-memory identity + metadata of a resolved source adapter.
@@ -179,40 +124,6 @@ pub struct SourceAdapter {
     pub requires_emery: Option<semver::Version>,
 }
 
-/// In-memory identity + metadata of a resolved target adapter.
-///
-/// Constructed by a [`crate::adapter::Resolver`]: `name`/`version` from
-/// the resolved selector identity, the rest from its metadata answer.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TargetAdapter {
-    /// Kebab-case adapter name from the resolved identity.
-    pub name: String,
-    /// Semver adapter version: the pin for store-resolved (and
-    /// native-catalog) identities; `None` for an unpinned cache
-    /// resolve — a seeded component carries no package identity.
-    pub version: Option<semver::Version>,
-    /// Optional host-CLI compatibility floor from the metadata
-    /// answer's `emery-floor`. The resolver compares it against the
-    /// running binary (`check_requires_emery`) and aborts with
-    /// `adapter-cli-too-old` (exit 3) when the binary is older.
-    pub requires_emery: Option<semver::Version>,
-    /// Adapter-declared build inputs from the metadata answer. Each
-    /// entry is a path relative to the build request's `inputs.root`,
-    /// flagged `required`; the guest build orchestrator assembles
-    /// `inputs.artifacts.additional[]` from this list.
-    pub inputs: Vec<BuildInputDeclaration>,
-    /// Optional platforms capability from the metadata answer. When
-    /// present the target declares the closed set of [`crate::Platform`]
-    /// tokens it accepts, whether projects must declare platforms, and
-    /// the default set for greenfield scaffolding.
-    pub platforms: Option<PlatformsCapability>,
-    /// Typed writable slice-artifact grants from the metadata answer
-    /// (RFC-90 D5). The build phase's staged-artifact gate rejects any
-    /// change outside these grants. Empty when the target writes no
-    /// slice artifacts.
-    pub writable_artifacts: Vec<ArtifactDeclaration>,
-}
-
 /// A resolved [`SourceAdapter`] paired with its deployment-neutral
 /// origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -221,46 +132,6 @@ pub struct ResolvedSource {
     pub manifest: SourceAdapter,
     /// Deployment-neutral implementation origin.
     pub origin: Origin,
-}
-
-/// A resolved [`TargetAdapter`] paired with its deployment-neutral
-/// origin.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedTarget {
-    /// Resolved identity and metadata.
-    pub manifest: TargetAdapter,
-    /// Deployment-neutral implementation origin.
-    pub origin: Origin,
-}
-
-impl SourceAdapter {
-    /// Iterator over the source operations this adapter serves, in
-    /// ascending kebab-name order (`extract < survey`) — the axis's
-    /// closed WIT operation set (`wit/emery.wit`).
-    pub(crate) fn operations() -> impl Iterator<Item = &'static SourceOperation> {
-        const WIT_OPERATIONS: &[SourceOperation] =
-            &[SourceOperation::Extract, SourceOperation::Survey];
-        WIT_OPERATIONS.iter()
-    }
-}
-
-impl TargetAdapter {
-    /// Iterator over the target operations this adapter serves, in
-    /// ascending kebab-name order
-    /// (`build < guidance < merge < repair < review < verify`) — the
-    /// axis's closed WIT operation set (`wit/emery.wit`:
-    /// guidance/build/repair/verify/review/merge, RFC-90).
-    pub(crate) fn operations() -> impl Iterator<Item = &'static TargetOperation> {
-        const WIT_OPERATIONS: &[TargetOperation] = &[
-            TargetOperation::Build,
-            TargetOperation::Guidance,
-            TargetOperation::Merge,
-            TargetOperation::Repair,
-            TargetOperation::Review,
-            TargetOperation::Verify,
-        ];
-        WIT_OPERATIONS.iter()
-    }
 }
 
 /// Parse a metadata answer's `emery-floor` string into a typed
@@ -334,7 +205,7 @@ mod tests {
         };
         let floor = semver::Version::new(2, 0, 0);
 
-        check_requires_emery(Some(&floor), "not-a-version", "demo-target", &origin)
+        check_requires_emery(Some(&floor), "not-a-version", "demo-source", &origin)
             .expect("an unparseable running version must not brick resolution");
     }
 }

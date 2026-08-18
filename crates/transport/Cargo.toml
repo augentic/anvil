@@ -15,22 +15,19 @@ readme = "../../README.md"
 name = "transport"
 
 [dependencies]
+emery-adapter.workspace = true
 emery-artifacts.workspace = true
 clap.workspace = true
 emery-diagnostics.workspace = true
+emery-engine.workspace = true
 emery-error.workspace = true
 omnia-guest.workspace = true
-emery-project.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-jiff.workspace = true
-emery-mock.workspace = true
-emery-native.workspace = true
-omnia-testkit.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 tower.workspace = true

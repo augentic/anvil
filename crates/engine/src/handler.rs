@@ -1,22 +1,18 @@
-//! Shared plumbing for workflow operations.
-//!
-//! Carries [`Anchor`], `Ctx`, [`Render`], [`ReportBody`], and the
-//! operation-layer [`Error`]. Transports (clap, stdout, exit codes) stay out.
+//! Shared plumbing for command operations: [`Anchor`],
+//! [`RequestContext`], [`Render`], [`ReportBody`], and the
+//! operation-layer [`Error`]. Transports stay out.
 
 mod anchor;
-mod ctx;
+mod context;
 mod error;
 mod locations;
 mod output;
 mod paths;
 
 pub use anchor::Anchor;
-pub use ctx::Ctx;
+pub use context::RequestContext;
 pub use error::{Error, FailureBody};
-pub use locations::{
-    CHANGE_ROOT_ENV, CachePlacement, DETACHED_ENV, GUEST_CACHE_MOUNT, GUEST_SNAPSHOTS_MOUNT,
-    GUEST_STAGING_MOUNT, GUEST_STORE_MOUNT, GUEST_WORKSPACES_MOUNT, Locations, PROJECT_ROOT_ENV,
-};
+pub use locations::{CachePlacement, GUEST_CACHE_MOUNT, Locations, PROJECT_ROOT_ENV};
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
 

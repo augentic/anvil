@@ -8,15 +8,15 @@
 
 A Rust workspace at the repository root producing the `emery` runtime binary, plus one Cursor plugin (`plugins/emery/` carrying the `/emery:init` skill wrapper). The live CLI grammar is three verbs:
 
-- `emery init <adapter>` — scaffold `.emery/`, resolve/cache the adapter, write `project.yaml` (`--upgrade` is the re-entry path; `--platforms <csv>` declares the platform set).
-- `emery specify` — reserved by ADR-0008 §3 for the Phase 3 spec generator; today a typed stub failing `specify-not-implemented` (exit 1). It carries no orchestration, no output-home scaffolding, no artifacts.
+- `emery init <adapter>... [--value <adapter>=<text>]` — scaffold `.emery/`, resolve/cache each source adapter, write the `sources:` bindings on `project.yaml` (ADR-0009 §1; `--upgrade` is the re-entry path).
+- `emery specify` — the spec generator (ADR-0008 §3, ADR-0009): extract every source binding over the adapter seam, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer.
 - `emery completions <shell>` — auto-derived from the clap surface.
 
 Deleted verbs are deleted from the grammar, not hidden — there are no compatibility aliases or deprecated stubs. The guest's mutating HTTP catch-all remains a typed refusal (C3, `crates/transport/src/http.rs`); the pre-bound listener serves adapter MCP shelves only.
 
 ## Vocabulary
 
-- **source adapter** — input role: one WebAssembly component exporting the WIT `source-adapter` world (`extract` + `metadata`; no manifest file). `extract` takes a typed `SourceInput` (`key`, workspace-or-value) and returns an Evidence document of typed claims. Survey, leads, and the target axis were deleted from the seam (archived at `v1`). The WIT doc comment in [`wit/emery.wit`](wit/emery.wit) records the Phase 3 design inputs (extract returns the spec IR; required-extras validation is fail-closed) — recorded, not implemented.
+- **source adapter** — input role: one WebAssembly component exporting the WIT `source-adapter` world (`extract` + `metadata`; no manifest file). `extract` takes a typed `SourceInput` (`key`, workspace-or-value) and returns an Evidence document of typed claims — the spec IR (A8/A16; required extras are fail-closed engine-side, ADR-0009 §3). Survey, leads, and the target axis were deleted from the seam (archived at `v1`); see [wit/emery.wit](wit/emery.wit).
 - **engine** — this product: the engine guest (`emery:engine`), the surviving engine crates, and the seam opposite adapters.
 - **plugin** (adapter vocabulary) vs **Cursor plugins** — do not confuse the adapter noun with `plugins/emery/`, the IDE distribution surface for the `/emery:init` skill wrapper; the latter is invisible to the `emery` CLI.
 
@@ -31,7 +31,7 @@ error        # leaf — thiserror + serde-saphyr only
 diagnostics  # neutral Diagnostic substrate + diagnostics::digest (SHA-256)
 artifacts    # artifact types + parsers (evidence, atomic writer, validate registry); no engine deps
 adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, seam DTOs, embedded prose registry
-project      # foundation — init (+ project::agents), adapter resolution (resolver::Component, ensure kernels, Locations/ExecutionPaths), config/Layout, platform enum, handler plumbing (Anchor, Ctx, Render, Error); plus residual v1 modules (plan model, snapshot/workspace kernels, journal, seam DTOs) left compiling for the Phase 3 cut
+engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and engine::handler (Anchor, RequestContext, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
 launcher     # native-only deployment policy (publish = false) — anchoring, mounts, HTTP listener + /mcp/<axis>/<name> routing, fail-closed adapters-only GuestResolver, pull-on-miss install from GHCR
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
@@ -39,6 +39,7 @@ native       # the native host — validated source-adapter Catalog, DynModel, t
 guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, guest::export!
 mock         # dev-only mock crate (publish = false) — mock source adapter core, catalog registry, session helpers, mock::invoke
 mock-component # dev-only journey fixture (publish = false) — the mock source adapter exported as a wasm component (one adapter::source! over crates/mock)
+journey-host # dev-only journey harness (publish = false) — the shipped runtime shape with a scripted WasiModel backend over the same embedded engine guest (ADR-0009 §5)
 emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.bin)
 ```
 
@@ -60,7 +61,7 @@ rfcs/              product yardstick, target architecture, remediation plan, dec
 | Code | Name | When |
 | ---- | ------------------------ | ------------------------------------------------------------------ |
 | 0 | `EXIT_SUCCESS` | Command succeeded. |
-| 1 | `EXIT_GENERIC_FAILURE` | Any `Error` variant not listed below (I/O, YAML, `specify-not-implemented`, …). |
+| 1 | `EXIT_GENERIC_FAILURE` | Any `Error` variant not listed below (I/O, YAML, `not-initialized`, …). |
 | 2 | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`. |
 | 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` — `project.yaml.emery` is newer than the binary — or `Error::AdapterCliTooOld`. |
 
@@ -71,7 +72,7 @@ Emery strictly enforces an **aggressive integration-first posture**:
 - Design against the public surface: if a behavior is reachable through a CLI input or `pub` fn and observable at a public boundary (stdout JSON, exit code, filesystem), write the integration test in `crates/<name>/tests/`; the unit test is redundant. Wire-contract coverage lives in `crates/transport/tests/`.
 - Default to deletion; do not widen public APIs to test private kernels. `CRATE=<crate> cargo make cov` is the brake.
 - One green rung: native integration over `crates/mock`'s adapter catalog and the offline `crates/native` provider (`cargo make test`, per push). The wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`); the v1 eval and wasm-example rungs are archived at `v1`.
-- One red rung: the walking-skeleton journey (`cargo make journey`, [`tests/journey.rs`](tests/journey.rs)) drives the shipped binary over the built mock component. Red by design until Phase 3 (ADR-0008); excluded from `cargo make test` by the nextest `default-filter` and run as a non-blocking CI job. Do not weaken its assertions to make it pass.
+- One seam rung: the walking-skeleton journey (`cargo make journey`, [`tests/journey.rs`](tests/journey.rs)) drives the journey host (the shipped runtime shape with a scripted model, ADR-0009 §5) over the built mock components — the Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Do not weaken its assertions.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 
@@ -86,7 +87,7 @@ cargo make links  # Developer Guide link integrity (mdbook build docs, mdbook-li
 cargo make test   # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 cargo make lint   # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt    # nightly cargo fmt --all
-cargo make journey        # red walking-skeleton rung over the component seam (non-blocking CI job)
+cargo make journey        # walking-skeleton rung over the component seam (required CI job)
 cargo make mock-component # build the journey's mock source component (wasm32-wasip2, release)
 ```
 
@@ -94,7 +95,6 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Residual v1 modules compile but are unreferenced.** `crates/project` still carries the plan model, snapshot/workspace kernels, journal, and seam DTOs the pruned CLI never reaches; they fall at Phase 3 with the spine cut. Do not repair, extend, or design new seams into them — anything broken on the deletion frontier is deleted, never patched.
 - **Adapter resolution is local-first.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path. A pin installs on first use from the compiled GHCR mapping (`ghcr.io/augentic/emery-adapters/<name>:<version>`) into the global store (`$EMERY_HOME/store/`, else `~/.emery/store/`); a bare name resolves the project cache seed, else the newest store version, else pull-latest. Cache hits always win. GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.

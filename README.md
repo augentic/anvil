@@ -6,13 +6,13 @@
 
 Emery reconciles intent, documentation, existing code, and captured behaviour into reviewable specifications — durable artifacts, not chat history.
 
-> **Remediation programme in flight.** The v1 delivery workflow (survey/extract, plan/refine/execute/finalize, target adapters) is archived at git tag `v1` under [ADR-0008](rfcs/decisions/0008-spec-generator-programme.md). This tree carries the frozen Phase 0 surface: `emery init`, a reserved `emery specify` stub, and the source-adapter seam the Phase 3 spec generator will build on. Retrieve the archived implementation with `git worktree add ../emery-v1 v1`. The plan of record is [rfcs/remediation-plan.md](rfcs/remediation-plan.md); the destination is [rfcs/target-architecture.md](rfcs/target-architecture.md).
+> **Remediation programme in flight.** The v1 delivery workflow (survey/extract, plan/refine/execute/finalize, target adapters) is archived at git tag `v1` under [ADR-0008](rfcs/decisions/0008-spec-generator-programme.md). This tree carries the spec generator: `emery init` binds sources, `emery specify` synthesises the reviewable set. Retrieve the archived implementation with `git worktree add ../emery-v1 v1`. The plan of record is [rfcs/remediation-plan.md](rfcs/remediation-plan.md); the destination is [rfcs/target-architecture.md](rfcs/target-architecture.md).
 
-## The surviving surface
+## The live surface
 
 ```bash
-emery init <adapter>     # scaffold .emery/ and bind a source adapter
-emery specify            # reserved — fails typed (specify-not-implemented) until Phase 3
+emery init <adapter>...  # scaffold .emery/ and bind the source adapters
+emery specify            # extract, reconcile, synthesise spec.md + design.md
 emery completions <sh>   # shell completions
 ```
 

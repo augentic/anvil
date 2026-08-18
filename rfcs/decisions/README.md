@@ -42,3 +42,4 @@ Later ADRs record decisions made during the programme itself:
 | --- | --- |
 | [0007](0007-cache-seed-precedence.md) | **Accepted:** project cache seeds answer exact pins; pin digest verification is store-only |
 | [0008](0008-spec-generator-programme.md) | **Accepted:** live product is the spec generator; survey collapses into extract; first artifacts `spec.md` / `design.md`; conservation is tag `v1` + worktree |
+| [0009](0009-phase-3-surfaces.md) | **Accepted:** Phase 3 surfaces — source bindings at `init`, content-addressed generations behind one pointer, the closed required-extras table, and the scripted-model journey host |

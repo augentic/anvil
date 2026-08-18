@@ -1,6 +1,6 @@
 //! [`Locations`] — well-known on-disk roots (adapter store, component
-//! cache, snapshots, workspaces). Kernels and handlers receive the value
-//! through [`super::ExecutionPaths`] and never read `std::env` themselves.
+//! cache). Kernels and handlers receive the value through
+//! [`super::ExecutionPaths`] and never read `std::env` themselves.
 
 use std::path::{Path, PathBuf};
 
@@ -8,70 +8,27 @@ use std::path::{Path, PathBuf};
 /// the engine guest's WASI sandbox.
 ///
 /// The generated deployment manifest mounts the host's resolved
-/// [`Locations::project_cache_dir`] under this name (guest routing:
-/// the guest runs init's scaffold leg, which writes cache tenants);
-/// the guest constructs its `Locations` over the preopen directly —
-/// one project per deployment, so no project-id keying is needed
-/// in-guest.
+/// [`Locations::project_cache_dir`] under this name; the guest
+/// constructs its `Locations` over the preopen directly — one project
+/// per deployment, so no project-id keying is needed in-guest.
 pub const GUEST_CACHE_MOUNT: &str = "/emery-cache";
 
 /// Nominal store root inside the engine guest's layout.
 ///
 /// The global adapter store is host-owned and gets **no** guest
 /// mount: package pins dispatch by routed id, the host resolver
-/// installs a missing pin during that dispatch (pull-on-miss), and
-/// the guest never opens a store file. The constant survives as the
-/// guest's nominal [`Locations::store_root`] — pure path math feeding
-/// origin display, never I/O.
+/// installs a missing pin during that dispatch, and the guest never
+/// opens a store file. The constant survives as the guest's nominal
+/// [`Locations::store_root`] — pure path math feeding origin display,
+/// never I/O.
 pub const GUEST_STORE_MOUNT: &str = "/emery-store";
-
-/// Nominal snapshot-store root inside the engine guest's layout.
-///
-/// The content-addressed snapshot store is host-owned and gets **no**
-/// guest mount: the guest drives `prepare` / `capture` / `discard`
-/// through the workspace capability and never opens a snapshot
-/// object. The constant is the guest's nominal
-/// [`Locations::snapshots_root`] — pure path math, never I/O.
-pub const GUEST_SNAPSHOTS_MOUNT: &str = "/emery-snapshots";
-
-/// Guest-visible preopen name of the host's workspaces root inside
-/// the deployment's WASI sandbox.
-///
-/// The deployment mounts the host's resolved
-/// [`Locations::workspaces_root`] under this name so every guest
-/// (engine and adapters) can open a prepared private workspace by its
-/// deployment-local path.
-pub const GUEST_WORKSPACES_MOUNT: &str = "/emery-workspaces";
-
-/// Guest-visible preopen name of the host's VCS staging root inside
-/// the deployment's WASI sandbox.
-///
-/// The deployment mounts the host's resolved
-/// [`Locations::staging_root`] under this name so the engine guest
-/// can read (and snapshot) trees the `emery:vcs` backend staged.
-/// Fetch staging is never confused with RFC-87 workspace trees; its
-/// lifecycle (discard after snapshot, age-based sweep) is independent
-/// of workspace GC policy.
-pub const GUEST_STAGING_MOUNT: &str = "/emery-staging";
 
 /// Environment key carrying the host-absolute project root into the
 /// engine guest.
 ///
 /// Guests inherit the host environment; the in-guest kernel derives
-/// the agent-visible artifact root from this key, so a spawned agent
-/// whose working directory is a lent workspace can still read
-/// change-tree artifacts.
+/// the artifact root from this key.
 pub const PROJECT_ROOT_ENV: &str = "EMERY_PROJECT_ROOT";
-
-/// Environment key set to any value when the `.` mount is a detached
-/// change home. Unset for in-place. The engine guest reads it once
-/// when constructing [`super::ExecutionPaths::guest`].
-pub const DETACHED_ENV: &str = "EMERY_DETACHED";
-
-/// Environment key carrying the host-absolute change home into the
-/// engine guest (in-place: `<product>/.emery/change/`; detached: the
-/// change directory itself).
-pub const CHANGE_ROOT_ENV: &str = "EMERY_CHANGE_ROOT";
 
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,26 +45,21 @@ pub enum CachePlacement {
 /// Well-known on-disk locations for resolvable artifacts.
 ///
 /// Owns the production roots — the global adapter store (pinned
-/// identities plus digest sidecars), the project component cache
-/// (operator-seeded local components), the content-addressed snapshot
-/// store, and the private-workspace root — and the layout formulas
-/// over them. Methods are pure path math; the roots are fixed at
+/// identities plus digest sidecars) and the project component cache
+/// (operator-seeded local components) — and the layout formulas over
+/// them. Methods are pure path math; the roots are fixed at
 /// construction.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Locations {
     store_root: PathBuf,
     cache: CachePlacement,
-    snapshots_root: PathBuf,
-    workspaces_root: PathBuf,
-    staging_root: PathBuf,
-    publication_root: PathBuf,
 }
 
 impl Locations {
     /// Production layout: capture `EMERY_HOME` once. A non-empty
     /// absolute override wins; otherwise `$HOME/.emery`, then
-    /// `<temp>/emery`. All four roots derive together as
-    /// `<home>/{store,cache,snapshots,workspaces}`.
+    /// `<temp>/emery`. Both roots derive together as
+    /// `<home>/{store,cache}`.
     ///
     /// Composition-root only — never called from kernels or handlers.
     #[cfg(not(target_arch = "wasm32"))]
@@ -117,71 +69,26 @@ impl Locations {
             .or_else(|| env_path("HOME").map(|user_home| user_home.join(".emery")))
             .unwrap_or_else(|| std::env::temp_dir().join("emery"));
         Self::explicit(home.join("store"), CachePlacement::Parent(home.join("cache")))
-            .values_under(&home)
     }
 
     /// Explicit layout — no environment reads. Sandboxed sessions and
     /// tests pass [`CachePlacement::Parent`]; the wasm32 engine guest
     /// passes [`CachePlacement::Project`] for its already-resolved
-    /// preopen. Value roots default beneath the store root's parent;
-    /// [`Self::values_under`] re-homes them.
+    /// preopen.
     #[must_use]
-    pub fn explicit(store_root: PathBuf, cache: CachePlacement) -> Self {
-        let home = store_root.parent().map_or_else(|| store_root.clone(), Path::to_path_buf);
-        Self {
-            store_root,
-            cache,
-            snapshots_root: home.join("snapshots"),
-            workspaces_root: home.join("workspaces"),
-            staging_root: home.join("staging"),
-            publication_root: home.join("publication"),
-        }
-    }
-
-    /// Re-home the value roots (snapshot store, workspaces, VCS
-    /// staging, and publication slots) as `<home>/snapshots`,
-    /// `<home>/workspaces`, `<home>/staging`, and
-    /// `<home>/publication`. Chainable after [`Self::explicit`] when
-    /// the value layout diverges from the store root's parent.
-    #[must_use]
-    pub fn values_under(mut self, home: &Path) -> Self {
-        self.snapshots_root = home.join("snapshots");
-        self.workspaces_root = home.join("workspaces");
-        self.staging_root = home.join("staging");
-        self.publication_root = home.join("publication");
-        self
-    }
-
-    /// Re-home a [`CachePlacement::Parent`] onto one shared,
-    /// already-resolved `<parent>/<tenant>` directory. `system *`
-    /// invocations use this so the cache is never keyed off the
-    /// mounted definition home; an already-resolved placement is
-    /// unchanged.
-    #[must_use]
-    pub fn shared_cache(mut self, tenant: &str) -> Self {
-        if let CachePlacement::Parent(parent) = &self.cache {
-            self.cache = CachePlacement::Project(parent.join(tenant));
-        }
-        self
+    pub const fn explicit(store_root: PathBuf, cache: CachePlacement) -> Self {
+        Self { store_root, cache }
     }
 
     /// The engine guest's layout: the writable cache preopen the
     /// deployment manifest grants plus the nominal (never-opened)
-    /// store and snapshot roots — no environment, no project-id
-    /// suffix below the cache mount. Prepared workspaces resolve
-    /// under the deployment's workspaces preopen.
+    /// store root — no environment, no project-id suffix below the
+    /// cache mount.
     #[must_use]
     pub fn guest() -> Self {
         Self {
             store_root: PathBuf::from(GUEST_STORE_MOUNT),
             cache: CachePlacement::Project(PathBuf::from(GUEST_CACHE_MOUNT)),
-            snapshots_root: PathBuf::from(GUEST_SNAPSHOTS_MOUNT),
-            workspaces_root: PathBuf::from(GUEST_WORKSPACES_MOUNT),
-            staging_root: PathBuf::from(GUEST_STAGING_MOUNT),
-            // Publication worktrees are host-owned with no guest
-            // mount: the D11 export is one host call and its returned
-            // path is node-local observation, never guest I/O.
-            publication_root: PathBuf::from("/emery-publication"),
         }
     }
 
@@ -235,38 +142,6 @@ impl Locations {
     #[must_use]
     pub fn component(&self, project_root: &Path, name: &str) -> PathBuf {
         self.project_cache_dir(project_root).join("components").join(format!("{name}.wasm"))
-    }
-
-    /// Content-addressed snapshot store root — host-side snapshot and
-    /// materialization; nominal (never opened) in-guest.
-    #[must_use]
-    pub fn snapshots_root(&self) -> &Path {
-        &self.snapshots_root
-    }
-
-    /// Private-workspace root: the host prepares each disposable
-    /// workspace beneath it; the deployment mounts it so guests open
-    /// prepared workspaces by deployment-local path.
-    #[must_use]
-    pub fn workspaces_root(&self) -> &Path {
-        &self.workspaces_root
-    }
-
-    /// VCS staging root: the `emery:vcs` backend stages fetched trees
-    /// beneath it; the deployment mounts it so the engine guest can
-    /// read and snapshot staged trees by deployment-local path.
-    #[must_use]
-    pub fn staging_root(&self) -> &Path {
-        &self.staging_root
-    }
-
-    /// Publication slot root (RFC-95 D11): the `emery:vcs` worktree
-    /// backend places non-in-place publication worktrees at
-    /// `<root>/<plan>/<target>/`. Host-owned; no guest mount — the
-    /// exported path is node-local observation, never guest I/O.
-    #[must_use]
-    pub fn publication_root(&self) -> &Path {
-        &self.publication_root
     }
 }
 

@@ -9,7 +9,7 @@ alwaysApply: true
 
 This plugin provides the surviving Emery skill: initialize a project. The skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output.
 
-The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` while the spec-generator remediation programme is in flight (ADR-0008). Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` is reserved for the coming spec generator; today it fails typed with `specify-not-implemented`.
+The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme (ADR-0008). Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the project's bound sources.
 
 ## Workflow
 
@@ -43,9 +43,9 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 
 | Error code | What it means | Next action |
 |------------|---------------|-------------|
-| `init-adapter-required` | `emery init` was run without naming a target adapter | `emery init <adapter>` |
+| `init-source-required` | `emery init` was run without naming a source | `emery init <adapter>` (and/or `--value <adapter>=<text>`) |
 | `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall via the installer script (the hint prints the literal command), then rerun |
-| `specify-not-implemented` | `emery specify` is reserved; the spec generator has not landed | Nothing to run — the verb activates with the remediation programme's walking skeleton |
+| `not-initialized` | `emery specify` was run outside an initialised project | `/emery:init <adapter>` first |
 
 ### Project not initialized
 
