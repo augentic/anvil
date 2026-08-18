@@ -4,6 +4,8 @@
 >
 > The prior generation's failure mode was findings-driven repair with no destination ([architecture-review.md](architecture-review.md)). This document is the destination.
 >
+> **Deferred annex (2026-08-18):** the remediation programme is scoped to the specification generator ([remediation-plan.md](remediation-plan.md)). The sections describing the executor, the phase machine, merge, `status`, and `fix` — §1's `build`/`status`/`fix` lines, §5's merge bullets, §6's `fix` surface, and §8 steps 3–6 — are **conserved design intent, not current scope**: the build programme re-derives from them after the generator ships. The Phase 2 v1 rewrite makes this annex explicit; additionally, `survey` collapses into a single `extract` operation and the WIT shrinks to the source axis for this programme.
+>
 > [capability-conservation.md](capability-conservation.md) is the remediation traceability contract: target architecture v1 must map each conserved implemented capability to a section here and executable Phase 3/4 acceptance evidence, or to an accepted ADR that explicitly deletes it. The ledger does not override this document and retires after remediation closes.
 
 ## 1. The journey, restated as architecture
@@ -113,4 +115,4 @@ The executable definition of this document. Scripted model, offline, temp change
 - [product.md](product.md) — the yardstick this document serves
 - [capability-conservation.md](capability-conservation.md) — capability parity and deferred Phase 4 obligations
 - [remediation-plan.md](remediation-plan.md) — the path from the current tree to this document
-- [architecture-review.md](architecture-review.md) / [architecture-review-addendum.md](architecture-review-addendum.md) — the evidence base; finding ids cited above resolve there
+- [architecture-review.md](architecture-review.md) — the evidence base (second-pass addendum folded in); finding ids cited above resolve there
