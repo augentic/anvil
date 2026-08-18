@@ -1,0 +1,31 @@
+# Committed ratchet baseline (CONSTITUTION.md invariant 4; remediation
+# Phase 2). Ceilings are non-blank line counts enforced by
+# `tests/ratchet.rs`: growth past a ceiling is a red build, and raising
+# a ceiling requires an ADR reference in the same PR (invariant 5).
+# Shrinking a ceiling is free — ratchet down, never up.
+
+# Per-tree non-blank `.rs` line ceilings over each `src/` tree
+# (integration tests are uncapped). Every workspace crate must carry
+# an entry; a deleted crate's entry is removed in the same change.
+[rust]
+"src" = 46
+"crates/adapter" = 912
+"crates/artifacts" = 3191
+"crates/diagnostics" = 884
+"crates/error" = 267
+"crates/guest" = 148
+"crates/launcher" = 700
+"crates/mock" = 343
+"crates/mock-component" = 10
+"crates/native" = 490
+"crates/project" = 24535
+"crates/prose" = 147
+"crates/transport" = 578
+
+# Non-blank Markdown line ceilings: the prose-budget half of the
+# ratchet (CONSTITUTION.md invariant 2). Files are counted alone;
+# directories count every `.md` / `.mdc` beneath them.
+[prose]
+"AGENTS.md" = 83
+"CONSTITUTION.md" = 26
+"plugins/emery" = 69

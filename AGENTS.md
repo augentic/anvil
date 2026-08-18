@@ -38,6 +38,7 @@ prose        # build-dependency crate — embed-time prompt-corpus walk + link c
 native       # the native host — validated source-adapter Catalog, DynModel, the seam Provider, cli-gated command execution
 guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, guest::export!
 mock         # dev-only mock crate (publish = false) — mock source adapter core, catalog registry, session helpers, mock::invoke
+mock-component # dev-only journey fixture (publish = false) — the mock source adapter exported as a wasm component (one adapter::source! over crates/mock)
 emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.bin)
 ```
 
@@ -69,7 +70,8 @@ Emery strictly enforces an **aggressive integration-first posture**:
 
 - Design against the public surface: if a behavior is reachable through a CLI input or `pub` fn and observable at a public boundary (stdout JSON, exit code, filesystem), write the integration test in `crates/<name>/tests/`; the unit test is redundant. Wire-contract coverage lives in `crates/transport/tests/`.
 - Default to deletion; do not widen public APIs to test private kernels. `CRATE=<crate> cargo make cov` is the brake.
-- One rung: native integration over `crates/mock`'s adapter catalog and the offline `crates/native` provider (`cargo make test`, per push). The wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`); the v1 eval and wasm-example rungs are archived at `v1`.
+- One green rung: native integration over `crates/mock`'s adapter catalog and the offline `crates/native` provider (`cargo make test`, per push). The wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`); the v1 eval and wasm-example rungs are archived at `v1`.
+- One red rung: the walking-skeleton journey (`cargo make journey`, [`tests/journey.rs`](tests/journey.rs)) drives the shipped binary over the built mock component. Red by design until Phase 3 (ADR-0008); excluded from `cargo make test` by the nextest `default-filter` and run as a non-blocking CI job. Do not weaken its assertions to make it pass.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 
@@ -84,6 +86,8 @@ cargo make links  # Developer Guide link integrity (mdbook build docs, mdbook-li
 cargo make test   # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 cargo make lint   # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt    # nightly cargo fmt --all
+cargo make journey        # red walking-skeleton rung over the component seam (non-blocking CI job)
+cargo make mock-component # build the journey's mock source component (wasm32-wasip2, release)
 ```
 
 Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/emery` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
@@ -95,7 +99,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.
-- Brevity caps are mechanically enforced by root-crate tests (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`, part of `cargo make test`).
+- Brevity caps are mechanically enforced by root-crate tests (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`, part of `cargo make test`), alongside the Phase 2 fitness functions: the LOC/prose ratchet (`tests/ratchet.rs` over `scripts/ratchet.toml` — raising a ceiling needs an ADR; shrinking is free) and the crate-DAG gate (`tests/layering.rs`). PRs touching ADR-gated paths (`scripts/adr-required-paths.txt`) must carry a `rfcs/decisions/` change.
 
 ## Related coding standards
 

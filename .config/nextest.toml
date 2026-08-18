@@ -1,0 +1,8 @@
+# The journey binary (tests/journey.rs) is the remediation
+# programme's red rung: the Phase 3 exit criterion, run by its own
+# non-blocking CI job (`cargo make journey`), never inside the green
+# per-push gate. Phase 3 moves it into the default set — with the CI
+# job flipped to required — when the walking skeleton must stay green
+# (ADR-0008; rfcs/remediation-plan.md Phase 2 item 2).
+[profile.default]
+default-filter = "not binary(=journey)"

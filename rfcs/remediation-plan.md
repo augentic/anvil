@@ -27,7 +27,7 @@ Operator surface: `emery init`, `emery specify`. Two verbs is phasing, not a new
 | --- | --- | --- |
 | [product.md](product.md) | Product yardstick; the spec generator is its `spec` verb | Written; programme scope note |
 | [decisions/](decisions/) | ADR log | All accepted; 0001/0004/0005 as re-scoped (2026-08-19) |
-| [target-architecture.md](target-architecture.md) | Destination for this programme; build/fix in the deferred annex | Draft v0.1 |
+| [target-architecture.md](target-architecture.md) | Destination for this programme; build/fix in the deferred annex | Stamped v1 (2026-08-19) |
 | [capability-conservation.md](capability-conservation.md) | Live entries for the generator; the rest deferred with the build programme | Re-scoped |
 | [CONSTITUTION.md](../CONSTITUTION.md) | Standing invariants + mechanical enforcement | Invariant 1 re-scoped to the spec journey |
 | [architecture-review.md](architecture-review.md) | The evidence base (addendum folded in); finding ids cited here resolve there | Standing |
@@ -64,7 +64,7 @@ Do not wait on ADR-0002's original spike (survey/extract + build phase report + 
 
 ## Phase 3 — The walking skeleton (the build begins)
 
-New crates only, per target-architecture v0.1's module map; borrow from tag `v1` by explicit reviewed port, never by linking archive crates. Order within the phase: output home → extract (one operation, typed claims with extras) → synthesise under authority precedence → emit `spec.md` / `design.md`. Milestone: **that journey passes in CI across the component seam.** Nothing else counts as progress.
+New crates only, per target-architecture v1's module map; borrow from tag `v1` by explicit reviewed port, never by linking archive crates. Order within the phase: output home → extract (one operation, typed claims with extras) → synthesise under authority precedence → emit `spec.md` / `design.md`. Milestone: **that journey passes in CI across the component seam.** Nothing else counts as progress.
 
 ## Phase 4 — Make the generator reliable, then stop
 

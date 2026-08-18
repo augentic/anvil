@@ -75,6 +75,26 @@ env = { RUSTDOCFLAGS = "-Dwarnings" }
 command = "mdbook"
 args = ["build", "docs"]
 
+# The journey-test seam fixture (remediation Phase 2): the mock source
+# adapter built as a wasm component, `target/wasm32-wasip2/release/
+# mock_component.wasm` — the recipe ported from the archived wasm rung
+# (tag `v1`, emery-adapters `[tasks.release]`).
+[tasks.mock-component]
+workspace = false
+command = "cargo"
+args = ["build", "--locked", "-p", "emery-mock-component", "--target", "wasm32-wasip2", "--release"]
+
+# The walking-skeleton journey test (target-architecture §8) over the
+# built seam fixture — red until the Phase 3 spec generator lands, so
+# it runs in its own non-blocking CI job, never inside `test`
+# (excluded there by the nextest default-filter).
+[tasks.journey]
+workspace = false
+dependencies = ["mock-component"]
+command = "cargo"
+args = ["nextest", "run", "-p", "emery", "-E", "binary(=journey)", "--ignore-default-filter"]
+env = { RUSTFLAGS = "-Dwarnings" }
+
 # Coverage brake for unit-test reductions (docs/standards/testing.md).
 # Usage: CRATE=project cargo make cov
 # Operator-invoked, never part of `ci`.

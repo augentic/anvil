@@ -31,13 +31,14 @@ fn command_router(
     transport::command::router(Invoker::new("emery", provider(root))).expect("router")
 }
 
-// C3 tripwire: the guest HTTP listener serves only the MCP reference
-// shelves — the engine's whole non-shelf surface is one typed refusal
-// with no operation route table. If an HTTP operation surface returns,
-// it must arrive with an authenticated operator ingress design
-// (target-architecture §7) and replace this test deliberately.
+// Gate tripwire for ADR-0002 §5 / finding C3: the guest HTTP listener
+// serves only the MCP reference shelves — the engine's whole non-shelf
+// surface is one typed refusal with no operation route table. If an
+// HTTP operation surface returns, it must arrive with an authenticated
+// operator ingress design (target-architecture §7) and delete this
+// test in the same decision.
 #[tokio::test]
-async fn http_parity() {
+async fn adr_0002_http_refusal() {
     use omnia_guest::http::{Method, Request, StatusCode};
     use tower::ServiceExt as _;
 
@@ -62,11 +63,13 @@ async fn http_parity() {
     }
 }
 
-// ADR-0008 §3: the grammar is `init` + `specify` + `completions` and
-// nothing else — deleted verbs are deletions from the grammar, not
-// hidden routes or "deprecated" stubs.
+// Gate tripwire for ADR-0008 §3 (CONSTITUTION invariant 2): the route
+// budget is the live verb list in rfcs/remediation-plan.md — `init` +
+// `specify` (+ auto-derived `completions`) and nothing else. Deleted
+// verbs are deletions from the grammar, not hidden routes or
+// "deprecated" stubs; widening this list requires an ADR.
 #[tokio::test]
-async fn pruned_grammar() {
+async fn adr_0008_route_budget() {
     let router = command_router(".");
 
     let inventory: Vec<Vec<String>> =

@@ -1120,6 +1120,8 @@ dependencies = [
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -1224,6 +1226,14 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "emery-mock-component"
+version = "0.38.0"
+dependencies = [
+ "emery-adapter",
+ "emery-mock",
 ]
 
 [[package]]

@@ -15,3 +15,23 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
+  # The walking-skeleton journey (target-architecture §8): red by
+  # design until the Phase 3 spec generator lands, so the job is
+  # non-blocking — visible red, never a gate. The Phase 3 exit flips
+  # it to required (ADR-0008; rfcs/remediation-plan.md Phase 2).
+  journey:
+    name: Journey (red until Phase 3)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install test toolchain
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-make
+
+      - name: Run the journey
+        run: cargo make journey
+

@@ -1,6 +1,6 @@
 # Emery Target Architecture
 
-> Status: **Draft v0.1** — spec-generator programme ([ADR-0008](decisions/0008-spec-generator-programme.md)). Written forward from the operator journey in [product.md](product.md), not backward from the current implementation. Phase 2 of [remediation-plan.md](remediation-plan.md) stamps this v1. Agent task briefs cite the live sections below, never the [deferred annex](#deferred-annex).
+> Status: **v1** (stamped 2026-08-19, remediation Phase 2) — spec-generator programme ([ADR-0008](decisions/0008-spec-generator-programme.md)). Written forward from the operator journey in [product.md](product.md), not backward from the current implementation. This is the document every agent task brief cites — the live sections below, never the [deferred annex](#deferred-annex).
 >
 > The prior generation's failure mode was findings-driven repair with no destination ([architecture-review.md](architecture-review.md)). This document is the destination for *this* programme.
 
@@ -108,7 +108,7 @@ Build, status, fix, and crash-injection across merge boundaries are annex skelet
 
 ## Deferred annex
 
-Conserved design intent for the **build programme**, re-derived after the generator ships — not current scope, not kept kernels, not Phase 3 acceptance. Retrieve the v0 text's build/status/fix detail from git history (`git show v1:rfcs/target-architecture.md` after this file's v0.1 lands, or the pre-trim draft). Headline only:
+Conserved design intent for the **build programme**, re-derived after the generator ships — not current scope, not kept kernels, not Phase 3 acceptance. Retrieve the v0 text's build/status/fix detail from git history (`git show v1:rfcs/target-architecture.md`). Headline only:
 
 ```text
 emery build   reviewed spec → private workspace → phase machine → verified CID → baseline

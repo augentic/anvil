@@ -1,0 +1,10 @@
+# ADR-required path prefixes (CONSTITUTION.md invariant 5), enforced by
+# `scripts/adr-required.sh` on every pull request: a change touching any
+# prefix below must add or modify a file under `rfcs/decisions/` in the
+# same diff. `scripts/ratchet.toml` is gated separately — only ceiling
+# raises and new entries demand a decision; shrinks are free.
+CONSTITUTION.md
+crates/artifacts/src/
+crates/transport/src/command/
+scripts/adr-required-paths.txt
+wit/
