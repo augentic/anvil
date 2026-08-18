@@ -150,7 +150,8 @@ async fn gated_answers_persist() {
     let sets = journey_sets();
     let rows = reconcile(&sets);
 
-    let model = Harness::answering(vec![spec_answer(&rows), "# Design\n\nThe shape.\n".to_string()]);
+    let model =
+        Harness::answering(vec![spec_answer(&rows), "# Design\n\nThe shape.\n".to_string()]);
     let documents = synthesise(&model, &sets, &rows).await.expect("gated answers pass");
     assert!(documents.spec.contains("[unknown]"), "the gap row surfaces inline");
     assert!(documents.spec.contains("[divergence]"));

@@ -42,7 +42,7 @@ fn missing_extras_refused() {
 }
 
 #[test]
-fn receipts_are_deterministic() {
+fn receipts_deterministic() {
     let set = docs_set(vec![
         requirement("login.flow", Some("Users sign in.")),
         requirement("session.timeout", Some("Sessions expire.")),

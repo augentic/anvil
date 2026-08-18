@@ -51,10 +51,8 @@ pub fn router(
     root: impl Into<PathBuf>,
 ) -> omnia_guest::api::command::Router<Inert, transport::command::Globals> {
     let root = root.into();
-    let locations = Locations::explicit(
-        root.join("store"),
-        CachePlacement::Parent(root.join("project-cache")),
-    );
+    let locations =
+        Locations::explicit(root.join("store"), CachePlacement::Parent(root.join("project-cache")));
     let provider = Inert {
         paths: ExecutionPaths::new(root, locations),
     };

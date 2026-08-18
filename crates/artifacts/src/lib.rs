@@ -1,12 +1,7 @@
-//! Artifact types and parsers, the shared atomic writer, and the
-//! validation rule registry ([`validate`]).
+//! Artifact types and parsers plus the shared atomic writer.
 //!
-//! A lifecycle-free leaf: a rule cannot transition a slice or stamp a plan.
+//! A lifecycle-free leaf: a parser cannot transition engine state.
 
 pub mod atomic;
-pub mod decision;
 pub mod evidence;
-pub mod leads;
 pub mod spec;
-pub mod task;
-pub mod validate;

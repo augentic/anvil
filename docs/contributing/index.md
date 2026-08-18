@@ -8,7 +8,7 @@ The engine and operator plugin live in [`augentic/emery`](https://github.com/aug
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |
-| `src/`, `crates/` | The runtime and workspace crates (including the `native` host) | Rust |
+| `src/`, `crates/` | The runtime and workspace crates | Rust |
 | `plugins/`, `docs/`, `rfcs/` | The ultrathin Cursor skill wrapper, documentation, decisions | Markdown, YAML |
 | `emery-adapters/sources/` | Source adapter crates plus embedded prose | Rust, Markdown |
 

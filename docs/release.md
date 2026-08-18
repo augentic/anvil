@@ -16,7 +16,7 @@ The engine guest's own world lives in a separate, host-only WIT package — `eme
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
-The host embeds no adapter-version recommendation: a bare first-party name resolves local-first at run time, provisioning the registry's newest exact-SemVer tag only when nothing local exists. The only release-coupled deployment config in this repo is `FIRST_PARTY_REPOSITORY` (the GHCR prefix) in `launcher`. When an adapter train publishes, **verify every first-party adapter is published at its GHCR tag** (`ghcr.io/augentic/emery-adapters/<name>:<version>`) — a missing or malformed tag lands on operators as `adapter-install-failed` / `adapter-latest-none` at first provisioning, not in CI. An operator-invoked HEAD sweep over the tags (a `cargo make` task or release-pipeline step) closes the gap without a per-push network dependency.
+The host embeds no adapter-version recommendation and — since the Phase 3 spine cut (ADR-0002) — no download path: adapter resolution is local-only (project cache seed, the embedded first-party registry, the verified global store). The embedded first-party registry is empty until Phase 4 ports the first-party adapters; when it fills, embedding the released components becomes a release-checklist step here.
 
 ## Release lines
 
@@ -85,7 +85,7 @@ wkg publish target/wasm32-wasip2/release/emery.wasm \
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `cargo make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. The `emery` binary resolves a pin (`emery:<name>@<version>`) from the global adapter store and installs a miss automatically from that fixed GHCR mapping (pull-on-miss); operators only need the runtime binary.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `cargo make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. The `emery` binary resolves a pin (`emery:<name>@<version>`) from the local global store only — there is no pull-on-miss (ADR-0002); provisioning arrives with the explicit install verb and the Phase 4 embedded registry.
 
 ## Installing a release
 

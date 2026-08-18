@@ -82,9 +82,7 @@ impl Resolver {
 /// The embedded first-party component for `name`, when the binary
 /// carries one.
 fn embedded(name: &str) -> Option<Vec<u8>> {
-    EMBEDDED
-        .iter()
-        .find_map(|(entry, bytes)| (*entry == name).then(|| bytes.to_vec()))
+    EMBEDDED.iter().find_map(|(entry, bytes)| (*entry == name).then(|| bytes.to_vec()))
 }
 
 /// One stderr line per settled adapter identity — with the host

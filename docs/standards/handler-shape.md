@@ -10,7 +10,7 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 - **`call(input, context)`** assembles `RequestContext` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = engine::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`, so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
+Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`, so the same impl serves the wasm guest and tests against scripted providers.
 
 ```rust
 // GOOD — default shape
@@ -72,7 +72,7 @@ The four-slot CLI exit-code table is fixed:
 
 ## Dispatch contract (`command.rs`)
 
-The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary.
+The reusable command route table lives in `crates/transport/src/command.rs`. The WASI shim (and any test harness) constructs an `Invoker`, assembles the router, executes it, and adapts the buffered response to its process boundary.
 
 On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run the router through `transport::command::execute` — the shared wrapper that emits the `emery.command` span (bounded verb label plus exit code) — with the same assembly and the same command `EmeryProjector`.
 

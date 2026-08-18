@@ -33,11 +33,10 @@ artifacts    # artifact types + parsers (evidence, atomic writer, validate regis
 adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, seam DTOs, embedded prose registry
 engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and engine::handler (Anchor, RequestContext, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
-launcher     # native-only deployment policy (publish = false) — anchoring, mounts, HTTP listener + /mcp/<axis>/<name> routing, fail-closed adapters-only GuestResolver, pull-on-miss install from GHCR
+launcher     # native-only deployment policy (publish = false) — anchoring, mounts, HTTP listener + /mcp/<axis>/<name> routing, fail-closed adapters-only GuestResolver (local-only: cache seed, embedded registry, verified store; no download path)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-native       # the native host — validated source-adapter Catalog, DynModel, the seam Provider, cli-gated command execution
 guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, guest::export!
-mock         # dev-only mock crate (publish = false) — mock source adapter core, catalog registry, session helpers, mock::invoke
+mock         # dev-only mock crate (publish = false) — the wasm-free mock source adapter core behind mock-component
 mock-component # dev-only journey fixture (publish = false) — the mock source adapter exported as a wasm component (one adapter::source! over crates/mock)
 journey-host # dev-only journey harness (publish = false) — the shipped runtime shape with a scripted WasiModel backend over the same embedded engine guest (ADR-0009 §5)
 emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.bin)
@@ -71,8 +70,8 @@ Emery strictly enforces an **aggressive integration-first posture**:
 
 - Design against the public surface: if a behavior is reachable through a CLI input or `pub` fn and observable at a public boundary (stdout JSON, exit code, filesystem), write the integration test in `crates/<name>/tests/`; the unit test is redundant. Wire-contract coverage lives in `crates/transport/tests/`.
 - Default to deletion; do not widen public APIs to test private kernels. `CRATE=<crate> cargo make cov` is the brake.
-- One green rung: native integration over `crates/mock`'s adapter catalog and the offline `crates/native` provider (`cargo make test`, per push). The wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`); the v1 eval and wasm-example rungs are archived at `v1`.
-- One seam rung: the walking-skeleton journey (`cargo make journey`, [`tests/journey.rs`](tests/journey.rs)) drives the journey host (the shipped runtime shape with a scripted model, ADR-0009 §5) over the built mock components — the Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Do not weaken its assertions.
+- One fast rung: native kernel and wire-contract suites (`cargo make test`, per push) — pure engine kernels over scripted models, transport grammar/parity over an inert provider. The wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`); the v1 eval and wasm-example rungs are archived at `v1`.
+- One seam rung: the walking-skeleton journey (`cargo make journey`, [`tests/journey.rs`](tests/journey.rs)) drives the journey host (the shipped runtime shape with a scripted model, ADR-0009 §5) over the built mock components — the one integration rung since the T10 spine cut (ADR-0002 §2) and the Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Do not weaken its assertions.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 
@@ -95,7 +94,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Adapter resolution is local-first.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path. A pin installs on first use from the compiled GHCR mapping (`ghcr.io/augentic/emery-adapters/<name>:<version>`) into the global store (`$EMERY_HOME/store/`, else `~/.emery/store/`); a bare name resolves the project cache seed, else the newest store version, else pull-latest. Cache hits always win. GitHub URLs are refused (`adapter-github-uri-unsupported`).
+- **Adapter resolution is local-only.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path. Resolution is the seeded project cache (always wins), the embedded first-party registry (empty until Phase 4), else a verified global-store entry (`$EMERY_HOME/store/`, else `~/.emery/store/`) for pins; there is no download path — installs arrive with the explicit install verb (ADR-0002 §2). GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.

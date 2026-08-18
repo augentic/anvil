@@ -222,10 +222,7 @@ fn init_contract() {
     // Age the pin (simulating a project initialised by an older
     // binary), then `--upgrade`: bindings survive, the pin returns to
     // the running binary's version.
-    let aged = before.replace(
-        &format!("emery: {}", env!("CARGO_PKG_VERSION")),
-        "emery: 0.1.0",
-    );
+    let aged = before.replace(&format!("emery: {}", env!("CARGO_PKG_VERSION")), "emery: 0.1.0");
     assert_ne!(aged, before, "the fixture must carry the pin to age");
     fs::write(&manifest, aged).expect("age the pin");
     let upgrade = home.emery(&["init", "--upgrade"]);
@@ -261,7 +258,7 @@ fn extras_gate_fails_closed() {
 /// A failing source propagates typed across the seam: the extract
 /// error names the routed identity and no generation commits.
 #[test]
-fn extract_failure_propagates() {
+fn extract_failure_typed() {
     let home = Home::stage(&["mock-fail-extract"]);
     let init = home.emery(&["init", "mock-fail-extract.wasm"]);
     assert!(init.status.success(), "{}", String::from_utf8_lossy(&init.stderr));
