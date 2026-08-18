@@ -8,13 +8,13 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
-## The single rung
+## The rungs
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The rung is **native integration**: `cargo make test` drives the surviving surface (`init`, the `specify` stub, adapter resolution, the C3 HTTP refusal) through the engine crates' public operations, the `mock` catalog behind the offline `native` provider, and scripted model doubles. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
+The green rung is **native integration**: `cargo make test` drives the surviving surface (`init`, the `specify` stub, adapter resolution, the C3 HTTP refusal) through the engine crates' public operations, the `mock` catalog behind the offline `native` provider, and scripted model doubles. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
 
-There is no automated WASM boundary rung: the wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`).
+The red rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo make journey`): the shipped binary over the built mock source component (`cargo make mock-component`), asserting the target-architecture §8 journey across the production component seam. Red by design until remediation Phase 3 (ADR-0008); excluded from `cargo make test` by the nextest `default-filter` and run as a non-blocking CI job. Greening it is Phase 3's exit criterion — extend the scaffold, never weaken the assertions. The wasm32 guest is additionally compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`).
 
 ### The mock crate
 
@@ -83,7 +83,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 ## Assertion ownership
 
 - A behavior reducible to a crate API, CLI result, filesystem predicate, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its seam.
-- Engine behavior belongs to the native suites; component-boundary wiring has no automated home here. Name the seam an assertion owns before writing it.
+- Engine behavior belongs to the native suites; component-boundary wiring belongs to the journey rung (red until Phase 3). Name the seam an assertion owns before writing it.
 
 ## Test naming
 

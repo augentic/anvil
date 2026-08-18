@@ -3,8 +3,15 @@
 # prefix below must add or modify a file under `rfcs/decisions/` in the
 # same diff. `scripts/ratchet.toml` is gated separately — only ceiling
 # raises and new entries demand a decision; shrinks are free.
+#
+# `new-ok` prefixes exempt pure additions: introducing or strengthening
+# enforcement is a reviewable addition, while modifying or deleting it
+# is a policy change (the R3 lesson).
 CONSTITUTION.md
 crates/artifacts/src/
 crates/transport/src/command/
-scripts/adr-required-paths.txt
 wit/
+new-ok .config/nextest.toml
+new-ok .github/workflows/adr.yaml
+new-ok scripts/
+new-ok tests/

@@ -5,4 +5,4 @@
 # job flipped to required — when the walking skeleton must stay green
 # (ADR-0008; rfcs/remediation-plan.md Phase 2 item 2).
 [profile.default]
-default-filter = "not binary(=journey)"
+default-filter = "not (package(=emery) & binary(=journey))"

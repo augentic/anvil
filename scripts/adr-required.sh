@@ -9,15 +9,33 @@ base="${1:?usage: scripts/adr-required.sh <base-commit>}"
 list="scripts/adr-required-paths.txt"
 ratchet="scripts/ratchet.toml"
 
-changed=$(git diff --name-only "$base"...HEAD)
+# One `<status>\t<path>` (or `R<n>\t<old>\t<new>`) line per change.
+changed=$(git diff --name-status "$base"...HEAD)
+files=$(printf '%s\n' "$changed" | awk -F'\t' 'NF { print $NF }')
 
 gated=""
-while IFS= read -r file; do
+while IFS=$'\t' read -r status file renamed; do
   [ -z "$file" ] && continue
-  while IFS= read -r prefix; do
-    case "$prefix" in "" | "#"*) continue ;; esac
+  # A rename gates on its destination path.
+  [ -n "$renamed" ] && file="$renamed"
+  # The ratchet baseline is answered by the raise detector below, so
+  # shrinks and entry removals stay free of the plain prefix match.
+  [ "$file" = "$ratchet" ] && continue
+  while IFS= read -r entry; do
+    case "$entry" in "" | "#"*) continue ;; esac
+    marker=""
+    prefix="$entry"
+    case "$entry" in
+      "new-ok "*)
+        marker="new-ok"
+        prefix="${entry#new-ok }"
+        ;;
+    esac
     case "$file" in
       "$prefix"*)
+        if [ "$marker" = "new-ok" ] && [ "${status:0:1}" = "A" ]; then
+          break
+        fi
         gated="${gated}  ${file} (gated by ${prefix})"$'\n'
         break
         ;;
@@ -27,17 +45,17 @@ done <<<"$changed"
 
 # Ratchet ceilings: a raised value or a new entry is policy; a shrink,
 # a removed entry, or the file's introduction is free. Keys are
-# section-qualified before comparing.
-if grep -qx "$ratchet" <<<"$changed" && [ -f "$ratchet" ] \
+# section-qualified before comparing, and the base/head switch keys on
+# FILENAME so an empty base cannot alias the head.
+if printf '%s\n' "$files" | grep -qxF "$ratchet" && [ -f "$ratchet" ] \
   && git show "$base:$ratchet" >/dev/null 2>&1; then
   raises=$(awk -F'=' '
-    FNR == 1 { file++ }
     /^\[/ { section = $0 }
     /^[[:space:]]*"/ {
       key = section $1
       gsub(/[" \t]/, "", key)
       value = $2 + 0
-      if (file == 1) { old[key] = value }
+      if (FILENAME == ARGV[1]) { old[key] = value }
       else if (!(key in old) || value > old[key]) { print "  " key }
     }
   ' <(git show "$base:$ratchet") "$ratchet")
@@ -51,7 +69,7 @@ if [ -z "$gated" ]; then
   exit 0
 fi
 
-if grep -q '^rfcs/decisions/' <<<"$changed"; then
+if printf '%s\n' "$files" | grep -q '^rfcs/decisions/'; then
   echo "ADR-gated paths touched; decision record present:"
   printf '%s' "$gated"
   exit 0

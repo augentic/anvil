@@ -15,6 +15,12 @@
 //! The scripted-model host wiring is not needed while red — the stub
 //! fails before any model dispatch (ADR-0002 §1 records the model as
 //! a host capability, so scripting it needs no guest change).
+//!
+//! Greening this rung is the Phase 3 exit, and that exit includes
+//! extending the scaffold below — binding the behaviour (`mock-code`)
+//! half and an inline intent source once the source-binding surface
+//! exists, and wiring the scripted model. Extension is expected;
+//! weakening an assertion to pass is never the fix (the R3 lesson).
 
 use std::collections::BTreeMap;
 use std::fs;
