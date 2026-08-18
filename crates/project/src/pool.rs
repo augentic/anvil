@@ -48,6 +48,9 @@ pub mod budget {
     pub const EXTRACT: Duration = Duration::from_mins(15);
     /// Schema-gated judgment legs (synthesis, propose, correlate).
     pub const JUDGMENT: Duration = Duration::from_mins(20);
+    /// Domain partition — schema-only over the request payload (no
+    /// workspace lend, no tools), so a stuck agent parks fast.
+    pub const PARTITION: Duration = Duration::from_mins(5);
     /// Target build-loop operations (build / verify / repair / review).
     pub const BUILD: Duration = Duration::from_hours(1);
     /// Target merge gates.

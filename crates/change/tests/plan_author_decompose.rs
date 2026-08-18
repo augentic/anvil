@@ -223,6 +223,89 @@ async fn multi_level_tree() {
     project::plan::decomposition::matches_plan(&tree, &plan).expect("projection");
 }
 
+/// A pathless root splits into children that keep the cross-cutting
+/// intent lead, and each closes as a leaf with that same lead set plus
+/// the first ownership paths. Declaring the first envelope under an
+/// unspecified parent is reducing — the drain completes with no
+/// fallback close, no park, and no repair.
+#[tokio::test]
+async fn first_leaf_closes_under_pathless_root() {
+    let split = serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "split",
+        "assessment": quiet(),
+        "children": [
+            {
+                "id": "alpha",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "app"
+            },
+            {
+                "id": "beta",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "app"
+            }
+        ]
+    }))
+    .expect("root split");
+    let final_answer = serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slices": [
+            {
+                "name": "alpha",
+                "target": "app",
+                "sources": [{ "source": "intent", "lead": "intent" }]
+            },
+            {
+                "name": "beta",
+                "target": "app",
+                "sources": [{ "source": "intent", "lead": "intent" }]
+            }
+        ],
+        "gate": { "change": "## Intent\n\nShip it.\n\n## Scope\n\nTwo leaves." }
+    }))
+    .expect("response");
+    let session = Session::scripted(
+        "mock",
+        vec![
+            split,
+            leaf("alpha", "intent", "intent", "app"),
+            leaf("beta", "intent", "intent", "app"),
+            final_answer,
+        ],
+    );
+    let target = seed_target(session.root(), "target-app");
+    let definition = session.root().join("definition");
+    let mut spec = Spec::degenerate("Ship both halves.");
+    spec.targets[0].locator = target.display().to_string();
+    mint(&definition, &spec).expect("mint");
+
+    let body = author(&session, &definition, &spec.wave).await.expect("author completes");
+    let mut slices = body.slices.clone();
+    slices.sort();
+    assert_eq!(slices, ["alpha", "beta"], "{:?}", body.slices);
+
+    let layout = Layout::new(session.root());
+    let tree = Decomposition::load(&layout.decomposition_path()).expect("tree");
+    tree.check().expect("complete tree");
+    assert_eq!(tree.nodes["alpha"].kind, Some(project::plan::decomposition::Kind::Leaf));
+    assert_eq!(tree.nodes["beta"].kind, Some(project::plan::decomposition::Kind::Leaf));
+
+    let events = project::journal::read_union(layout).expect("events");
+    assert!(
+        !events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::DomainPartitionClosed { .. }
+                | project::journal::EventKind::PlanAuthorParked { .. }
+        )),
+        "no disposition fired"
+    );
+    let change = std::fs::read_to_string(layout.change_brief_path()).expect("change.md");
+    assert!(!change.contains("closed as a leaf after a failed cut"), "{change}");
+    session.model().assert_exhausted();
+}
+
 #[tokio::test]
 async fn invalid_split_repairs() {
     let session = Session::scripted(
@@ -438,7 +521,8 @@ fn recovered_response(slices: &[(&str, &str, &str, &str)]) -> String {
 }
 
 // A reduction tie on an open child defers (Decision 1); the same tie
-// on the closed child after repairs closes the PARENT as a leaf via
+// on the closed child surfaces on the first answer (non-reducing is
+// never repaired) and closes the PARENT as a leaf via
 // the deterministic fallback: siblings are subsumed, the tree stays,
 // the `domain.partition.closed` fact and the change.md caveat record
 // the disposition, and authoring completes with a reconcile fact.
@@ -474,9 +558,8 @@ async fn non_reducing_fallback_closes_parent() {
             auth_split(),
             leaf("greeting", "intent", "intent", "other"),
             // `login`'s close ties against `auth` on every dimension:
-            // initial answer + MAX_REPAIRS identical repairs.
-            tie_leaf(),
-            tie_leaf(),
+            // a non-reducing cut surfaces on the first answer — no
+            // repair re-prompts.
             tie_leaf(),
             leaf("token", "code", "login-flow", "app"),
             final_answer,

@@ -252,6 +252,49 @@ mod validate {
         assert!(has(&tree, "decomposition-non-reducing"));
     }
 
+    /// A parent with no declared paths and no closed terminals has an
+    /// unspecified envelope: a first leaf that keeps the parent's full
+    /// lead set and declares the first ownership paths is reducing,
+    /// not growth.
+    #[test]
+    fn first_leaf_reduces_pathless_parent() {
+        let intent = Scope::new("intent", "intent");
+        let legacy = Scope::new("legacy", "legacy");
+        let mut root = split(&["a", "b"], vec![intent.clone(), legacy.clone()]);
+        root.targets = vec!["t".into()];
+        let mut a = leaf("a", "t", "root", "legacy", "src/a/**");
+        a.sources = vec![intent.clone(), legacy.clone()];
+        let mut b = leaf("b", "t", "root", "legacy", "src/b/**");
+        b.sources = vec![intent, legacy];
+        let tree = tree(
+            "root",
+            BTreeMap::from([("root".into(), root), ("a".into(), a), ("b".into(), b)]),
+            &["t"],
+        );
+        assert!(!has(&tree, "decomposition-non-reducing"), "{:?}", codes(&tree));
+    }
+
+    /// Same pathless parent, but a child that declares no paths either
+    /// still ties on every known dimension.
+    #[test]
+    fn pathless_tie_still_blocks() {
+        let intent = Scope::new("intent", "intent");
+        let legacy = Scope::new("legacy", "legacy");
+        let mut root = split(&["a", "b"], vec![intent.clone(), legacy.clone()]);
+        root.targets = vec!["t".into()];
+        let mut a = leaf("a", "t", "root", "legacy", "src/a/**");
+        a.sources = vec![intent.clone(), legacy.clone()];
+        a.ownership.clear();
+        let mut b = leaf("b", "t", "root", "legacy", "src/b/**");
+        b.sources = vec![intent, legacy];
+        let tree = tree(
+            "root",
+            BTreeMap::from([("root".into(), root), ("a".into(), a), ("b".into(), b)]),
+            &["t"],
+        );
+        assert!(has(&tree, "decomposition-non-reducing"), "{:?}", codes(&tree));
+    }
+
     #[test]
     fn source_dup() {
         let mut tree = degenerate();

@@ -350,7 +350,7 @@ fn round_jobs<'a, P: Model>(
                     operation: "partition".to_string(),
                     attempt: 1,
                 },
-                budget: pool::budget::JUDGMENT,
+                budget: pool::budget::PARTITION,
                 future: Box::pin(partition::partition(provider, request, move |answer| {
                     if let Ok(mut last) = slot.lock() {
                         *last = Some(answer.clone());
@@ -1108,9 +1108,16 @@ fn partition_request(
     notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<serde_json::Value, Error> {
     let node = tree.node(id)?;
+    // Only the domain's contributing sources reach the request: a
+    // focused child may substitute a different lead from the same
+    // source, so same-source catalog rows ride along; foreign-source
+    // rows are noise the cut cannot bind.
+    let contributing: std::collections::BTreeSet<&str> =
+        node.sources.iter().map(|scope| scope.source.as_str()).collect();
     let leads: Vec<serde_json::Value> = catalog
         .leads()
         .iter()
+        .filter(|lead| contributing.contains(lead.source.as_str()))
         .map(|lead| {
             json!({
                 "source": lead.source,
@@ -1128,6 +1135,7 @@ fn partition_request(
         "sources": node.sources,
         "targets": node.target_set().into_iter().collect::<Vec<_>>(),
         "parent": node.parent,
+        "parent-measure": project::plan::decomposition::scope_measure(tree, id),
         "leads": leads,
         "plan-targets": plan.targets.keys().collect::<Vec<_>>(),
         "judgments-remaining": MAX_JUDGMENTS.saturating_sub(used),
