@@ -6,13 +6,13 @@
 
 ## Invariants
 
-1. **One product, one journey.** The full operator journey — sources in, reviewable specification out, slice built and merged — runs scripted and offline in CI at all times. It is the definition of done for every change. A change that breaks the journey does not land, whatever else it fixes.
-2. **The surface is the spec.** The operator surface is 4 verbs and ≤10 nouns ([rfcs/product.md](rfcs/product.md)). Adding a verb or operator-visible noun requires an ADR naming a deletion. The conceptual model must be inferable from `emery --help` plus one reviewable document per slice.
+1. **One product, one journey.** The live operator journey — sources in, reviewable specification out — runs scripted and offline in CI at all times. It is the definition of done for every change. A change that breaks the journey does not land, whatever else it fixes. ([ADR-0008](rfcs/decisions/0008-spec-generator-programme.md): build-and-merge returns to this invariant when that programme opens.)
+2. **The surface is the spec.** The destination operator surface is 4 verbs and ≤10 nouns ([rfcs/product.md](rfcs/product.md)). The *live* route budget is the programme's verb list in [rfcs/remediation-plan.md](rfcs/remediation-plan.md) (`init`, `specify`). Adding a verb or operator-visible noun requires an ADR naming a deletion. The conceptual model must be inferable from `emery --help` plus the reviewable specification.
 3. **Authority is typed, singular, and fail-closed.** Exactly one authority answers each lifecycle question. Progress labels are computed, never stored. A read failure on an authority is an error, never an empty result. Every irreversible effect verifies its complete authorization immediately before acting.
 4. **Delete before add.** Every RFC and ADR names its deletions and its net concept-count effect. A change that only adds is presumed wrong until justified.
 5. **Policy changes are decisions.** Any change to an operator gate, authority rule, verb, artifact kind, or lifecycle stage requires an ADR in the same PR ([rfcs/decisions/](rfcs/decisions/)). Lab and eval convenience gets lab flags, never production policy. (This rule exists because it was violated once, expensively: review finding P3/R3.)
 6. **Measured, not asserted.** "Fast" and "reliable" are the numbers in product.md. The graded eval suite gates release. An unmeasured number is written `unconfirmed`.
-7. **Agents implement; humans decide.** Agent task briefs cite the target-architecture section they implement against. AGENTS.md is a map, never a spec. This file changes only by explicit human decision.
+7. **Agents implement; humans decide.** Agent task briefs cite the target-architecture section they implement against — the spec-generator sections, not the deferred annex. AGENTS.md is a map of what exists (today: tag `v1`), never a spec. This file changes only by explicit human decision.
 
 ## Mechanical enforcement (fitness functions)
 
@@ -20,8 +20,8 @@ Each is a small CI check; together they convert gradual drift into individual re
 
 | Check | Enforces | Mechanism |
 | --- | --- | --- |
-| Journey test | Invariant 1 | Scripted offline journey over the mock catalog; every push |
-| Route budget | Invariant 2 | Test enumerating the CLI router against the verb/noun list in product.md |
+| Journey test | Invariant 1 | Scripted offline `emery specify` over a mock source component; every push |
+| Route budget | Invariant 2 | Test enumerating the CLI router against the live verb list in the remediation plan |
 | LOC ratchet | Invariant 4 | Committed per-crate baseline (`scripts/ratchet.toml`); growth past ceiling fails unless the PR cites an ADR; shrink updates are free |
 | Layering test | Invariant 3 | Assert the crate dependency DAG over `cargo metadata` |
 | Seam-copy counter | Invariant 3 | Golden test asserting one DTO family for the adapter seam |

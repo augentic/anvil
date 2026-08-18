@@ -6,7 +6,7 @@
 >
 > Finding ids are stable (`P1…`, `S1…`, `D1…`, `A1…`, `T1…`, `C1…`, `R1…`). Severity: **blocker** (the services promise cannot be kept until this is resolved), **major** (resolve before staffing the next programme RFC), **minor** (fix opportunistically in the same cuts).
 >
-> A second whole-codebase pass is recorded in [architecture-review-addendum.md](architecture-review-addendum.md) (findings `P10+`, `S12+`, `D12+`, `A8+`, `T6`, `C3+`). Its Cut 0 widenings and acceptance items are absorbed below; the finding-by-finding fold follows its own "How to merge" and remains a named task in [remediation-plan.md](remediation-plan.md). The corrective programme is executed through that plan, gated by [product.md](product.md) and the ADRs in [decisions/](decisions/).
+> A second whole-codebase pass is folded into this file (findings `P10+`, `S12+`, `D12+`, `A8+`, `T6`, `C3+`). The corrective programme is executed through [remediation-plan.md](remediation-plan.md), gated by [product.md](product.md) and the ADRs in [decisions/](decisions/) — live scope is the specification generator ([ADR-0008](decisions/0008-spec-generator-programme.md)). Cuts 1–5 as written below are evidence, not the execution sequence.
 
 ## Verdict
 
@@ -602,7 +602,7 @@ Do not add another host WIT package (`emery:verification`, `emery:publication`) 
 
 This is a dependency order, not a new RFC stack. Freeze feature work while Cuts 0–3 land. Prefer hard replacement over compatibility layers: the product is pre-production, and preserving ambiguous historical state would defeat the repair.
 
-A **decision gate** sits between Cut 0 and Cut 1 (see "The yardstick" above): the product-definition and target-architecture documents, plus the recorded decisions on state model (S1), deployment (D1), lifecycles (P1), conflict disposition (P3), and change-home shape (D2). The gate artefacts now exist: [product.md](product.md), [decisions/](decisions/) ADR-0001…0006, [target-architecture.md](target-architecture.md) (draft v0), [CONSTITUTION.md](../CONSTITUTION.md), and [remediation-plan.md](remediation-plan.md), which sequences execution. Cuts 1–5 as written below assume the event-store and dual-deployment answers; under the accepted and preferred answers (transactional state store; **Wasm-primary per ADR-0002** — the native provider and resolver matrix delete, the seam hardens; one lifecycle) large parts of Cuts 1, 2, and 4 dissolve into deletions, and the remainder is re-derived from the target document rather than executed from this list.
+A **decision gate** sits between Cut 0 and Cut 1 (see "The yardstick" above): the product-definition and target-architecture documents, plus the recorded decisions on state model (S1), deployment (D1), lifecycles (P1), conflict disposition (P3), and change-home shape (D2). The gate artefacts now exist: [product.md](product.md), [decisions/](decisions/) ADR-0001…0008, [target-architecture.md](target-architecture.md) (draft v0.1), [CONSTITUTION.md](../CONSTITUTION.md), and [remediation-plan.md](remediation-plan.md), which sequences execution. **Live execution is the spec-generator programme (ADR-0008), not Cuts 1–5 as written.** Cuts 1–5 assume answers the programme has since narrowed; they remain the evidence base for the deferred annex.
 
 The [addendum](architecture-review-addendum.md) additionally widens Cuts 1–5 — the authoring generation set (S19/S25/S26), wave/refine/publication as first-class executor stages (S32–S40), the inverse definition coupling and observation receipts (P11/P12, S41–S45), the one open claim family (A8/A16), and one topology compiler (P10/S31) — see its "Corrective programme — what changes". Its exceptions table also bounds the state-store dissolution claim: missing *types and seams* do not dissolve and stay on the cuts.
 
@@ -770,11 +770,10 @@ Until then, further RFCs are completeness, not product.
 
 ## See also
 
-- [architecture-review-addendum.md](architecture-review-addendum.md) — second-pass findings; fold per its "How to merge"
 - [product.md](product.md) — the product yardstick this review's later amendments audit against
 - [remediation-plan.md](remediation-plan.md) — the plan of record executing this review's programme
 - [target-architecture.md](target-architecture.md) — the destination the cuts are re-derived from
-- [decisions/](decisions/) — the decision gate (ADR-0001…0006)
+- [decisions/](decisions/) — the decision log (ADR-0001…0008)
 - [CONSTITUTION.md](../CONSTITUTION.md) — standing invariants and mechanical anti-reversion enforcement
 - [platform.md](platform.md) — programme spine this review holds to account
 - [architecture.md](architecture.md) — Omnia thesis vs deployment reality (D3, D4)

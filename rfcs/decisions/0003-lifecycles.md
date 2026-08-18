@@ -1,6 +1,6 @@
 # ADR-0003: Lifecycles — one spec-mining loop vs definition + delivery
 
-> Status: Proposed — pending operator acceptance
+> Status: **Accepted** (operator decision, 2026-08-18). Confirmed by [ADR-0008](0008-spec-generator-programme.md): the spec generator is one mining loop; `crates/system` stays in the archive.
 > Date: 2026-08-17
 
 ## Context
@@ -12,17 +12,17 @@ RFC-104 implemented a second product: `crates/system` (~6.7k lines) with its own
 - **A. One lifecycle.** Legacy code, documentation, contracts, captures, and designs are ordinary *sources* feeding one spec-mining loop. "Archaeology" is running the loop with code/doc sources. The architecture model (as-is, target, migration) becomes an optional *projection* of the same evidence corpus.
 - **B. Keep two lifecycles**, closing every seam finding (P2, P5, P6, P7, P11, P12, P13, S41–S45) and making definition optional (standing P1 recommendation).
 
-## Decision (proposed)
+## Decision
 
 **Option A.** The volume of seam findings is the argument: two lifecycles require the review-to-delivery authorization chain (standing Cut 3) *plus* the inverse fence (P12) *plus* a second generation system for definition state (S41–S45) — machinery that exists only because there are two homes. One lifecycle makes the mutual-revocation class unrepresentable. The paid archaeology deliverable survives as a projection (report + diagrams) over the mined evidence, not as a separate product.
 
 ## Deletions
 
-`crates/system` as a parallel workflow engine (survey kernel merges with the delivery source axis, per standing P1's "one survey/extract kernel"); the definition home layout, its events root, `system status`; hand-authored `scope.yaml` / `coverage.yaml` as preconditions; the sixteen-category `HandoffWave`; the `current_definition` fence. Concept-count effect: removes the definition-home noun family (scope, coverage, handoff, wave review) from the operator surface — the largest single simplification available.
+`crates/system` as a parallel workflow engine (the source axis is one `extract` under ADR-0008; there is no survey kernel to merge); the definition home layout, its events root, `system status`; hand-authored `scope.yaml` / `coverage.yaml` as preconditions; the sixteen-category `HandoffWave`; the `current_definition` fence. Concept-count effect: removes the definition-home noun family (scope, coverage, handoff, wave review) from the operator surface — the largest single simplification available.
 
 ## Consequences
 
-The reviewed-wave gesture (`system review`) is replaced by specification review in the one loop; engagements that want a formal architecture sign-off get it as a review of the projected architecture document, recorded as an ordinary decision fact. Migration-wave planning becomes plan topology, not a separate artifact family.
+The reviewed-wave gesture (`system review`) is replaced by specification review in the one loop; engagements that want a formal architecture sign-off get it as a review of a projected architecture document over the mined corpus, recorded as an ordinary decision fact — and that projection is not in this programme (ADR-0008). Migration-wave planning belongs to the deferred build programme, not a separate artifact family.
 
 ## Revisit trigger
 
