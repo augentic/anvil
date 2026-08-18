@@ -7,21 +7,13 @@ pub mod behaviour;
 pub mod ops;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub mod answers;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod definition;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod invoke;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod registry;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod session;
 
-pub use ops::{
-    Adapter, Code, DOCS, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey,
-    MissingOutput, NaBlocking, OversizedContinuation, StageEscape, ToolSource, VerifyContinuation,
-    VerifyOutputs,
-};
+pub use ops::{Adapter, Code, DOCS, Docs, FailExtract};
 #[cfg(not(target_arch = "wasm32"))]
 pub use registry::catalog;
 #[cfg(not(target_arch = "wasm32"))]

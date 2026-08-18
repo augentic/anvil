@@ -1,7 +1,7 @@
 {
   "name": "emery",
   "displayName": "Emery Workflow",
-  "description": "Emery workflow skills: init, plan, refine, execute, status, finalize, system-survey, system-plan, system-review.",
+  "description": "Emery skills: init. The delivery workflow is frozen during the spec-generator remediation (ADR-0008); deleted skills return with the new surface.",
   "version": "0.29.0",
   "author": {
     "name": "Augentic",

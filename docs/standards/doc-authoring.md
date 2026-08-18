@@ -2,7 +2,7 @@
 
 House rules for the Emery Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/emery-docs.css`](../assets/theme/emery-docs.css).
 
-**Runtime vs book:** Core judgment prose is embedded in the `emery` binary from `crates/slice/prompts/` and `crates/change/prompts/`; adapter prompts and references ship inside each adapter component in `augentic/emery-adapters`. The plugin cache ships only `plugins/`, so skill bodies link only to plugin-local `references/…` siblings — never into `docs/` with relative paths. Use `https://emery.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
+**Runtime vs book:** Adapter prompts and references ship inside each adapter component in `augentic/emery-adapters`. The plugin cache ships only `plugins/`, so skill bodies link only to plugin-local `references/…` siblings — never into `docs/` with relative paths. Use `https://emery.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
 
 ## Document types (Diátaxis)
 
@@ -50,7 +50,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/index.hbs)) plus 
 
 ## HTML component blocks
 
-Copy HTML scaffolds from [`docs/authoring-snippets/`](../authoring-snippets/README.md) or from the exemplar chapters listed under [Page-type scaffolds](#page-type-scaffolds). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`emery-docs.css`](../assets/theme/emery-docs.css); do not invent one-off CSS.
+Copy HTML scaffolds from the snippets below or from the exemplar chapters archived at tag `v1` (see [Page-type scaffolds](#page-type-scaffolds)). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`emery-docs.css`](../assets/theme/emery-docs.css); do not invent one-off CSS.
 
 ### Hero block
 
@@ -273,15 +273,12 @@ Multi-line bodies prefix every line with `> `.
 
 ## Page-type scaffolds
 
-Copy the exemplar chapter for each Diátaxis type when authoring or migrating pages:
+Copy the exemplar chapter for each Diátaxis type when authoring or migrating pages. The v1 guide's exemplars (tutorial, how-to, explanation, section landing) are archived at tag `v1` under `docs/`; the surviving in-tree exemplar per type:
 
-| Type                | Exemplar                                                              | Key components                                                         |
-| ------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **Tutorial**        | [`tutorials/quick-start.md`](../tutorials/quick-start.md)             | hero, meta-chip, prereq, tutorial-step, pipeline, `> [!TIP]`, see-also |
-| **How-to**          | [`how-to/interpret-validate-findings.md`](../how-to/interpret-validate-findings.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also               |
-| **Explanation**     | [`explanation/concepts.md`](../explanation/concepts.md)               | hero, audience-grid, rhythm, pipeline, admonition, see-also            |
-| **Reference**       | [`reference/cli/plan.md`](../reference/cli/plan.md)                   | intro, verb cheat-sheet table, synopsis blocks, see-also               |
-| **Section landing** | [`tutorials/index.md`](../tutorials/index.md)                         | hero, card-grid, see-also                                              |
+| Type                | Exemplar                                                | Key components                                           |
+| ------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| **Reference**       | [`reference/cli/init.md`](../reference/cli/init.md)     | intro, verb cheat-sheet table, synopsis blocks, see-also |
+| **Section landing** | [`reference/index.md`](../reference/index.md)           | hero, card-grid, see-also                                 |
 
 ### CLI verb template
 
@@ -313,7 +310,7 @@ mdBook 0.5 adds an **On this page** block to the left sidebar while you read a c
 - **Reference and contributing pages** may use SVG or ASCII command snippets where scannability matters.
 - Prefer one flagship SVG per conceptual page over several small ASCII fragments.
 
-Diagram assets live under `docs/assets/diagrams/`. Follow `docs/assets/diagrams/_STYLE.md` for SVG authoring.
+Diagram assets live under `docs/assets/diagrams/` when a page needs one (the v1 diagram set and its `_STYLE.md` authoring guide are archived at tag `v1`).
 
 ## Raw HTML in markdown
 

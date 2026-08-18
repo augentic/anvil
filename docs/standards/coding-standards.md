@@ -53,9 +53,8 @@ Density caps, mechanically enforced by the `doc_brevity` root-crate test (`tests
 //! Historical rename detail belongs in git history, not module docs.
 
 // GOOD
-//! Scaffolds `.emery/` plus `project.yaml`. Operator-facing artifacts
-//! (`change.md`, `plan.yaml`) are minted by their owning verbs, not
-//! by `init`.
+//! Scaffolds `.emery/` plus `project.yaml`. Later artifacts are
+//! minted by their owning verbs, not by `init`.
 ```
 
 The composition-root failure mode is the essay that restates architecture and hides the tip. Collapse the essay; keep the tip at the site that needs it:
@@ -215,7 +214,7 @@ A dedicated typed variant remains correct for entries that already meet the crit
 
 YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
 
-Writes that must not be observed mid-update use the shared atomic helpers in `artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (`plan.yaml`, `change.md`, `tasks.md`, `metadata.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
+Writes that must not be observed mid-update use the shared atomic helpers in `artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (e.g. `project.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
 
 ## Module layout
 

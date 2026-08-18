@@ -7,10 +7,10 @@ Cross-cutting code-quality rules every Rust change in this workspace honours, co
 The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module>/<file>.rs`, and that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
 
 ```rust
-// crates/project/src/registry/workspace/push/forge.rs
-// BAD: WorkspacePushForge       GOOD: Forge
-// crates/change/src/orchestrate/finalize/probe.rs
-// BAD: FinalizeProbe            GOOD: Probe
+// crates/project/src/adapter/resolver/component.rs
+// BAD: AdapterResolverComponent GOOD: Component
+// crates/launcher/src/install.rs
+// BAD: LauncherInstallError     GOOD: Error
 ```
 
 ## Error variants budgeted by recovery, not source

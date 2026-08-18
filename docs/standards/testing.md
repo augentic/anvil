@@ -1,37 +1,30 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained mock adapter supplying both `emery:adapter` axes, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. This posture deliberately diverges from generic unit-test-first guidance; it overrides any external baseline. Read this before adding a test.
+Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained mock source adapter, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. This posture deliberately diverges from generic unit-test-first guidance; it overrides any external baseline. Read this before adding a test.
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --workspace --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The live trial is an opt-in rung (below) so ordinary test runs never call a model.
+Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --workspace --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
-## The two rungs
+## The single rung
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-| Rung                   | Command           | Proves                                                                                                                                                                                                                                                                                               | Cadence                                                                                                                                                           |
-| ---------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Native integration** | `cargo make test` | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the engine crates' public operations, the `mock` catalog behind the offline `native` provider, and scripted model doubles                                                                                                           | Every push (part of `cargo make ci`)                                                                                                                              |
-| **Prompt evaluation**  | `cargo make eval` | The shared native runner drives the production operator rhythm over linked adapters and checks plan completion plus requirement provenance; per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/slice/prompts/`, `crates/change/prompts/`) or answer-schema changes — never ordinary CI |
+The rung is **native integration**: `cargo make test` drives the surviving surface (`init`, the `specify` stub, adapter resolution, the C3 HTTP refusal) through the engine crates' public operations, the `mock` catalog behind the offline `native` provider, and scripted model doubles. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
 
-There is no automated WASM boundary rung: the wasm32 guests are compile-checked (`cargo check --lib -p emery --examples --target wasm32-wasip2`), and component-boundary execution — WIT dispatch on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example (`cargo make wasm-run`, live model; see [`examples/wasm/README.md`](../../examples/wasm/README.md)) and by the matching wasm example in `emery-adapters`.
-
-Each fact has one owning rung. The native suites own workflow behavior; the live test owns only "a real model can do this" — it adds no new workflow assertions. Do not copy an assertion onto another rung for reassurance.
+There is no automated WASM boundary rung: the wasm32 guest is compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`).
 
 ### The mock crate
 
-`crates/mock` is Emery's single mock crate (`publish = false`, dev-dep'd by the suite-bearing crates — a legal Cargo dev-dependency cycle). It owns the SDK-native mock adapter core (`mock::behaviour`, both `emery:adapter` axes): controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failure profiles registered as explicit catalog identities (`mock::registry::catalog`). Native tests reach it through the offline `native::Provider` via the host-only `mock::session::Session` and the generalized `mock::invoke::run`; the example components (`examples/wasm/source.rs` / `target.rs`) wire the same core into the SDK's `source!` / `target!` export macros for the operator-run wasm example. Resolver / install / store suites use their suite-local provider under `crates/project/tests/support/` instead — component-metadata resolution is not a catalog concern. Do not add another mock adapter, mock model, or mock-adapter copy — extend the core and let every consumer inherit the behavior.
+`crates/mock` is Emery's single mock crate (`publish = false`, dev-dep'd by the suite-bearing crates — a legal Cargo dev-dependency cycle). It owns the SDK-native mock source adapter core (`mock::behaviour`): controlled evidence with stable authority and claim anchors, plus typed failure profiles registered as explicit catalog identities (`mock::catalog()`). Native tests reach it through the offline `native::Provider` via the host-only `mock::session::Session` and the generalized `mock::invoke::run`. Resolver / install / store suites use their suite-local provider under `crates/project/tests/support/` instead — component-metadata resolution is not a catalog concern. Do not add another mock adapter, mock model, or mock-adapter copy — extend the core and let every consumer inherit the behavior.
 
-Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness`; `mock::session::Session` binds that harness behind the judgment legs. Emery owns only workflow scenario content — the leads, evidence, the scripted answer corpus (`mock::answers`), and assertions. The scripted double answers regardless of the request; prompt quality is owned by the prompt-evaluation rung, not by the native suites.
-
-The live prompt-evaluation rung is the lab-only `crates/probe` library composed by the root `eval` example (`examples/eval/`). `native` owns the catalog machinery, `DynModel` erasure, and the seam `Provider`; the probe library owns the typed case runner (`probe::case` — workflow and build cases over real `emery` verbs, one stable retained sandbox per case, deterministic gates), telemetry, and grading, receiving its catalog, model factory, and `cases/` root from its composition root; the `client` feature adds the shared cursor composition (`probe::client` — the lazily connected `DevModel`, the process tracing init (console plus an optional `EVAL_LOG` file copy), and the argv dispatch); the root example owns the Tokio runtime and the mock catalog binding, and `cargo make eval <case>` names one case (case data lives in `examples/eval/cases/<id>/case.toml`, never in makefile argv). Only the model is live. The same `probe::client` is consumed by the matching `eval` example in `augentic/emery-adapters`, which also owns the first-party catalog declaration and its cases root.
+Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness`; `mock::session::Session` binds that harness. Emery owns only scenario content and assertions.
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/change/tests/handlers.rs`, `crates/change/tests/full_loop.rs`, and so on. Cross-crate helpers come from the `mock` and `native` dev-dependencies (`use mock::…`, `use native::…`); crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Developer Guide link integrity is `mdbook-linkcheck2`'s job (`cargo make links`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/project/tests/init.rs`, `crates/transport/tests/router.rs`, and so on. Cross-crate helpers come from the `mock` and `native` dev-dependencies (`use mock::…`, `use native::…`); crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Developer Guide link integrity is `mdbook-linkcheck2`'s job (`cargo make links`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -89,9 +82,8 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 
 ## Assertion ownership
 
-- A behavior reducible to a crate API, CLI result, filesystem predicate, validator, compiler, or journal query is a **hard assertion**. It executes automatically on the rung that owns its seam.
-- The live test carries **no semantic grading**: its pass condition is the same deterministic validators the native suites use (coverage, schema gates, provenance completeness, tag checks, lifecycle). A judgment about meaning or usefulness that no deterministic predicate can decide has no automated home in this repository.
-- Workflow behavior belongs to the native suites; runtime wiring has no automated home here (the operator-run wasm example exercises it). Name the seam an assertion owns before writing it.
+- A behavior reducible to a crate API, CLI result, filesystem predicate, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its seam.
+- Engine behavior belongs to the native suites; component-boundary wiring has no automated home here. Name the seam an assertion owns before writing it.
 
 ## Test naming
 
@@ -106,11 +98,10 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `mock` — `mock::session::Session` (its constructors mint the tempdir and pin the project cache), the generalized `mock::invoke::run::<Op, _, _>` invoker helper, and the `mock::answers` corpus.
-- Compare structured output against checked-in goldens (the crate-local `spec-*` cases under `crates/artifacts/tests/fixtures/` and `crates/slice/tests/fixtures/`, the generated answer schemas under `crates/project/answers/` and `crates/slice/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
+- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `mock` — `mock::session::Session` (its constructors mint the tempdir and pin the project cache) and the generalized `mock::invoke::run::<Op, _, _>` invoker helper.
+- Compare structured output against checked-in goldens (the crate-local `spec-*` cases under `crates/artifacts/tests/fixtures/`, the generated answer schemas under `crates/project/answers/` and `crates/adapter/schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
-- Scripted model answers live in `mock::answers` as the single shared copy the suites consume; keep them concise and structural, not a scenario format.
 
 ## Golden file discipline
 
@@ -122,14 +113,8 @@ REGENERATE_GOLDENS=1 cargo nextest run -p <crate> --test <binary>
 
 `REGENERATE_GOLDENS=1` regenerates every checked-in golden — the structural artifact goldens and the generated answer schemas. After regenerating, run `git diff` on the outputs and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors)).
 
-| Crate               | Test binary     | Fixture / golden dir(s)                            |
-| ------------------- | --------------- | -------------------------------------------------- |
-| `slice`             | `merge_goldens` | `crates/slice/tests/fixtures/spec-*`               |
-| `project` / `slice` | `answers`       | `crates/project/answers/`, `crates/slice/answers/` |
+| Crate                 | Test binary | Fixture / golden dir(s)                                       |
+| --------------------- | ----------- | ------------------------------------------------------------- |
+| `project` / `adapter` | `answers`   | `crates/project/answers/`, `crates/adapter/schemas/answers/` |
 
 Binaries not listed here assert structurally and carry no regenerable goldens.
-
-## Test-side gotchas
-
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration phases (`slice::orchestrate::{refine, build, merge}`, the `plan refine` drain, or the execute loop) when a test needs a stamped phase outcome.
-- The live test retains its temporary project tree on failure and prints the path at start — inspect it rather than re-running blind.

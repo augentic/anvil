@@ -1,20 +1,17 @@
-//! The exhaustive route inventory: the typed clap grammar, namespace
-//! help, the router assembly, and the `Args`-to-`Input` conversions.
+//! The exhaustive route inventory (ADR-0008 §3): `init`, the reserved
+//! `specify` stub, and the auto-derived `completions`. Deleted verbs
+//! are gone from the grammar — no hidden routes, no aliases.
 
 use clap::Args;
-use omnia_guest::Model;
 use omnia_guest::api::Provider;
-use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, RouterBuilder, run};
+use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
 use omnia_guest::api::invoke::Invoker;
-use project::adapter::{Inventory, Resolver};
+use project::adapter::Resolver;
 use project::handler::Anchor;
-use project::profile::Profiles;
-use project::seam::{Forge, Shelf, Source, Target, Trees, Workspaces, Worktree};
 
-use super::change_dir::ChangeDir;
-use super::{
-    EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, system, target,
-};
+use super::specify::SpecifyArgs;
+use super::{EmeryProjector, Globals, specify};
+
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
@@ -37,85 +34,14 @@ pub(super) struct InitArgs {
     pub(super) upgrade: bool,
 }
 
-/// Arguments for `debt`.
-#[derive(Clone, Debug, Args)]
-pub(super) struct DebtArgs {
-    #[command(flatten)]
-    pub(super) change_dir: ChangeDir,
-}
-
-#[derive(Clone, Copy)]
-struct NamespaceHelp {
-    path: &'static [&'static str],
-    metadata: Namespace,
-}
-
-impl NamespaceHelp {
-    const fn new(path: &'static [&'static str], about: &'static str) -> Self {
-        Self {
-            path,
-            metadata: Namespace::new().about(about),
-        }
-    }
-}
-
-const NAMESPACE_HELP: &[NamespaceHelp] = &[
-    NamespaceHelp::new(
-        &["adapter"],
-        "Adapter component operations. `add` seeds a local `.wasm` component into the project component cache — pre-init, axis-neutral — so bare bindings (project target, plan sources) resolve it; `upgrade` refreshes a bare name (or every bare project binding with `--all`) to the newest published version (the explicit upgrade act — normal resolution is local-first and never checks the registry while something local exists)",
-    ),
-    NamespaceHelp::new(
-        &["source"],
-        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `plan execute` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
-    ),
-    NamespaceHelp::new(
-        &["target"],
-        "Target adapter operations (workflow contract) — debug/breakout surface; the execute loop's build and merge phases resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
-    ),
-    NamespaceHelp::new(
-        &["slice"],
-        "Read-only slice projections over `.emery/change/slices/` — `plan refine` owns refinement; the execute loop owns the build → merge phases",
-    ),
-    NamespaceHelp::new(&["slice", "model"], "Read-only viewer over a slice's `model.yaml`"),
-    NamespaceHelp::new(
-        &["archive"],
-        "Slice-archive cache maintenance. The archived slice folders under `.emery/change/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
-    ),
-    NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
-    NamespaceHelp::new(
-        &["journal"],
-        "Workflow journal at `.emery/change/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
-    ),
-    NamespaceHelp::new(
-        &["system"],
-        "Definition-loop operations over a definition home (RFC-104) — a durable root the operator authors by hand (`scope.yaml` + `coverage.yaml`), never a product checkout. The launcher mounts `--dir`-or-CWD as the invocation's root with no `project.yaml` walk",
-    ),
-];
-
 /// Assemble the complete Emery command router.
 ///
 /// # Errors
 ///
 /// Returns a deterministic route or argument conflict.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the exhaustive typed route inventory is one auditable assembly"
-)]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider
-        + Anchor
-        + Model
-        + Resolver
-        + Inventory
-        + Profiles
-        + Source
-        + Shelf
-        + Target
-        + Workspaces
-        + Trees
-        + Worktree
-        + Forge,
+    P: Provider + Anchor + Resolver,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -126,12 +52,6 @@ where
         );
 
     macro_rules! route {
-        ($path:expr, $args:ty, $operation:ty, $about:literal) => {
-            router = router.route(
-                $path,
-                run::<$args, $operation>().about($about).project_with(EmeryProjector),
-            );
-        };
         ($path:expr, $args:ty, $operation:ty, $about:literal, $long_about:literal) => {
             router = router.route(
                 $path,
@@ -151,209 +71,18 @@ where
         "Initialize .emery/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path). A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
     );
     route!(
-        ["adapter", "add"],
-        adapter::AddArgs,
-        project::adapter::handlers::AdapterAdd,
-        "Seed a local `.wasm` component into the project component cache",
-        "Seed a local `.wasm` component into the project component cache.\n\nMirrors the component to `<project-cache>/components/<name>.wasm` (the kebab name derives from the filename) and stamps a per-component provenance sidecar. Pre-init and axis-neutral: `.emery/` need not exist and the component's exports are not inspected — the bare binding that later resolves the name (project target or plan source) supplies the expected axis. Re-seeding the same name replaces the entry; the explicit command is the approval act."
+        ["specify"],
+        SpecifyArgs,
+        specify::Specify,
+        "Generate specifications from bound sources (reserved — not yet implemented)",
+        "Generate specifications from bound sources.\n\nReserved for the spec generator (ADR-0008); until the walking skeleton lands this verb fails typed with `specify-not-implemented` (exit 1)."
     );
-    route!(
-        ["adapter", "upgrade"],
-        adapter::UpgradeArgs,
-        project::adapter::handlers::AdapterUpgrade,
-        "Upgrade a bare-named adapter (or every bare project binding with `--all`) to the newest published version",
-        "Upgrade a bare-named adapter (or every bare project binding with `--all`) to the newest published version.\n\nThe explicit upgrade act: normal resolution is local-first (project cache seed, else the newest installed store version) and never checks the registry while something local exists. This verb forces the registry check — the deployment lists the published exact-SemVer versions, installs the newest into the global store, and the verb reports what each name now resolves to. `--all` collects every bare binding the project records (`project.yaml` target plus `plan.yaml` sources). A project cache seed always wins and is reported as such; refresh it by re-running `emery adapter add`. Pinned versions (`emery:<name>@<semver>`) are immutable and are refused here."
-    );
-    route!(
-        ["source", "resolve"],
-        source::ResolveArgs,
-        project::adapter::handlers::SourceResolve,
-        "Resolve a source adapter by kebab name",
-        "Resolve a source adapter by kebab name.\n\nResolves the single `.wasm` component: the global store entry for a pinned identity, else the seeded project component cache for a bare name. Emits the resolved component path plus the axis's closed operation set."
-    );
-    route!(
-        ["source", "survey"],
-        source::SurveyArgs,
-        ::change::source::Survey,
-        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `leads.md` — `plan author` runs this step itself",
-        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `leads.md` — `plan author` runs this step itself; reach for this verb only to re-survey a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, catalog validation, and the `leads.md` merge."
-    );
-    route!(
-        ["source", "extract"],
-        source::ExtractArgs,
-        ::slice::source::Extract,
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/change/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself",
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/change/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
-    );
-    route!(
-        ["target", "resolve"],
-        target::ResolveArgs,
-        project::adapter::handlers::TargetResolve,
-        "Resolve a target adapter"
-    );
-    route!(
-        ["slice", "list"],
-        slice::ListArgs,
-        ::slice::handlers::List,
-        "List every slice under `.emery/change/slices/` with its lifecycle status and target"
-    );
-    route!(
-        ["slice", "validate"],
-        slice::ValidateArgs,
-        ::slice::handlers::Validate,
-        "Validate a slice's artifacts against adapter validation rules",
-        "Validate a slice's artifacts against adapter validation rules.\n\nBlocking findings gate the execute loop; non-blocking review advisories include baseline-drift signals — `type: modified` baselines modified after this slice's `defined_at` (the retired `slice merge --conflict-check` probe)."
-    );
-    route!(
-        ["slice", "provenance"],
-        slice::ProvenanceArgs,
-        ::slice::handlers::Provenance,
-        "Project the audit-only provenance view from the slice's `model.yaml`. Provenance is carried inline in `model.yaml`; this reshapes it on demand and never reads or writes a `provenance.yaml` file"
-    );
-    route!(
-        ["slice", "model", "show"],
-        slice::ModelShowArgs,
-        ::slice::handlers::ModelShow,
-        "Render the persisted `model.yaml` — concise text view, or the model serialised verbatim under `--format json`"
-    );
-    route!(
-        ["archive", "prune"],
-        archive::PruneArgs,
-        ::slice::handlers::Prune,
-        "Prune archived slice folders under `.emery/change/archive/` that fall outside the supplied retention bounds",
-        "Prune archived slice folders under `.emery/change/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.emery/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
-    );
-    route!(
-        ["plan", "validate"],
-        plan::ValidateArgs,
-        ::change::plan::handlers::Validate,
-        "Validate plan.yaml (structure + plan/change consistency)",
-        "Validate plan.yaml (structure + plan/change consistency).\n\nIncludes the health diagnostics — `cycle-in-depends-on` and `orphan-source` — alongside the base shape rules."
-    );
-    route!(
-        ["plan", "status"],
-        plan::StatusArgs,
-        ::change::plan::handlers::Status,
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-writer fact union. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted`) are classified from phase / wave journal events and inert boundary proposals (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
-    );
-    route!(
-        ["plan", "gaps"],
-        plan::GapsArgs,
-        ::change::plan::handlers::Gaps,
-        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions",
-        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions.\n\nDerived from on-disk `model.yaml` / `specs/<domain>/spec.md` — not a second file to keep in sync. Dropped slices are excluded. Shared-lead rollup is presentation only; deferral dispositions and the execute gap gate stay per-requirement."
-    );
-    route!(["plan", "add"], plan::AddArgs, ::change::plan::handlers::Add, "Add a new plan entry");
-    route!(
-        ["plan", "amend"],
-        plan::AmendArgs,
-        ::change::plan::handlers::Amend,
-        "Edit a plan entry or apply a retained amendment proposal",
-        "Edit non-status fields on an existing plan entry, or apply a retained amendment with `--proposal <digest>`.\n\n`--proposal` compare-and-sets expected planning revisions, accepted CIDs, and the committed-leaf set; refuses live affected claims or waves; then reprojects `plan.yaml` from the decomposition. Envelope and definition-revision documents are not amendments.\n\nThree orthogonal flag families operate on `sources`:\n\n- `--sources <binding>` (with `num_args = 0..`) replaces the slice's `sources` array wholesale.\n- `--add-source <binding>` (repeatable) adds a single binding.\n- `--remove-source <key>` (repeatable) removes a binding by key; fails with `plan-binding-not-found` when no binding matches.\n\n`--add-source` and `--remove-source` apply after `--sources`, so wholesale replacement plus targeted edits can be combined in a single invocation when needed. Once `decomposition.yaml` exists, topology edits reproject through that tree or refuse when the hierarchy edit is ambiguous."
-    );
-    route!(
-        ["plan", "remove"],
-        plan::RemoveArgs,
-        ::change::plan::handlers::Remove,
-        "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `leads.md`"
-    );
-    route!(
-        ["plan", "drop"],
-        plan::DropArgs,
-        ::change::plan::handlers::Drop,
-        "Abandon one plan entry's slice without merging: stamp it `dropped` and archive the slice tree",
-        "Abandon one plan entry's slice without merging: append the durable `slice.dropped` journal tombstone, stamp `dropped_at` on the slice's `metadata.yaml`, and archive the slice tree under `.emery/change/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
-    );
-    route!(
-        ["plan", "author"],
-        plan::AuthorArgs,
-        ::change::plan::handlers::Author,
-        "Bind a reviewed handoff, decompose it, and publish `decomposition.yaml` + `plan.yaml`",
-        "Bind a reviewed handoff, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together.\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, decomposes the bound catalog, and records the canonical discovery, leads, and decomposition digests. The tree persists after every applied cut, and a failed cut is a disposition: the engine closes the domain as a leaf through the profile gate when it can, else parks that domain (`plan.author.parked`, exit 2 `plan-author-stopped`) and keeps draining independent domains.\n\nRe-entry on the same reviewed handoff resumes: a bound-not-authored home continues the open and parked domains, a reconciled plan is a read-only no-op, and `--force` is the wholesale replace (rebinding the same reviewed handoff — a changed wave needs a new handoff and review fact, `plan-author-handoff-changed`). A different plan name over an existing plan refuses with `plan-already-exists`. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
-    );
-    route!(
-        ["plan", "refine"],
-        plan::RefineArgs,
-        ::change::plan::handlers::Refine,
-        "Drain refinement for a closed plan: extract + synthesize every targeted in-scope leaf in dependency order, write per-slice refinement manifests, and stop before any code work",
-        "Drain refinement for a closed plan in the engine guest — the specification stage between `plan author` and `plan execute` (RFC-91).\n\nWalks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts, and atomically writes `refinement.yaml`. Fresh leaves are skipped, so re-running resumes missing or stale work; the drain stops on the first failed refinement (exit 2, `plan-refine-stopped`).\n\nRepeatable `--slice <name>` targets specific leaves plus the stale-or-missing predecessor closure they need. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs — inspect them with `emery plan gaps`. No target build operation, workspace, wave, or authorization epoch is created; the loop holds the create-exclusive `.emery/change/guest.lock` marker while it drains."
-    );
-    route!(
-        ["plan", "execute"],
-        plan::ExecuteArgs,
-        ::change::plan::handlers::Execute,
-        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) covering exact per-leaf refinement digests, then build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`)",
-        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests. Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/change/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
-    );
-    route!(
-        ["plan", "archive"],
-        plan::ArchiveArgs,
-        ::change::plan::handlers::Archive,
-        "Archive the current plan to `.emery/change/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
-    );
-    route!(
-        ["debt"],
-        DebtArgs,
-        ::slice::handlers::Debt,
-        "Read-only baseline debt projection: list every carried `unknown` / `conflict` requirement under `.emery/specs/` with the reason, originating change, and age from its deferral note",
-        "Read-only baseline debt projection (RFC-86a D9) — the backlog looking ahead.\n\nWalks the baseline specs under `.emery/specs/` and lists every requirement whose status is `unknown` or `conflict`, with the reason, originating change, and age parsed from the self-describing deferral note the merge fold appended. Conflicts render separately from unknowns. Reads the baseline alone — never archived fact logs — and writes nothing. `plan author` renders the same inventory in the review prose it authors, so a corrective change is scoped with the backlog in view."
-    );
-    route!(
-        ["system", "survey"],
-        system::SurveyArgs,
-        ::system::handlers::Survey,
-        "Survey the declared coverage of a definition home",
-        "Survey the declared coverage of a definition home (RFC-104).\n\nAnchors at `--dir` (or the current directory) with no `project.yaml` walk — a definition home is durable client architecture, not a product checkout. Fails closed when `scope.yaml` or `coverage.yaml` is missing; the operator authors both by hand (there is no `system init`)."
-    );
-    route!(
-        ["system", "plan"],
-        system::PlanArgs,
-        ::system::handlers::Plan,
-        "Project the migration plan's views and canonical wave handoffs",
-        "Project the definition home's architecture views and canonical wave handoffs (RFC-104).\n\nWhen `system.yaml` has no `target` state, one initial-plan proposal judgment writes `target`, optional `transition-*` states, and a first `migration.yaml` — once; both files are operator-owned afterwards and later runs never overwrite operator edits. Every run reprojects each named state's document and diagram views and each wave's content-addressed `handoffs/<digest>.yaml`; historical handoffs are never deleted. Re-running is resume."
-    );
-    route!(
-        ["system", "review"],
-        system::ReviewArgs,
-        ::system::handlers::Review,
-        "Record architectural authority over one exact wave handoff",
-        "Record architectural authority over one exact wave handoff (RFC-104 D10).\n\nSelects the wave's current handoff — the unique `handoffs/<digest>.yaml` whose covered digests all match the live definition files (zero matches means re-run `emery system plan`; two fail closed; never resolved by recency) — compares it against `--handoff`, and appends the `system.wave.reviewed` fact to `<system>/events/`. Reviewing the same handoff twice is a read-only no-op. The fact grants no product mutation authority and does not replace `plan.execute.started`."
-    );
-    route!(
-        ["system", "status"],
-        system::StatusArgs,
-        ::system::handlers::Status,
-        "Read-only definition-home projection: coverage, model, waves, next action",
-        "Read-only definition-home projection (RFC-104).\n\nProjects the declared coverage accounting, the named `system.yaml` states with their sizes, each migration wave's review standing against its current handoff, and the computed next operator action (`survey` → `plan` → `review <wave>` → reviewed). Reads files and the `<system>/events/` fact union only; writes nothing."
-    );
-    route!(
-        ["journal", "show"],
-        journal::ShowArgs,
-        project::journal::handlers::Show,
-        "Read events from `.emery/change/events/<writer>.jsonl` (union order)",
-        "Read events from `.emery/change/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
-    );
-    for help in NAMESPACE_HELP {
-        router = router.namespace(help.path.iter().copied(), help.metadata);
-    }
     router.build()
 }
 
 macro_rules! convert {
     // The destructuring pattern is exhaustive on purpose: a new clap
-    // flag missing from the field list is a compile error. `; drop`
-    // names launcher-only flags (`--change-dir`).
-    ($args:path => $input:path {}) => {
-        impl TryFrom<$args> for $input {
-            type Error = error::Error;
-
-            fn try_from(args: $args) -> Result<Self, Self::Error> {
-                let $args {} = args;
-                Ok(Self {})
-            }
-        }
-    };
+    // flag missing from the field list is a compile error.
     ($args:path => $input:path { $($field:ident),* $(,)? }) => {
         impl TryFrom<$args> for $input {
             type Error = error::Error;
@@ -364,102 +93,6 @@ macro_rules! convert {
             }
         }
     };
-    ($args:path => $input:path {} ; drop $($drop:ident),+) => {
-        impl TryFrom<$args> for $input {
-            type Error = error::Error;
-
-            #[expect(
-                clippy::unneeded_field_pattern,
-                reason = "named drops keep clap Args exhaustive; `..` would swallow a new flag"
-            )]
-            fn try_from(args: $args) -> Result<Self, Self::Error> {
-                let $args { $($drop: _,)+ } = args;
-                Ok(Self {})
-            }
-        }
-    };
-    ($args:path => $input:path { $($field:ident),* $(,)? } ; drop $($drop:ident),+) => {
-        impl TryFrom<$args> for $input {
-            type Error = error::Error;
-
-            #[expect(
-                clippy::unneeded_field_pattern,
-                reason = "named drops keep clap Args exhaustive; `..` would swallow a new flag"
-            )]
-            fn try_from(args: $args) -> Result<Self, Self::Error> {
-                let $args { $($field,)* $($drop: _,)+ } = args;
-                Ok(Self { $($field),* })
-            }
-        }
-    };
-}
-
-convert!(adapter::AddArgs => project::adapter::handlers::AddInput { component, project_dir });
-convert!(adapter::UpgradeArgs => project::adapter::handlers::UpgradeInput { name, all, project_dir });
-convert!(source::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
-convert!(target::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
-convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan, focus } ; drop change_dir);
-convert!(source::ExtractArgs => ::slice::source::ExtractInput { source, lead, slice } ; drop change_dir);
-convert!(slice::ListArgs => ::slice::handlers::ListInput {} ; drop change_dir);
-convert!(slice::ValidateArgs => ::slice::handlers::ValidateInput { name } ; drop change_dir);
-convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name } ; drop change_dir);
-convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name } ; drop change_dir);
-convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run } ; drop change_dir);
-convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {} ; drop change_dir);
-convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {} ; drop change_dir);
-convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {} ; drop change_dir);
-convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice } ; drop change_dir);
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {} ; drop change_dir);
-convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override, target } ; drop change_dir);
-convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, proposal, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
-convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
-convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
-convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, from, wave, force } ; drop change_dir);
-convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force, unverified } ; drop change_dir);
-convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit } ; drop change_dir);
-convert!(DebtArgs => ::slice::handlers::DebtInput {} ; drop change_dir);
-
-// Deliberately not `convert!`: `--dir` is deployment-consumed — the
-// launcher anchors the `.` mount at it (`selectors::system_request`),
-// so the operation reads the anchored root.
-impl TryFrom<system::SurveyArgs> for ::system::handlers::SurveyInput {
-    type Error = error::Error;
-
-    fn try_from(args: system::SurveyArgs) -> Result<Self, Self::Error> {
-        let system::SurveyArgs { dir } = args;
-        drop(dir);
-        Ok(Self {})
-    }
-}
-
-impl TryFrom<system::PlanArgs> for ::system::handlers::PlanInput {
-    type Error = error::Error;
-
-    fn try_from(args: system::PlanArgs) -> Result<Self, Self::Error> {
-        let system::PlanArgs { dir } = args;
-        drop(dir);
-        Ok(Self {})
-    }
-}
-
-impl TryFrom<system::ReviewArgs> for ::system::handlers::ReviewInput {
-    type Error = error::Error;
-
-    fn try_from(args: system::ReviewArgs) -> Result<Self, Self::Error> {
-        let system::ReviewArgs { wave, handoff, dir } = args;
-        drop(dir);
-        Ok(Self { wave, handoff })
-    }
-}
-
-impl TryFrom<system::StatusArgs> for ::system::handlers::StatusInput {
-    type Error = error::Error;
-
-    fn try_from(args: system::StatusArgs) -> Result<Self, Self::Error> {
-        let system::StatusArgs { dir } = args;
-        drop(dir);
-        Ok(Self {})
-    }
 }
 
 convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });

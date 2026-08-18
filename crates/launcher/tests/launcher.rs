@@ -1,8 +1,7 @@
 //! Launcher integration coverage over the public [`launcher::Policy`]
 //! assembly and the guest resolver's typed kernel: argv-anchored
-//! mounts (including the `adapter add` seed preopen), adapter
-//! resolution with the package-pin pull-on-miss install leg, and
-//! fail-closed store verification.
+//! mounts, adapter resolution with the package-pin pull-on-miss
+//! install leg, and fail-closed store verification.
 //!
 //! The launcher is the only downloader in the deployment: a pinned
 //! store miss installs from an OCI registry (tests compose an
@@ -10,10 +9,10 @@
 //! shipped binary hard-codes the first-party GHCR base), while
 //! unpinned ids resolve local-first — cache seed, else newest store
 //! version, else the pull-latest provisioning leg — with the refresh
-//! set (`adapter upgrade` / `init`) forcing the registry check.
-//! Every test injects explicit [`Locations`] rooted in a tempdir
-//! through `Policy::new` — the same explicit-layout seam sandboxes
-//! use — so no process environment is read or mutated.
+//! set (`init`) forcing the registry check. Every test injects
+//! explicit [`Locations`] rooted in a tempdir through `Policy::new` —
+//! the same explicit-layout seam sandboxes use — so no process
+//! environment is read or mutated.
 
 mod registry;
 
@@ -85,7 +84,7 @@ impl Sandbox {
     /// reach a registry pull: pinned store hits, cache seeds, and
     /// store-newest bare resolves).
     fn resolver(&self) -> Resolver {
-        self.policy(&["plan", "status"]).resolver()
+        self.policy(&["completions", "zsh"]).resolver()
     }
 
     /// A resolver over an explicit registry base — the pull-on-miss
@@ -119,17 +118,13 @@ fn code(err: &error::Error) -> &str {
 #[test]
 fn mounts_are_well_known() {
     let sandbox = Sandbox::new();
-    let policy = sandbox.policy(&["registry", "validate"]);
+    let policy = sandbox.policy(&["completions", "zsh"]);
 
     assert_eq!(policy.project_root(), sandbox.root);
     // The writable mount directories are created pre-run so the
     // guest's preopens exist. The global store gets no guest mount —
     // it is host-owned (the install leg creates it on demand).
     assert!(policy.cache_dir().is_dir());
-    // No seed in argv: the seed preopen degenerates to a harmless
-    // read-only duplicate of the project mount.
-    assert_eq!(policy.seed_dir(), sandbox.root);
-    assert_eq!(policy.seed_mount_name(), sandbox.root.display().to_string());
 }
 
 #[test]
@@ -148,43 +143,8 @@ fn anchors_at_project_root() {
     let nested = sandbox.root.join("src/deeply/nested");
     std::fs::create_dir_all(&nested).expect("mkdir nested dir");
 
-    let policy = Policy::new(&nested, &argv(&["slice", "build", "s1"]), sandbox.locations.clone());
+    let policy = Policy::new(&nested, &argv(&["specify"]), sandbox.locations.clone());
     assert_eq!(policy.project_root(), sandbox.root);
-    assert!(!policy.is_detached());
-    assert_eq!(policy.change_root(), sandbox.root.join(".emery/change"));
-}
-
-#[test]
-fn upgrade_project_dir() {
-    // Relative `--project-dir` joins the mounted (walked) project
-    // root — the same base guest `with_root` uses against `.` — not
-    // the invocation directory. Invoking from a subdirectory with
-    // `--project-dir .` must still widen the refresh set from the
-    // walked project's bare bindings.
-    let sandbox = Sandbox::new();
-    let emery = sandbox.root.join(".emery");
-    std::fs::create_dir_all(&emery).expect("mkdir .emery");
-    std::fs::write(
-        emery.join("project.yaml"),
-        format!(
-            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
-            env!("CARGO_PKG_VERSION")
-        ),
-    )
-    .expect("write project.yaml");
-    let nested = sandbox.root.join("src/deeply/nested");
-    std::fs::create_dir_all(&nested).expect("mkdir nested dir");
-
-    let policy = Policy::new(
-        &nested,
-        &argv(&["adapter", "upgrade", "--all", "--project-dir", "."]),
-        sandbox.locations.clone(),
-    );
-    assert_eq!(policy.project_root(), sandbox.root);
-    assert!(
-        policy.refresh().contains("mock"),
-        "refresh set must include the walked project's bare binding"
-    );
 }
 
 #[test]
@@ -195,121 +155,31 @@ fn unparseable_argv_anchors() {
     let sandbox = Sandbox::new();
     let policy = sandbox.policy(&["frobnicate"]);
     assert_eq!(policy.project_root(), sandbox.root);
-    assert_eq!(policy.seed_dir(), sandbox.root);
 }
 
 #[test]
 fn unanchored_cwd_in_place() {
-    // Refused inference (D2): no `project.yaml` ancestor and no
-    // `--change-dir` never anchors a detached change home at the
-    // working directory. The policy stays total — it boots in-place at
-    // the cwd (pre-init in-place, like the seed path) so `emery init`
-    // works and change verbs fail typed in-guest.
+    // No `project.yaml` ancestor: the policy stays total — it boots
+    // in-place at the cwd (pre-init) so `emery init` works and later
+    // verbs fail typed in-guest.
     let sandbox = Sandbox::new();
-    let policy = sandbox.policy(&["plan", "status"]);
-    assert!(!policy.is_detached());
+    let policy = sandbox.policy(&["specify"]);
     assert_eq!(policy.project_root(), sandbox.root);
-    assert_eq!(policy.change_root(), sandbox.root.join(".emery/change"));
-    assert_eq!(policy.definition_mount_name(), "/emery-definition");
-}
-
-#[test]
-fn change_dir_detached() {
-    let sandbox = Sandbox::new();
-    let home = sandbox.root.parent().expect("sandbox base").join("change-home");
-    std::fs::create_dir(&home).expect("mkdir change home");
-    let policy = Policy::new(
-        &sandbox.root,
-        &argv(&["plan", "status", "--change-dir", home.to_str().expect("utf-8")]),
-        sandbox.locations.clone(),
-    );
-    assert!(policy.is_detached());
-    assert_eq!(policy.project_root(), home.as_path());
-    assert_eq!(policy.change_root(), home.as_path());
-}
-
-#[test]
-fn from_system_preopen() {
-    let sandbox = Sandbox::new();
-    let emery = sandbox.root.join(".emery");
-    std::fs::create_dir_all(emery.join("system")).expect("mkdir .emery/system");
-    std::fs::write(
-        emery.join("project.yaml"),
-        format!(
-            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
-            env!("CARGO_PKG_VERSION")
-        ),
-    )
-    .expect("write project.yaml");
-
-    let policy = Policy::new(
-        &sandbox.root,
-        &argv(&["plan", "author", "demo", "--from", ".emery/system/", "--wave", "w1"]),
-        sandbox.locations.clone(),
-    );
-    assert!(!policy.is_detached());
-    let expected = std::fs::canonicalize(sandbox.root.join(".emery/system")).expect("system dir");
-    assert_eq!(std::fs::canonicalize(policy.definition_dir()).expect("definition"), expected);
-    assert_eq!(policy.definition_mount_name(), policy.definition_dir().display().to_string());
-}
-
-#[test]
-fn detached_from_preopen() {
-    // Detached `--change-dir` mounts the change home as `.`; `--from`
-    // stays a read-only extra preopen and must not walk `project.yaml`.
-    let sandbox = Sandbox::new();
-    let base = sandbox.root.parent().expect("sandbox base");
-    let home = base.join("change-home");
-    let definition = base.join("definition");
-    std::fs::create_dir(&home).expect("mkdir change home");
-    std::fs::create_dir(&definition).expect("mkdir definition");
-
-    let policy = Policy::new(
-        &sandbox.root,
-        &argv(&[
-            "plan",
-            "author",
-            "demo",
-            "--from",
-            definition.to_str().expect("utf-8"),
-            "--wave",
-            "w1",
-            "--change-dir",
-            home.to_str().expect("utf-8"),
-        ]),
-        sandbox.locations.clone(),
-    );
-    assert!(policy.is_detached());
-    assert_eq!(policy.project_root(), home.as_path());
-    assert_eq!(policy.change_root(), home.as_path());
-    let expected = std::fs::canonicalize(&definition).expect("definition");
-    assert_eq!(std::fs::canonicalize(policy.definition_dir()).expect("definition"), expected);
-    assert_ne!(policy.definition_dir(), policy.project_root());
 }
 
 // ---------------------------------------------------------------------------
-// `system *` anchoring: the definition home mounts as `.` — no
-// `project.yaml` walk, no mkdir (the operator authors the home by
-// hand), and a cache never keyed off the mounted root.
+// The refresh surface: `init <bare-name>` refreshes that name and
+// `init --upgrade` refreshes the recorded `project.yaml` binding.
 
 #[test]
-fn system_mounts_dir() {
+fn init_bare_name_refreshes() {
     let sandbox = Sandbox::new();
-    let home = sandbox.root.join("client-a");
-    std::fs::create_dir_all(&home).expect("mkdir definition home");
-
-    let policy = Policy::new(
-        &sandbox.root,
-        &argv(&["system", "survey", "--dir", "client-a"]),
-        sandbox.locations.clone(),
-    );
-    assert_eq!(policy.project_root(), home);
+    let policy = sandbox.policy(&["init", "mock"]);
+    assert!(policy.refresh().contains("mock"), "an `init <bare-name>` joins the refresh set");
 }
 
 #[test]
-fn system_skips_walk() {
-    // Invoking inside a product checkout must not anchor the walked
-    // project root: the definition home is the invocation directory.
+fn upgrade_refreshes() {
     let sandbox = Sandbox::new();
     let emery = sandbox.root.join(".emery");
     std::fs::create_dir_all(&emery).expect("mkdir .emery");
@@ -321,113 +191,22 @@ fn system_skips_walk() {
         ),
     )
     .expect("write project.yaml");
-    let nested = sandbox.root.join("clients/acme");
-    std::fs::create_dir_all(&nested).expect("mkdir definition home");
 
-    let policy = Policy::new(&nested, &argv(&["system", "survey"]), sandbox.locations);
-    assert_eq!(policy.project_root(), nested);
-}
-
-#[test]
-fn system_never_creates_home() {
-    // A missing home is left for the runtime's own preopen error —
-    // creating it here would be `system init`, which does not exist.
-    let sandbox = Sandbox::new();
-    let missing = sandbox.root.join("absent-home");
-
-    let policy = Policy::new(
-        &sandbox.root,
-        &argv(&["system", "survey", "--dir", "absent-home"]),
-        sandbox.locations.clone(),
-    );
-    assert_eq!(policy.project_root(), missing);
-    assert!(!missing.exists(), "the launcher never creates the definition home");
-}
-
-#[test]
-fn system_cache_shared() {
-    // One shared tenant under the cache parent — never a per-home
-    // tenant keyed off the mounted root's digest.
-    let sandbox = Sandbox::new();
-    let policy = sandbox.policy(&["system", "survey"]);
+    let policy = sandbox.policy(&["init", "--upgrade"]);
     assert!(
-        policy.cache_dir().ends_with("cache/system"),
-        "system cache must be the shared tenant, got {}",
-        policy.cache_dir().display()
+        policy.refresh().contains("mock"),
+        "`init --upgrade` refreshes the recorded bare binding"
     );
-    assert!(policy.cache_dir().is_dir(), "the cache mount directory is created pre-run");
-}
-
-// ---------------------------------------------------------------------------
-// The `adapter add` seed preopen: the operator's component directory,
-// named by its own absolute host path so the guest opens the argv path
-// unchanged.
-
-#[test]
-fn seed_grants_component_dir() {
-    let sandbox = Sandbox::new();
-    let built = sandbox.root.parent().expect("sandbox base").join("built");
-    std::fs::create_dir_all(&built).expect("mkdir build dir");
-    std::fs::write(built.join("demo.wasm"), b"freshly built component").expect("write component");
-
-    let component = built.join("demo.wasm").display().to_string();
-    let policy = sandbox.policy(&["adapter", "add", &component]);
-    assert_eq!(policy.seed_dir(), built);
-    assert_eq!(policy.seed_mount_name(), built.display().to_string());
 }
 
 #[test]
-fn relative_seed_from_root() {
-    let sandbox = Sandbox::new();
-    let nested = sandbox.root.join("dist");
-    std::fs::create_dir_all(&nested).expect("mkdir dist");
-    std::fs::write(nested.join("demo.wasm"), b"component").expect("write component");
-
-    let policy = sandbox.policy(&["adapter", "add", "./dist/demo.wasm"]);
-    assert_eq!(policy.seed_dir(), nested);
-}
-
-#[test]
-fn seed_project_dir_anchors() {
-    let sandbox = Sandbox::new();
-    let elsewhere = sandbox.root.parent().expect("sandbox base").join("other-project");
-    std::fs::write(sandbox.root.join("demo.wasm"), b"component").expect("write component");
-
-    let policy = sandbox.policy(&[
-        "adapter",
-        "add",
-        &sandbox.root.join("demo.wasm").display().to_string(),
-        "--project-dir",
-        &elsewhere.display().to_string(),
-    ]);
-    assert_eq!(policy.project_root(), elsewhere);
-    // The anchored project directory is created so its mount opens.
-    assert!(elsewhere.is_dir());
-    assert_eq!(policy.seed_dir(), sandbox.root);
-}
-
-#[test]
-fn missing_seed_dir() {
-    // A typo'd component directory must not fail the boot-time preopen
-    // open: the guest renders `adapter-component-missing` itself.
-    let sandbox = Sandbox::new();
-    let policy = sandbox.policy(&["adapter", "add", "/nonexistent/dir/demo.wasm"]);
-    assert_eq!(policy.seed_dir(), sandbox.root);
-}
-
-#[test]
-fn log_flags_keep_seed() {
+fn log_flags_keep_refresh() {
     // Omnia peels `--debug` / `--quiet` before the guest sees argv; the
     // policy sees raw process argv, so it must apply the same peel or
-    // the seed grammar parse would fail and drop the anchoring.
+    // the refresh grammar parse would fail and drop the projection.
     let sandbox = Sandbox::new();
-    let built = sandbox.root.parent().expect("sandbox base").join("flagged");
-    std::fs::create_dir_all(&built).expect("mkdir build dir");
-    std::fs::write(built.join("demo.wasm"), b"component").expect("write component");
-
-    let component = built.join("demo.wasm").display().to_string();
-    let policy = sandbox.policy(&["--debug", "adapter", "add", &component, "--quiet"]);
-    assert_eq!(policy.seed_dir(), built);
+    let policy = sandbox.policy(&["--debug", "init", "mock", "--quiet"]);
+    assert!(policy.refresh().contains("mock"));
 }
 
 // ---------------------------------------------------------------------------
@@ -976,14 +755,6 @@ fn mcp_route_maps_routed_ids() {
     }
 }
 
-// The engine's synthesis shelf (RFC-96 D9): exactly
-// `/mcp/engine/synthesis` routes onto the engine guest.
-#[test]
-fn mcp_route_engine_shelf() {
-    let guest = launcher::mcp_route("/mcp/engine/synthesis").expect("the engine shelf routes");
-    assert_eq!(guest.as_str(), "emery");
-}
-
 #[test]
 fn mcp_route_declines_others() {
     for path in [
@@ -996,11 +767,11 @@ fn mcp_route_declines_others() {
         "/mcp/plugin/omnia",
         "/mcp/target/omnia@1",
         "/mcp/target/omnia@not-semver",
-        // `engine` is not a legal adapter axis; only the exact
-        // synthesis shelf path routes onto the engine guest.
+        // `engine` is not a legal adapter axis; the engine guest
+        // serves no MCP shelf (the slice synthesis shelf is deleted).
         "/mcp/engine",
         "/mcp/engine/",
-        "/mcp/engine/other",
+        "/mcp/engine/synthesis",
     ] {
         assert!(launcher::mcp_route(path).is_none(), "{path} must decline");
     }

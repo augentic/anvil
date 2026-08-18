@@ -1,9 +1,5 @@
 //! Catalog builder validation, read-only inventory, and [`DynModel`]
 //! forwarding over the shared probe implementors.
-//!
-//! One linked type may implement both axes (the one-axis rule binds
-//! component exports, not linked impls). Operation dispatch is the
-//! provider's surface — see `tests/provider.rs`.
 
 mod support;
 
@@ -12,7 +8,7 @@ use omnia_guest::Model as _;
 use omnia_guest::model::{Format, Request};
 use omnia_testkit::model::Scripted;
 use project::adapter::Axis;
-use support::{BadVersion, Floored, Probe, ProbeV2};
+use support::{BadVersion, Floored, Probe};
 
 fn model(answers: &[&str]) -> DynModel {
     DynModel::new(Scripted::answers(answers.iter().copied()))
@@ -37,22 +33,18 @@ async fn dyn_model_forwards_shares() {
 
 #[test]
 fn entries_and_metadata() {
-    let linked = Catalog::builder()
-        .source::<Probe>()
-        .target::<Probe>()
-        .target::<Floored>()
-        .build()
-        .expect("valid catalog");
+    let linked =
+        Catalog::builder().source::<Probe>().source::<Floored>().build().expect("valid catalog");
     let ids: Vec<String> = linked.entries().iter().map(native::Entry::id).collect();
-    assert_eq!(ids, ["source:mock@0.0.0", "target:mock@0.0.0", "target:floored@0.0.0"]);
+    assert_eq!(ids, ["source:mock@0.0.0", "source:floored@0.0.0"]);
 
-    let entry = linked.get(Axis::Target, "mock").expect("target entry");
+    let entry = linked.get(Axis::Source, "mock").expect("source entry");
     assert_eq!(entry.version(), "0.0.0");
     assert_eq!(entry.server_name(), "mock-references");
     assert_eq!(entry.metadata().emery_floor, None);
     assert!(!entry.docs().is_empty());
 
-    let floored = linked.get(Axis::Target, "floored").expect("floored entry");
+    let floored = linked.get(Axis::Source, "floored").expect("floored entry");
     assert_eq!(floored.metadata().emery_floor.as_deref(), Some("9.9.9"));
 
     let err = linked.get(Axis::Source, "unknown").expect_err("unlinked refuses");
@@ -73,29 +65,9 @@ mod validation {
     }
 
     #[test]
-    fn dual_axis_identity() {
-        // Fixture's intentional dual-axis `mock` shape stays legal.
-        Catalog::builder()
-            .source::<Probe>()
-            .target::<Probe>()
-            .build()
-            .expect("dual-axis same-identity entries share one shelf");
-    }
-
-    #[test]
-    fn shelf_conflict_refused() {
-        let err = Catalog::builder()
-            .source::<Probe>()
-            .target::<ProbeV2>()
-            .build()
-            .expect_err("same name at different versions conflicts on one shelf");
-        assert!(err.to_string().contains("conflicting reference-shelf"), "{err}");
-    }
-
-    #[test]
     fn non_semver_version() {
         let err = Catalog::builder()
-            .target::<BadVersion>()
+            .source::<BadVersion>()
             .build()
             .expect_err("a non-SemVer identity version refuses");
         assert!(err.to_string().contains("not exact SemVer"), "{err}");

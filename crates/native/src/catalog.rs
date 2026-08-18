@@ -1,88 +1,15 @@
-//! Linked-adapter catalog: a validated, typed vtable over the
-//! per-axis operations traits. Same-name source and target entries
-//! are legal — dispatch is always axis-qualified.
+//! Linked-adapter catalog: validated identity, metadata, and embedded
+//! docs per linked source implementor. Lookup is always axis-qualified.
 
 use std::fmt;
-use std::future::Future;
-use std::pin::Pin;
 
 use adapter::registry::Doc;
-use adapter::seam::{self as aseam, Context};
-use adapter::{Source, Target, references};
+use adapter::{Source, references};
 use project::adapter::Axis;
 use project::adapter::metadata::Metadata;
 
 use crate::convert;
 use crate::error::Error;
-use crate::model::DynModel;
-
-type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
-type SurveyFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a aseam::SourceInput,
-) -> BoxFuture<'a, Result<aseam::SurveyResult, aseam::Error>>;
-type GuidanceFn =
-    for<'a> fn(&'a DynModel, &'a Context<'a>) -> BoxFuture<'a, Result<String, aseam::Error>>;
-type ExtractFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a aseam::SourceInput,
-) -> BoxFuture<'a, Result<aseam::Evidence, aseam::Error>>;
-type BuildFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a str,
-    &'a [aseam::Input],
-    &'a aseam::BuildContext,
-    &'a aseam::Workspace,
-) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
-type VerifyFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a aseam::Workspace,
-) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
-type RepairFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a str,
-    aseam::RepairOrigin,
-    &'a [aseam::PhaseFinding],
-    Option<&'a [u8]>,
-    &'a aseam::Workspace,
-) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
-type ReviewFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a str,
-    Option<&'a [u8]>,
-    &'a aseam::Workspace,
-) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
-type MergeFn = for<'a> fn(
-    &'a DynModel,
-    &'a Context<'a>,
-    &'a str,
-    aseam::MergePhase,
-    &'a aseam::Workspace,
-) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
-
-/// The monomorphized operation legs of one linked adapter.
-#[derive(Clone, Copy)]
-enum Ops {
-    Source {
-        survey: SurveyFn,
-        extract: ExtractFn,
-    },
-    Target {
-        guidance: GuidanceFn,
-        build: BuildFn,
-        verify: VerifyFn,
-        repair: RepairFn,
-        review: ReviewFn,
-        merge: MergeFn,
-    },
-}
 
 /// One Rust adapter crate linked into the host.
 #[derive(Clone, Copy)]
@@ -93,7 +20,6 @@ pub struct Entry {
     server_name: &'static str,
     metadata: fn() -> Metadata,
     docs: fn() -> &'static [Doc],
-    ops: Ops,
 }
 
 impl fmt::Debug for Entry {
@@ -209,161 +135,6 @@ impl Catalog {
             .collect();
         names.join(", ")
     }
-
-    /// Resolve a routed adapter id against the compiled entries: axis
-    /// and name must match, and a versioned id
-    /// (`<axis>:<name>@<version>`) additionally requires the exact
-    /// compiled version. An unversioned id matches the sole compiled
-    /// identity for that `(axis, name)`.
-    pub(crate) fn find(&self, id: &str) -> Option<&Entry> {
-        let routed = project::adapter::RoutedId::parse(id).ok()?;
-        self.entries.iter().find(|entry| {
-            entry.axis == routed.axis
-                && entry.name == routed.name
-                && routed.version.as_ref().is_none_or(|version| {
-                    semver::Version::parse(entry.version).is_ok_and(|linked| linked == *version)
-                })
-        })
-    }
-
-    /// Dispatch `guidance` to the linked target adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked target.
-    pub(crate) async fn guidance(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str,
-    ) -> Result<String, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { guidance, .. }) => guidance(model, ctx).await,
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch `survey` to the linked source adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked source.
-    pub(crate) async fn survey(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, input: &aseam::SourceInput,
-    ) -> Result<aseam::SurveyResult, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Source { survey, .. }) => survey(model, ctx, input).await,
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch `extract` to the linked source adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked source.
-    pub(crate) async fn extract(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, input: &aseam::SourceInput,
-    ) -> Result<aseam::Evidence, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Source { extract, .. }) => extract(model, ctx, input).await,
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch `build` to the linked target adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked target.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "internal dispatch shim mirroring the seam build signature; one call site"
-    )]
-    pub(crate) async fn build(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
-        context: &aseam::BuildContext, workspace: &aseam::Workspace,
-    ) -> Result<aseam::PhaseReport, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { build, .. }) => {
-                build(model, ctx, slice, inputs, context, workspace).await
-            }
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch `verify` to the linked target adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked target.
-    pub(crate) async fn verify(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, workspace: &aseam::Workspace,
-    ) -> Result<aseam::PhaseReport, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { verify, .. }) => verify(model, ctx, workspace).await,
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch `repair` to the linked target adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked target.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "internal dispatch shim mirroring the seam repair signature; one call site"
-    )]
-    pub(crate) async fn repair(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
-        origin: aseam::RepairOrigin, findings: &[aseam::PhaseFinding], continuation: Option<&[u8]>,
-        workspace: &aseam::Workspace,
-    ) -> Result<aseam::PhaseReport, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { repair, .. }) => {
-                repair(model, ctx, slice, origin, findings, continuation, workspace).await
-            }
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch `review` to the linked target adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked target.
-    pub(crate) async fn review(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
-        continuation: Option<&[u8]>, workspace: &aseam::Workspace,
-    ) -> Result<aseam::PhaseReport, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { review, .. }) => {
-                review(model, ctx, slice, continuation, workspace).await
-            }
-            _ => Err(unlinked(id)),
-        }
-    }
-
-    /// Dispatch one `merge` gate to the linked target adapter behind `id`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the adapter's failure, or `invalid-request` when `id`
-    /// routes to no linked target.
-    pub(crate) async fn merge(
-        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
-        phase: aseam::MergePhase, workspace: &aseam::Workspace,
-    ) -> Result<aseam::Report, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { merge, .. }) => merge(model, ctx, slice, phase, workspace).await,
-            _ => Err(unlinked(id)),
-        }
-    }
 }
 
 /// Accumulates linked adapters into a validated [`Catalog`].
@@ -388,48 +159,6 @@ impl Builder {
             server_name: references::server_name(A::IDENTITY.name),
             metadata: || convert::source_metadata(A::metadata()),
             docs: A::docs,
-            ops: Ops::Source {
-                survey: |model, ctx, input| Box::pin(A::survey(model, ctx, input)),
-                extract: |model, ctx, input| Box::pin(A::extract(model, ctx, input)),
-            },
-        });
-        self
-    }
-
-    /// Link one target implementor.
-    #[must_use]
-    pub fn target<A: Target + 'static>(mut self) -> Self {
-        self.entries.push(Entry {
-            axis: Axis::Target,
-            name: A::IDENTITY.name,
-            version: A::IDENTITY.version,
-            server_name: references::server_name(A::IDENTITY.name),
-            metadata: || convert::target_metadata(A::metadata()),
-            docs: A::docs,
-            ops: Ops::Target {
-                guidance: |model, ctx| Box::pin(A::guidance(model, ctx)),
-                build: |model, ctx, slice, inputs, context, workspace| {
-                    Box::pin(A::build(model, ctx, slice, inputs, context, workspace))
-                },
-                verify: |model, ctx, workspace| Box::pin(A::verify(model, ctx, workspace)),
-                repair: |model, ctx, slice, origin, findings, continuation, workspace| {
-                    Box::pin(A::repair(
-                        model,
-                        ctx,
-                        slice,
-                        origin,
-                        findings,
-                        continuation,
-                        workspace,
-                    ))
-                },
-                review: |model, ctx, slice, continuation, workspace| {
-                    Box::pin(A::review(model, ctx, slice, continuation, workspace))
-                },
-                merge: |model, ctx, slice, phase, workspace| {
-                    Box::pin(A::merge(model, ctx, slice, phase, workspace))
-                },
-            },
         });
         self
     }
@@ -439,29 +168,14 @@ impl Builder {
     /// # Errors
     ///
     /// Returns [`Error::Catalog`] for a malformed identity name, a
-    /// version that is not exact SemVer, a per-axis duplicate, or two
-    /// same-name entries with conflicting reference-shelf identities
-    /// (dual-axis registrations must share one version and one
-    /// embedded docs registry).
+    /// version that is not exact SemVer, or a per-axis duplicate.
     pub fn build(self) -> Result<Catalog, Error> {
         for (index, entry) in self.entries.iter().enumerate() {
             validate_identity(entry)?;
             for earlier in &self.entries[..index] {
-                if earlier.name != entry.name {
-                    continue;
-                }
-                if earlier.axis == entry.axis {
+                if earlier.name == entry.name && earlier.axis == entry.axis {
                     return Err(Error::Catalog {
                         detail: format!("duplicate `{}` entry `{}`", entry.axis, entry.name),
-                    });
-                }
-                if earlier.version != entry.version || !std::ptr::eq(earlier.docs(), entry.docs()) {
-                    return Err(Error::Catalog {
-                        detail: format!(
-                            "conflicting reference-shelf identities for `{}`: dual-axis \
-                             registrations must share one version and one embedded docs registry",
-                            entry.name
-                        ),
                     });
                 }
             }
@@ -498,8 +212,4 @@ fn is_kebab_name(name: &str) -> bool {
     let mut chars = name.chars();
     chars.next().is_some_and(|first| first.is_ascii_lowercase())
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-}
-
-fn unlinked(id: &str) -> aseam::Error {
-    aseam::Error::InvalidRequest(format!("adapter `{id}` is not linked into this host"))
 }

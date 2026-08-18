@@ -197,6 +197,9 @@ impl Error {
 
 fn diag_hint(code: &str) -> Option<&'static str> {
     match code {
+        "specify-not-implemented" => Some(
+            "the spec generator lands with the remediation programme's Phase 3 walking skeleton; see rfcs/remediation-plan.md",
+        ),
         "plan-has-outstanding-work" => {
             Some("complete or drop the listed entries, or rerun with --force to archive anyway")
         }

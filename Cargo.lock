@@ -102,7 +102,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -113,7 +113,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -385,7 +385,7 @@ dependencies = [
  "cap-primitives",
  "cap-std",
  "io-lifetimes 3.0.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -402,7 +402,7 @@ dependencies = [
  "maybe-owned",
  "rustix",
  "rustix-linux-procfs",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
  "winx",
 ]
 
@@ -1113,30 +1113,19 @@ version = "0.38.0"
 dependencies = [
  "anyhow",
  "cfg-if",
- "emery-adapter",
  "emery-guest",
  "emery-launcher",
- "emery-mock",
- "emery-native",
- "emery-probe",
- "emery-wasi-exec",
- "emery-wasi-vcs",
  "omnia",
  "omnia-cursor",
- "omnia-wasi-blobstore",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
- "serde_json",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
 name = "emery-adapter"
 version = "0.38.0"
 dependencies = [
- "emery-mock",
  "omnia-guest",
  "omnia-testkit",
  "omnia-wasi-http",
@@ -1166,30 +1155,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "emery-change"
-version = "0.38.0"
-dependencies = [
- "emery-artifacts",
- "emery-diagnostics",
- "emery-error",
- "emery-mock",
- "emery-project",
- "emery-prose",
- "emery-slice",
- "emery-system",
- "jiff",
- "omnia-guest",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "tempfile",
- "tokio",
- "tower",
- "tracing",
-]
-
-[[package]]
 name = "emery-diagnostics"
 version = "0.38.0"
 dependencies = [
@@ -1215,17 +1180,13 @@ dependencies = [
 name = "emery-guest"
 version = "0.38.0"
 dependencies = [
- "emery-artifacts",
- "emery-diagnostics",
  "emery-error",
  "emery-project",
- "emery-slice",
  "emery-transport",
  "jiff",
  "omnia-guest",
  "omnia-wasi-http",
  "omnia-wasi-otel",
- "serde_json",
  "wasip3",
  "wit-bindgen 0.60.0",
 ]
@@ -1240,14 +1201,11 @@ dependencies = [
  "emery-diagnostics",
  "emery-error",
  "emery-project",
- "emery-slice",
  "emery-transport",
  "jiff",
  "oci-client",
  "oci-wasm",
  "omnia",
- "omnia-filesystem",
- "omnia-wasi-blobstore",
  "semver",
  "serde_json",
  "tempfile",
@@ -1259,14 +1217,8 @@ name = "emery-mock"
 version = "0.38.0"
 dependencies = [
  "emery-adapter",
- "emery-artifacts",
- "emery-change",
- "emery-error",
  "emery-native",
  "emery-project",
- "emery-slice",
- "emery-system",
- "jiff",
  "omnia-guest",
  "omnia-testkit",
  "serde_json",
@@ -1278,14 +1230,9 @@ dependencies = [
 name = "emery-native"
 version = "0.38.0"
 dependencies = [
- "axum",
  "emery-adapter",
- "emery-artifacts",
- "emery-diagnostics",
  "emery-error",
  "emery-project",
- "emery-slice",
- "emery-system",
  "emery-transport",
  "omnia-guest",
  "omnia-testkit",
@@ -1293,34 +1240,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
-]
-
-[[package]]
-name = "emery-probe"
-version = "0.38.0"
-dependencies = [
- "anyhow",
- "clap",
- "emery-artifacts",
- "emery-mock",
- "emery-native",
- "emery-project",
- "emery-slice",
- "emery-system",
- "jiff",
- "omnia",
- "omnia-cursor",
- "omnia-guest",
- "omnia-testkit",
- "omnia-wasi-model",
- "serde",
- "serde-saphyr",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -1358,61 +1277,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "emery-slice"
-version = "0.38.0"
-dependencies = [
- "emery-artifacts",
- "emery-diagnostics",
- "emery-error",
- "emery-mock",
- "emery-project",
- "emery-prose",
- "jiff",
- "omnia-guest",
- "regex",
- "schemars",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum 0.28.0",
- "tempfile",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "emery-system"
-version = "0.38.0"
-dependencies = [
- "emery-artifacts",
- "emery-diagnostics",
- "emery-error",
- "emery-project",
- "emery-prose",
- "jiff",
- "layout-rs",
- "omnia-guest",
- "schemars",
- "serde",
- "serde-saphyr",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "emery-transport"
 version = "0.38.0"
 dependencies = [
  "clap",
  "emery-artifacts",
- "emery-change",
  "emery-diagnostics",
  "emery-error",
  "emery-mock",
  "emery-native",
  "emery-project",
- "emery-slice",
- "emery-system",
  "jiff",
  "omnia-guest",
  "omnia-testkit",
@@ -1423,32 +1297,6 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
-]
-
-[[package]]
-name = "emery-wasi-exec"
-version = "0.38.0"
-dependencies = [
- "anyhow",
- "emery-project",
- "futures",
- "omnia",
- "tokio",
- "tracing",
- "wasmtime",
-]
-
-[[package]]
-name = "emery-wasi-vcs"
-version = "0.38.0"
-dependencies = [
- "anyhow",
- "emery-project",
- "futures",
- "omnia",
- "tokio",
- "tracing",
- "wasmtime",
 ]
 
 [[package]]
@@ -1482,7 +1330,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1805,9 +1653,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.4.15"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cb093c84e8bd9b188d4c4a8cb6579fc016968d14c99882163cd3ff402a4f155"
+checksum = "a9f37a958b41b3b19ee2707c06439c0e9e547e847223eb791ecb0cb821c65e27"
 dependencies = [
  "atomic-waker",
  "bytes",
@@ -2426,12 +2274,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4933f3f57a8e9d9da04db23fb153356ecaf00cbd14aee46279c33dc80925c37"
 
 [[package]]
-name = "layout-rs"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b8b38bc67665e362eb770c6b6ae88b48d040d94a0a10c4904c37bc79d263b95"
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2621,7 +2463,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2851,21 +2693,6 @@ dependencies = [
  "omnia-wasi-model",
  "serde",
  "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "omnia-filesystem"
-version = "0.29.0"
-source = "git+https://github.com/augentic/omnia-backends#7844a5ee567d0eea3153a6237f2bf0fd9b176911"
-dependencies = [
- "anyhow",
- "fromenv",
- "futures",
- "omnia",
- "omnia-wasi-blobstore",
- "tempfile",
  "tokio",
  "tracing",
 ]
@@ -3519,7 +3346,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3900,7 +3727,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3969,7 +3796,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4313,7 +4140,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4470,7 +4297,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5633,7 +5460,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

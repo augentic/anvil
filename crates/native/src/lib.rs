@@ -7,7 +7,6 @@ mod convert;
 mod error;
 mod model;
 mod provider;
-pub mod references;
 
 #[cfg(feature = "cli")]
 pub mod command;
@@ -19,4 +18,4 @@ pub use model::DynModel;
 // engine core; re-exported so composition roots need no direct
 // `project` import.
 pub use project::handler::{CachePlacement, ExecutionPaths, Locations};
-pub use provider::{ForgeScript, Provider, ReferenceMode, WorktreeScript};
+pub use provider::Provider;

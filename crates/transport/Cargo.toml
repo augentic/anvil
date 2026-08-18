@@ -16,7 +16,6 @@ name = "transport"
 
 [dependencies]
 emery-artifacts.workspace = true
-emery-change.workspace = true
 clap.workspace = true
 emery-diagnostics.workspace = true
 emery-error.workspace = true
@@ -24,8 +23,6 @@ omnia-guest.workspace = true
 emery-project.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-emery-slice.workspace = true
-emery-system.workspace = true
 strum.workspace = true
 tracing.workspace = true
 

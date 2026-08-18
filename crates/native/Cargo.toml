@@ -19,39 +19,22 @@ workspace = true
 
 [features]
 default = []
-cli = [
-    "dep:axum",
-    "dep:tokio",
-    "dep:emery-transport",
-    "tokio/net",
-    "tokio/rt",
-    "tokio/sync",
-]
+cli = ["dep:emery-transport"]
 
 [dependencies]
 emery-adapter.workspace = true
-emery-artifacts.workspace = true
-axum = { workspace = true, optional = true }
-emery-diagnostics.workspace = true
 emery-error.workspace = true
 omnia-guest.workspace = true
 emery-project.workspace = true
-emery-slice.workspace = true
 semver.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, optional = true }
 emery-transport = { workspace = true, optional = true }
 
 [dev-dependencies]
-emery-system.workspace = true
 omnia-testkit.workspace = true
+tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[test]]
 name = "command"
-required-features = ["cli"]
-
-[[test]]
-name = "references"
 required-features = ["cli"]

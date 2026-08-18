@@ -1,13 +1,10 @@
 //! Typed command grammar, conversions, and Emery projection policy.
 
 use clap::Args;
-use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
-use project::adapter::{Inventory, Resolver};
+use project::adapter::Resolver;
 use project::handler::{Anchor, Render};
-use project::profile::Profiles;
-use project::seam::{Forge, Shelf, Source, Target, Trees, Workspaces, Worktree};
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -15,18 +12,10 @@ use self::output::{ErrorBody, Exit, emit, write_error_text};
 pub use self::output::{Format, render_failure, render_success};
 pub use self::routes::router;
 
-mod adapter;
-mod archive;
-mod change_dir;
-mod journal;
 mod output;
-mod plan;
 mod routes;
 pub mod selectors;
-mod slice;
-mod source;
-mod system;
-mod target;
+mod specify;
 
 /// Arguments shared by every command route.
 #[derive(Clone, Copy, Debug, Args)]
@@ -105,25 +94,12 @@ fn operation_response(
 /// `emery.command` span.
 ///
 /// The span carries only the bounded verb label and the response exit
-/// code — never the full argv, which may embed operator prose (e.g.
-/// `plan author --from …`). Both deployments route through here: the
-/// native host's command entry and the engine guest's `wasi:cli/run`
-/// exporter.
+/// code — never the full argv, which may embed operator prose. Both
+/// deployments route through here: the native host's command entry and
+/// the engine guest's `wasi:cli/run` exporter.
 pub async fn execute<P>(router: &Router<P, Globals>, argv: Vec<String>) -> CommandResponse
 where
-    P: Provider
-        + Anchor
-        + Model
-        + Resolver
-        + Inventory
-        + Profiles
-        + Source
-        + Shelf
-        + Target
-        + Workspaces
-        + Trees
-        + Worktree
-        + Forge,
+    P: Provider + Anchor + Resolver,
 {
     let span = tracing::info_span!(
         "emery.command",

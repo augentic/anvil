@@ -1,33 +1,17 @@
-//! Project-root and change-home anchoring for one invocation.
+//! Project-root anchoring for one invocation.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use project::config::Roots;
-use transport::command::selectors::{SeedRequest, SystemRequest};
 
-/// Resolve in-place vs detached roots.
-///
-/// `adapter add --project-dir` always selects that product tree
-/// (in-place, even before init); otherwise [`Roots::resolve`] over
-/// `--change-dir` and the ancestor walk for `.emery/project.yaml`.
-/// A resolution miss anchors in-place at the invocation directory —
-/// pre-init, so `emery init` / `adapter add` stay legal and change
-/// verbs fail typed in-guest (`not-initialized`), never a silently
-/// inferred detached change home (D2).
+/// Resolve the invocation's roots: [`Roots::resolve`] over the
+/// ancestor walk for `.emery/project.yaml`. A resolution miss anchors
+/// in-place at the invocation directory — pre-init, so `emery init`
+/// stays legal and later verbs fail typed in-guest
+/// (`not-initialized`).
 #[must_use]
-pub fn roots(invoked_dir: &Path, seed: Option<&SeedRequest>, change_dir: Option<&Path>) -> Roots {
-    if let Some(dir) = seed.and_then(|request| request.project_dir.as_ref()) {
-        let product = if dir.is_absolute() { dir.clone() } else { invoked_dir.join(dir) };
-        return Roots::InPlace { product };
-    }
-    Roots::resolve(invoked_dir, change_dir).unwrap_or_else(|_unanchored| Roots::InPlace {
+pub fn roots(invoked_dir: &Path) -> Roots {
+    Roots::resolve(invoked_dir, None).unwrap_or_else(|_unanchored| Roots::InPlace {
         product: invoked_dir.to_path_buf(),
     })
-}
-
-/// Definition-home mount for a `system *` invocation: `--dir` else CWD,
-/// never a `project.yaml` walk.
-#[must_use]
-pub fn system_root(invoked_dir: &Path, system: &SystemRequest) -> PathBuf {
-    system.root(invoked_dir)
 }

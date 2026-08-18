@@ -1,6 +1,6 @@
 # Operation shape
 
-The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in the engine crates (`project`, `slice`, `change`), how `Ctx` is constructed from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
+The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in the engine crates (today `project`), how `Ctx` is constructed from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
 
 ## Shared operation plumbing (`project::handler`)
 
@@ -10,7 +10,7 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 - **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = project::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + Source + Target` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
+Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`, so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
 
 ```rust
 // GOOD — default shape
@@ -68,7 +68,7 @@ The four-slot CLI exit-code table is fixed:
 
 ## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the MCP reference shelves (the engine's `slice::shelf::PATH` plus the deployment-routed adapter shelves); every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::http_parity` holds the refusal.
+`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the deployment-routed adapter MCP shelves; every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::http_parity` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 
@@ -83,12 +83,6 @@ Target discipline per leaf arm:
 3. Project success, operation failure, or conversion failure through `EmeryProjector`; provisioning routes return the standard argument refusal and completions remain synthetic router behavior.
 
 Never put domain logic in `transport` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
-
-## Operation-shape notes
-
-`source resolve <name>` and `target resolve <value>` never load a `Ctx`, because adapter resolution is read-only and runs before any project mutation; they invoke the provider's `Resolver` directly and anchor the default project dir on its `Anchor`. The two axes share one input shape; the axis is the request type. The target axis peels an opaque `@version` suffix (per the workflow contract §CLI surface).
-
-`plan amend` extends the canonical `with_state::<Plan, _, _>(...)` operation shape with the three `--sources` flag families: `--sources <binding>...` (wholesale replace), `--add-source <binding>` (repeatable), `--remove-source <key>` (repeatable). The operation applies `--add-source` / `--remove-source` *after* the wholesale `Plan::amend(name, patch)` call so wholesale replacement plus targeted edits compose cleanly in a single invocation. The `--divergence` flag accepts only `likely | accepted | rejected` from the wire and emits a `plan.amend.divergence` journal event when (and only when) the field flips. `emery plan amend --proposal <digest>` is a separate arm: it applies a retained amendment at `planning/proposals/<digest>.yaml` (journals `plan.amend.applied`) and cannot combine with entry-edit flags.
 
 ## Gotcha — `emery init` and the version floor
 

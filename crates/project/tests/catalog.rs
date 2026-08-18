@@ -3,7 +3,6 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use mock::definition::Spec;
 use project::adapter::catalog::{self, Catalog, Hint, Pin, Profile, Recognition, Row, Source};
 use project::binding::{Location, Origin};
 
@@ -54,22 +53,18 @@ mod pins {
     }
 
     #[test]
-    fn handoff_pin_reuse() {
-        let spec = Spec::degenerate("ship the reviewed intent");
-        let scope = &spec.scopes[0];
+    fn pin_reuse() {
         let pin = catalog::select(
             &catalog(),
-            Hint::Pin(&scope.adapter),
-            &Origin::Value(scope.value.clone().expect("intent value")),
+            Hint::Pin("emery:intent@1.0.0"),
+            &Origin::Value("ship the reviewed intent".into()),
         )
         .expect("reuse");
         assert_eq!(pin.wire(), "emery:intent@1.0.0");
 
-        let spec = Spec::multi_target();
-        let scope = &spec.scopes[0];
         let pin = catalog::select(
             &catalog(),
-            Hint::Pin(&scope.adapter),
+            Hint::Pin("emery:typescript@1.0.0"),
             &loc("https://github.com/example/orders@main"),
         )
         .expect("reuse typescript");

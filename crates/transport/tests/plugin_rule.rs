@@ -8,7 +8,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use native::{DynModel, Provider, ReferenceMode};
+use native::{DynModel, Provider};
 use omnia_guest::api::invoke::Invoker;
 use omnia_testkit::model::Harness;
 
@@ -22,17 +22,7 @@ const BUILTIN_PATHS: &[&[&str]] = &[&["completions"]];
 /// The ultrathin wrapper contract: each skill invokes exactly one CLI
 /// verb, so a flag mentioned on a slash command validates against that
 /// verb's grammar.
-const SKILL_VERBS: &[(&str, &[&str])] = &[
-    ("init", &["init"]),
-    ("plan", &["plan", "author"]),
-    ("refine", &["plan", "refine"]),
-    ("execute", &["plan", "execute"]),
-    ("status", &["plan", "status"]),
-    ("finalize", &["plan", "archive"]),
-    ("system-survey", &["system", "survey"]),
-    ("system-plan", &["system", "plan"]),
-    ("system-review", &["system", "review"]),
-];
+const SKILL_VERBS: &[(&str, &[&str])] = &[("init", &["init"])];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")
@@ -47,7 +37,6 @@ fn router() -> omnia_guest::api::command::Router<Provider, transport::command::G
         project::handler::ExecutionPaths::new(".", locations),
         DynModel::new(Harness::answering(Vec::<String>::new())),
         mock::catalog(),
-        ReferenceMode::Offline,
     );
     transport::command::router(Invoker::new("emery", provider)).expect("router")
 }
