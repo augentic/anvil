@@ -99,6 +99,15 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces + Worktree, R: 
     }
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
+    // Startup sweep (S37 / D12): abandoned workspaces from crashed or
+    // dropped runs are removed before this run materializes new ones.
+    // Hygiene, not authority — a sweep failure never blocks execute.
+    let cutoff = std::time::SystemTime::from(now) - project::workspace::ABANDON_TTL;
+    match caps.targets.gc(cutoff).await {
+        Ok(removed) if removed > 0 => tracing::info!("swept {removed} abandoned workspace(s)"),
+        Ok(_) => {}
+        Err(err) => tracing::warn!("workspace startup sweep failed: {err}"),
+    }
     if let Some(outcome) = before_epoch(caps.targets, paths, now).await? {
         return Ok(outcome);
     }

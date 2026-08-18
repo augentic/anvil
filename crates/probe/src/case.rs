@@ -194,7 +194,7 @@ async fn run_workflow(
                 !case.target.trim().is_empty(),
                 "in-place workflow mint needs `target` for `emery init`"
             );
-            invoke(root, model, catalog, &["init", &case.target]).await?;
+            invoke(root, model, catalog, &["init", &case.target]).await?.require_success()?;
         }
         let (from, wave) = seed_definition(root, case)?;
         if supplied.is_some() {
@@ -206,7 +206,8 @@ async fn run_workflow(
             catalog,
             &["plan", "author", &case.change, "--from", &from.to_string_lossy(), "--wave", &wave],
         )
-        .await?;
+        .await?
+        .require_success()?;
 
         let authored = case_layout(root);
         let plan = sandbox::read_plan(root)?;
@@ -237,7 +238,7 @@ async fn run_workflow(
         }
     }
 
-    invoke(root, model, catalog, &["plan", "refine"]).await?;
+    invoke(root, model, catalog, &["plan", "refine"]).await?.require_success()?;
     if until == WorkflowUntil::Refine {
         let plan = sandbox::read_plan(root)?;
         telemetry::report(&telemetry.counts(), plan.entries.len());
@@ -249,7 +250,7 @@ async fn run_workflow(
         return Ok(());
     }
 
-    invoke(root, model, catalog, &["plan", "execute"]).await?;
+    invoke(root, model, catalog, &["plan", "execute"]).await?.require_success()?;
 
     let executed = case_layout(root);
     let plan = sandbox::read_plan(root)?;
@@ -269,7 +270,7 @@ async fn run_workflow(
     crate::metrics::render(&report);
 
     if until == WorkflowUntil::Finalize {
-        invoke(root, model, catalog, &["plan", "archive"]).await?;
+        invoke(root, model, catalog, &["plan", "archive"]).await?.require_success()?;
     }
     println!("eval case {id}: pass (sandbox retained at {})", root.display());
     Ok(())
@@ -296,7 +297,8 @@ async fn resume_author(
             catalog,
             &["plan", "author", &case.change, "--from", &from, "--wave", &definition.wave_id],
         )
-        .await?;
+        .await?
+        .require_success()?;
     }
     if until != WorkflowUntil::Plan {
         return Ok(false);
@@ -479,7 +481,9 @@ async fn ensure_target_trees(
         .with_context(|| format!("target `{}` adapter pin", target.id))?;
         fs::create_dir_all(&tree)
             .with_context(|| format!("creating target tree {}", tree.display()))?;
-        invoke(&tree, model, catalog, &["init", &pin.name, "--name", &target.id]).await?;
+        invoke(&tree, model, catalog, &["init", &pin.name, "--name", &target.id])
+            .await?
+            .require_success()?;
     }
     Ok(())
 }
@@ -548,9 +552,15 @@ pub(crate) fn in_place(root: &Path) -> bool {
     root.join(".emery").join("project.yaml").is_file()
 }
 
-// One build phase over the case's refined fixture, driven straight
-// through the shared build orchestration (the execute loop owns the
-// phase in production) — one phase, for fast prompt iteration.
+/// One build phase over the case's refined fixture.
+///
+/// Driven straight through the shared build orchestration (the execute
+/// loop owns the phase in production) — one phase, for fast prompt
+/// iteration.
+///
+/// LAB BACK DOOR: bypasses the public workflow contract (no epoch, no
+/// gap gate, no merge) and must never be graded as a workflow; the
+/// runner redesign retiring it is Phase 5 of the remediation plan.
 async fn build_phase(root: &Path, model: &DynModel, catalog: &Catalog, slice: &str) -> Result<()> {
     tracing::info!("build phase for slice `{slice}`");
     let paths = paths(root);
@@ -599,9 +609,94 @@ pub(crate) fn paths(root: &Path) -> ExecutionPaths {
     }
 }
 
+/// One verb's typed outcome: clean success, or the exit-2 typed halt
+/// the drains park with (`plan-author-stopped`, `plan-refine-stopped`,
+/// `plan-execute-stopped`, and the validation family).
+///
+/// The runner represents a stop instead of collapsing it into an
+/// opaque process failure; a stop is still never a pass — callers
+/// that need a drained verb call [`Invoked::require_success`].
+enum Invoked {
+    Success,
+    Stopped(Stop),
+}
+
+/// The typed halt behind an exit-2 verb: the stable kebab `error`
+/// discriminant and the rendered detail, recovered from the stderr
+/// failure envelope.
+struct Stop {
+    command: String,
+    code: String,
+    detail: String,
+}
+
+impl Invoked {
+    /// Require the verb to have drained. A typed stop fails the case
+    /// naming its stop code — typed, never converted to a pass.
+    fn require_success(self) -> Result<()> {
+        match self {
+            Self::Success => Ok(()),
+            Self::Stopped(stop) => {
+                bail!("`emery {}` stopped ({}): {}", stop.command, stop.code, stop.detail)
+            }
+        }
+    }
+}
+
+impl Stop {
+    /// Recover the typed halt from the text-format stderr envelope:
+    /// the `error: <code>: <detail>` line, color stripped. A line that
+    /// carries no kebab discriminant keeps the whole message as detail
+    /// under the exit-class `validation-failed` code.
+    fn parse(command: String, stderr: &[u8]) -> Self {
+        let text = strip_ansi(&String::from_utf8_lossy(stderr));
+        let message = text
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("error: "))
+            .map_or_else(|| text.trim().to_string(), str::to_string);
+        let (code, detail) = match message.split_once(": ") {
+            Some((code, detail)) if kebab_code(code) => (code.to_string(), detail.to_string()),
+            _ => ("validation-failed".to_string(), message),
+        };
+        Self {
+            command,
+            code,
+            detail,
+        }
+    }
+}
+
+/// A stable kebab `error` discriminant (`plan-execute-stopped`, …).
+fn kebab_code(candidate: &str) -> bool {
+    !candidate.is_empty()
+        && candidate.chars().all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-')
+}
+
+/// Drop ANSI CSI sequences so the stop parse sees the plain envelope
+/// regardless of the projector's color decision.
+fn strip_ansi(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' {
+            for follow in chars.by_ref() {
+                if follow.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
 // One `emery` verb through the native command surface, which owns
-// the `emery.command` span.
-async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str]) -> Result<()> {
+// the `emery.command` span. Exit 0 succeeds, exit 2 is the typed
+// stop outcome, every other exit is an error.
+async fn invoke(
+    root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str],
+) -> Result<Invoked> {
     let command = argv.join(" ");
     tracing::info!("emery {command}");
     let mut full = vec!["emery".to_string()];
@@ -610,8 +705,11 @@ async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str])
         native::command::execute(paths(root), model.clone(), catalog.clone(), full).await?;
     io::stdout().write_all(&response.stdout)?;
     io::stderr().write_all(&response.stderr)?;
-    ensure!(response.exit == 0, "`emery {command}` exited {}", response.exit);
-    Ok(())
+    match response.exit {
+        0 => Ok(Invoked::Success),
+        2 => Ok(Invoked::Stopped(Stop::parse(command, &response.stderr))),
+        exit => bail!("`emery {command}` exited {exit}"),
+    }
 }
 
 // Populate the case's gitignored `fixture/` cache on miss: one

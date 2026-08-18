@@ -91,10 +91,14 @@ macro_rules! export {
                         $crate::omnia_guest::mcp::router($crate::slice::shelf::Shelf);
                     return $crate::omnia_wasi_http::serve(router, request).await;
                 }
-                let invoker =
-                    $crate::omnia_guest::api::invoke::Invoker::new("emery", $crate::Provider);
-                let router = $crate::transport::http::router(invoker);
-                $crate::omnia_guest::api::http::serve(router, request).await
+                // C3: the unauthenticated listener serves nothing else
+                // — mutating ingress stays disabled until an operator
+                // ingress is designed (target-architecture §7).
+                $crate::omnia_wasi_http::serve(
+                    $crate::transport::http::refusal(),
+                    request,
+                )
+                .await
             }
         }
     };

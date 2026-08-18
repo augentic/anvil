@@ -702,6 +702,74 @@ mod gc {
     }
 }
 
+mod guard {
+    use project::pool::{self, Claim, Claims, Job, OnFailure, Outcome};
+
+    use super::*;
+
+    /// S37 / D12 regression: the pool drops a timed-out job's future
+    /// mid-flight, so the build path's async settle discard never runs
+    /// — the armed [`workspace::DiscardGuard`] must tear the
+    /// materialized tree and its metadata sidecar down on drop,
+    /// leaving no workspace entry behind.
+    #[tokio::test]
+    async fn timeout_discards() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a");
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+
+        let claims = Claims::default();
+        let jobs: Vec<Job<'_, (), String>> = vec![Job {
+            claim: Claim {
+                item: "hung-build".into(),
+                operation: "build".into(),
+                attempt: 1,
+            },
+            budget: Duration::from_millis(50),
+            future: Box::pin(async {
+                let ws = workspace::prepare(
+                    &lab.store,
+                    &lab.workspaces,
+                    &base,
+                    Access { writable: true },
+                )
+                .await
+                .expect("prepare");
+                let _guard = workspace::DiscardGuard::arm(&ws.root.display().to_string());
+                std::future::pending::<()>().await;
+                Ok(())
+            }),
+        }];
+        let outcomes = pool::run(1, &claims, OnFailure::Drain, jobs).await;
+        assert!(matches!(outcomes[0], Outcome::TimedOut));
+        assert!(claims.is_empty());
+
+        let leftovers: Vec<String> = std::fs::read_dir(&lab.workspaces)
+            .expect("workspaces root")
+            .map(|entry| entry.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(leftovers.is_empty(), "timed-out build left workspace entries: {leftovers:?}");
+    }
+
+    /// A disarmed guard leaves the workspace for the settle-path
+    /// discard.
+    #[tokio::test]
+    async fn disarm_keeps_workspace() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a");
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .await
+            .expect("prepare");
+        let mut guard = workspace::DiscardGuard::arm(&ws.root.display().to_string());
+        guard.disarm();
+        drop(guard);
+        assert!(ws.root.exists(), "disarmed guard must not remove the workspace");
+        workspace::discard(&lab.workspaces, &ws.id).expect("settle-path discard");
+        assert!(!ws.root.exists());
+    }
+}
+
 mod sweep {
     use super::*;
 

@@ -125,6 +125,7 @@ pub async fn propose<P: Model>(
         prose::propose_system(),
         user,
         "proposal",
+        None,
         &schema,
         project::judgment::Lent::default(),
         move |answer| {

@@ -2,7 +2,7 @@
 
 use error::Error;
 use omnia_guest::Model;
-use project::judgment::{render_json, repaired};
+use project::judgment::{render_json, repaired_where};
 use project::plan::PartitionResponse;
 
 use crate::judgment::prose;
@@ -11,31 +11,38 @@ use crate::judgment::prose;
 ///
 /// `check` is the tentative-tree validation (typically apply +
 /// [`project::plan::Decomposition::check`]), so an invalid cut is
-/// repaired in-loop rather than after the call.
+/// repaired in-loop rather than after the call — except a
+/// structurally non-reducing cut, which surfaces on the first answer:
+/// a re-prompt cannot change the parent's measure, and the drain's
+/// disposition ladder (close-as-leaf, parent fallback, park) is the
+/// cheaper recovery.
 ///
 /// # Errors
 ///
-/// The mapped model failure, or the last schema / parse / check
-/// failure once the repair budget is exhausted.
+/// The mapped model failure, a first-answer non-reducing cut, or the
+/// last schema / parse / check failure once the repair budget is
+/// exhausted.
 pub async fn partition<P, F>(
     model: &P, request: &serde_json::Value, mut check: F,
 ) -> Result<PartitionResponse, Error>
 where
     P: Model,
-    F: FnMut(&PartitionResponse) -> Result<(), Error>,
+    F: FnMut(&PartitionResponse) -> Result<(), Error> + Send,
 {
     let schema = project::answers::render(&project::answers::partition());
     let user = format!(
         "## Partition request\n\n```json\n{}\n```",
         render_json(request, "partition request")?
     );
-    repaired(
+    repaired_where(
         model,
         prose::partition(),
         user,
         "partition",
+        request.get("domain").and_then(serde_json::Value::as_str),
         &schema,
         project::judgment::Lent::default(),
+        |err| !non_reducing(err),
         |answer| {
             let response: PartitionResponse = serde_json::from_str(answer).map_err(|err| {
                 Error::validation_failed(
@@ -60,4 +67,15 @@ where
         },
     )
     .await
+}
+
+/// A `decomposition-non-reducing` tail failure: structural, not a
+/// prompt defect — never re-prompted.
+fn non_reducing(err: &Error) -> bool {
+    let code: &str = match err {
+        Error::Validation { code, .. } => code.as_ref(),
+        Error::Diag { code, .. } => code,
+        _ => return false,
+    };
+    code == "decomposition-non-reducing"
 }

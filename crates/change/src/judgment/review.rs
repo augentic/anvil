@@ -19,7 +19,7 @@ pub async fn review<P, F>(
 ) -> Result<BoundaryReview, Error>
 where
     P: Model,
-    F: FnMut(&BoundaryReview) -> Result<(), Error>,
+    F: FnMut(&BoundaryReview) -> Result<(), Error> + Send,
 {
     let schema = project::answers::render(&project::answers::boundary_review());
     let user = format!(
@@ -31,6 +31,7 @@ where
         prose::review(),
         user,
         "boundary-review",
+        request.get("domain").and_then(serde_json::Value::as_str),
         &schema,
         project::judgment::Lent::default(),
         |answer| {

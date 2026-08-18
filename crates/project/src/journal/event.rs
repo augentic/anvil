@@ -524,6 +524,19 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
+    /// One plan entry's slice was abandoned without merging
+    /// (`plan drop`). Scope authority: recorded **before** any artifact
+    /// movement, so the entry durably leaves gaps / Ready / execute
+    /// scope even when the archival move fails or the archived
+    /// metadata is unreadable (S7 / CC-03).
+    #[serde(rename = "slice.dropped", rename_all = "kebab-case")]
+    SliceDropped {
+        /// Dropped slice.
+        slice_name: SliceName,
+        /// Operator-supplied reason, when given.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+    },
     /// A journal writer claimed exclusive ownership of one slice
     /// (RFC-86 D7 / D23). The claimant is the event's envelope
     /// `writer`, not a payload field. Claims never create authorization.
@@ -667,6 +680,27 @@ pub enum EventKind {
         plan_name: PlanName,
         /// Covering `plan.yaml` content digest at archive time.
         plan_digest: String,
+    },
+    /// The deployment settled a non-durable adapter identity at
+    /// dispatch (D5 containment): a bare routed id, or a pinned id
+    /// answered by the project cache seed. The durable audit trail for
+    /// runs whose `plan.yaml` / `project.yaml` binding does not name
+    /// the exact component that executed. Observability only — never
+    /// read to form authority. Written best-effort by the deployment
+    /// launcher when the change journal already exists.
+    #[serde(rename = "adapter.identity.settled", rename_all = "kebab-case")]
+    AdapterIdentitySettled {
+        /// Routed adapter id exactly as dispatched
+        /// (`<axis>:<name>[@<version>]` — a seed-answered pin keeps
+        /// its pin here while `version` stays unknown).
+        adapter: String,
+        /// Settled version, when the deployment knows one (store /
+        /// registry legs); a cache seed settles without a version.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        version: Option<String>,
+        /// Where the bytes came from (`cache seed`, `store`,
+        /// `installed from registry`).
+        origin: String,
     },
     /// `emery system review` recorded architectural authority over one
     /// exact wave handoff (RFC-104 D10). Definition-home writers only

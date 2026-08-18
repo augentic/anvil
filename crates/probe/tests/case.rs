@@ -843,6 +843,42 @@ async fn workflow_sandbox_resumes() {
     );
 }
 
+// A drain's exit-2 halt is a typed stop outcome: the case fails
+// naming the stable stop code, never as an opaque process exit — and
+// never as a pass.
+#[tokio::test]
+async fn refine_stop_is_typed() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "stopping",
+        "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
+         [sources]\nmain = \"mock:value:The greeting service.\"\n",
+    );
+
+    // Author drains normally; the refine drain's synthesis judgment
+    // gets an unparseable answer, so the drain parks with the typed
+    // `plan-refine-stopped` halt (exit 2).
+    let mut answers = mock::answers::greeting_author();
+    answers.push("not a synthesis answer".to_string());
+    let err = case::run(
+        &cases,
+        &tmp.path().join("sandbox"),
+        Some("stopping"),
+        Some(WorkflowUntil::Refine),
+        false,
+        &catalog(),
+        &scripted(answers),
+    )
+    .await
+    .expect_err("a refine stop fails the case");
+    let message = format!("{err:#}");
+    assert!(message.contains("stopped (plan-refine-stopped)"), "{message}");
+    assert!(message.contains("greeting"), "the stop names the parked slice: {message}");
+    assert!(!message.contains("exited 2"), "the stop is typed, not an opaque exit: {message}");
+}
+
 #[tokio::test]
 async fn missing_fixture_focused() {
     let tmp = TempDir::new().expect("tempdir");

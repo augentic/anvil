@@ -848,3 +848,92 @@ mod artifact_stage {
         stage::discard(attempt_dir.path());
     }
 }
+
+mod platforms_gate {
+    use project::adapter::{PlatformsCapability, TargetAdapter};
+    use project::config::Layout;
+
+    use super::*;
+
+    fn adapter(capability: Option<PlatformsCapability>) -> TargetAdapter {
+        TargetAdapter {
+            name: "vectis".to_string(),
+            version: None,
+            requires_emery: None,
+            inputs: Vec::new(),
+            platforms: capability,
+            writable_artifacts: Vec::new(),
+        }
+    }
+
+    fn capability() -> PlatformsCapability {
+        PlatformsCapability {
+            required: true,
+            allowed: vec![Platform::Core, Platform::Ios, Platform::Android],
+            default: vec![Platform::Core, Platform::Ios],
+        }
+    }
+
+    fn project(platforms: &str) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let emery = dir.path().join(".emery");
+        std::fs::create_dir_all(&emery).expect("emery dir");
+        std::fs::write(
+            emery.join("project.yaml"),
+            format!("name: app\nadapter: vectis\n{platforms}"),
+        )
+        .expect("project.yaml");
+        dir
+    }
+
+    /// A14 regression: a required capability over a project.yaml with
+    /// no declared platform set refuses typed at build assembly — the
+    /// gate is not init-only, so a project scaffolded before the
+    /// capability (or hand-edited since) never reaches the target
+    /// without a validated set.
+    #[test]
+    fn missing_set_refuses() {
+        let dir = project("");
+        let err =
+            slice::build::platforms::enforce(Layout::new(dir.path()), &adapter(Some(capability())))
+                .expect_err("missing set refuses");
+        assert_eq!(code(&err), "target-build-platforms-required");
+    }
+
+    /// A declared platform outside the capability's allowed set is the
+    /// typed not-allowed refusal.
+    #[test]
+    fn disallowed_refuses() {
+        let dir = project("platforms: [core, web]\n");
+        let err =
+            slice::build::platforms::enforce(Layout::new(dir.path()), &adapter(Some(capability())))
+                .expect_err("disallowed platform refuses");
+        assert_eq!(code(&err), "target-build-platforms-not-allowed");
+    }
+
+    /// A conforming declared set passes; a target with no capability
+    /// never gates.
+    #[test]
+    fn conforming_pass() {
+        let dir = project("platforms: [core, ios]\n");
+        slice::build::platforms::enforce(Layout::new(dir.path()), &adapter(Some(capability())))
+            .expect("conforming set passes");
+
+        let bare = project("");
+        slice::build::platforms::enforce(Layout::new(bare.path()), &adapter(None))
+            .expect("no capability, no gate");
+    }
+
+    /// A detached change home carries no `project.yaml`: the engine
+    /// gate defers to the target's in-guest validation over the
+    /// materialized tree.
+    #[test]
+    fn detached_home_skips() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        slice::build::platforms::enforce(
+            Layout::detached(dir.path()),
+            &adapter(Some(capability())),
+        )
+        .expect("detached home skips the gate");
+    }
+}

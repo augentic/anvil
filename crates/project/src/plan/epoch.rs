@@ -86,7 +86,7 @@ fn staleness(
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = SliceMetadata::load_optional(&slice_dir)?;
-        if !in_scope(plan, entry, meta.as_ref()) {
+        if !in_scope(plan, entry, meta.as_ref(), events) {
             continue;
         }
         if ladders.get(&entry.name).copied() == Some(Status::Done) {

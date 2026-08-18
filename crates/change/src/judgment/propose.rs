@@ -60,7 +60,7 @@ pub async fn reconcile<P, F>(
 ) -> Result<ProposalResponse, Error>
 where
     P: Model,
-    F: FnMut(&ProposalResponse) -> Result<(), Error>,
+    F: FnMut(&ProposalResponse) -> Result<(), Error> + Send,
 {
     let schema = project::answers::render(&project::answers::proposal());
     let mut user = format!(
@@ -78,6 +78,7 @@ where
         prose::propose(),
         user,
         "proposal",
+        gate.map(|context| context.plan),
         &schema,
         project::judgment::Lent::default(),
         |answer| {

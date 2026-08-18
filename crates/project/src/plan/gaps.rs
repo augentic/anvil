@@ -258,7 +258,7 @@ pub fn plan_gaps_body(
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = SliceMetadata::load_optional(&slice_dir)?;
-        if !in_scope(plan, entry, meta.as_ref()) {
+        if !in_scope(plan, entry, meta.as_ref(), events) {
             continue;
         }
         for finding in slice_findings(entry, &slice_dir)? {

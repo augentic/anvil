@@ -20,7 +20,7 @@ pub use tree::{
     BoundProfile, Covered, CoveredKind, Decomposition, Kind, MAX_DEPTH, MAX_JUDGMENTS, MAX_NODES,
     Node, Oracle, Scope, VERSION,
 };
-pub use validate::findings;
+pub use validate::{ScopeMeasure, findings, scope_measure};
 
 use crate::config::Layout;
 use crate::snapshot::SnapshotId;

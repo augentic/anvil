@@ -91,7 +91,14 @@ cargo +nightly miri setup
 cargo +nightly miri nextest run --workspace --no-tests=pass
 '''
 
+# Read-only gate: verification must never rewrite the audit inputs it
+# verifies. Regeneration is the explicit maintenance act below.
 [tasks.vet]
+command = "cargo"
+args = ["vet", "--locked"]
+install_crate = "cargo-vet"
+
+[tasks.vet-regenerate]
 script = '''
 cargo vet regenerate imports
 cargo vet regenerate exemptions

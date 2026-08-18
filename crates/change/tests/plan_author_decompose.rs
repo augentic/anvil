@@ -10,6 +10,13 @@ use project::handler::Anchor;
 use project::plan::{Decomposition, Plan};
 use serde_json::json;
 
+#[expect(unsafe_code, reason = "EMERY_POOL is the launcher cap seam; nextest isolates the process")]
+fn set_cap(cap: &str) {
+    // SAFETY: nextest runs each test in its own process, and the env
+    // write happens before any pool dispatch reads the cap.
+    unsafe { std::env::set_var("EMERY_POOL", cap) };
+}
+
 fn seed_target(root: &std::path::Path, name: &str) -> std::path::PathBuf {
     let target = root.join(name);
     std::fs::create_dir_all(target.join(".emery")).expect("target .emery");
@@ -214,6 +221,89 @@ async fn multi_level_tree() {
     assert!(plan.targets.contains_key("app"));
     assert!(plan.targets.contains_key("other"));
     project::plan::decomposition::matches_plan(&tree, &plan).expect("projection");
+}
+
+/// A pathless root splits into children that keep the cross-cutting
+/// intent lead, and each closes as a leaf with that same lead set plus
+/// the first ownership paths. Declaring the first envelope under an
+/// unspecified parent is reducing — the drain completes with no
+/// fallback close, no park, and no repair.
+#[tokio::test]
+async fn first_leaf_closes_under_pathless_root() {
+    let split = serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "split",
+        "assessment": quiet(),
+        "children": [
+            {
+                "id": "alpha",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "app"
+            },
+            {
+                "id": "beta",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "app"
+            }
+        ]
+    }))
+    .expect("root split");
+    let final_answer = serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slices": [
+            {
+                "name": "alpha",
+                "target": "app",
+                "sources": [{ "source": "intent", "lead": "intent" }]
+            },
+            {
+                "name": "beta",
+                "target": "app",
+                "sources": [{ "source": "intent", "lead": "intent" }]
+            }
+        ],
+        "gate": { "change": "## Intent\n\nShip it.\n\n## Scope\n\nTwo leaves." }
+    }))
+    .expect("response");
+    let session = Session::scripted(
+        "mock",
+        vec![
+            split,
+            leaf("alpha", "intent", "intent", "app"),
+            leaf("beta", "intent", "intent", "app"),
+            final_answer,
+        ],
+    );
+    let target = seed_target(session.root(), "target-app");
+    let definition = session.root().join("definition");
+    let mut spec = Spec::degenerate("Ship both halves.");
+    spec.targets[0].locator = target.display().to_string();
+    mint(&definition, &spec).expect("mint");
+
+    let body = author(&session, &definition, &spec.wave).await.expect("author completes");
+    let mut slices = body.slices.clone();
+    slices.sort();
+    assert_eq!(slices, ["alpha", "beta"], "{:?}", body.slices);
+
+    let layout = Layout::new(session.root());
+    let tree = Decomposition::load(&layout.decomposition_path()).expect("tree");
+    tree.check().expect("complete tree");
+    assert_eq!(tree.nodes["alpha"].kind, Some(project::plan::decomposition::Kind::Leaf));
+    assert_eq!(tree.nodes["beta"].kind, Some(project::plan::decomposition::Kind::Leaf));
+
+    let events = project::journal::read_union(layout).expect("events");
+    assert!(
+        !events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::DomainPartitionClosed { .. }
+                | project::journal::EventKind::PlanAuthorParked { .. }
+        )),
+        "no disposition fired"
+    );
+    let change = std::fs::read_to_string(layout.change_brief_path()).expect("change.md");
+    assert!(!change.contains("closed as a leaf after a failed cut"), "{change}");
+    session.model().assert_exhausted();
 }
 
 #[tokio::test]
@@ -431,7 +521,8 @@ fn recovered_response(slices: &[(&str, &str, &str, &str)]) -> String {
 }
 
 // A reduction tie on an open child defers (Decision 1); the same tie
-// on the closed child after repairs closes the PARENT as a leaf via
+// on the closed child surfaces on the first answer (non-reducing is
+// never repaired) and closes the PARENT as a leaf via
 // the deterministic fallback: siblings are subsumed, the tree stays,
 // the `domain.partition.closed` fact and the change.md caveat record
 // the disposition, and authoring completes with a reconcile fact.
@@ -467,9 +558,8 @@ async fn non_reducing_fallback_closes_parent() {
             auth_split(),
             leaf("greeting", "intent", "intent", "other"),
             // `login`'s close ties against `auth` on every dimension:
-            // initial answer + MAX_REPAIRS identical repairs.
-            tie_leaf(),
-            tie_leaf(),
+            // a non-reducing cut surfaces on the first answer — no
+            // repair re-prompts.
             tie_leaf(),
             leaf("token", "code", "login-flow", "app"),
             final_answer,
@@ -543,6 +633,11 @@ fn overlapping_auth_split() -> String {
 // resumes only the parked domain and completes.
 #[tokio::test]
 async fn park_then_resume() {
+    // The scripted answer order assumes sibling domains partition in
+    // one concurrent round ("independent domains keep draining"); the
+    // Phase 0 default cap is serial, where the sibling would instead
+    // park as never-run after the first failure.
+    set_cap("4");
     let session = Session::scripted(
         "mock",
         vec![

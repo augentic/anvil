@@ -253,29 +253,7 @@ where
         // answer's assessment.
         let last_answers: Vec<Mutex<Option<PartitionResponse>>> =
             round.iter().map(|_| Mutex::new(None)).collect();
-        let tree = &state.tree;
-        let jobs: Vec<pool::Job<'_, PartitionResponse, Error>> = round
-            .iter()
-            .zip(&requests)
-            .zip(&last_answers)
-            .map(|((id, request), slot)| pool::Job {
-                claim: pool::Claim {
-                    item: id.clone(),
-                    operation: "partition".to_string(),
-                    attempt: 1,
-                },
-                budget: pool::budget::JUDGMENT,
-                future: Box::pin(partition::partition(provider, request, move |answer| {
-                    if let Ok(mut last) = slot.lock() {
-                        *last = Some(answer.clone());
-                    }
-                    check_targets(plan, answer)?;
-                    let mut trial = tree.clone();
-                    apply(&mut trial, id, answer)?;
-                    check_progress(&trial)
-                })),
-            })
-            .collect();
+        let jobs = round_jobs(provider, plan, &state.tree, &round, &requests, &last_answers);
         let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
 
         for ((id, outcome), slot) in round.iter().zip(outcomes).zip(&last_answers) {
@@ -319,6 +297,7 @@ where
                     let children: Vec<String> =
                         response.children.iter().map(|child| child.id.clone()).collect();
                     apply(&mut state.tree, id, &response)?;
+                    tracing::info!("partition {id} — split {}", children.len());
                     if persist {
                         save_tree(paths, &state.tree)?;
                     }
@@ -332,8 +311,13 @@ where
                     )
                     .await
                     {
-                        Ok(Settled::Closed) if persist => save_tree(paths, &state.tree)?,
-                        Ok(_) => {}
+                        Ok(Settled::Closed) => {
+                            tracing::info!("partition {id} — leaf");
+                            if persist {
+                                save_tree(paths, &state.tree)?;
+                            }
+                        }
+                        Ok(Settled::Requeued) => tracing::info!("partition {id} — requeued"),
                         Err(err)
                             if persist && err.variant_str().as_ref() == "plan-author-unready" =>
                         {
@@ -346,6 +330,39 @@ where
         }
     }
     Ok(())
+}
+
+/// One pool job per round member: the partition judgment with the
+/// tentative-tree tail, each announced as `partition {id} …`.
+fn round_jobs<'a, P: Model>(
+    provider: &'a P, plan: &'a Plan, tree: &'a Decomposition, round: &'a [String],
+    requests: &'a [serde_json::Value], last_answers: &'a [Mutex<Option<PartitionResponse>>],
+) -> Vec<pool::Job<'a, PartitionResponse, Error>> {
+    round
+        .iter()
+        .zip(requests)
+        .zip(last_answers)
+        .map(|((id, request), slot)| {
+            tracing::info!("partition {id} …");
+            pool::Job {
+                claim: pool::Claim {
+                    item: id.clone(),
+                    operation: "partition".to_string(),
+                    attempt: 1,
+                },
+                budget: pool::budget::PARTITION,
+                future: Box::pin(partition::partition(provider, request, move |answer| {
+                    if let Ok(mut last) = slot.lock() {
+                        *last = Some(answer.clone());
+                    }
+                    check_targets(plan, answer)?;
+                    let mut trial = tree.clone();
+                    apply(&mut trial, id, answer)?;
+                    check_progress(&trial)
+                })),
+            }
+        })
+        .collect()
 }
 
 /// One partition request per round member, numbered in queue order.
@@ -567,6 +584,7 @@ fn fallback_leaf(
 fn park(
     paths: &ExecutionPaths, now: Timestamp, state: &mut State, id: &str, reason: String,
 ) -> Result<(), Error> {
+    tracing::info!("partition {id} — parked");
     journal::append_one(
         paths.layout(),
         &Event::new(
@@ -1090,9 +1108,15 @@ fn partition_request(
     notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<serde_json::Value, Error> {
     let node = tree.node(id)?;
+    // Only the domain's contributing sources reach the request:
+    // same-source rows ride along for focused substitution;
+    // foreign-source rows are noise the cut cannot bind.
+    let contributing: std::collections::BTreeSet<&str> =
+        node.sources.iter().map(|scope| scope.source.as_str()).collect();
     let leads: Vec<serde_json::Value> = catalog
         .leads()
         .iter()
+        .filter(|lead| contributing.contains(lead.source.as_str()))
         .map(|lead| {
             json!({
                 "source": lead.source,
@@ -1110,6 +1134,7 @@ fn partition_request(
         "sources": node.sources,
         "targets": node.target_set().into_iter().collect::<Vec<_>>(),
         "parent": node.parent,
+        "parent-measure": project::plan::decomposition::scope_measure(tree, id),
         "leads": leads,
         "plan-targets": plan.targets.keys().collect::<Vec<_>>(),
         "judgments-remaining": MAX_JUDGMENTS.saturating_sub(used),

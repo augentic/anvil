@@ -12,8 +12,10 @@ use std::time::{Duration, Instant};
 /// Compiled ceiling on the operation cap (the `MAX_REPAIRS` pattern).
 pub const MAX_CAP: usize = 8;
 
-/// Default cap when the deployment injects none.
-pub const DEFAULT_CAP: usize = 4;
+/// Default cap when the deployment injects none: serial. Concurrency
+/// is the operator's opt-in via `EMERY_POOL` until the inactivity
+/// wake works on every deployment (Phase 0 containment).
+pub const DEFAULT_CAP: usize = 1;
 
 /// Effective operation cap from launcher deployment policy.
 ///
@@ -46,6 +48,9 @@ pub mod budget {
     pub const EXTRACT: Duration = Duration::from_mins(15);
     /// Schema-gated judgment legs (synthesis, propose, correlate).
     pub const JUDGMENT: Duration = Duration::from_mins(20);
+    /// Domain partition — schema-only over the request payload (no
+    /// workspace lend, no tools), so a stuck agent parks fast.
+    pub const PARTITION: Duration = Duration::from_mins(5);
     /// Target build-loop operations (build / verify / repair / review).
     pub const BUILD: Duration = Duration::from_hours(1);
     /// Target merge gates.
@@ -190,6 +195,7 @@ pub async fn run<T, E>(
     let mut queue: VecDeque<(usize, Job<'_, T, E>)> = jobs.into_iter().enumerate().collect();
     let mut running: Vec<Running<'_, T, E>> = Vec::new();
     let mut stopped = false;
+    let timer = timer::Timer::default();
 
     std::future::poll_fn(|cx| {
         loop {
@@ -246,6 +252,12 @@ pub async fn run<T, E>(
             }
             return Poll::Ready(());
         }
+        // Real inactivity wake (S4): a monotonic-clock wake at the
+        // earliest in-flight deadline times out a hung job even when no
+        // sibling progresses — the timer only guarantees a poll happens.
+        if let Some(deadline) = running.iter().map(Running::deadline).min() {
+            timer.arm(deadline, cx.waker());
+        }
         Poll::Pending
     })
     .await;
@@ -286,9 +298,15 @@ impl<'a, T, E> Running<'a, T, E> {
         }
     }
 
+    /// The instant this job's inactivity budget exhausts, from its
+    /// last observed activity.
+    fn deadline(&self) -> Instant {
+        *self.activity.last.lock().expect("activity mutex") + self.budget
+    }
+
     /// Check the inactivity budget, then poll once. Detection is
-    /// poll-driven: the check runs whenever the pool wakes (a sibling
-    /// or this job's own backend progressed).
+    /// poll-driven: the check runs whenever the pool wakes (a sibling,
+    /// this job's own backend, or the armed inactivity timer).
     fn step(&mut self, pool: &Waker) -> Step<T, E> {
         {
             let mut current = self.activity.pool.lock().expect("waker mutex");
@@ -323,5 +341,112 @@ impl Wake for Activity {
     fn wake_by_ref(self: &Arc<Self>) {
         *self.last.lock().expect("activity mutex") = Instant::now();
         self.pool.lock().expect("waker mutex").wake_by_ref();
+    }
+}
+
+/// Monotonic-clock wake for the inactivity budget.
+///
+/// Native deployments run one timer thread per pool run: it sleeps
+/// until the earliest armed deadline and wakes the pool waker, so a
+/// hung job is timed out without any sibling progress. The wasm32
+/// guest has no thread to sleep on and no clock-wake import — the
+/// guest stays poll-driven until a deployment wake capability lands
+/// (Phase 2b / RFC-96 D8 note); the launcher-hosted native path is
+/// the one that fans out today.
+#[cfg(not(target_arch = "wasm32"))]
+mod timer {
+    use std::sync::{Arc, Condvar, Mutex};
+    use std::task::Waker;
+    use std::time::Instant;
+
+    /// One lazily started timer thread, rearmed per pool poll and shut
+    /// down on drop.
+    #[derive(Default)]
+    pub struct Timer {
+        shared: Arc<Shared>,
+        thread: Mutex<Option<std::thread::JoinHandle<()>>>,
+    }
+
+    #[derive(Default)]
+    struct Shared {
+        state: Mutex<State>,
+        signal: Condvar,
+    }
+
+    #[derive(Default)]
+    struct State {
+        armed: Option<(Instant, Waker)>,
+        shutdown: bool,
+    }
+
+    impl Timer {
+        /// (Re)arm the wake: at `deadline` the pool waker fires unless
+        /// rearmed or dropped first.
+        pub fn arm(&self, deadline: Instant, waker: &Waker) {
+            let mut state = self.shared.state.lock().expect("timer mutex");
+            state.armed = Some((deadline, waker.clone()));
+            drop(state);
+            self.shared.signal.notify_one();
+            let mut thread = self.thread.lock().expect("timer thread handle");
+            if thread.is_none() {
+                let shared = Arc::clone(&self.shared);
+                *thread = Some(std::thread::spawn(move || tick(&shared)));
+            }
+        }
+    }
+
+    impl Drop for Timer {
+        fn drop(&mut self) {
+            self.shared.state.lock().expect("timer mutex").shutdown = true;
+            self.shared.signal.notify_one();
+            let handle = self.thread.lock().expect("timer thread handle").take();
+            if let Some(handle) = handle {
+                drop(handle.join());
+            }
+        }
+    }
+
+    fn tick(shared: &Shared) {
+        let mut state = shared.state.lock().expect("timer mutex");
+        loop {
+            if state.shutdown {
+                return;
+            }
+            match &state.armed {
+                None => {
+                    state = shared.signal.wait(state).expect("timer mutex");
+                }
+                Some((deadline, _)) => {
+                    let now = Instant::now();
+                    if now >= *deadline {
+                        if let Some((_, waker)) = state.armed.take() {
+                            drop(state);
+                            waker.wake();
+                            state = shared.state.lock().expect("timer mutex");
+                        }
+                    } else {
+                        let wait = *deadline - now;
+                        state = shared.signal.wait_timeout(state, wait).expect("timer mutex").0;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// wasm32: no thread and no clock-wake import — arming is a no-op and
+/// timeout detection stays poll-driven (Phase 2b / RFC-96 D8).
+#[cfg(target_arch = "wasm32")]
+mod timer {
+    use std::task::Waker;
+    use std::time::Instant;
+
+    /// Inert guest-side stand-in for the native timer thread.
+    #[derive(Default)]
+    pub struct Timer;
+
+    impl Timer {
+        /// No-op: the guest has no wake source to arm.
+        pub fn arm(&self, _deadline: Instant, _waker: &Waker) {}
     }
 }

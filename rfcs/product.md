@@ -3,6 +3,8 @@
 > Status: **Authoritative product yardstick.** Owned by the operator (human), not by any agent. Changes require an ADR under [decisions/](decisions/). Every architecture document, RFC, and corrective cut is audited against this file — including [platform.md](platform.md), which describes the services programme, not the product.
 >
 > This document is deliberately short. If the product cannot be described in two pages, it has too many concepts.
+>
+> **Programme scope note (2026-08-18):** the current remediation programme ships the specification generator only — the `spec` verb, surfaced as `emery specify`. `build`, `status`, and `fix` remain the destination described below but are frozen until the generator is reliable; see [remediation-plan.md](remediation-plan.md). This is phasing, not a change to the yardstick.
 
 ## What Emery is
 
@@ -86,4 +88,4 @@ These fail the product test and are not on any roadmap by default (evidence trig
 - [remediation-plan.md](remediation-plan.md) — how we get from the current implementation to this product
 - [target-architecture.md](target-architecture.md) — the architecture that serves this definition
 - [decisions/](decisions/) — the decision log this document's changes flow through
-- [architecture-review.md](architecture-review.md) + [architecture-review-addendum.md](architecture-review-addendum.md) — why the current implementation misses this definition
+- [architecture-review.md](architecture-review.md) — why the current implementation misses this definition (second-pass addendum folded in)

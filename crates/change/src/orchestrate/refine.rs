@@ -419,7 +419,7 @@ fn topological<'a>(layout: Layout<'_>, plan: &'a Plan) -> Result<Vec<&'a Entry>,
         .iter()
         .filter(|entry| {
             let meta = SliceMetadata::load(&layout.slice_dir(entry.name.as_str())).ok();
-            in_scope(plan, entry, meta.as_ref())
+            in_scope(plan, entry, meta.as_ref(), &events)
                 && ladders.get(&entry.name).copied() != Some(Status::Done)
         })
         .collect();

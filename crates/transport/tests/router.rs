@@ -1,7 +1,5 @@
 //! Typed command grammar, conversion, and HTTP parity coverage.
 
-use std::any::TypeId;
-use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
@@ -33,34 +31,39 @@ fn command_router(
     transport::command::router(Invoker::new("emery", provider(root))).expect("router")
 }
 
-#[test]
-fn http_parity() {
-    let command = command_router(".");
-    let command_types: BTreeSet<TypeId> = command
-        .inventory()
-        .iter()
-        .filter_map(omnia_guest::api::command::RouteInfo::operation)
-        .collect();
-    let http_types: BTreeSet<TypeId> =
-        transport::http::router(Invoker::new("emery", provider(".")))
-            .inventory()
-            .iter()
-            .map(omnia_guest::api::http::RouteInfo::operation)
-            .collect();
-    let transport_only: BTreeSet<Vec<String>> = command
-        .inventory()
-        .iter()
-        .filter(|route| route.operation().is_none_or(|operation| !http_types.contains(&operation)))
-        .map(|route| route.selector().path().to_vec())
-        .collect();
-    let expected: BTreeSet<Vec<String>> = std::iter::once(&["completions"][..])
-        .map(|path| path.iter().map(|part| (*part).to_string()).collect())
-        .collect();
+// C3 tripwire: the guest HTTP listener serves only the MCP reference
+// shelves — the engine's whole non-shelf surface is one typed refusal
+// with no operation route table. If an HTTP operation surface returns,
+// it must arrive with an authenticated operator ingress design
+// (target-architecture §7) and replace this test deliberately.
+#[tokio::test]
+async fn http_parity() {
+    use omnia_guest::http::{Method, Request, StatusCode};
+    use tower::ServiceExt as _;
 
-    assert_eq!(transport_only, expected);
-    assert_eq!(http_types.difference(&command_types).count(), 0);
-    assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 29);
+    // Every command-router verb, projected as an HTTP-ish path, must
+    // refuse — derived from the live command inventory so a new verb
+    // can never quietly gain an HTTP twin.
+    let command = command_router(".");
+    for route in command.inventory() {
+        let path = format!("/{}", route.selector().path().join("/"));
+        for method in [Method::GET, Method::POST] {
+            let request = Request::builder()
+                .method(method.clone())
+                .uri(&path)
+                .body(omnia_guest::axum::body::Body::empty())
+                .expect("build request");
+            let response = transport::http::refusal()
+                .oneshot(request)
+                .await
+                .expect("refusal serves the request");
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {path} must refuse");
+        }
+    }
+
+    // The one served surface is the engine's MCP shelf path, routed by
+    // the deployment's `http_paths` hook.
+    assert_eq!(slice::shelf::PATH, "/mcp/engine/synthesis");
 }
 
 #[tokio::test]

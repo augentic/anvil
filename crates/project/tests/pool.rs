@@ -1,7 +1,7 @@
 //! RFC-96 D1/D3: bounded-pool semantics over scripted futures —
 //! canonical join order at every cap, duplicate-claim rejection,
 //! claim release on every terminal path, drain vs cancel, and the
-//! poll-driven inactivity timeout.
+//! inactivity timeout (poll-driven check, timer-armed wake).
 
 use std::future::Future;
 use std::pin::Pin;
@@ -126,6 +126,34 @@ async fn inactivity_times_out() {
     assert!(matches!(outcomes[0], Outcome::TimedOut));
     assert!(matches!(outcomes[1], Outcome::Settled(Ok(2))), "sibling drains to terminal");
     assert!(matches!(outcomes[2], Outcome::Skipped));
+    assert!(claims.is_empty());
+}
+
+/// Never settles and never wakes — a hung backend with no activity.
+struct Hung;
+
+impl Future for Hung {
+    type Output = Result<u32, String>;
+
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Poll::Pending
+    }
+}
+
+#[tokio::test]
+async fn hung_job_timer_wakes() {
+    // S4 regression: a job whose backend never wakes must still time
+    // out. Nothing else is in flight, so only the armed monotonic
+    // timer can wake the pool to run the inactivity check — before
+    // the timer wake landed this run never returned.
+    let claims = Claims::default();
+    let jobs = vec![Job {
+        claim: claim("hung"),
+        budget: Duration::from_millis(50),
+        future: Box::pin(Hung),
+    }];
+    let outcomes = run(1, &claims, OnFailure::Drain, jobs).await;
+    assert!(matches!(outcomes[0], Outcome::TimedOut));
     assert!(claims.is_empty());
 }
 

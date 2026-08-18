@@ -248,6 +248,23 @@ fn mcp_url_port_from_trigger() {
     }
 }
 
+// The injected fully-formed base (D6) is preferred as-is: no host
+// literal and no `HTTP_ADDR` parsing; a trailing slash normalizes and
+// an empty base yields no grant.
+#[test]
+fn mcp_url_base_preferred() {
+    use adapter::seam::mcp_url_with_base;
+    assert_eq!(
+        mcp_url_with_base("http://127.0.0.1:8080", "target:omnia").as_deref(),
+        Some("http://127.0.0.1:8080/mcp/target/omnia")
+    );
+    assert_eq!(
+        mcp_url_with_base("http://127.0.0.1:8080/", "target:omnia@1.2.3").as_deref(),
+        Some("http://127.0.0.1:8080/mcp/target/omnia@1.2.3")
+    );
+    assert_eq!(mcp_url_with_base("", "target:omnia"), None);
+}
+
 #[test]
 fn pinned_grant_strips() {
     let url = mcp_url_for(Some("127.0.0.1:8080"), "target:contracts@1.0.0");

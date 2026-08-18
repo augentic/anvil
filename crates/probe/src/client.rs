@@ -112,23 +112,22 @@ pub enum Filter {
     Debug,
     /// The ambient `RUST_LOG` filter.
     Ambient,
-    /// The flagless passthrough default.
+    /// The flagless default.
     Info,
 }
 
 /// Select the base filter for one invocation.
 ///
 /// An explicit host flag (`--quiet` is [`Filter::Off`], `--debug` is
-/// [`Filter::Debug`]) wins, then the ambient `RUST_LOG`, then the
-/// case runner's debug preset (live case runs want backend and seam
-/// visibility), then `info`.
+/// [`Filter::Debug`]) wins, then the ambient `RUST_LOG`, then `info` —
+/// backend and seam visibility is opt-in via `--debug`, matching the
+/// shipped binary.
 #[must_use]
-pub const fn filter(flag: Option<Filter>, ambient: bool, runner: bool) -> Filter {
-    match (flag, ambient, runner) {
-        (Some(explicit), ..) => explicit,
-        (None, true, _) => Filter::Ambient,
-        (None, false, true) => Filter::Debug,
-        (None, false, false) => Filter::Info,
+pub const fn filter(flag: Option<Filter>, ambient: bool) -> Filter {
+    match (flag, ambient) {
+        (Some(explicit), _) => explicit,
+        (None, true) => Filter::Ambient,
+        (None, false) => Filter::Info,
     }
 }
 
@@ -166,11 +165,7 @@ pub async fn run(
         (false, true) => Some(Filter::Debug),
         (false, false) => None,
     };
-    let choice = filter(
-        flag,
-        std::env::var_os("RUST_LOG").is_some(),
-        matches!(invocation, Invocation::Runner(_)),
-    );
+    let choice = filter(flag, std::env::var_os("RUST_LOG").is_some());
     init_tracing(log_destination(&invocation, &root, sandbox), choice)?;
     // Same EventKind growth as `plan execute`: clippy large_futures at 16KiB.
     Box::pin(dispatch(root, invocation, catalog, cases, sandbox)).await
@@ -323,11 +318,12 @@ fn init_tracing(log: Option<PathBuf>, choice: Filter) -> anyhow::Result<()> {
         }
         None => (None, None),
     };
-    // Console tracing goes to stderr: stdout stays the semantic command
-    // output, matching the shipped runtime's stream roles.
+    // Console tracing goes to stderr (stdout stays the semantic command
+    // output) and renders compact — no span-name chain; the file copy
+    // keeps the full span context for grepping.
     tracing_subscriber::registry()
         .with(filter)
-        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+        .with(tracing_subscriber::fmt::layer().compact().with_writer(std::io::stderr))
         .with(file)
         .try_init()
         .context("installing the tracing subscriber")?;

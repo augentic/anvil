@@ -184,9 +184,9 @@ pub enum Backing {
 /// A claim extracted from a source — mirrors the WIT `source.claim` record.
 ///
 /// The schema leaves per-kind body fields open (`additionalProperties:
-/// true`), so unmodeled keys are ignored, and the modeled open fields
-/// (`synopsis`, `backing`) deserialize leniently rather than failing the
-/// whole answer.
+/// true`), so unmodeled keys flatten into [`Claim::extras`], and the
+/// modeled open fields (`synopsis`, `backing`) deserialize leniently
+/// rather than failing the whole answer.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Claim {
@@ -207,6 +207,12 @@ pub struct Claim {
     /// Backing data of the claim (a path or a raw payload).
     #[serde(default, deserialize_with = "lenient")]
     pub backing: Option<Backing>,
+    /// Open per-kind body fields (`statement`, `criterion`,
+    /// `replay-digest`, …), captured verbatim from the answer instead
+    /// of being dropped (A8) — synthesis reads them from the persisted
+    /// Evidence document.
+    #[serde(flatten)]
+    pub extras: serde_json::Map<String, serde_json::Value>,
 }
 
 /// Deserialize an open per-kind body field tolerantly: a value that does

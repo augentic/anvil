@@ -352,8 +352,9 @@ fn reduction(tree: &Decomposition, id: &str, node: &Node) -> Vec<Diagnostic> {
             continue;
         };
         let measured = measure(tree, child, child_node);
-        if measured > parent || (!single && measured == parent) {
-            let relation = if measured == parent { "tied on every dimension" } else { "grew" };
+        let (grew, tied) = compare(parent, measured);
+        if grew || (!single && tied) {
+            let relation = if tied { "tied on every dimension" } else { "grew" };
             out.push(diag(
                 "decomposition-non-reducing",
                 format!(
@@ -367,25 +368,53 @@ fn reduction(tree: &Decomposition, id: &str, node: &Node) -> Vec<Diagnostic> {
     out
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// Compare a child measure against its parent as `(grew, tied)`.
+///
+/// Known envelopes on both sides compare lexicographically over
+/// `(leads, targets, paths)`. Unknown paths mean an *unspecified*
+/// envelope, not an empty one: only the scope dimensions compare, a
+/// child declaring the first ownership under an unspecified parent
+/// is progress rather than growth, a tie needs the child equally
+/// unspecified or pathless, and a known parent against an
+/// unspecified child defers to the complete-tree check.
+fn compare(parent: Measure, child: Measure) -> (bool, bool) {
+    if let (Some(parent_paths), Some(child_paths)) = (parent.paths, child.paths) {
+        let p = (parent.leads, parent.targets, parent_paths);
+        let c = (child.leads, child.targets, child_paths);
+        return (c > p, c == p);
+    }
+    match (child.leads, child.targets).cmp(&(parent.leads, parent.targets)) {
+        std::cmp::Ordering::Greater => (true, false),
+        std::cmp::Ordering::Less => (false, false),
+        std::cmp::Ordering::Equal => {
+            (false, parent.paths.is_none() && child.paths.unwrap_or(0) == 0)
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 struct Measure {
     leads: usize,
     targets: usize,
-    paths: usize,
+    /// `None` while the envelope is unspecified: no declared
+    /// ownership and at least one open terminal beneath the node.
+    paths: Option<usize>,
 }
 
 impl std::fmt::Display for Measure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} lead{}, {} target{}, {} path{}",
+            "{} lead{}, {} target{}, ",
             self.leads,
             plural(self.leads),
             self.targets,
             plural(self.targets),
-            self.paths,
-            plural(self.paths)
-        )
+        )?;
+        match self.paths {
+            Some(paths) => write!(f, "{paths} path{}", plural(paths)),
+            None => write!(f, "unspecified paths"),
+        }
     }
 }
 
@@ -397,8 +426,58 @@ fn measure(tree: &Decomposition, id: &str, node: &Node) -> Measure {
     Measure {
         leads: node.sources.iter().collect::<BTreeSet<_>>().len(),
         targets: child_targets(tree, id, node).len(),
-        paths: ownership(tree, id, node).len(),
+        paths: known_paths(tree, id, node),
     }
+}
+
+/// One domain's normalized scope measure — the exact numbers the
+/// reduction rule compares — projected for the partition request.
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub struct ScopeMeasure {
+    /// Distinct contributing `(source, lead)` scopes.
+    pub leads: usize,
+    /// Bound target count (terminal union when undeclared).
+    pub targets: usize,
+    /// Known ownership-path count; `0` while unknown.
+    pub paths: usize,
+    /// Whether the path dimension is known: declared ownership or
+    /// every terminal beneath the node closed.
+    #[serde(rename = "paths-known")]
+    pub paths_known: bool,
+}
+
+/// Project the scope measure of `id`, `None` on an unknown node.
+#[must_use]
+pub fn scope_measure(tree: &Decomposition, id: &str) -> Option<ScopeMeasure> {
+    let node = tree.nodes.get(id)?;
+    let measured = measure(tree, id, node);
+    Some(ScopeMeasure {
+        leads: measured.leads,
+        targets: measured.targets,
+        paths: measured.paths.unwrap_or(0),
+        paths_known: measured.paths.is_some(),
+    })
+}
+
+/// The node's ownership-path count when the envelope is known:
+/// declared ownership wins; otherwise the terminal union counts only
+/// once every terminal beneath the node is closed (`kind` set).
+fn known_paths(tree: &Decomposition, id: &str, node: &Node) -> Option<usize> {
+    if !node.ownership.is_empty() {
+        return Some(node.ownership.iter().collect::<BTreeSet<_>>().len());
+    }
+    let terminals = tree.terminals(id).ok()?;
+    if terminals.iter().any(|leaf| tree.nodes.get(leaf).is_none_or(|node| node.kind.is_none())) {
+        return None;
+    }
+    Some(
+        terminals
+            .iter()
+            .filter_map(|leaf| tree.nodes.get(leaf))
+            .flat_map(|leaf| leaf.ownership.iter())
+            .collect::<BTreeSet<_>>()
+            .len(),
+    )
 }
 
 fn ownership(tree: &Decomposition, id: &str, node: &Node) -> BTreeSet<String> {

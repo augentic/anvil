@@ -95,7 +95,7 @@ pub(crate) fn writer_log_path(layout: Layout<'_>, writer: &str) -> PathBuf {
 ///
 /// Same failure surface as [`read_union`].
 pub fn read_union_at(root: &JournalRoot) -> Result<Vec<Event>, Error> {
-    read_union_dir(root.events_dir())
+    read_union_dir(root.events_dir(), Parse::Strict)
 }
 
 /// Refuse writer ids that cannot be a single path segment under
@@ -119,23 +119,34 @@ pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Read every parseable [`Event`] from every per-writer log under
+/// Read every [`Event`] from every per-writer log under
 /// `.emery/change/events/`, ordered by `(timestamp, writer, sequence)`.
 ///
-/// A missing events directory yields an empty vector. Blank lines and
-/// lines that fail to parse as an [`Event`] are skipped rather than
-/// failing the whole read, so a log written by a newer binary still
-/// yields the events this binary understands.
+/// A missing events directory yields an empty vector. The read is
+/// **strict** (S13 / CC-11): a non-empty line that fails to parse is a
+/// typed `journal-line-malformed` error, never silently skipped — an
+/// authority-forming read must not project partial state from a
+/// corrupt log. The read-only `emery journal show` projection uses the
+/// lenient variant instead.
 ///
 /// # Errors
 ///
-/// Propagates I/O failures other than a missing events directory.
+/// `journal-line-malformed` on a corrupt line; I/O failures other than
+/// a missing events directory.
 pub fn read_union(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
-    read_union_dir(&layout.events_dir())
+    read_union_dir(&layout.events_dir(), Parse::Strict)
+}
+
+/// Line handling for the union read: authority reads are strict,
+/// observability projections are lenient.
+#[derive(Clone, Copy)]
+enum Parse {
+    Strict,
+    Lenient,
 }
 
 /// The union read over one explicit events directory.
-fn read_union_dir(dir: &Path) -> Result<Vec<Event>, Error> {
+fn read_union_dir(dir: &Path, parse: Parse) -> Result<Vec<Event>, Error> {
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(err) if err.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
@@ -151,7 +162,7 @@ fn read_union_dir(dir: &Path) -> Result<Vec<Event>, Error> {
         if path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
             continue;
         }
-        events.extend(read_file(&path)?);
+        events.extend(read_file(&path, parse)?);
     }
     events.sort_by(|left, right| {
         (left.timestamp, left.writer.as_str(), left.sequence).cmp(&(
@@ -163,17 +174,35 @@ fn read_union_dir(dir: &Path) -> Result<Vec<Event>, Error> {
     Ok(events)
 }
 
-fn read_file(path: &Path) -> Result<Vec<Event>, Error> {
+fn read_file(path: &Path, parse: Parse) -> Result<Vec<Event>, Error> {
     let contents = match std::fs::read_to_string(path) {
         Ok(contents) => contents,
         Err(err) if err.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
         Err(err) => return Err(Error::Io(err)),
     };
-    Ok(contents
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .filter_map(|line| serde_json::from_str::<Event>(line).ok())
-        .collect())
+    let mut events = Vec::new();
+    for (index, line) in contents.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        match serde_json::from_str::<Event>(line) {
+            Ok(event) => events.push(event),
+            Err(err) => match parse {
+                Parse::Strict => {
+                    return Err(Error::Diag {
+                        code: "journal-line-malformed",
+                        detail: format!(
+                            "{}:{}: {err} — repair or remove the corrupt journal line",
+                            path.display(),
+                            index + 1
+                        ),
+                    });
+                }
+                Parse::Lenient => {}
+            },
+        }
+    }
+    Ok(events)
 }
 
 /// Read the most recent journal [`Event`]s that `select` maps to a value,
@@ -209,11 +238,10 @@ pub(crate) fn read_recent<T>(
 /// (`timestamp`, `writer`, `sequence`).
 ///
 /// `filter` keeps events whose dotted-kebab wire id starts with the
-/// given prefix (e.g. `slice.build` or `plan.entry.advanced`); `limit`
-/// keeps only the most recent N matches via [`read_recent`]. Reader
-/// leniency matches [`read_union`]: blank and unparseable lines are
-/// skipped and a missing events directory yields an empty vector.
-/// Private: the only consumer is the [`handlers::Show`] handler.
+/// given prefix; `limit` keeps only the most recent N matches. The one
+/// **lenient** reader: blank and unparseable lines are skipped so the
+/// observability projection still shows what this binary understands —
+/// authority reads use the strict [`read_union`] instead.
 ///
 /// # Errors
 ///
@@ -222,10 +250,15 @@ fn show(
     layout: Layout<'_>, filter: Option<&str>, limit: Option<usize>,
 ) -> Result<Vec<Event>, Error> {
     let keep = |event: &Event| filter.is_none_or(|prefix| wire_id(&event.kind).starts_with(prefix));
-    match limit {
-        Some(limit) => read_recent(layout, limit, |event| keep(&event).then_some(event)),
-        None => Ok(read_union(layout)?.into_iter().filter(keep).collect()),
+    let mut events: Vec<Event> = read_union_dir(&layout.events_dir(), Parse::Lenient)?
+        .into_iter()
+        .filter(|event| keep(event))
+        .collect();
+    if let Some(limit) = limit {
+        let start = events.len().saturating_sub(limit);
+        events.drain(..start);
     }
+    Ok(events)
 }
 
 /// Dotted-kebab wire id of `kind`, read back from its serde tag so the

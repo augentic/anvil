@@ -222,7 +222,7 @@ fn dropped_slice() {
     );
 
     let meta = SliceMetadata::load(&abandoned).expect("load dropped meta");
-    assert!(!in_scope(&staged, &staged.entries[1], Some(&meta)));
+    assert!(!in_scope(&staged, &staged.entries[1], Some(&meta), &[]));
 
     let body = plan_gaps_body(&staged, Layout::new(root), &[]).expect("gaps");
     assert_eq!(body.rows.len(), 1);

@@ -9,10 +9,8 @@ use std::sync::Arc;
 use omnia::Backend as _;
 use omnia_guest::Model;
 use omnia_guest::model::{Error, Reply, Request};
-use tracing::Instrument as _;
 
 use super::native::Native;
-use crate::telemetry;
 
 /// The case runner's model backend: lazily connected live completions.
 #[derive(Clone, Debug)]
@@ -58,14 +56,8 @@ impl DevModel {
 
 impl Model for DevModel {
     async fn create(&self, request: Request) -> Result<Reply, Error> {
-        // The `model.request` span records only the bounded leg and
-        // effective model id — never request bodies or project paths.
-        // When unset here, cursor may still apply `CURSOR_MODEL`.
-        let span = tracing::info_span!(
-            "model.request",
-            leg = %telemetry::leg(&request),
-            model = %request.model.as_deref().unwrap_or("backend-default"),
-        );
-        self.request(request).instrument(span).await
+        // No span here: `judgment.leg` already names the leg, and the
+        // backend logs the effective model id under `--debug`.
+        self.request(request).await
     }
 }

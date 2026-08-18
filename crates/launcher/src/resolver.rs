@@ -7,8 +7,12 @@ use std::collections::BTreeSet;
 use error::Error;
 use project::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE, RoutedId, resolver as locate};
 use project::handler::ExecutionPaths;
+use project::journal;
 
 use crate::install::{self, Registry};
+
+/// Journal writer id for launcher-appended observability facts.
+const LAUNCHER_WRITER: &str = "launcher";
 
 /// The Emery guest resolver: local-first adapter resolution (with the
 /// pull-on-miss / pull-latest install legs) over one captured
@@ -79,12 +83,19 @@ impl Resolver {
         }
     }
 
-    /// Pinned identity: the immutable store entry, installed on miss.
-    /// An entry that fails store verification (a torn install, drifted
-    /// bytes) is reinstalled in place once before failing closed.
+    /// Pinned identity: the seeded project-cache entry when one exists
+    /// (the co-dev seed always wins, pins included — a locally built
+    /// component would otherwise be shadowed at every post-author
+    /// dispatch, since detached topology records exact pins), else the
+    /// immutable store entry, installed on miss. A store entry that
+    /// fails verification (a torn install, drifted bytes) is
+    /// reinstalled in place once before failing closed.
     async fn resolve_pinned(
         &self, routed: &RoutedId, version: semver::Version,
     ) -> Result<Vec<u8>, Error> {
+        if let Some(bytes) = self.seed(routed)? {
+            return Ok(bytes);
+        }
         let version_str = version.to_string();
         if !self.paths.locations().store_entry(&routed.name, &version_str).is_file() {
             install::install(&self.registry, &routed.name, &version_str, &self.paths).await?;
@@ -101,6 +112,58 @@ impl Resolver {
         Ok(std::fs::read(location.path())?)
     }
 
+    /// The seeded project-cache entry for this identity's name, when
+    /// one exists. The seed answers pinned and bare identities alike.
+    fn seed(&self, routed: &RoutedId) -> Result<Option<Vec<u8>>, Error> {
+        let name = routed.name.as_str();
+        let bare = AdapterSelector::Bare {
+            name: name.to_string(),
+        };
+        let Ok(location) = locate::locate(routed.axis, &bare, name, &self.paths) else {
+            return Ok(None);
+        };
+        if self.refresh.contains(name) {
+            eprintln!(
+                "emery {}: `{name}` resolves the project cache seed, which always wins; \
+                 re-run `emery adapter add` with a newer component (or remove the seed) to \
+                 update it",
+                env!("CARGO_PKG_VERSION"),
+            );
+        }
+        self.settle(routed, None, "cache seed");
+        Ok(Some(std::fs::read(location.path())?))
+    }
+
+    /// Log a non-durable settled identity and journal it (D5): a bare
+    /// dispatch or a seed-answered pin executes a component that no
+    /// project file names exactly, so the settled `(name, version,
+    /// origin)` is appended as an observability fact. Best-effort —
+    /// only when the change journal already exists (the launcher never
+    /// scaffolds a change home), and a failed append degrades to the
+    /// stderr line that always fires.
+    fn settle(&self, routed: &RoutedId, version: Option<&semver::Version>, origin: &str) {
+        log_use(routed, version, origin);
+        let root = journal::JournalRoot::new(self.paths.layout().events_dir());
+        if !root.events_dir().is_dir() {
+            return;
+        }
+        let event = journal::Event::new(
+            jiff::Timestamp::now(),
+            journal::EventKind::AdapterIdentitySettled {
+                adapter: routed.to_string(),
+                version: version.map(ToString::to_string),
+                origin: origin.to_string(),
+            },
+        );
+        if let Err(err) = journal::append_for_at(&root, LAUNCHER_WRITER, &[event]) {
+            eprintln!(
+                "emery {}: journaling the settled `{}` identity failed: {err}",
+                env!("CARGO_PKG_VERSION"),
+                routed.name,
+            );
+        }
+    }
+
     /// Unpinned identity: cache seed, else newest store version, else
     /// pull-latest; an explicit refresh forces the registry check
     /// ahead of the store probe.
@@ -109,20 +172,8 @@ impl Resolver {
 
         // The co-dev seed always wins — including over an explicit
         // refresh, which is surfaced rather than silently shadowed.
-        let bare = AdapterSelector::Bare {
-            name: name.to_string(),
-        };
-        if let Ok(location) = locate::locate(routed.axis, &bare, name, &self.paths) {
-            if self.refresh.contains(name) {
-                eprintln!(
-                    "emery {}: `{name}` resolves the project cache seed, which always wins; \
-                     re-run `emery adapter add` with a newer component (or remove the seed) to \
-                     update it",
-                    env!("CARGO_PKG_VERSION"),
-                );
-            }
-            log_use(routed, None, "cache seed");
-            return Ok(std::fs::read(location.path())?);
+        if let Some(bytes) = self.seed(routed)? {
+            return Ok(bytes);
         }
 
         if self.refresh.contains(name) {
@@ -145,7 +196,7 @@ impl Resolver {
                 }
                 other => other?,
             };
-            log_use(routed, Some(&version), "store");
+            self.settle(routed, Some(&version), "store");
             return Ok(std::fs::read(location.path())?);
         }
 
@@ -154,7 +205,7 @@ impl Resolver {
         install::install(&self.registry, name, &latest.to_string(), &self.paths).await?;
         let selector = package(name, latest.clone());
         let location = locate::locate(routed.axis, &selector, name, &self.paths)?;
-        log_use(routed, Some(&latest), "installed from registry");
+        self.settle(routed, Some(&latest), "installed from registry");
         Ok(std::fs::read(location.path())?)
     }
 

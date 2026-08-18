@@ -128,6 +128,19 @@ async fn divergence_docs_wins() {
         "claim bodies must not be inlined: {prompt}"
     );
 
+    // Open per-kind body fields cross the seam and persist verbatim
+    // on the Evidence document (A8): the mock emits `statement`
+    // alongside the typed fields, and the closed seam record must
+    // conserve it.
+    let evidence = fs::read_to_string(
+        session.root().join(".emery/change/slices/session-policy/evidence/docs.yaml"),
+    )
+    .expect("evidence persisted");
+    assert!(
+        evidence.contains("statement: Sessions expire after 30 minutes of inactivity."),
+        "open `statement` body field survives to persisted Evidence: {evidence}"
+    );
+
     // The kernel resolved the disagreement: divergence, docs winning.
     let model = run::<slice::handlers::ModelShow, _, _>(
         session.provider(),
@@ -167,6 +180,17 @@ async fn divergence_docs_wins() {
     assert_eq!(req.resolution.to_string(), "authority-resolved");
     let trace = req.resolution_trace.as_ref().expect("authority-resolved carries a trace");
     assert_eq!(trace.winner.as_deref(), Some("docs"));
+    // The claim body preferred the conserved `statement` extra over
+    // the typed synopsis (A8 reaches `slice::model::claim_body`).
+    let docs_claim = req
+        .contributing_claims
+        .iter()
+        .find(|claim| claim.source == "docs")
+        .expect("docs contributing claim");
+    assert_eq!(
+        docs_claim.value.as_deref(),
+        Some("Sessions expire after 30 minutes of inactivity.")
+    );
 }
 
 /// [`session_synthesis_answer`] plus one accepted Decision Record

@@ -45,7 +45,7 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 ## Errors and their projections
 
-`project::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The HTTP `EmeryProjector` in `crates/transport/src/http.rs` owns the single taxonomy → status projection (validation/argument → 422, version floor → 426, everything else → 500) and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
+`project::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
 
 ## Exit codes
 
@@ -62,19 +62,19 @@ The four-slot CLI exit-code table is fixed:
 
 ## The transport crate (`crates/transport`)
 
-`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Emery command/HTTP projectors, and the fixed exit contract.
+`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the HTTP refusal surface, the Emery command projector, and the fixed exit contract.
 
 `crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`.
 
-## The HTTP route table (`http.rs`)
+## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns one `omnia_guest::api::http::Router` assembly using typed `get_with` / `post_with` routes and `EmeryProjector`. The WASI shim serves it directly; native converts it to Axum, layers the process-wide write lock, and merges MCP shelves.
+`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the MCP reference shelves (the engine's `slice::shelf::PATH` plus the deployment-routed adapter shelves); every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::http_parity` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 
-The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary. The shared HTTP table lives in `crates/transport/src/http.rs`; native adds its write lock and MCP merge after `into_axum()`.
+The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary.
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run the router through `transport::command::execute` — the shared wrapper that emits the `emery.command` span (bounded verb label plus exit code) — with the same assembly and the same `EmeryProjector`.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run the router through `transport::command::execute` — the shared wrapper that emits the `emery.command` span (bounded verb label plus exit code) — with the same assembly and the same command `EmeryProjector`.
 
 Target discipline per leaf arm:
 

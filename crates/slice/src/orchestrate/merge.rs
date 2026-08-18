@@ -83,7 +83,7 @@ pub async fn merge<T: Target + Workspaces>(
             ),
         ));
     }
-    if let Some(outcome) = already_complete(layout, slice) {
+    if let Some(outcome) = already_complete(layout, slice)? {
         tracing::info!("merge completed: commit and postflight already settled");
         return Ok(outcome);
     }
@@ -103,7 +103,7 @@ pub async fn merge<T: Target + Workspaces>(
         "slice.merge",
     );
 
-    if wave_committed(layout, &commit.digest) {
+    if wave_committed(layout, &commit.digest)? {
         return resume_postflight(targets, layout, now, slice, &id, &commit).await;
     }
 
@@ -243,7 +243,7 @@ async fn gated<T: Target + Workspaces>(
 async fn resume_postflight<T: Target + Workspaces>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, id: &str, commit: &WaveCommit,
 ) -> Result<MergeOutcome, Error> {
-    let result = committed_result(layout, &commit.digest).ok_or_else(|| Error::Diag {
+    let result = committed_result(layout, &commit.digest)?.ok_or_else(|| Error::Diag {
         code: "target-merge-resume-missing-result",
         detail: format!(
             "wave `{}` has a commit fact but no result CID; cannot resume postflight",
@@ -551,48 +551,56 @@ fn journal_on_failure<V>(
 
 /// Commit fact exists and postflight has settled (succeeded or the
 /// aggregate failed fact). Re-entry is a no-op.
-fn already_complete(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
-    let events = collect_events(layout).ok()?;
-    let digest = events.iter().rev().find_map(|event| match &event.kind {
+///
+/// Fails closed (S13 / CC-11): an unreadable journal is an error, not
+/// "not yet merged" — proceeding on empty state would re-commit.
+fn already_complete(layout: Layout<'_>, slice: &str) -> Result<Option<MergeOutcome>, Error> {
+    let events = collect_events(layout)?;
+    let Some(digest) = events.iter().rev().find_map(|event| match &event.kind {
         EventKind::TargetMergeWaveCommitted { digest, members, .. }
             if members.iter().any(|m| m.as_str() == slice) =>
         {
             Some(digest.clone())
         }
         _ => None,
-    })?;
+    }) else {
+        return Ok(None);
+    };
     let settled = events.iter().any(|event| match &event.kind {
         EventKind::TargetMergeWaveSucceeded { digest: d, .. } if *d == digest => true,
         EventKind::MergeWavePostflightFailed { digest: d, .. } if *d == digest => true,
         _ => false,
     });
     if !settled {
-        return None;
+        return Ok(None);
     }
-    let archive_path = project::refinement::latest_archive(&layout.archive_dir(), slice)?;
-    Some(MergeOutcome {
+    let Some(archive_path) = project::refinement::latest_archive(&layout.archive_dir(), slice)
+    else {
+        return Ok(None);
+    };
+    Ok(Some(MergeOutcome {
         merged: vec![],
         decisions: vec![],
         archive_path,
-    })
+    }))
 }
 
-fn wave_committed(layout: Layout<'_>, digest: &str) -> bool {
-    collect_events(layout).ok().is_some_and(|events| {
-        events.iter().any(|event| match &event.kind {
-            EventKind::TargetMergeWaveCommitted { digest: d, .. } => d == digest,
-            _ => false,
-        })
-    })
+/// Fails closed: an unreadable journal must not project "uncommitted"
+/// and re-run the deterministic commit (S13 / CC-11).
+fn wave_committed(layout: Layout<'_>, digest: &str) -> Result<bool, Error> {
+    Ok(collect_events(layout)?.iter().any(|event| match &event.kind {
+        EventKind::TargetMergeWaveCommitted { digest: d, .. } => d == digest,
+        _ => false,
+    }))
 }
 
-fn committed_result(layout: Layout<'_>, digest: &str) -> Option<SnapshotId> {
-    collect_events(layout).ok()?.into_iter().rev().find_map(|event| match event.kind {
+fn committed_result(layout: Layout<'_>, digest: &str) -> Result<Option<SnapshotId>, Error> {
+    Ok(collect_events(layout)?.into_iter().rev().find_map(|event| match event.kind {
         EventKind::TargetMergeWaveCommitted {
             digest: d, result, ..
         } if d == digest => Some(result),
         _ => None,
-    })
+    }))
 }
 
 fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {

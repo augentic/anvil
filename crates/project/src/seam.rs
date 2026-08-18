@@ -387,6 +387,13 @@ pub trait Workspaces: Send + Sync {
     fn sweep(
         &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
     ) -> impl Future<Output = Result<usize, Error>> + Send;
+
+    /// Remove abandoned workspace directories older than `cutoff`
+    /// (S37 / D12) — the execute-entry startup sweep over the
+    /// deployment's workspaces root. Returns the number removed.
+    fn gc(
+        &self, cutoff: std::time::SystemTime,
+    ) -> impl Future<Output = Result<usize, Error>> + Send;
 }
 
 /// One bound locator: exact pin, CID, and a readable staged tree.
@@ -443,14 +450,27 @@ impl TreeLimits {
         }
     }
 
-    /// No transport bounds — the RFC-104 archaeology fetch, which has
-    /// never been metered.
+    /// No transport bounds — test and debug breakouts only; every
+    /// production fetch carries either the bind policy slice or the
+    /// archaeology bounds.
     #[must_use]
     pub const fn unbounded() -> Self {
         Self {
             max_bytes: u64::MAX,
             max_redirects: u32::MAX,
             time_ms: u64::MAX,
+        }
+    }
+
+    /// Transport bounds for the RFC-104 archaeology fetch (D11):
+    /// generous estate-sized caps so a runaway origin cannot exhaust
+    /// the host, not a bind policy.
+    #[must_use]
+    pub const fn archaeology() -> Self {
+        Self {
+            max_bytes: 2 * 1024 * 1024 * 1024,
+            max_redirects: 10,
+            time_ms: 15 * 60 * 1000,
         }
     }
 }

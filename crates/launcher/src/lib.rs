@@ -317,11 +317,12 @@ fn export_roots(paths: &ExecutionPaths) {
 /// Macro expression: this invocation's pre-bound HTTP trigger
 /// listener, feeding the `/mcp/<axis>/<name>` reference shelves.
 ///
-/// Its local address becomes the guest-visible `HTTP_ADDR`, so
-/// concurrent invocations get distinct ports. An operator-set
-/// `HTTP_ADDR` must bind; without one, an ephemeral loopback port.
-/// Any bind failure is a startup failure — there is no
-/// run-without-the-trigger fallback.
+/// Its local address becomes the guest-visible `HTTP_ADDR` (distinct
+/// ports across concurrent invocations); an operator-set `HTTP_ADDR`
+/// must bind, else an ephemeral loopback port — any bind failure is a
+/// startup failure. A successful bind also injects the fully-formed
+/// `MCP_URL_BASE` (`http://127.0.0.1:<port>`, D6), which guests prefer
+/// over re-deriving the base from `HTTP_ADDR`.
 ///
 /// # Errors
 ///
@@ -330,13 +331,26 @@ fn export_roots(paths: &ExecutionPaths) {
 pub fn http_listener() -> anyhow::Result<std::net::TcpListener> {
     use anyhow::Context as _;
 
-    if let Some(addr) = std::env::var_os("HTTP_ADDR") {
+    let listener = if let Some(addr) = std::env::var_os("HTTP_ADDR") {
         let addr = addr.to_string_lossy().into_owned();
-        return std::net::TcpListener::bind(&addr)
-            .with_context(|| format!("binding operator-set HTTP_ADDR `{addr}`"));
-    }
-    std::net::TcpListener::bind(("127.0.0.1", 0))
-        .context("binding an ephemeral loopback port for the MCP reference shelves")
+        std::net::TcpListener::bind(&addr)
+            .with_context(|| format!("binding operator-set HTTP_ADDR `{addr}`"))?
+    } else {
+        std::net::TcpListener::bind(("127.0.0.1", 0))
+            .context("binding an ephemeral loopback port for the MCP reference shelves")?
+    };
+    let port =
+        listener.local_addr().context("reading the bound trigger listener's address")?.port();
+    // SAFETY: one write during runtime assembly, before guest stores
+    // snapshot the environment and before this process spawns any
+    // concurrent environment reader.
+    #[expect(unsafe_code, reason = "the guest inherits the shelf base through the env")]
+    let () = unsafe {
+        // The IPv4 loopback literal, never `localhost`: an agent whose
+        // resolver prefers `::1` would fail to connect to the listener.
+        std::env::set_var("MCP_URL_BASE", format!("http://127.0.0.1:{port}"));
+    };
+    Ok(listener)
 }
 
 /// Macro expression: host directory of the writable `.` project mount.

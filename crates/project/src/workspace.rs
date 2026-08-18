@@ -58,6 +58,49 @@ struct Meta {
     writable: bool,
 }
 
+/// Age past which an unattended workspace counts as abandoned.
+///
+/// The [`gc`] cutoff the execute-entry sweep uses (S37 / D12). Well
+/// past the longest seam inactivity budget, so a concurrent run's live
+/// workspace is never collected.
+pub const ABANDON_TTL: std::time::Duration = std::time::Duration::from_hours(24);
+
+/// Best-effort teardown for a workspace lent to a future the pool may
+/// drop mid-flight (inactivity timeout or cancel — S37 / D12).
+///
+/// A dropped future never reaches its async settle-path discard, so
+/// `Drop` removes the materialized tree and its metadata sidecar
+/// synchronously. Disarm before the normal discard.
+#[derive(Debug)]
+pub struct DiscardGuard {
+    root: Option<PathBuf>,
+}
+
+impl DiscardGuard {
+    /// Arm over a prepared workspace's root directory.
+    #[must_use]
+    pub fn arm(root: &str) -> Self {
+        Self {
+            root: Some(PathBuf::from(root)),
+        }
+    }
+
+    /// The settle path owns the discard from here on.
+    pub fn disarm(&mut self) {
+        self.root = None;
+    }
+}
+
+impl Drop for DiscardGuard {
+    fn drop(&mut self) {
+        let Some(root) = self.root.take() else { return };
+        drop(std::fs::remove_dir_all(&root));
+        let mut meta = root.into_os_string();
+        meta.push(".yaml");
+        drop(std::fs::remove_file(meta));
+    }
+}
+
 /// Prepare a fresh private workspace from `base`.
 ///
 /// Every call yields a new directory beneath `workspaces`; no two
