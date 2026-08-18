@@ -240,7 +240,7 @@ fn init_contract() {
 /// is a typed refusal naming source, claim, and key — never a
 /// synopsis fallback — and commits nothing.
 #[test]
-fn extras_gate_fails_closed() {
+fn adr_0009_extras_gate() {
     let home = Home::stage(&["mock-missing-extras"]);
     let init = home.emery(&["init", "mock-missing-extras.wasm"]);
     assert!(init.status.success(), "{}", String::from_utf8_lossy(&init.stderr));

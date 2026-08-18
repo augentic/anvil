@@ -114,6 +114,10 @@ pub async fn extract_all(
 
 /// The typed seam input for one binding: the key plus a read-only
 /// workspace view (rooted at the project mount) or the inline value.
+///
+/// A `.`-rooted view spans the project preopen, `.emery/` included —
+/// the per-guest output-home exclusion is a D7 capability profile,
+/// deferred with the build programme (CC-01 note, ADR-0008).
 fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {

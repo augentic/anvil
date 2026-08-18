@@ -10,10 +10,9 @@
 [rust]
 "src" = 46
 "crates/adapter" = 912
-# Phase 3 (ADR-0009 §4): artifacts carries the fail-closed spec AST
-# alongside the lenient v1 parsers it replaces until the spine cut
-# deletes them with their `crates/project` consumers.
-"crates/artifacts" = 3480
+# Post-T10 (ADR-0009 §4): the fail-closed spec AST, evidence, and the
+# atomic writer; the lenient v1 parsers fell at the spine cut.
+"crates/artifacts" = 730
 "crates/diagnostics" = 884
 # New-spine crate (remediation Phase 3, ADR-0009 §6): the loop plus the
 # handler/resolver kernels ported at the T9 spine cut.

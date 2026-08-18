@@ -27,6 +27,7 @@ Every live entry uses exactly one of these classes:
 ### CC-01 — Source-to-specification fidelity
 
 **Classification:** Preserve  
+**Note:** the output-home clause is contract, not yet mount enforcement — a workspace view rooted at the project directory (ADR-0009 §1) preopens `.emery/` too; the per-guest exclusion lands with the D7 capability profiles deferred by ADR-0008  
 **Origin:** RFC-88, adapter contract, A8
 
 Emery extracts declared sources and retains every structured claim field synthesis needs. Source adapters remain value-in and cannot acquire lifecycle authority or inspect the output home.
@@ -113,7 +114,7 @@ Debt conservation, deferral lifecycle, and disposition-before-build wait with th
 
 A source adapter can be added at an exact version without rebuilding the host. The same engine core remains embeddable behind a desktop CLI and a service ingress; the conserved duality is architectural embeddability, not a live web service — the mutating HTTP surface stays disabled until an ingress design exists (C3).
 
-The native shadow provider, bare-name resolution, pull-on-miss, cache seeding, marketplace machinery, and the target WIT world are not conserved in this programme.
+The native shadow provider, every network provisioning leg (pull-on-miss, pull-latest), marketplace machinery, and the target WIT world are not conserved in this programme. Local-only bare-name resolution and ADR-0007 cache-seed precedence are conserved by ADR-0009 §1 as init-grammar conveniences over local state — they carry no download path.
 
 The conserved capability requires:
 
@@ -165,7 +166,7 @@ Unless a later ADR reopens them, this programme does not preserve:
 - the in-place/detached mode distinction as a *live* surface (ADR-0005 Option C);
 - merge-time checkout `apply` (deleted by implemented RFC-88);
 - the native shadow provider (ADR-0002);
-- bare adapter names, pull-on-miss, cache seeding, and pull-latest (ADR-0002);
+- network adapter provisioning — pull-on-miss and pull-latest (ADR-0002; the *local* bare-name and cache-seed legs are conserved by ADR-0009 §1);
 - universal conflict auto-deferral (ADR-0004 Option D);
 - `tasks.md` / `composition.yaml` as first-wave artifacts (ADR-0008);
 - in-tree `crates-v1/` quarantine and a second-repo archive (ADR-0008);

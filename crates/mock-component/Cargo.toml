@@ -18,4 +18,6 @@ workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 emery-adapter.workspace = true
-emery-mock.workspace = true
+# Path, not workspace: cargo-deny's unused-workspace-dependency lint
+# cannot see wasm32-gated usage, and this is the only consumer.
+emery-mock = { path = "../mock" }

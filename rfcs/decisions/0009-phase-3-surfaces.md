@@ -83,7 +83,9 @@ The engine computes a deterministic reconciliation over the typed claims first â
 claim id, resolve what authority precedence (`intent` > `documentation` > `behaviour`)
 can resolve as `[divergence]`, record same-authority disagreement as `[conflict]`, and
 requirements with no acceptance criterion as `[unknown]` gaps. The ported v1 synthesis
-prose (from `v1:crates/slice/prompts/synthesis/`) plus the claims and that reconciliation
+prose (from `v1:crates/slice/prompts/synthesis/`; the review-time port keeps five of the
+eight prompts and drops `boundary`, `decisions`, and `substeps` as build-programme
+vocabulary) plus the claims and that reconciliation
 go to the model (`wasi:model`); the answer is the `spec.md` / `design.md` text. The
 engine then fails closed unless the answer parses under the one spec AST (A17) **and**
 carries every reconciliation tag inline (ADR-0004 Option D) â€” a model answer that hides a

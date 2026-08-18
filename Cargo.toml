@@ -173,7 +173,6 @@ emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
 emery-guest = { path = "crates/guest" }
 emery-launcher = { path = "crates/launcher" }
-emery-mock = { path = "crates/mock" }
 emery-prose = { path = "crates/prose" }
 emery-transport = { path = "crates/transport" }
 
