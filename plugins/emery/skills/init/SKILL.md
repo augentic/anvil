@@ -6,7 +6,7 @@ argument-hint: <adapter>
 
 # Init Skill
 
-`emery init` owns every filesystem write — `.emery/`, `project.yaml`, the project component cache, root `AGENTS.md`, and `.emery/context.lock`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
+`emery init` owns every filesystem write — `.emery/`, `project.yaml`, and the project component cache. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 
@@ -20,11 +20,11 @@ curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install
 Then run `emery --version --quiet` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.
 
 2. **Route re-entry** — when `.emery/project.yaml` already exists, `emery init` changes nothing: it exits 0 and prints the literal `emery init --upgrade` re-entry command. Confirm with the operator, then run `emery init --upgrade --quiet`.
-3. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: a missing input fails typed (`init-adapter-required` for the adapter; `project-platforms-required` when the target demands `--platforms`, naming the allowed and default sets — `core` is mandatory). Gather conversationally: the adapter, `--platforms <platforms>` when the target adapter declares `platforms.required` (e.g. vectis), and optionally `--name <name>` / `--description "<description>"`.
+3. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`init-source-required`). Gather conversationally: the source adapters to bind (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive), and optionally `--name <name>` / `--description "<description>"`.
 4. **Invoke**:
 
 ```bash
-emery init <adapter> [--name <name>] [--description "<description>"] [--platforms <platforms>] --quiet
+emery init <adapter>... [--value <adapter>=<text>] [--name <name>] [--description "<description>"] --quiet
 ```
 
 Init is a short deterministic verb — it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).

@@ -4,7 +4,7 @@
 >
 > This document is deliberately short. If the product cannot be described in two pages, it has too many concepts.
 >
-> **Programme scope note (2026-08-18):** the current remediation programme ships the specification generator only — the `spec` verb, surfaced as `emery specify`. `build`, `status`, and `fix` remain the destination described below but are frozen until the generator is reliable; see [remediation-plan.md](remediation-plan.md). This is phasing, not a change to the yardstick.
+> **Programme scope note (2026-08-18, [ADR-0008](decisions/0008-spec-generator-programme.md)):** the current remediation programme ships the specification generator only — the `spec` verb, surfaced as `emery specify`. First artifacts are `spec.md` and `design.md`. `build`, `status`, and `fix` remain the destination described below but are frozen until the generator is reliable; see [remediation-plan.md](remediation-plan.md). This is phasing, not a change to the yardstick.
 
 ## What Emery is
 
@@ -17,7 +17,7 @@ It must be **extremely simple for an operator to use.**
 There is one journey. Everything else is an advanced or debug surface.
 
 1. **Point Emery at sources.** Code, docs, contracts, intent, screenshots, designs. No hand-authored configuration files before the first useful output.
-2. **Review the specifications.** One reviewable document per slice. A human (or a reviewing agent) can approve or reject it without opening a second artifact. Gaps and conflicts are visible in that document; conflicts require an operator disposition, unknowns may be carried as typed debt.
+2. **Review the specifications.** A human (or a reviewing agent) can approve or reject the spec set without opening a second artifact family. Gaps and conflicts are visible in that document; this programme surfaces them inline, and operator disposition before build is a destination concern ([ADR-0004](decisions/0004-conflict-disposition.md), [ADR-0008](decisions/0008-spec-generator-programme.md)).
 3. **Build, slice by slice.** Fast, reliable, resumable on failure — re-running the verb is always the recovery — and parallelisable once serial execution is proven crash-safe.
 4. **Correct conversationally.** When a slice sticks, the operator says what to change; the guidance becomes a durable, digest-bound input to the retry. Conversation never gains lifecycle authority; the recorded guidance fact does.
 
@@ -32,7 +32,7 @@ Four operator verbs:
 | `status` | Project the one next action |
 | `fix` | Record correction guidance for a stuck slice or a wrong specification |
 
-Everything else (adapter management, journal/state inspection, GC, debug survey/extract) lives behind an advanced namespace and does not appear in the primary help.
+Everything else (adapter management, journal/state inspection, GC, debug extract) lives behind an advanced namespace and does not appear in the primary help.
 
 **Concept budget:** an operator must be productive knowing at most 4 verbs and at most 10 nouns (source, specification, slice, target, gap, conflict, correction, baseline — the exact list is closed here when the target architecture lands). Adding a verb or an operator-visible noun requires an ADR that names what is deleted to make room.
 
@@ -40,7 +40,7 @@ Everything else (adapter management, journal/state inspection, GC, debug survey/
 
 The specification is the product, whether or not a build follows. Required properties:
 
-- **One document per slice** that a reviewer reads top to bottom and approves or rejects.
+- **A reviewable spec set.** A reviewer reads it top to bottom and approves or rejects it. The destination is one document per slice; this programme ships `spec.md` / `design.md` as that set ([ADR-0008](decisions/0008-spec-generator-programme.md)).
 - **Gaps inline.** `[unknown]` and `[conflict]` appear in the document, not in a separate verb's output.
 - **Provenance on demand.** Which source said what is one gesture away, never required reading.
 - **Diff-friendly.** A re-mined specification shows the reviewer what changed.
@@ -53,8 +53,8 @@ The specification is the product, whether or not a build follows. Required prope
 | Quality | Target (unconfirmed) | Measured by |
 | --- | --- | --- |
 | Time to first reviewable specification (bounded estate) | ≤ 30 minutes | graded eval telemetry |
-| Time per built + merged slice | ≤ 60 minutes | graded eval telemetry |
-| Per-operation success rate (survey, extract, synthesize, build, merge) | ≥ 95% | graded eval suite |
+| Time per built + merged slice | ≤ 60 minutes | graded eval telemetry *(destination; frozen this programme)* |
+| Per-operation success rate (extract, synthesise; later build, merge) | ≥ 95% | graded eval suite |
 | Recovery | re-run the stopped verb, always; zero manual state surgery | crash-injection suite |
 
 The graded eval suite gates release. A regression in these numbers blocks a release the same way a failing test does.

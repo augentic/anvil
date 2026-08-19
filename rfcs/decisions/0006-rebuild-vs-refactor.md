@@ -1,6 +1,6 @@
 # ADR-0006: Remediation shape — walking-skeleton rebuild vs six-cut refactor
 
-> Status: Proposed — decide after the ADR-0001 and ADR-0002 spikes
+> Status: **Accepted** (operator decision, 2026-08-18), narrowed by [ADR-0008](0008-spec-generator-programme.md). Not waiting on the ADR-0001 / ADR-0002 spikes as originally proposed.
 > Date: 2026-08-17
 
 ## Context
@@ -9,32 +9,33 @@ The corrective programme in [architecture-review.md](../architecture-review.md) 
 
 Omnia — the hand-written comparison point — is ~30k lines for an entire runtime platform. Its coherence came from being built to a settled, bounded architecture. Repair does not produce that property; building to one does.
 
-**Kept kernels** (sound on both reviews, ported not rewritten): the content-addressed snapshot store and CID identity (`project::snapshot`, `project::workspace`), the RFC-90 engine-owned build phase machine, the artifact parsers (collapsed to one fail-closed AST per addendum A17), the adapter operations traits, the adapter prose corpus (~27k lines, ports nearly intact), the refinement-stage boundary, ultrathin skills.
+[ADR-0008](0008-spec-generator-programme.md) further narrows what is built: extract + synthesise, not a four-verb spine with an executor.
+
+**Kept kernels for this programme** (ported, not rewritten): artifact parsers collapsed to one fail-closed spec AST (addendum A17); adapter source operations trait + prose embedder; synthesis / authority prose; the WIT component seam + Omnia hosting (ADR-0002); `error` / `diagnostics`. Snapshot/CID identity ports only if sources must be pinned directory trees. The RFC-90 phase machine, refinement-as-separate-stage, and target operations traits wait in the annex.
 
 ## Options
 
 - **A. Walking-skeleton rebuild.** Write [target-architecture.md](../target-architecture.md) v1, then build the spine new — store (ADR-0001), one loop (ADR-0003), executor, four verbs — reusing the kept kernels, porting adapters behind the traits, deleting the rest. The old tree remains readable reference until parity.
 - **B. Six-cut refactor** as written in the standing review, greenfield-in-place for Cuts 1–2 only.
 - **C. Hybrid**: rebuild the spine (state, authoring, executor — the regions where both reviews found structural defects), refactor the periphery (transport grammar, artifacts, adapters) in place.
+- **D. Narrowed A (this programme).** New crates for extract + synthesise only. The archive is tag `v1` + worktree, not an in-tree quarantine. The executor, four verbs, and store spike are not in this rebuild.
 
-## Decision (proposed)
+## Decision
 
-**Option C, biased toward A.** The regions where finding density is highest (authoring generation machine, executor/wave/merge transaction, definition persistence, journal authority) are exactly the regions Cut 1–2 would rewrite anyway; rewriting them *against the target document* instead of *against the finding list* is the difference between building to an architecture and repairing toward one. The periphery (clap grammar, diagnostics, artifact types, adapter crates) is healthy enough to move.
+**Option D.** The regions where finding density is highest are exactly the regions a refactor would rewrite; rewriting them *against the target document* is the difference between building to an architecture and repairing toward one. ADR-0008 deletes most of that region from *this* programme's scope, which makes a full-spine hybrid (C) the wrong amount of rebuild.
 
-Decide finally after the two spikes: ADR-0001's store spike measures how much executor code survives contact with the new authority model; ADR-0002's component-seam spike measures what the Wasm-primary journey costs in CI and how much of the resolution/dual-provider layer simply deletes.
+The original "decide after the two spikes" gate is withdrawn: ADR-0002 is already accepted (direction, not cost), and ADR-0001's merge-commit spike is a build-programme cost ([0001](0001-state-model.md) Option C).
 
-The [capability conservation ledger](../capability-conservation.md) is the deletion gate. A legacy implementation may leave only after its replacement capability passes the ledger's acceptance evidence, or an accepted ADR explicitly deletes the capability and records the consequence. Walking-skeleton greenness alone is not parity for deferred capabilities.
+The [capability conservation ledger](../capability-conservation.md) is the deletion gate for *live* generator capabilities. Deferred-annex capabilities are not Preserve-for-this-skeleton; they return with the build programme or an ADR that deletes them.
 
 ## Deletions
 
-Under C: the journal-authority reducers, the authoring mode machine, the current execute loop, `crates/system` as a product (per ADR-0003), and — per the accepted ADR-0002 (Wasm-primary) — the **native provider and the adapter resolution matrix** (the Wasm seam is kept and hardened, not deleted) — replaced, not migrated. Pre-1.0 hard reset; no compatibility layer, no migration framework (already repo policy).
+The six-cut refactor as the execution sequence; in-tree `crates-v1/` quarantine; coexistence of new spine and old crates on the live branch. Replaced, not migrated, when Phase 3 deletes them from the live tree: journal-authority reducers, the authoring mode machine, the execute loop, `crates/system` as a product (ADR-0003), the native provider and adapter resolution matrix (ADR-0002). Pre-1.0 hard reset; no compatibility layer, no migration framework (already repo policy).
 
 ## Consequences
 
-A period where the new spine and old tree coexist; the walking-skeleton CI journey (see [remediation-plan.md](../remediation-plan.md) Phase 2) is the only definition of progress during it. Feature work stays frozen until the skeleton is green.
-
-The work happens **in place, in this repository** — new spine crates, legacy crates quarantined under a decrease-only ratchet, deleted as parity lands (see the plan's "Working in place" discipline). The one new-repo trigger considered (consolidating `emery-adapters` as compiled-in crates) dissolved with ADR-0002's Wasm-primary acceptance.
+The walking-skeleton CI journey ([remediation-plan.md](../remediation-plan.md) Phase 3) is the only definition of progress. Feature work stays frozen until the skeleton is green. Work happens in this repository; a clone is refused (ADR-0008).
 
 ## Revisit trigger
 
-If the ADR-0001 spike shows the existing execute loop adapts to the store with <20% structural change, Option B becomes cheaper and this ADR should be re-decided before the spine rebuild starts.
+Opening the build programme reopens how much of the annex is rebuilt vs ported — a new ADR, not a silent widening of this skeleton. Independently: if extract + synthesise can be reached by deleting 80% of `crates/change` + `crates/slice` in place with the journey green in a week, Option B becomes cheaper for *that remaining 20%* and should be re-decided before Phase 3 spends a month on empty new crates.

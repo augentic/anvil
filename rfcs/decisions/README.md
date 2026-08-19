@@ -25,19 +25,22 @@ Architecture Decision Records for Emery. This directory is the single place prod
 
 ## The decision gate
 
-ADR-0001 through ADR-0006 are the **decision gate** from [architecture-review.md § Corrective programme](../architecture-review.md#corrective-programme): they precede corrective Cuts 1–5, which are re-derived from their outcomes. Cut 0 (containment) proceeds regardless.
+ADR-0001 through ADR-0006 are the **decision gate** from [architecture-review.md § Corrective programme](../architecture-review.md#corrective-programme). [ADR-0008](0008-spec-generator-programme.md) scopes the live programme to the specification generator and re-sequences the remaining spikes.
 
 | ADR | Decision | Spike required |
 | --- | --- | --- |
-| [0001](0001-state-model.md) | Transactional state store vs hardened event store | Yes |
-| [0002](0002-deployment.md) | **Accepted: Wasm-primary** — one seam, one admission mode; native provider deleted | Yes (component-seam CI journey; scopes cost, not direction) |
-| [0003](0003-lifecycles.md) | One spec-mining loop vs definition + delivery | No |
-| [0004](0004-conflict-disposition.md) | Operator gate for conflicts vs auto-defer | No |
-| [0005](0005-change-home.md) | Detached-only change homes | No |
-| [0006](0006-rebuild-vs-refactor.md) | Walking-skeleton rebuild vs six-cut refactor | After 0001/0002 spikes |
+| [0001](0001-state-model.md) | **Proposed (re-scoped):** atomically swapped documents for the spec generator; SQLite/merge spike deferred | No (skeleton assertion, not a separate spike) |
+| [0002](0002-deployment.md) | **Accepted: Wasm-primary** — one seam, one admission mode; native provider deleted | Extract-across-seam CI rung (ADR-0008); original survey+build spike withdrawn as a gate |
+| [0003](0003-lifecycles.md) | **Accepted:** one spec-mining loop; `crates/system` archived | No |
+| [0004](0004-conflict-disposition.md) | **Proposed (re-scoped):** conflicts inline in the spec; no build gate in this programme | No |
+| [0005](0005-change-home.md) | **Proposed (re-scoped):** one output home for specs; in-place vs detached is a build-programme question | No |
+| [0006](0006-rebuild-vs-refactor.md) | **Accepted (narrowed):** new spine for extract + synthesise; archive is tag `v1` | No |
 
 Later ADRs record decisions made during the programme itself:
 
 | ADR | Decision |
 | --- | --- |
 | [0007](0007-cache-seed-precedence.md) | **Accepted:** project cache seeds answer exact pins; pin digest verification is store-only |
+| [0008](0008-spec-generator-programme.md) | **Accepted:** live product is the spec generator; survey collapses into extract; first artifacts `spec.md` / `design.md`; conservation is tag `v1` + worktree |
+| [0009](0009-phase-3-surfaces.md) | **Accepted:** Phase 3 surfaces — source bindings at `init`, content-addressed generations behind one pointer, the closed required-extras table, and the scripted-model journey host |
+| [0010](0010-remine-diff.md) | **Accepted:** the re-mine diff is computed at commit time and emitted in the `specify` success envelope — no new verb, no persisted artifact, no retained generations |

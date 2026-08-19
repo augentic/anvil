@@ -1,35 +1,17 @@
-//! WIT-backed capabilities used by workflow orchestrators; mappings
-//! live here so engine code remains wasm-free. Compact build reports
-//! are widened with caller-owned envelope fields before validation.
+//! WIT-backed capabilities used by the routed operations; mappings
+//! live here so engine code remains wasm-free.
 
-use std::future::Future;
-use std::path::Path;
 use std::sync::LazyLock;
 
-use artifacts::evidence::AuthorityClass;
-use diagnostics::{Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use adapter::seam;
+use engine::handler::{Anchor, ExecutionPaths};
+use engine::resolve::metadata::{Metadata, Request};
+use engine::resolve::{AdapterSelector, Axis, ResolvedSource, Resolver};
 use error::Error;
-use project::adapter::metadata::{Metadata, Request};
-use project::adapter::{
-    AdapterSelector, ArtifactDeclaration, Axis, BuildInputDeclaration, Inventory,
-    PlatformsCapability, ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
-};
-use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT, PROJECT_ROOT_ENV};
-use project::profile::Profiles;
-use project::seam::wire::{
-    BuildOutput, BuildReport, BuildStatus, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
-    PhaseWrite, RepairOrigin, UiSurface, build_finding,
-};
-use project::seam::{
-    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Shelf, Source,
-    SourceContent, SourceInput, SourceWorkspace, SurveyResult, Target, Workspace,
-};
-use project::snapshot::{CodePatch, SnapshotId};
 
-use crate::bindings::emery::adapter::{source, target, types};
-use crate::bindings::emery::vcs::{forge, trees, worktree};
+use crate::bindings::emery::adapter::source;
 
-/// Workflow capabilities backed by the world's WIT imports.
+/// Engine capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
 pub struct Provider;
 
@@ -38,10 +20,6 @@ pub struct Provider;
 /// grants as the carried locations — no environment reads and no
 /// project-id keying in-guest.
 static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(ExecutionPaths::guest);
-static INVENTORY: LazyLock<project::adapter::catalog::Catalog> =
-    LazyLock::new(project::adapter::catalog::Catalog::first_party);
-static PROFILES: LazyLock<project::profile::Table> =
-    LazyLock::new(project::profile::Table::compiled);
 
 impl omnia_guest::Model for Provider {}
 
@@ -55,427 +33,95 @@ impl Resolver for Provider {
     fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        project::adapter::resolver::Component::new(metadata).resolve_source(selector, paths)
-    }
-
-    fn resolve_target(
-        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
-    ) -> Result<ResolvedTarget, Error> {
-        project::adapter::resolver::Component::new(metadata).resolve_target(selector, paths)
+        engine::resolve::resolver::Component::new(metadata).resolve_source(selector, paths)
     }
 
     async fn ensure_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        project::adapter::ensure::source(metadata, selector, paths, jiff::Timestamp::now())
-    }
-
-    async fn ensure_target(
-        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
-    ) -> Result<ResolvedTarget, Error> {
-        project::adapter::ensure::target(metadata, selector, paths, jiff::Timestamp::now())
+        engine::resolve::ensure::source(metadata, selector, paths, jiff::Timestamp::now())
     }
 }
 
-impl Inventory for Provider {
-    fn inventory(&self) -> &project::adapter::catalog::Catalog {
-        &INVENTORY
+impl engine::extract::Extract for Provider {
+    async fn extract(&self, id: &str, input: &seam::SourceInput) -> Result<seam::Evidence, Error> {
+        let wire = wire_input(input);
+        let evidence = source::extract(id.to_string(), wire).await.map_err(|err| Error::Diag {
+            code: "source-extract-failed",
+            detail: format!("source `{id}`: {err:?}"),
+        })?;
+        seam_evidence(id, evidence)
     }
 }
 
-impl Profiles for Provider {
-    fn profiles(&self) -> &project::profile::Table {
-        &PROFILES
-    }
-}
-
-impl Source for Provider {
-    fn survey(
-        &self, id: String, input: SourceInput,
-    ) -> impl Future<Output = Result<SurveyResult, seam::Error>> + Send {
-        async move {
-            let result = source::survey(id, map_source_input(input)).await.map_err(map_error)?;
-            Ok(SurveyResult {
-                leads: result.leads.into_iter().map(map_lead).collect(),
-                children: result.children.into_iter().map(map_lead).collect(),
-            })
-        }
-    }
-
-    fn extract(
-        &self, id: String, input: SourceInput,
-    ) -> impl Future<Output = Result<Evidence, seam::Error>> + Send {
-        async move {
-            let evidence = source::extract(id, map_source_input(input)).await.map_err(map_error)?;
-            Ok(Evidence {
-                authority: map_authority(evidence.authority),
-                claims: evidence
-                    .claims
-                    .into_iter()
-                    .map(map_claim)
-                    .collect::<Result<Vec<_>, _>>()?,
-            })
-        }
-    }
-}
-
-impl Shelf for Provider {
-    /// The engine's synthesis shelf on the deployment's pre-bound
-    /// listener (RFC-96 D9): the injected fully-formed `MCP_URL_BASE`
-    /// when present (D6), else the port parsed from `HTTP_ADDR` onto
-    /// the IPv4 loopback literal — mirroring the adapter SDK's grant
-    /// derivation. `None` when neither is usable: no listener means no
-    /// shelf, and the synthesis prompt inlines the full playbook
-    /// instead.
-    async fn synthesis_shelf(&self) -> Result<Option<String>, seam::Error> {
-        if let Ok(base) = std::env::var("MCP_URL_BASE") {
-            let base = base.trim_end_matches('/');
-            if !base.is_empty() {
-                return Ok(Some(format!("{base}{}", slice::shelf::PATH)));
-            }
-        }
-        let addr = std::env::var("HTTP_ADDR").ok();
-        let port = addr.as_deref().and_then(|addr| addr.rsplit_once(':')?.1.parse::<u16>().ok());
-        Ok(port.map(|port| format!("http://127.0.0.1:{port}{}", slice::shelf::PATH)))
-    }
-}
-
-impl Target for Provider {
-    fn guidance(&self, id: String) -> impl Future<Output = Result<String, seam::Error>> + Send {
-        async move { target::guidance(id).await.map_err(map_error) }
-    }
-
-    fn build(
-        &self, id: String, slice: String, inputs: Vec<Input>, context: BuildContext,
-        workspace: Workspace,
-    ) -> impl Future<Output = Result<PhaseReport, seam::Error>> + Send {
-        async move {
-            let wire_inputs = inputs.into_iter().map(map_input).collect();
-            let wire_context = target::BuildContext {
-                sources: context.sources,
-            };
-            let wire_workspace = map_workspace(workspace);
-            let report = target::build(id, slice, wire_inputs, wire_context, wire_workspace)
-                .await
-                .map_err(map_error)?;
-            Ok(map_phase_report(report))
-        }
-    }
-
-    fn verify(
-        &self, id: String, workspace: Workspace,
-    ) -> impl Future<Output = Result<PhaseReport, seam::Error>> + Send {
-        async move {
-            let wire_workspace = map_workspace(workspace);
-            let report = target::verify(id, wire_workspace).await.map_err(map_error)?;
-            Ok(map_phase_report(report))
-        }
-    }
-
-    fn repair(
-        &self, id: String, slice: String, origin: RepairOrigin, findings: Vec<Diagnostic>,
-        continuation: Option<Vec<u8>>, workspace: Workspace,
-    ) -> impl Future<Output = Result<PhaseReport, seam::Error>> + Send {
-        async move {
-            let wire_origin = wire_origin(origin);
-            let wire_findings = findings.into_iter().map(wire_finding).collect();
-            let wire_workspace = map_workspace(workspace);
-            let report =
-                target::repair(id, slice, wire_origin, wire_findings, continuation, wire_workspace)
-                    .await
-                    .map_err(map_error)?;
-            Ok(map_phase_report(report))
-        }
-    }
-
-    fn review(
-        &self, id: String, slice: String, continuation: Option<Vec<u8>>, workspace: Workspace,
-    ) -> impl Future<Output = Result<PhaseReport, seam::Error>> + Send {
-        async move {
-            let wire_workspace = map_workspace(workspace);
-            let report =
-                target::review(id, slice, continuation, wire_workspace).await.map_err(map_error)?;
-            Ok(map_phase_report(report))
-        }
-    }
-
-    fn merge(
-        &self, id: String, slice: String, phase: MergePhase, workspace: Workspace,
-    ) -> impl Future<Output = Result<BuildReport, seam::Error>> + Send {
-        async move {
-            let wire_phase = match phase {
-                MergePhase::Preflight => target::MergePhase::Preflight,
-                MergePhase::Postflight => target::MergePhase::Postflight,
-            };
-            let wire_workspace = map_workspace(workspace);
-            let report = target::merge(id.clone(), slice.clone(), wire_phase, wire_workspace)
-                .await
-                .map_err(map_error)?;
-            Ok(widen_report(&id, slice, report))
-        }
-    }
-}
-
-/// The in-guest workspace kernel: tree I/O over the `.` and
-/// workspaces preopens, objects through `wasi:blobstore` (Omnia's
-/// `BlobStore` capability), exec mode through `emery:exec-mode`.
-impl seam::Workspaces for Provider {
-    /// Freeze the project root's product tree (the kernel excludes
-    /// `.git` and a nested `.emery/change/` home).
-    fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
-        async move {
-            if PATHS.is_detached() {
-                return Err(seam::Error::InvalidRequest(
-                    "target-base-freeze-detached: detached change home is not a product tree"
-                        .into(),
-                ));
-            }
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            store.snapshot(PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
-        }
-    }
-
-    fn snapshot(
-        &self, path: String,
-    ) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            store.snapshot_path(Path::new(&path)).await.map_err(|err| workspace_failure(&err))
-        }
-    }
-
-    fn contains(&self, id: SnapshotId) -> impl Future<Output = Result<bool, seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            Ok(store.contains(&id).await)
-        }
-    }
-
-    fn prepare(
-        &self, base: SnapshotId, writable: bool,
-    ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            let prepared = project::workspace::prepare(
-                &store,
-                Path::new(GUEST_WORKSPACES_MOUNT),
-                &base,
-                project::workspace::Access { writable },
-            )
-            .await
-            .map_err(|err| workspace_failure(&err))?;
-            // The build orchestrator attaches the per-attempt artifact
-            // stage; preparation itself lends none.
-            Ok(Workspace {
-                id: prepared.id,
-                root: prepared.root.display().to_string(),
-                artifacts: artifacts_root(),
-                artifact_stage: None,
-            })
-        }
-    }
-
-    fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            project::workspace::capture(&store, Path::new(GUEST_WORKSPACES_MOUNT), &id)
-                .await
-                .map_err(|err| workspace_failure(&err))
-        }
-    }
-
-    fn compose(
-        &self, base: SnapshotId, patches: Vec<CodePatch>,
-    ) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            project::workspace::compose(&store, &base, &patches)
-                .await
-                .map_err(|err| workspace_failure(&err))
-        }
-    }
-
-    fn discard(&self, id: String) -> impl Future<Output = Result<(), seam::Error>> + Send {
-        async move {
-            project::workspace::discard(Path::new(GUEST_WORKSPACES_MOUNT), &id)
-                .map_err(|err| workspace_failure(&err))
-        }
-    }
-
-    fn sweep(
-        &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
-    ) -> impl Future<Output = Result<usize, seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            store.sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
-        }
-    }
-
-    fn gc(
-        &self, cutoff: std::time::SystemTime,
-    ) -> impl Future<Output = Result<usize, seam::Error>> + Send {
-        async move {
-            project::workspace::gc(Path::new(GUEST_WORKSPACES_MOUNT), cutoff)
-                .map_err(|err| workspace_failure(&err))
-        }
-    }
-}
-
-/// Tree fetch is host-implemented (`emery:vcs/trees`): the engine
-/// guest has no network or git, so the host stages the locator
-/// beneath the staging mount and the guest snapshots it.
-impl seam::Trees for Provider {
-    fn fetch(
-        &self, locator: String, credentials: seam::TreeCredentials, limits: seam::TreeLimits,
-    ) -> impl Future<Output = Result<seam::TreeFetched, seam::TreeError>> + Send {
-        async move {
-            let credentials = match credentials {
-                seam::TreeCredentials::None => trees::Credentials::None,
-                seam::TreeCredentials::Ambient => trees::Credentials::Ambient,
-            };
-            let limits = trees::Limits {
-                max_bytes: limits.max_bytes,
-                max_redirects: limits.max_redirects,
-                time_ms: limits.time_ms,
-            };
-            let fetched = trees::fetch(locator, credentials, limits).await.map_err(tree_failure)?;
-            Ok(seam::TreeFetched {
-                root: fetched.root,
-                revision: fetched.revision,
-            })
-        }
-    }
-
-    fn discard_fetched(
-        &self, root: String,
-    ) -> impl Future<Output = Result<(), seam::TreeError>> + Send {
-        async move { trees::discard(root).await.map_err(tree_failure) }
-    }
-}
-
-/// Map an `emery:vcs/trees` failure onto the seam's typed tree error.
-fn tree_failure(error: trees::Error) -> seam::TreeError {
-    match error {
-        trees::Error::InvalidRequest(detail) => seam::TreeError::InvalidRequest(detail),
-        trees::Error::Access(detail) => seam::TreeError::Access(detail),
-        trees::Error::Limit(detail) => seam::TreeError::Limit(detail),
-        trees::Error::Internal(detail) => seam::TreeError::Internal(detail),
-    }
-}
-
-/// The D11 publication materialize is host-implemented
-/// (`emery:vcs/worktree`): the engine guest has no git, so the host
-/// provisions, materializes, and stages in one call.
-impl seam::Worktree for Provider {
-    fn export(
-        &self, req: seam::WorktreeRequest,
-    ) -> impl Future<Output = Result<(String, seam::WorktreeState), seam::WorktreeError>> + Send
-    {
-        async move {
-            let wire = worktree::Request {
-                repository: req.repository,
-                parent_revision: req.parent_revision,
-                branch: req.branch,
-                cid: req.cid.to_string(),
-                plan: req.plan,
-                target: req.target,
-                allow_in_place: req.allow_in_place,
-            };
-            let (path, state) = worktree::export(wire).await.map_err(worktree_failure)?;
-            let state = match state {
-                worktree::State::Created => seam::WorktreeState::Created,
-                worktree::State::Matched => seam::WorktreeState::Matched,
-                worktree::State::Rematerialized => seam::WorktreeState::Rematerialized,
-            };
-            Ok((path, state))
-        }
-    }
-}
-
-/// Forge observation is host-implemented (`emery:vcs/forge`): the
-/// engine guest has no outgoing HTTP, so the host reads GitHub and
-/// the guest applies the D10 checks over typed results.
-impl seam::Forge for Provider {
-    fn find(
-        &self, repository: String, branch: String,
-    ) -> impl Future<Output = Result<Vec<seam::PullRequest>, seam::ForgeError>> + Send {
-        async move {
-            let rows = forge::find(repository, branch).await.map_err(forge_failure)?;
-            Ok(rows.into_iter().map(map_pull_request).collect())
-        }
-    }
-}
-
-fn map_pull_request(row: forge::PullRequest) -> seam::PullRequest {
-    seam::PullRequest {
-        url: row.url,
-        body: row.body,
-        state: match row.state {
-            forge::PrState::Open => seam::PrState::Open,
-            forge::PrState::Merged => seam::PrState::Merged,
-            forge::PrState::Closed => seam::PrState::Closed,
+/// Project the seam input onto the WIT import's wire record.
+fn wire_input(input: &seam::SourceInput) -> source::Input {
+    source::Input {
+        key: input.key.clone(),
+        content: match &input.content {
+            seam::SourceContent::Workspace(view) => source::Content::Workspace(source::Workspace {
+                id: view.id.clone(),
+                root: view.root.clone(),
+            }),
+            seam::SourceContent::Value(value) => source::Content::Value(value.clone()),
         },
-        base: row.base,
-        merged_at: row.merged_at,
-        merge_commit: row.merge_commit,
     }
 }
 
-/// Map an `emery:vcs/forge` failure onto the seam's typed error.
-fn forge_failure(error: forge::Error) -> seam::ForgeError {
-    match error {
-        forge::Error::InvalidRequest(detail) => seam::ForgeError::InvalidRequest(detail),
-        forge::Error::Auth(detail) => seam::ForgeError::Auth(detail),
-        forge::Error::Transport(detail) => seam::ForgeError::Transport(detail),
-        forge::Error::Internal(detail) => seam::ForgeError::Internal(detail),
-    }
-}
-
-/// Map an `emery:vcs/worktree` refusal onto the seam's typed rows.
-fn worktree_failure(error: worktree::ExportError) -> seam::WorktreeError {
-    match error {
-        worktree::ExportError::Dirty => seam::WorktreeError::Dirty,
-        worktree::ExportError::BranchDiverged => seam::WorktreeError::BranchDiverged,
-        worktree::ExportError::BranchCheckedOutElsewhere => {
-            seam::WorktreeError::BranchCheckedOutElsewhere
+/// Lift a wire evidence record back onto the seam DTOs, parsing each
+/// open extra's canonical JSON encoding fail-closed (A8): a value that
+/// does not parse is a typed error, never a dropped key.
+fn seam_evidence(id: &str, wire: source::Evidence) -> Result<seam::Evidence, Error> {
+    let mut claims = Vec::with_capacity(wire.claims.len());
+    for claim in wire.claims {
+        let mut extras = serde_json::Map::new();
+        for (key, encoded) in claim.extras {
+            let value = serde_json::from_str(&encoded).map_err(|err| Error::Diag {
+                code: "claim-extras-malformed",
+                detail: format!(
+                    "source `{id}` extra `{key}` is not canonical JSON ({err}): {encoded}"
+                ),
+            })?;
+            extras.insert(key, value);
         }
-        worktree::ExportError::DestinationConflict => seam::WorktreeError::DestinationConflict,
-        worktree::ExportError::ParentUnavailable => seam::WorktreeError::ParentUnavailable,
-        worktree::ExportError::CloneFailed(detail) => seam::WorktreeError::CloneFailed(detail),
-        worktree::ExportError::InvalidRequest(detail) => {
-            seam::WorktreeError::InvalidRequest(detail)
-        }
-        worktree::ExportError::Internal(detail) => seam::WorktreeError::Internal(detail),
+        claims.push(seam::Claim {
+            kind: seam_kind(claim.kind),
+            id: claim.id,
+            path: claim.path,
+            synopsis: claim.synopsis,
+            backing: claim.backing.map(|backing| match backing {
+                source::Backing::Payload(payload) => seam::Backing::Payload(payload),
+                source::Backing::Path(path) => seam::Backing::Path(path),
+            }),
+            extras,
+        });
     }
+    Ok(seam::Evidence {
+        authority: match wire.authority {
+            source::Authority::Intent => seam::Authority::Intent,
+            source::Authority::Documentation => seam::Authority::Documentation,
+            source::Authority::Behaviour => seam::Authority::Behaviour,
+        },
+        claims,
+    })
 }
 
-/// Map a workspace-kernel failure onto the seam error contract.
-fn workspace_failure(err: &Error) -> seam::Error {
-    seam::Error::Internal(err.to_string())
-}
-
-/// The agent-visible artifact root: the host-absolute project root
-/// the launcher exports as [`PROJECT_ROOT_ENV`] (guests inherit the
-/// host environment), so a spawned agent working inside a lent
-/// workspace can still read change-tree artifacts. The deployment
-/// always sets it; the `.` fallback keeps ad-hoc harnesses running.
-fn artifacts_root() -> String {
-    std::env::var(PROJECT_ROOT_ENV).unwrap_or_else(|_absent| ".".to_string())
-}
-
-fn map_workspace(workspace: Workspace) -> target::Workspace {
-    target::Workspace {
-        id: workspace.id,
-        root: workspace.root,
-        artifacts: workspace.artifacts,
-        artifact_stage: workspace.artifact_stage.map(map_artifact_stage),
-    }
-}
-
-fn map_artifact_stage(stage: ArtifactStage) -> target::ArtifactStage {
-    target::ArtifactStage {
-        id: stage.id,
-        root: stage.root,
+const fn seam_kind(kind: source::ClaimKind) -> seam::ClaimKind {
+    match kind {
+        source::ClaimKind::Intent => seam::ClaimKind::Intent,
+        source::ClaimKind::Requirement => seam::ClaimKind::Requirement,
+        source::ClaimKind::Criterion => seam::ClaimKind::Criterion,
+        source::ClaimKind::Decision => seam::ClaimKind::Decision,
+        source::ClaimKind::Section => seam::ClaimKind::Section,
+        source::ClaimKind::Diagram => seam::ClaimKind::Diagram,
+        source::ClaimKind::Contract => seam::ClaimKind::Contract,
+        source::ClaimKind::Example => seam::ClaimKind::Example,
+        source::ClaimKind::Excerpt => seam::ClaimKind::Excerpt,
+        source::ClaimKind::Type => seam::ClaimKind::Type,
+        source::ClaimKind::Call => seam::ClaimKind::Call,
+        source::ClaimKind::Region => seam::ClaimKind::Region,
+        source::ClaimKind::Container => seam::ClaimKind::Container,
+        source::ClaimKind::Leaf => seam::ClaimKind::Leaf,
     }
 }
 
@@ -486,454 +132,22 @@ fn map_artifact_stage(stage: ArtifactStage) -> target::ArtifactStage {
 ///
 /// # Errors
 ///
-/// Reserved for the resolver callback contract; WIT metadata has no
-/// error channel.
+/// The target axis is deleted from the deployment (ADR-0008): a
+/// target-axis metadata request fails typed instead of dispatching.
 pub fn metadata(request: &Request<'_>) -> Result<Metadata, Error> {
-    Ok(match request.axis {
+    match request.axis {
         Axis::Source => {
             let record = source::metadata(request.adapter_id);
-            Metadata {
+            Ok(Metadata {
                 emery_floor: record.emery_floor,
-                inputs: Vec::new(),
-                platforms: None,
-                writable_artifacts: Vec::new(),
-            }
+            })
         }
-        Axis::Target => {
-            let record = target::metadata(request.adapter_id);
-            Metadata {
-                emery_floor: record.emery_floor,
-                inputs: record
-                    .inputs
-                    .into_iter()
-                    .map(|input| BuildInputDeclaration {
-                        path: input.path,
-                        required: input.required,
-                    })
-                    .collect(),
-                platforms: record.platforms.map(|capability| PlatformsCapability {
-                    required: capability.required,
-                    allowed: capability.allowed.into_iter().map(map_platform).collect(),
-                    default: capability.default.into_iter().map(map_platform).collect(),
-                }),
-                writable_artifacts: record
-                    .writable_artifacts
-                    .into_iter()
-                    .map(|artifact| ArtifactDeclaration {
-                        path: artifact.path,
-                        kind: match artifact.kind {
-                            target::WritableArtifactKind::File => WritableArtifactKind::File,
-                            target::WritableArtifactKind::Tree => WritableArtifactKind::Tree,
-                        },
-                    })
-                    .collect(),
-            }
-        }
-    })
-}
-
-fn map_error(error: types::Error) -> seam::Error {
-    match error {
-        types::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
-        types::Error::Io(detail) => seam::Error::Io(detail),
-        types::Error::Internal(detail) => seam::Error::Internal(detail),
-    }
-}
-
-fn map_lead(lead: source::Lead) -> Lead {
-    Lead {
-        lead: lead.lead,
-        synopsis: lead.synopsis,
-        topics: lead.topics,
-        parent: lead.parent,
-        focus: lead.focus,
-    }
-}
-
-fn map_source_input(input: SourceInput) -> source::Input {
-    source::Input {
-        key: input.key,
-        content: match input.content {
-            SourceContent::Workspace(SourceWorkspace { id, root }) => {
-                source::Content::Workspace(source::Workspace { id, root })
-            }
-            SourceContent::Value(value) => source::Content::Value(value),
-        },
-        focus: input.focus.map(|lead| source::Lead {
-            lead: lead.lead,
-            synopsis: lead.synopsis,
-            topics: lead.topics,
-            parent: lead.parent,
-            focus: lead.focus,
+        Axis::Target => Err(Error::Diag {
+            code: "adapter-axis-removed",
+            detail: format!(
+                "the target adapter axis is deleted (ADR-0008); `{}` cannot be resolved",
+                request.adapter_id
+            ),
         }),
-    }
-}
-
-const fn map_authority(authority: source::Authority) -> AuthorityClass {
-    match authority {
-        source::Authority::Intent => AuthorityClass::Intent,
-        source::Authority::Documentation => AuthorityClass::Documentation,
-        source::Authority::Behaviour => AuthorityClass::Behaviour,
-    }
-}
-
-/// Map a WIT claim record onto the typed [`artifacts::evidence::Claim`].
-///
-/// The backing variant flattens onto the wire shape's `payload` /
-/// `backing-path` keys via [`artifacts::evidence::Claim::set_backing`];
-/// open body extras arrive as `(key, canonical JSON)` pairs (A8) and
-/// decode back into the claim's open map.
-///
-/// # Errors
-///
-/// Fails closed when an extra's value is not decodable JSON — dropping
-/// it would silently lose evidence synthesis reads verbatim.
-fn map_claim(claim: source::Claim) -> Result<artifacts::evidence::Claim, seam::Error> {
-    let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
-    typed.id = claim.id;
-    typed.path = claim.path;
-    typed.synopsis = claim.synopsis;
-    typed.set_backing(claim.backing.map(|backing| match backing {
-        source::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
-        source::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
-    }));
-    for (key, value) in claim.extras {
-        let value = serde_json::from_str(&value).map_err(|err| {
-            seam::Error::Internal(format!(
-                "claim extra `{key}` is not representable: its wire value is not JSON ({err})"
-            ))
-        })?;
-        typed.extras.insert(key, value);
-    }
-    Ok(typed)
-}
-
-const fn map_claim_kind(kind: source::ClaimKind) -> artifacts::evidence::ClaimKind {
-    use artifacts::evidence::ClaimKind;
-    match kind {
-        source::ClaimKind::Intent => ClaimKind::Intent,
-        source::ClaimKind::Requirement => ClaimKind::Requirement,
-        source::ClaimKind::Criterion => ClaimKind::Criterion,
-        source::ClaimKind::Decision => ClaimKind::Decision,
-        source::ClaimKind::Section => ClaimKind::Section,
-        source::ClaimKind::Diagram => ClaimKind::Diagram,
-        source::ClaimKind::Contract => ClaimKind::Contract,
-        source::ClaimKind::Example => ClaimKind::Example,
-        source::ClaimKind::Excerpt => ClaimKind::Excerpt,
-        source::ClaimKind::Type => ClaimKind::Type,
-        source::ClaimKind::Call => ClaimKind::Call,
-        source::ClaimKind::Region => ClaimKind::Region,
-        source::ClaimKind::Container => ClaimKind::Container,
-        source::ClaimKind::Leaf => ClaimKind::Leaf,
-    }
-}
-
-fn map_input(input: Input) -> target::Input {
-    let payload = |body: seam::Payload| match body {
-        seam::Payload::Path(path) => target::Payload::Path(path),
-        seam::Payload::Body(text) => target::Payload::Body(text),
-    };
-    match input {
-        Input::Proposal(body) => target::Input::Proposal(payload(body)),
-        Input::Design(body) => target::Input::Design(payload(body)),
-        Input::Tasks(body) => target::Input::Tasks(payload(body)),
-        Input::Spec(body) => target::Input::Spec(payload(body)),
-        Input::Other(body) => target::Input::Other(payload(body)),
-    }
-}
-
-/// Add caller-owned envelope fields required by the build-report schema.
-fn widen_report(id: &str, slice: String, report: target::Report) -> BuildReport {
-    BuildReport::stamped(
-        id,
-        slice,
-        match report.status {
-            target::Status::Success => BuildStatus::Success,
-            target::Status::Failure => BuildStatus::Failure,
-        },
-        report.findings.into_iter().map(widen_finding).collect(),
-        report.outputs.into_iter().map(map_output).collect(),
-        report.ui_surface.map(|surface| UiSurface {
-            screens: surface.screens,
-        }),
-        // The coverage claim rides `phase-report` (build only); the
-        // merge-op `report` carries none.
-        Vec::new(),
-    )
-}
-
-fn widen_finding(finding: target::Finding) -> Diagnostic {
-    build_finding(finding.rule_id, finding.detail, map_severity(finding.severity))
-}
-
-fn map_output(output: target::BuildOutput) -> BuildOutput {
-    BuildOutput {
-        platform: map_platform(output.platform),
-        path: output.path,
-    }
-}
-
-/// Map a WIT phase report onto the engine wire shape — the isomorphic
-/// projection of RFC-90 D2: nothing folds at this seam.
-fn map_phase_report(report: target::PhaseReport) -> PhaseReport {
-    PhaseReport {
-        outcome: match report.outcome {
-            target::PhaseOutcome::Completed => PhaseOutcome::Completed,
-            target::PhaseOutcome::NotApplicable => PhaseOutcome::NotApplicable,
-        },
-        source: map_phase_source(report.source),
-        findings: report.findings.into_iter().map(map_phase_finding).collect(),
-        outputs: report.outputs.into_iter().map(map_output).collect(),
-        ui_surface: report.ui_surface.map(|surface| UiSurface {
-            screens: surface.screens,
-        }),
-        covered: report.covered,
-        written: report.written.into_iter().map(map_phase_write).collect(),
-        next_continuation: report.next_continuation,
-    }
-}
-
-const fn map_phase_source(source: target::PhaseSource) -> PhaseSource {
-    match source {
-        target::PhaseSource::Deterministic => PhaseSource::Deterministic,
-        target::PhaseSource::ModelAssisted => PhaseSource::ModelAssisted,
-        target::PhaseSource::Hybrid => PhaseSource::Hybrid,
-        target::PhaseSource::Tool => PhaseSource::Tool,
-    }
-}
-
-fn map_phase_write(write: target::PhaseWrite) -> PhaseWrite {
-    PhaseWrite {
-        root: match write.root {
-            target::PhaseRoot::Workspace => PhaseRoot::Workspace,
-            target::PhaseRoot::Artifacts => PhaseRoot::Artifacts,
-        },
-        path: write.path,
-    }
-}
-
-/// Map a WIT phase finding onto the full [`Diagnostic`] shape. The
-/// engine stamps `target_adapter` / `slice` / change identity and
-/// recomputes the fingerprint; this projection keeps every field
-/// as-given.
-fn map_phase_finding(finding: target::PhaseFinding) -> Diagnostic {
-    Diagnostic {
-        id: finding.id,
-        rule_id: finding.rule_id,
-        related_rule_ids: (!finding.related_rule_ids.is_empty())
-            .then_some(finding.related_rule_ids),
-        title: finding.title,
-        severity: map_severity(finding.severity),
-        source: map_diagnostic_source(finding.source),
-        kind: match finding.kind {
-            target::FindingKind::Violation => DiagnosticKind::Violation,
-            target::FindingKind::Review => DiagnosticKind::Review,
-        },
-        target_adapter: None,
-        source_adapter: None,
-        slice: None,
-        change: None,
-        artifact: map_finding_artifact(finding.artifact),
-        location: finding.location.map(map_location),
-        evidence: map_evidence(finding.evidence),
-        impact: finding.impact,
-        remediation: finding.remediation,
-        confidence: finding.confidence.map(|confidence| match confidence {
-            target::FindingConfidence::High => Confidence::High,
-            target::FindingConfidence::Medium => Confidence::Medium,
-            target::FindingConfidence::Low => Confidence::Low,
-        }),
-        fingerprint: finding.fingerprint,
-    }
-}
-
-const fn map_diagnostic_source(source: target::DiagnosticSource) -> DiagnosticSource {
-    match source {
-        target::DiagnosticSource::Deterministic => DiagnosticSource::Deterministic,
-        target::DiagnosticSource::ModelAssisted => DiagnosticSource::ModelAssisted,
-        target::DiagnosticSource::Hybrid => DiagnosticSource::Hybrid,
-        target::DiagnosticSource::Human => DiagnosticSource::Human,
-        target::DiagnosticSource::Tool => DiagnosticSource::Tool,
-    }
-}
-
-const fn map_finding_artifact(artifact: target::FindingArtifact) -> Artifact {
-    match artifact {
-        target::FindingArtifact::Code => Artifact::Code,
-        target::FindingArtifact::Tests => Artifact::Tests,
-        target::FindingArtifact::Contracts => Artifact::Contracts,
-        target::FindingArtifact::Specs => Artifact::Specs,
-        target::FindingArtifact::Design => Artifact::Design,
-        target::FindingArtifact::Decisions => Artifact::Decisions,
-        target::FindingArtifact::Tasks => Artifact::Tasks,
-        target::FindingArtifact::Assets => Artifact::Assets,
-        target::FindingArtifact::Tokens => Artifact::Tokens,
-        target::FindingArtifact::Composition => Artifact::Composition,
-        target::FindingArtifact::Plan => Artifact::Plan,
-        target::FindingArtifact::Unknown => Artifact::Unknown,
-    }
-}
-
-fn map_location(location: target::PhaseLocation) -> diagnostics::FindingLocation {
-    diagnostics::FindingLocation {
-        path: location.path,
-        line: location.line,
-        column: location.column,
-        end_line: location.end_line,
-        end_column: location.end_column,
-    }
-}
-
-fn map_evidence(evidence: target::FindingEvidence) -> diagnostics::FindingEvidence {
-    match evidence {
-        target::FindingEvidence::Snippet(value) => diagnostics::FindingEvidence::Snippet { value },
-        target::FindingEvidence::Digest(digest) => diagnostics::FindingEvidence::Digest {
-            sha256: digest.sha256,
-            summary: digest.summary,
-            locations: digest
-                .locations
-                .map(|locations| locations.into_iter().map(map_location).collect()),
-        },
-        target::FindingEvidence::Structured(structured) => {
-            diagnostics::FindingEvidence::Structured {
-                summary: structured.summary,
-                // A payload that fails to reparse survives as a JSON
-                // string rather than dropping evidence.
-                data: serde_json::from_str(&structured.data)
-                    .unwrap_or(serde_json::Value::String(structured.data)),
-                locations: structured
-                    .locations
-                    .map(|locations| locations.into_iter().map(map_location).collect()),
-            }
-        }
-    }
-}
-
-const fn wire_origin(origin: RepairOrigin) -> target::RepairOrigin {
-    match origin {
-        RepairOrigin::Verification => target::RepairOrigin::Verification,
-        RepairOrigin::Review => target::RepairOrigin::Review,
-    }
-}
-
-/// Project a [`Diagnostic`] onto the WIT phase-finding record for a
-/// repair brief. The engine-stamped identity fields
-/// (`target_adapter` / `source_adapter` / `slice` / `change`) do not
-/// exist on the WIT record and are dropped.
-fn wire_finding(diagnostic: Diagnostic) -> target::PhaseFinding {
-    target::PhaseFinding {
-        id: diagnostic.id,
-        rule_id: diagnostic.rule_id,
-        related_rule_ids: diagnostic.related_rule_ids.unwrap_or_default(),
-        title: diagnostic.title,
-        severity: wire_severity(diagnostic.severity),
-        source: wire_diagnostic_source(diagnostic.source),
-        kind: match diagnostic.kind {
-            DiagnosticKind::Violation => target::FindingKind::Violation,
-            DiagnosticKind::Review => target::FindingKind::Review,
-        },
-        artifact: wire_artifact(diagnostic.artifact),
-        location: diagnostic.location.map(wire_location),
-        evidence: wire_evidence(diagnostic.evidence),
-        impact: diagnostic.impact,
-        remediation: diagnostic.remediation,
-        confidence: diagnostic.confidence.map(|confidence| match confidence {
-            Confidence::High => target::FindingConfidence::High,
-            Confidence::Medium => target::FindingConfidence::Medium,
-            Confidence::Low => target::FindingConfidence::Low,
-        }),
-        fingerprint: diagnostic.fingerprint,
-    }
-}
-
-const fn wire_severity(severity: Severity) -> target::Severity {
-    match severity {
-        Severity::Critical => target::Severity::Critical,
-        Severity::Important => target::Severity::Important,
-        Severity::Suggestion => target::Severity::Suggestion,
-        Severity::Optional => target::Severity::Optional,
-    }
-}
-
-const fn wire_diagnostic_source(source: DiagnosticSource) -> target::DiagnosticSource {
-    match source {
-        DiagnosticSource::Deterministic => target::DiagnosticSource::Deterministic,
-        DiagnosticSource::ModelAssisted => target::DiagnosticSource::ModelAssisted,
-        DiagnosticSource::Hybrid => target::DiagnosticSource::Hybrid,
-        DiagnosticSource::Human => target::DiagnosticSource::Human,
-        DiagnosticSource::Tool => target::DiagnosticSource::Tool,
-    }
-}
-
-const fn wire_artifact(artifact: Artifact) -> target::FindingArtifact {
-    match artifact {
-        Artifact::Code => target::FindingArtifact::Code,
-        Artifact::Tests => target::FindingArtifact::Tests,
-        Artifact::Contracts => target::FindingArtifact::Contracts,
-        Artifact::Specs => target::FindingArtifact::Specs,
-        Artifact::Design => target::FindingArtifact::Design,
-        Artifact::Decisions => target::FindingArtifact::Decisions,
-        Artifact::Tasks => target::FindingArtifact::Tasks,
-        Artifact::Assets => target::FindingArtifact::Assets,
-        Artifact::Tokens => target::FindingArtifact::Tokens,
-        Artifact::Composition => target::FindingArtifact::Composition,
-        Artifact::Plan => target::FindingArtifact::Plan,
-        Artifact::Unknown => target::FindingArtifact::Unknown,
-    }
-}
-
-fn wire_location(location: diagnostics::FindingLocation) -> target::PhaseLocation {
-    target::PhaseLocation {
-        path: location.path,
-        line: location.line,
-        column: location.column,
-        end_line: location.end_line,
-        end_column: location.end_column,
-    }
-}
-
-fn wire_evidence(evidence: diagnostics::FindingEvidence) -> target::FindingEvidence {
-    match evidence {
-        diagnostics::FindingEvidence::Snippet { value } => target::FindingEvidence::Snippet(value),
-        diagnostics::FindingEvidence::Digest {
-            sha256,
-            summary,
-            locations,
-        } => target::FindingEvidence::Digest(target::DigestEvidence {
-            sha256,
-            summary,
-            locations: locations
-                .map(|locations| locations.into_iter().map(wire_location).collect()),
-        }),
-        diagnostics::FindingEvidence::Structured {
-            summary,
-            data,
-            locations,
-        } => target::FindingEvidence::Structured(target::StructuredEvidence {
-            summary,
-            data: data.to_string(),
-            locations: locations
-                .map(|locations| locations.into_iter().map(wire_location).collect()),
-        }),
-    }
-}
-
-const fn map_severity(severity: target::Severity) -> Severity {
-    match severity {
-        target::Severity::Critical => Severity::Critical,
-        target::Severity::Important => Severity::Important,
-        target::Severity::Suggestion => Severity::Suggestion,
-        target::Severity::Optional => Severity::Optional,
-    }
-}
-
-const fn map_platform(platform: target::Platform) -> project::platform::Platform {
-    use project::platform::Platform;
-    match platform {
-        target::Platform::Core => Platform::Core,
-        target::Platform::Ios => Platform::Ios,
-        target::Platform::Android => Platform::Android,
-        target::Platform::Web => Platform::Web,
-        target::Platform::Desktop => Platform::Desktop,
     }
 }

@@ -1,5 +1,5 @@
 //! Source-axis seam vocabulary mirroring the WIT `source` records:
-//! resolve-time metadata, survey input/result, and the extract Evidence
+//! resolve-time metadata, the extract input, and the extract claim-set
 //! shape (authority, claim taxonomy, backing).
 
 use serde::Deserialize;
@@ -13,63 +13,7 @@ pub struct SourceMetadata {
     pub emery_floor: Option<String>,
 }
 
-/// One lead surfaced by a survey — mirrors the WIT `source.lead` record.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub struct Lead {
-    /// Stable kebab-case lead identifier, unique only within its source;
-    /// identity is the `(source, lead)` pair. Named `lead` to match the
-    /// schema key.
-    pub lead: String,
-    /// Per-source headline of the lead as this source surfaced it.
-    pub synopsis: String,
-    /// Agent-authored topic slugs (kebab-case); empty means unclassified.
-    #[serde(default)]
-    pub topics: Vec<String>,
-    /// Parent lead id within the same source. Absent on a top-level lead.
-    #[serde(default)]
-    pub parent: Option<String>,
-    /// Source-local focus that produced this lead. Absent on an
-    /// unfocused import or survey row.
-    #[serde(default)]
-    pub focus: Option<String>,
-}
-
-impl Lead {
-    /// A top-level lead with no topics, parent, or focus.
-    #[must_use]
-    pub fn new(lead: impl Into<String>, synopsis: impl Into<String>) -> Self {
-        Self {
-            lead: lead.into(),
-            synopsis: synopsis.into(),
-            topics: Vec::new(),
-            parent: None,
-            focus: None,
-        }
-    }
-
-    /// Render as the survey prompts' lead-block shape for an extract prompt.
-    #[must_use]
-    pub fn render(&self) -> String {
-        let mut out = format!("- lead: {}\n- synopsis: {}", self.lead, self.synopsis);
-        if !self.topics.is_empty() {
-            out.push_str("\n- topics: [");
-            out.push_str(&self.topics.join(", "));
-            out.push(']');
-        }
-        if let Some(parent) = &self.parent {
-            out.push_str("\n- parent: ");
-            out.push_str(parent);
-        }
-        if let Some(focus) = &self.focus {
-            out.push_str("\n- focus: ");
-            out.push_str(focus);
-        }
-        out
-    }
-}
-
-/// Read-only CID view — mirrors the WIT `source.workspace` record.
+/// Read-only source view — mirrors the WIT `source.workspace` record.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceWorkspace {
     /// Opaque identity of the preparation.
@@ -90,39 +34,24 @@ pub enum SourceContent {
 /// Typed source-operation input — mirrors the WIT `source.input` record.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceInput {
-    /// Plan source-binding key (`plan.yaml.sources.<key>`).
+    /// Source-binding key.
     pub key: String,
-    /// Read-only CID view or inline value.
+    /// Read-only source view or inline value.
     pub content: SourceContent,
-    /// Parent-lead focus (survey) or terminal lead (extract).
-    pub focus: Option<Lead>,
 }
 
 impl SourceInput {
-    /// Inline-value input with no focus — the unfocused survey / value extract shape.
+    /// Inline-value input — the value extract shape.
     #[must_use]
     pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
         Self {
             key: key.into(),
             content: SourceContent::Value(value.into()),
-            focus: None,
         }
     }
 }
 
-/// Survey response — mirrors the WIT `source.survey-result` record.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub struct SurveyResult {
-    /// Top-level leads from an unfocused survey. Empty when focused.
-    #[serde(default)]
-    pub leads: Vec<Lead>,
-    /// Stable child leads under the focused parent. Empty when unfocused.
-    #[serde(default)]
-    pub children: Vec<Lead>,
-}
-
-/// Document-level authority class for an Evidence document
+/// Document-level authority class for an extracted claim set
 /// (`intent` > `documentation` > `behaviour`). Controls who wins a
 /// cross-source disagreement.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
@@ -227,8 +156,8 @@ where
 }
 
 /// Evidence returned by extract — mirrors the WIT `source.evidence`
-/// record (the canonical Evidence shape minus the envelope `lead` key:
-/// the extract call names the lead).
+/// record: the document-level authority class plus the extracted
+/// claim set.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Evidence {

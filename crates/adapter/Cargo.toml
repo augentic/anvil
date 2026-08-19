@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Emery adapter SDK: the per-axis operations traits, seam DTOs, judgment scaffolding, embedded prose registry, and the wasm export macros"
+description = "Emery adapter SDK: the source operations trait, seam DTOs, judgment scaffolding, embedded prose registry, and the wasm export macro"
 categories = ["development-tools"]
 keywords = ["emery", "adapter", "sdk"]
 readme = "../../README.md"
@@ -29,7 +29,6 @@ wasip3.workspace = true
 wit-bindgen.workspace = true
 
 [dev-dependencies]
-emery-mock.workspace = true
 omnia-testkit.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

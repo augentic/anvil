@@ -7,10 +7,10 @@ Cross-cutting code-quality rules every Rust change in this workspace honours, co
 The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module>/<file>.rs`, and that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
 
 ```rust
-// crates/project/src/registry/workspace/push/forge.rs
-// BAD: WorkspacePushForge       GOOD: Forge
-// crates/change/src/orchestrate/finalize/probe.rs
-// BAD: FinalizeProbe            GOOD: Probe
+// crates/engine/src/resolve/resolver.rs
+// BAD: AdapterResolverComponent GOOD: Component
+// crates/launcher/src/install.rs
+// BAD: LauncherInstallError     GOOD: Error
 ```
 
 ## Error variants budgeted by recovery, not source
@@ -45,14 +45,14 @@ ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
 
 ## No traits for testability alone
 
-House rule — generic advice about abstracting dependencies for mockability does not apply here. Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `project::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `project::config`, shared by `Plan`, `Project`, and `Registry` for `.emery/` YAML state — implement that instead of inventing a sibling trait pair.
+House rule — generic advice about abstracting dependencies for mockability does not apply here. Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` or the filesystem. When a stable in-tree boundary already exists — for example the `artifacts::atomic` write envelope every `.emery/` YAML write goes through — use that instead of inventing a sibling trait pair.
 
 ```rust
 // BAD — trait pair that exists so MockProjectStore can swap in.
 trait ProjectStore { fn load(&self) -> Result<Project>; }
 struct RealProjectStore;
-// GOOD — implement the existing shared boundary.
-impl AtomicYaml for Project { fn layout_path(layout: Layout<'_>) -> PathBuf { /* ... */ } }
+// GOOD — write through the existing shared boundary.
+artifacts::atomic::yaml_write(&path, &project)?;
 ```
 
 ## Reach for the standard crate first

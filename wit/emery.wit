@@ -1,9 +1,8 @@
-/// The `emery:adapter` contract. Adapter guests export exactly one axis
-/// interface plus `wasi:http/incoming-handler` (compiled-in references
-/// over MCP). No resource types cross the seam: dispatch carries plain
-/// values, routed by each call's `adapter-id` first argument. The answer
-/// schemas the model host consumes generate from the matching Rust wire
-/// types (`project::answers` / `slice::answers`).
+/// The `emery:adapter` contract (ADR-0008): one source axis, two
+/// operations. Adapter guests export the `source` interface plus
+/// `wasi:http/incoming-handler` (compiled-in references over MCP). No
+/// resource types cross the seam: dispatch carries plain values,
+/// routed by each call's `adapter-id` first argument.
 package emery:adapter@0.1.0;
 
 interface types {
@@ -15,48 +14,27 @@ interface types {
   }
 
   /// An exact routed adapter identity: "<axis>:<name>@<version>" for a
-  /// pinned package identity (e.g. "target:omnia@1.0.0"), "<axis>:<name>"
-  /// for an unpinned cache-backed component (e.g. "source:typescript").
-  /// Host-mediated dispatch routes each call to the exporting guest by this
-  /// first argument; the wire type stays an opaque string.
+  /// pinned package identity (e.g. "source:documentation@1.0.0"),
+  /// "<axis>:<name>" for an unpinned cache-backed component. Host-mediated
+  /// dispatch routes each call to the exporting guest by this first
+  /// argument; the wire type stays an opaque string.
   type adapter-id = string;
-
-  /// A content-addressed snapshot identity: `sha256:<64 lowercase hex>`.
-  /// Canonical description in the engine's `project::snapshot` module.
-  type revision = string;
 }
 
-/// The source adapter contract. Both operations are judgment legs: the guest
-/// assembles a prompt from its compiled-in prompt fragments, issues `create`
-/// with an MCP grant naming its own reference route and a workspace lend of
-/// the source CID view (or no lend for an inline value), and deserializes
-/// the schema-gated answer into the records below.
+/// The source adapter contract: `extract` is the one judgment operation
+/// (survey is gone — ADR-0008). The guest assembles a prompt from its
+/// compiled-in fragments, issues `create` with an MCP grant naming its
+/// own reference route and a workspace lend of the source view (or no
+/// lend for an inline value), and deserializes the schema-gated answer.
+///
+/// Extract's return is the specification IR (A8/A16, ADR-0009 §3):
+/// the engine fails closed when a claim kind's required extras are
+/// absent, and every open extra crosses the seam verbatim.
 interface source {
   use types.{ adapter-id, error };
 
-  /// The lead returned by the survey operation: the catalog lead minus
-  /// the envelope `source` key — the workflow guest attributes every
-  /// lead a survey produces to the surveyed source itself.
-  record lead {
-    /// Stable kebab-case lead identifier, unique only within its source;
-    /// identity is the `(source, lead)` pair. Named `lead` to match the
-    /// wire key, so answers deserialize without a rename.
-    lead: string,
-    /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
-    synopsis: string,
-    /// Agent-authored per-lead topic slugs (kebab-case). Empty means
-    /// unclassified (an answer may omit the key); never blocks
-    /// reconciliation.
-    topics: list<string>,
-    /// Parent lead id within the same source. Absent on a top-level lead.
-    parent: option<string>,
-    /// Source-local focus that produced this lead. Absent on an
-    /// unfocused import or survey row.
-    focus: option<string>,
-  }
-
-  /// Read-only CID view for a location-backed source. No artifacts
-  /// grant and no writable stage — the change home is not on this record.
+  /// Read-only view for a location-backed source. No output-home grant
+  /// and no writable stage.
   record workspace {
     /// Opaque identity of the preparation.
     id: string,
@@ -64,38 +42,25 @@ interface source {
     root: string,
   }
 
-  /// Either a read-only CID view or an inline value. Never a
-  /// change-home path, catalog file, or slice-artifact root.
+  /// Either a read-only source view or an inline value. Never an
+  /// output-home path or lifecycle artifact root.
   variant content {
     workspace(workspace),
     value(string),
   }
 
-  /// Typed source-operation input: the plan source key, workspace-or-value,
-  /// and optional catalog `lead` (parent focus on survey; terminal lead
-  /// on extract).
+  /// Typed source-operation input: the source binding key plus
+  /// workspace-or-value. Sources are value-in — they never read the
+  /// output home or lifecycle authority.
   record input {
-    /// Plan source-binding key (`plan.yaml.sources.<key>`).
+    /// Source-binding key.
     key: string,
-    /// Read-only CID view or inline value.
+    /// Read-only source view or inline value.
     content: content,
-    /// Parent-lead focus (survey) or terminal lead (extract). Absent
-    /// on an unfocused survey. The engine fills parent/focus from the
-    /// catalog; adapters do not read `leads.md`.
-    focus: option<lead>,
   }
 
-  /// Survey response: unfocused returns the complete current set in
-  /// `leads`; focused returns stable children under the named parent.
-  record survey-result {
-    /// Top-level leads from an unfocused survey. Empty when focused.
-    leads: list<lead>,
-    /// Stable child leads under the focused parent. Empty when unfocused.
-    children: list<lead>,
-  }
-
-  /// Document-level authority class for an Evidence document, per the
-  /// workflow's closed authority hierarchy (`intent` > `documentation` >
+  /// Document-level authority class for an extracted claim set, per the
+  /// closed authority hierarchy (`intent` > `documentation` >
   /// `behaviour`). Controls who wins a cross-source disagreement.
   enum authority {
     /// Operator directives. Highest authority.
@@ -106,9 +71,8 @@ interface source {
     behaviour
   }
 
-  /// The closed claim-kind taxonomy shared with the Evidence wire type.
-  /// New kinds require updating the workflow contract and this record
-  /// together.
+  /// The closed claim-kind taxonomy shared with the wire type. New
+  /// kinds require updating the contract and this record together.
   enum claim-kind {
     intent,
     requirement,
@@ -146,8 +110,8 @@ interface source {
     /// Per-claim source anchor: `<path>`, `<path>#L<n>`, or
     /// `<path>#L<start>-L<end>`.
     path: option<string>,
-    /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
-    /// Used by the synthesis engine to merge related claims across sources.
+    /// A synthesis-grade headline summarizing the semantic meaning of this
+    /// claim. Used by synthesis to merge related claims across sources.
     /// An open per-kind body field on the wire, so answers may omit it.
     synopsis: option<string>,
     /// The backing data of the claim's evidence (either a path or a raw payload).
@@ -155,16 +119,14 @@ interface source {
     /// Open per-kind body fields the closed record does not model
     /// (`statement`, `criterion`, `replay-digest`, …), carried as
     /// `(key, value)` pairs where each value is the field's canonical
-    /// JSON encoding. Synthesis reads these verbatim from the persisted
-    /// Evidence document (A8) — the seam must conserve them.
+    /// JSON encoding. Synthesis reads these verbatim (A8) — the seam
+    /// must conserve them.
     extras: list<tuple<string, string>>,
   }
 
-  /// The evidence returned by the extract operation: the Evidence
-  /// document minus the envelope `lead` key — the extract call names
-  /// the lead, so the answer never repeats it.
+  /// The claim set returned by the extract operation.
   record evidence {
-    /// The document-level authority class of this evidence.
+    /// The document-level authority class of this claim set.
     authority: authority,
     /// The claims extracted from the source.
     claims: list<claim>,
@@ -185,533 +147,14 @@ interface source {
   /// compiled-in constants — no model call, no filesystem access.
   metadata: func(id: adapter-id) -> adapter-metadata;
 
-  /// Lightly survey the source to create a map of its contents
-  /// (decompose into leads). An `async func` like every judgment
-  /// operation — a sync-lifted export cannot block on the pending
-  /// `completion.create` host future. Unfocused (`focus` absent)
-  /// returns the complete current set; focused returns children.
-  survey: async func(id: adapter-id, input: input) -> result<survey-result, error>;
-
-  /// Thoroughly extract evidence from a source for a given lead.
-  /// `input.focus` is the terminal catalog lead, carrying parent/focus
-  /// so a child extraction inherits catalog context on the wire.
+  /// Thoroughly extract the source's claim set. An `async func` like
+  /// every judgment operation — a sync-lifted export cannot block on
+  /// the pending `completion.create` host future.
   extract: async func(id: adapter-id, input: input) -> result<evidence, error>;
 }
 
-/// The target adapter contract. The build-loop operations (`build` /
-/// `repair` / `verify` / `review`) and `merge` are judgment legs
-/// bracketed by deterministic guest code: prompt assembly and the `create`
-/// call in the middle, validate-before-visible checks compiled in after the
-/// answer lands. Each build-loop dispatch performs exactly one
-/// operation and returns one typed phase report; operation order,
-/// repair routing, and budgets are engine policy (RFC-90 D1).
-interface target {
-  use types.{ adapter-id, error, revision };
-
-  /// One slice-artifact payload. `path` is the project-relative
-  /// location ('/'-separated), never host-absolute; `body` is the
-  /// inlined artifact text for non-lent deployments. The cases are
-  /// exclusive: the engine sends `path` while every deployment lends
-  /// the working tree.
-  variant payload {
-    path(string),
-    body(string),
-  }
-
-  /// Types of inputs used to build a slice.
-  variant input {
-    proposal(payload),
-    design(payload),
-    tasks(payload),
-    spec(payload),
-    other(payload),
-  }
-
-  /// Deterministic per-slice facts the engine forwards to a build.
-  /// `sources` carries the kebab-case names of the slice's bound
-  /// sources, so targets can skip source-conditional legs without
-  /// reading `plan.yaml` in-guest; empty when the slice has no
-  /// resolvable plan entry.
-  record build-context {
-    sources: list<string>,
-  }
-
-  /// The attempt-local writable artifact stage (RFC-90 D5): an
-  /// agent-visible mirror rooted at the candidate slice tree. Target
-  /// operations write target-owned slice artifacts only here; the
-  /// engine derives the stage diff, enforces the target's declared
-  /// `writable-artifacts` grants, and promotes the diff
-  /// transactionally on terminal success.
-  record artifact-stage {
-    /// Opaque identity of the stage preparation.
-    id: string,
-    /// Deployment-local path of the writable stage root.
-    root: string,
-  }
-
-  /// The private workspace a build or merge operates on. No directory
-  /// handle crosses this boundary: the adapter resolves `root` against
-  /// its own preopens and lends it to its agent by path; change-tree
-  /// artifacts are read through the `"."` preopen in-guest, or through
-  /// the agent-visible `artifacts` root from a spawned agent.
-  record workspace {
-    /// Opaque identity of the preparation.
-    id: string,
-    /// Deployment-local path of the writable workspace root.
-    root: string,
-    /// Agent-visible read-only artifact root (the project tree).
-    artifacts: string,
-    /// Writable artifact stage for the active slice. Present on the
-    /// build-loop operations (`build` / `repair` / `verify` /
-    /// `review`); absent on `merge`, whose workspace view is
-    /// read-only.
-    artifact-stage: option<artifact-stage>,
-  }
-
-  /// The severity of a finding. The closed review severity enum shared
-  /// with the `Diagnostic` wire type, ordered for sort stability
-  /// (`critical` < `important` < `suggestion` < `optional`).
-  enum severity {
-    critical,
-    important,
-    suggestion,
-    optional
-  }
-
-  /// Adapter-selected outcome of one build phase (RFC-90 D2). There is
-  /// no adapter-selected `success | failure`: blocking findings and
-  /// dispatch errors determine failure.
-  enum phase-outcome {
-    /// The operation ran and produced its result.
-    completed,
-    /// The operation has no target-specific work for this dispatch.
-    /// Must carry no blocking findings and no writes.
-    not-applicable
-  }
-
-  /// Required report-level assurance claim: how a phase's result was
-  /// produced, even when `findings` is empty. `tool` is reserved on
-  /// the wire but rejected by the RFC-90 engine gate until a trusted
-  /// host-tool execution seam exists (RFC-97).
-  enum phase-source {
-    /// No model or external tool contributed to the phase result.
-    deterministic,
-    /// Model judgment produced the result, including an agent invoking
-    /// and interpreting native commands.
-    model-assisted,
-    /// More than one assurance source contributed (deterministic
-    /// in-guest checks plus model judgment in this RFC).
-    hybrid,
-    /// Trusted host-tool output. Reserved; rejected by the RFC-90 gate.
-    tool
-  }
-
-  /// Which engine gate supplied the findings a `repair` dispatch
-  /// carries. Routing stays engine-owned: the origin informs the
-  /// repair pass without letting the adapter select the next phase.
-  enum repair-origin {
-    /// Findings from the latest verification report.
-    verification,
-    /// Findings from the latest standards-review report.
-    review
-  }
-
-  /// Which writable root a phase write landed under.
-  enum phase-root {
-    /// The writable product workspace (`workspace.root`).
-    workspace,
-    /// The writable artifact stage (`workspace.artifact-stage.root`).
-    artifacts
-  }
-
-  /// One audit-evidence write reported by a phase. Paths are relative
-  /// to the named root; absolute paths and `..` are invalid. RFC-87
-  /// capture and the staged-artifact diff remain the authoritative
-  /// write records.
-  record phase-write {
-    /// Root the path is relative to.
-    root: phase-root,
-    /// Root-relative '/'-separated path.
-    path: string,
-  }
-
-  /// Grant grammar for one writable slice artifact (RFC-90 D5).
-  enum writable-artifact-kind {
-    /// The grant names exactly one slice-relative file.
-    file,
-    /// The grant names a directory and its descendants.
-    tree
-  }
-
-  /// One target-declared writable slice artifact. Paths use `/`, must
-  /// be relative, and admit no glob or `..` grammar.
-  record writable-artifact {
-    /// Slice-relative path of the granted file or tree root.
-    path: string,
-    /// File or tree grant.
-    kind: writable-artifact-kind,
-  }
-
-  /// Location anchor for a phase finding, with project-relative
-  /// '/'-separated paths. Product paths resolve in the candidate
-  /// workspace; change-artifact paths retain their project-relative
-  /// `.emery/...` form.
-  record phase-location {
-    /// Project-relative file path.
-    path: string,
-    /// Anchor line.
-    line: option<u32>,
-    /// Anchor column.
-    column: option<u32>,
-    /// Inclusive end line for a range.
-    end-line: option<u32>,
-    /// Inclusive end column for a range.
-    end-column: option<u32>,
-  }
-
-  /// Producer attribution of one finding — the full closed
-  /// `Diagnostic` source axis (report-level `phase-source` is the
-  /// narrower assurance claim; `human` never crosses this seam in
-  /// practice but stays representable for isomorphism).
-  enum diagnostic-source {
-    deterministic,
-    model-assisted,
-    hybrid,
-    human,
-    tool
-  }
-
-  /// Nature axis of one finding: a defect vs a deterministically
-  /// raised request for judgment. Only `violation` findings block.
-  enum finding-kind {
-    violation,
-    review
-  }
-
-  /// Artifact category attribution — the closed `Diagnostic` artifact
-  /// enum.
-  enum finding-artifact {
-    code,
-    tests,
-    contracts,
-    specs,
-    design,
-    decisions,
-    tasks,
-    assets,
-    tokens,
-    composition,
-    plan,
-    unknown
-  }
-
-  /// Producer self-rated confidence.
-  enum finding-confidence {
-    high,
-    medium,
-    low
-  }
-
-  /// Digest-referenced evidence for payloads too large or sensitive to
-  /// inline.
-  record digest-evidence {
-    /// Hex-encoded SHA-256 of the underlying evidence bytes.
-    sha256: string,
-    /// Short human summary of what was hashed.
-    summary: string,
-    /// Optional contributing locations.
-    locations: option<list<phase-location>>,
-  }
-
-  /// Domain-structured evidence with a JSON-encoded payload.
-  record structured-evidence {
-    /// Short human summary of `data`.
-    summary: string,
-    /// JSON-encoded payload (bounded, secret-free).
-    data: string,
-    /// Optional contributing locations.
-    locations: option<list<phase-location>>,
-  }
-
-  /// The closed evidence union carried by a phase finding.
-  variant finding-evidence {
-    /// Bounded verbatim excerpt.
-    snippet(string),
-    /// Digest reference.
-    digest(digest-evidence),
-    /// Domain-structured payload.
-    structured(structured-evidence),
-  }
-
-  /// One phase finding: the isomorphic WIT projection of the shared
-  /// `Diagnostic` wire shape (RFC-90 D2). The engine stamps
-  /// target-adapter, slice, and change identity, verifies or
-  /// recomputes the fingerprint, and renumbers report-local ids —
-  /// adapters never fold title / impact / remediation prose.
-  record phase-finding {
-    /// Report-local stable id (renumbered by the engine).
-    id: string,
-    /// Codex rule citation, if any.
-    rule-id: option<string>,
-    /// Additional codex ids that informed the finding.
-    related-rule-ids: list<string>,
-    /// Short finding title.
-    title: string,
-    /// Review severity.
-    severity: severity,
-    /// Producer attribution.
-    source: diagnostic-source,
-    /// Defect vs request-for-judgment.
-    kind: finding-kind,
-    /// Artifact category attribution.
-    artifact: finding-artifact,
-    /// Optional anchor location.
-    location: option<phase-location>,
-    /// Evidence union.
-    evidence: finding-evidence,
-    /// Operator-facing risk.
-    impact: string,
-    /// Concrete action to clear the finding.
-    remediation: string,
-    /// Producer self-rated confidence.
-    confidence: option<finding-confidence>,
-    /// Stable `sha256:<64 hex>` hash; recomputed by the engine.
-    fingerprint: string,
-  }
-
-  /// The typed result of exactly one build-phase operation (RFC-90).
-  /// `outputs` and `ui-surface` are meaningful only on `build`
-  /// reports; `repair`, `verify`, and `review` must return them empty
-  /// — an engine gate, not a prompt convention.
-  record phase-report {
-    /// Adapter-selected outcome.
-    outcome: phase-outcome,
-    /// Required report-level assurance claim; must cover every
-    /// finding source in the report.
-    source: phase-source,
-    /// Phase findings; the engine canonicalizes accepted reports.
-    findings: list<phase-finding>,
-    /// Candidate per-platform outputs (`build` only).
-    outputs: list<build-output>,
-    /// Candidate UI-surface signal (`build` only).
-    ui-surface: option<ui-surface>,
-    /// Slice-local requirement ids (`REQ-NNN`) the phase claims to
-    /// have implemented (`build` only). Empty when the answer omits
-    /// the key. The engine rejects any intersection with the build
-    /// request's `deferred[]` exclusion set
-    /// (`target-build-deferred-covered`).
-    covered: list<string>,
-    /// Audit-evidence writes performed by the phase.
-    written: list<phase-write>,
-    /// Adapter-opaque continuation payload: `none` preserves the
-    /// current value, an empty list clears it, and a non-empty value
-    /// replaces it. The engine rejects payloads over 1 MiB and echoes
-    /// the value only to the same identity, attempt, and workspace.
-    /// `verify` cannot mutate it.
-    next-continuation: option<list<u8>>,
-  }
-
-  /// A finding from the operation: the compact projection of one
-  /// diagnostic from the schema-gated answer (whose `findings[]` carry
-  /// the full `Diagnostic` wire shape). The
-  /// guest maps `rule-id` and `severity` through and folds the
-  /// diagnostic's `title` / `impact` / `remediation` prose into
-  /// `detail`; the full diagnostic stays in the answer, not on the seam.
-  record finding {
-    /// The finding's rule identifier. Optional in the diagnostic shape —
-    /// absent for findings that do not cite codex policy.
-    rule-id: option<string>,
-    /// The severity of the finding.
-    severity: severity,
-    /// The detail of the finding.
-    detail: string,
-  }
-
-  /// The status of the operation.
-  enum status {
-    success,
-    failure,
-  }
-
-  /// The closed target platform taxonomy shared with the build-report
-  /// wire type.
-  enum platform {
-    core,
-    ios,
-    android,
-    web,
-    desktop
-  }
-
-  /// One per-platform build output: a relative path (from the project
-  /// root) to a produced artifact. The caller verifies each declared
-  /// path exists and is non-empty.
-  record build-output {
-    /// Platform this output was produced for.
-    platform: platform,
-    /// Relative path (from the project root) to the produced artifact.
-    path: string,
-  }
-
-  /// Per-slice UI-surface signal authored from the build's own screen
-  /// identification judgement. `screens: 0` means no UI surface.
-  record ui-surface {
-    /// Count of screen-bearing requirements this slice introduces or modifies.
-    screens: u32,
-  }
-
-  /// Which side of the deterministic core merge a `merge` dispatch runs
-  /// on. The engine folds the slice's deltas, promotes Decision Records,
-  /// and archives the slice deterministically in Rust; the target's
-  /// judgment brackets that commit.
-  enum merge-phase {
-    /// Before the deterministic commit: staged composition / contract /
-    /// build checks over the built slice. A blocking finding aborts the
-    /// merge with the slice still `built`.
-    preflight,
-    /// After the deterministic commit: merged-baseline validators over
-    /// the updated tree. The slice is already merged and archived, so a
-    /// blocking finding is a terminal diagnostic, never a rollback.
-    postflight,
-  }
-
-  /// Judgment returned by the `build` and `merge` operations: the
-  /// build report minus the envelope keys (`version`, `slice`,
-  /// `target`) the caller already knows. The
-  /// resulting state — a build's delta, or the merged baseline — lives
-  /// in the working tree, not in this report.
-  record report {
-    /// The status of the operation. Named `status` to match the wire
-    /// key, so answers deserialize without a rename.
-    status: status,
-    /// The findings from the operation. On success, only non-blocking
-    /// findings (or none); partial success is `success` with
-    /// non-blocking findings.
-    findings: list<finding>,
-    /// Per-platform build outputs produced by the operation. Empty when
-    /// the answer omits the key.
-    outputs: list<build-output>,
-    /// Optional per-slice UI-surface signal; absent reports stay valid.
-    ui-surface: option<ui-surface>,
-  }
-
-  /// One adapter-declared build input: a path (relative to the slice
-  /// tree) the `build` operation consumes, flagged `required`.
-  record build-input {
-    /// Slice-tree-relative path of the input.
-    path: string,
-    /// Whether the build must abort when the path is absent.
-    required: bool,
-  }
-
-  /// Declarative platforms capability: when `required` is true,
-  /// projects using this target must declare a non-empty platform set
-  /// at init.
-  record platforms-capability {
-    /// Whether projects must declare a platform set.
-    required: bool,
-    /// The set of platforms this target accepts.
-    allowed: list<platform>,
-    /// The set assumed when the operator accepts the default.
-    default: list<platform>,
-  }
-
-  /// The adapter's deterministic metadata: the compatibility floor plus
-  /// the target's declared build inputs and platform capability.
-  record adapter-metadata {
-    /// Optional host-CLI compatibility floor: the exact minimum `emery`
-    /// version this adapter needs. The host aborts at resolve time when
-    /// the running binary is older. Absent means no floor.
-    emery-floor: option<string>,
-    /// Adapter-declared build inputs, each a slice-tree-relative path
-    /// the `build` operation consumes. Empty when the target declares
-    /// none.
-    inputs: list<build-input>,
-    /// Declarative platforms capability. Absent when the target is
-    /// platform-agnostic.
-    platforms: option<platforms-capability>,
-    /// Typed writable slice-artifact grants (RFC-90 D5). The engine
-    /// rejects any staged-artifact change outside these grants. Empty
-    /// when the target writes no slice artifacts.
-    writable-artifacts: list<writable-artifact>,
-  }
-
-  /// Read at resolve time and cached against the artifact digest.
-  /// Metadata, not judgment: effect-free and answerable from
-  /// compiled-in constants — no model call, no filesystem access.
-  metadata: func(id: adapter-id) -> adapter-metadata;
-
-  /// Guidance on the expected build artifacts for this target, read by
-  /// core synthesis while authoring slice artifacts. Deterministic
-  /// today, but an `async func` like the rest of the interface so an
-  /// adapter may consult its model without a contract change.
-  guidance: async func(id: adapter-id) -> result<string, error>;
-
-  /// Generation only: preparation, writers, capture replay (RFC-90).
-  /// Must not verify, repair, or run standards remediation. `build`
-  /// alone owns output declaration and UI-surface classification; the
-  /// resulting delta lives in the workspace, captured by the engine.
-  build: async func(id: adapter-id, slice: string, inputs: list<input>,
-  context: build-context, workspace: workspace) -> result<phase-report, error>;
-
-  /// One model-assisted check pass on the lent workspace (RFC-90).
-  /// Receives only the candidate workspace — every other operation
-  /// names a slice. Must return empty `outputs`, no `ui-surface`, and
-  /// no continuation replacement.
-  verify: async func(
-    id: adapter-id,
-    workspace: workspace,
-  ) -> result<phase-report, error>;
-
-  /// One findings-directed repair pass (RFC-90). `origin` names the
-  /// engine gate that supplied the findings; it never selects the
-  /// next phase — after any repair the engine dispatches `verify`.
-  repair: async func(
-    id: adapter-id,
-    slice: string,
-    origin: repair-origin,
-    findings: list<phase-finding>,
-    continuation: option<list<u8>>,
-    workspace: workspace,
-  ) -> result<phase-report, error>;
-
-  /// One engineering-standards review pass (RFC-90). Must return
-  /// empty `outputs` and no `ui-surface`.
-  review: async func(
-    id: adapter-id,
-    slice: string,
-    continuation: option<list<u8>>,
-    workspace: workspace,
-  ) -> result<phase-report, error>;
-
-  /// Run one target-specific merge gate around the engine's
-  /// deterministic core merge (dispatched twice per slice merge — see
-  /// `merge-phase`). The report carries only judgment: lifecycle
-  /// transitions, baseline spec merging, and archive moves stay
-  /// engine-owned.
-  merge: async func(id: adapter-id, slice: string, phase: merge-phase,
-  workspace: workspace) -> result<report, error>;
-}
-
-
-/// A source adapter component: one axis interface plus the MCP
+/// A source adapter component: the one axis interface plus the MCP
 /// references served over `wasi:http`.
 world source-adapter {
   export source;
-}
-
-/// A target adapter component: one axis interface plus the MCP
-/// references served over `wasi:http`.
-world target-adapter {
-  export target;
-}
-
-/// A combined source and target adapter component. Additive: external
-/// adapters remain single-axis (`source-adapter` xor `target-adapter`);
-/// this world exists for components that deliberately serve both axes,
-/// such as the Emery-owned fixture adapter, bound under one artifact
-/// at both a `source:<name>` and a `target:<name>` dispatch id.
-world adapter {
-  export source;
-  export target;
 }

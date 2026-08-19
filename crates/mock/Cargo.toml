@@ -19,20 +19,3 @@ workspace = true
 emery-adapter.workspace = true
 omnia-guest.workspace = true
 serde_json.workspace = true
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-emery-artifacts.workspace = true
-emery-error.workspace = true
-emery-native.workspace = true
-emery-project.workspace = true
-emery-system.workspace = true
-jiff.workspace = true
-omnia-testkit.workspace = true
-tempfile.workspace = true
-
-[dev-dependencies]
-emery-change.workspace = true
-emery-error.workspace = true
-emery-slice.workspace = true
-jiff.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

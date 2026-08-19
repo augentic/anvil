@@ -1,43 +1,28 @@
-//! Typed command grammar, conversion, and HTTP parity coverage.
+//! Typed command grammar, conversion, and HTTP parity coverage over
+//! the two-verb surface (ADR-0008 §3): `init`, the live `specify`
+//! generator, and the auto-derived `completions`.
+
+mod support;
 
 use std::fs;
 use std::path::PathBuf;
 
-use native::{DynModel, Provider, ReferenceMode};
-use omnia_guest::api::invoke::Invoker;
-use omnia_testkit::model::Harness;
-use tempfile::TempDir;
-
 // Grammar and parity coverage only: no test dispatches judgment or an
-// adapter seam, so the scripted provider's empty script never runs and
-// the explicit inert locations are never resolved.
-fn provider(root: impl Into<PathBuf>) -> Provider {
-    let root = root.into();
-    let locations = project::handler::Locations::explicit(
-        root.join("store"),
-        project::handler::CachePlacement::Parent(root.join("project-cache")),
-    );
-    Provider::new(
-        project::handler::ExecutionPaths::new(root, locations),
-        DynModel::new(Harness::answering(Vec::<String>::new())),
-        mock::catalog(),
-        ReferenceMode::Offline,
-    )
-}
-
+// adapter seam, so the inert provider's capabilities are never reached.
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<Provider, transport::command::Globals> {
-    transport::command::router(Invoker::new("emery", provider(root))).expect("router")
+) -> omnia_guest::api::command::Router<support::Inert, transport::command::Globals> {
+    support::router(root)
 }
 
-// C3 tripwire: the guest HTTP listener serves only the MCP reference
-// shelves — the engine's whole non-shelf surface is one typed refusal
-// with no operation route table. If an HTTP operation surface returns,
-// it must arrive with an authenticated operator ingress design
-// (target-architecture §7) and replace this test deliberately.
+// Gate tripwire for ADR-0002 §5 / finding C3: the guest HTTP listener
+// serves only the MCP reference shelves — the engine's whole non-shelf
+// surface is one typed refusal with no operation route table. If an
+// HTTP operation surface returns, it must arrive with an authenticated
+// operator ingress design (target-architecture §7) and delete this
+// test in the same decision.
 #[tokio::test]
-async fn http_parity() {
+async fn adr_0002_http_refusal() {
     use omnia_guest::http::{Method, Request, StatusCode};
     use tower::ServiceExt as _;
 
@@ -60,78 +45,90 @@ async fn http_parity() {
             assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {path} must refuse");
         }
     }
-
-    // The one served surface is the engine's MCP shelf path, routed by
-    // the deployment's `http_paths` hook.
-    assert_eq!(slice::shelf::PATH, "/mcp/engine/synthesis");
 }
 
+// Gate tripwire for ADR-0008 §3 (CONSTITUTION invariant 2): the route
+// budget is the live verb list in rfcs/remediation-plan.md — `init` +
+// `specify` (+ auto-derived `completions`) and nothing else. Deleted
+// verbs are deletions from the grammar, not hidden routes or
+// "deprecated" stubs; widening this list requires an ADR.
 #[tokio::test]
-async fn author_from_wave_grammar() {
+async fn adr_0008_route_budget() {
     let router = command_router(".");
 
-    let help = router.execute(["emery", "plan", "author", "--help"]).await;
+    let inventory: Vec<Vec<String>> =
+        router.inventory().iter().map(|route| route.selector().path().to_vec()).collect();
+    assert_eq!(
+        inventory,
+        [vec!["completions".to_string()], vec!["init".to_string()], vec!["specify".to_string()]]
+    );
+
+    for removed in [
+        &["emery", "plan", "status"][..],
+        &["emery", "plan", "author"][..],
+        &["emery", "plan", "refine"][..],
+        &["emery", "plan", "execute"][..],
+        &["emery", "plan", "archive"][..],
+        &["emery", "slice", "list"][..],
+        &["emery", "slice", "validate"][..],
+        &["emery", "source", "survey"][..],
+        &["emery", "source", "extract"][..],
+        &["emery", "source", "resolve"][..],
+        &["emery", "target", "resolve"][..],
+        &["emery", "system", "survey"][..],
+        &["emery", "system", "plan"][..],
+        &["emery", "system", "review"][..],
+        &["emery", "system", "status"][..],
+        &["emery", "adapter", "add"][..],
+        &["emery", "adapter", "upgrade"][..],
+        &["emery", "archive", "prune"][..],
+        &["emery", "journal", "show"][..],
+        &["emery", "debt"][..],
+    ] {
+        assert_eq!(router.execute(removed.iter().copied()).await.exit, 2, "{removed:?}");
+    }
+
+    let help = router.execute(["emery", "--help"]).await;
     assert_eq!(help.exit, 0);
     let help = String::from_utf8_lossy(&help.stdout);
-    assert!(help.contains("--from"), "{help}");
-    assert!(help.contains("--wave"), "{help}");
-    assert!(help.contains("--change-dir"), "{help}");
-    assert!(!help.contains("--intent <"), "{help}");
-
-    let status_help = router.execute(["emery", "plan", "status", "--help"]).await;
-    assert_eq!(status_help.exit, 0);
-    assert!(
-        String::from_utf8_lossy(&status_help.stdout).contains("--change-dir"),
-        "change-scoped verbs carry --change-dir"
-    );
-
-    let missing_wave =
-        router.execute(["emery", "plan", "author", "demo", "--from", ".emery/system/"]).await;
-    assert_eq!(missing_wave.exit, 2);
-    let stderr = String::from_utf8_lossy(&missing_wave.stderr);
-    assert!(stderr.contains("--wave") || stderr.contains("required"), "{stderr}");
+    assert!(help.contains("init"), "{help}");
+    assert!(help.contains("specify"), "{help}");
+    for gone in ["plan", "slice", "system", "journal", "debt", "adapter"] {
+        assert!(
+            !help.lines().any(|line| line.trim_start().starts_with(gone)),
+            "help must not list `{gone}`: {help}"
+        );
+    }
 }
 
+// The live generator fails closed outside an initialised project — no
+// orchestration, no output-home scaffolding, no artifacts.
 #[tokio::test]
-async fn missing_definition() {
+async fn specify_uninitialized() {
     let home = tempfile::tempdir().expect("tempdir");
     let router = command_router(home.path());
-    let response =
-        router.execute(["emery", "plan", "author", "demo", "--from", "def", "--wave", "w1"]).await;
-    assert_ne!(response.exit, 0);
-    let stderr = String::from_utf8(response.stderr).expect("stderr utf-8");
-    assert!(
-        stderr.contains("definition") || stderr.contains("handoff") || stderr.contains("not found"),
-        "{stderr}"
-    );
-    assert!(!home.path().join("demo").exists(), "name is identity, not a subdirectory");
-    assert!(!home.path().join(".emery/project.yaml").exists(), "no synthetic project.yaml");
-    assert!(!home.path().join("guest.lock").exists(), "missing definition writes no marker");
-    assert!(!home.path().join(".emery/change/guest.lock").exists());
-}
 
-#[tokio::test]
-async fn author_intent_is_unknown() {
-    let home = tempfile::tempdir().expect("tempdir");
-    let router = command_router(home.path());
-    let response = router.execute(["emery", "plan", "author", "demo", "--intent", "Ship it"]).await;
-    assert_eq!(response.exit, 2);
+    let response = router.execute(["emery", "specify"]).await;
+    assert_eq!(response.exit, 1);
     let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(stderr.contains("not-initialized"), "{stderr}");
+
+    let json = router.execute(["emery", "--format", "json", "specify"]).await;
+    assert_eq!(json.exit, 1);
+    let stderr = String::from_utf8(json.stderr).expect("stderr utf-8");
+    let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("one JSON envelope");
+    assert_eq!(envelope["error"], "not-initialized");
+    assert_eq!(envelope["exit-code"], 1);
+
     assert!(
-        stderr.contains("--from") || stderr.contains("--intent") || stderr.contains("unexpected"),
-        "{stderr}"
+        fs::read_dir(home.path()).expect("home").next().is_none(),
+        "a refused run writes nothing"
     );
 }
 
 #[tokio::test]
 async fn globals_and_completions() {
     let router = command_router(".");
-
-    let help = router.execute(["emery", "plan", "amend", "--help"]).await;
-    assert_eq!(help.exit, 0);
-    let help = String::from_utf8_lossy(&help.stdout);
-    assert!(help.contains("--allow-composition-replace"));
-    assert!(help.contains("--proposal"));
 
     let completions = router.execute(["emery", "completions", "zsh"]).await;
     assert_eq!(completions.exit, 0);
@@ -140,92 +137,6 @@ async fn globals_and_completions() {
     let completion_help = String::from_utf8_lossy(&completion_help.stdout);
     assert!(completion_help.contains("Pipe into your shell's completion directory"));
     assert!(completion_help.contains("output tracks the live clap surface"));
-
-    let invalid = router.execute(["emery", "--format", "json", "plan", "drop"]).await;
-    assert_eq!(invalid.exit, 2);
-}
-
-#[tokio::test]
-async fn detailed_help() {
-    let router = command_router(".");
-
-    let route = router.execute(["emery", "plan", "status", "--help"]).await;
-    assert_eq!(route.exit, 0);
-    let route = String::from_utf8_lossy(&route.stdout);
-    assert!(route.contains("Read-only projection of the plan's execution state"));
-    assert!(route.contains("Stop reasons (`refine-failed`"));
-    assert!(route.contains("boundary-escalation"));
-
-    let namespace = router.execute(["emery", "source", "--help"]).await;
-    assert_eq!(namespace.exit, 0);
-    let namespace = String::from_utf8_lossy(&namespace.stdout);
-    assert!(namespace.contains("Source adapter operations (workflow contract)"));
-    assert!(namespace.contains("provide `extract` + `survey` capabilities"));
-
-    let nested = router.execute(["emery", "slice", "model", "--help"]).await;
-    assert_eq!(nested.exit, 0);
-    assert!(
-        String::from_utf8_lossy(&nested.stdout)
-            .contains("Read-only viewer over a slice's `model.yaml`")
-    );
-
-    let system = router.execute(["emery", "system", "--help"]).await;
-    assert_eq!(system.exit, 0);
-    let system = String::from_utf8_lossy(&system.stdout);
-    assert!(system.contains("Definition-loop operations over a definition home"), "{system}");
-    for verb in ["survey", "plan", "review", "status"] {
-        assert!(
-            system.lines().any(|line| line.trim_start().starts_with(verb)),
-            "system help must list {verb}: {system}"
-        );
-    }
-
-    for removed in [
-        &["emery", "adapters", "sync"][..],
-        &["emery", "plugins", "doctor"][..],
-        &["emery", "plugins", "refresh"][..],
-        &["emery", "upgrade"][..],
-        &["emery", "workspace", "prepare"][..],
-        &["emery", "workspace", "push"][..],
-        &["emery", "workspace", "sync"][..],
-        // RFC-88 D4 — the registry/workspace topology feature is removed.
-        &["emery", "registry", "add"][..],
-        &["emery", "registry", "validate"][..],
-        &["emery", "registry", "remove"][..],
-        &["emery", "init", "--workspace"][..],
-        // RFC-86 D14 / D6 — never shipped. (`plan refine` is a real
-        // verb since RFC-91 — asserted present below, not here.)
-        &["emery", "plan", "approve"][..],
-        // Plan-centric surface cut — the slice-loop breakout verbs and
-        // plan advance/undo are gone; `plan execute` owns the phases.
-        &["emery", "slice", "refine"][..],
-        &["emery", "slice", "build"][..],
-        &["emery", "slice", "merge"][..],
-        &["emery", "slice", "drop"][..],
-        &["emery", "plan", "advance"][..],
-        &["emery", "plan", "undo"][..],
-    ] {
-        assert_eq!(router.execute(removed.iter().copied()).await.exit, 2, "{removed:?}");
-    }
-
-    let plan_help = router.execute(["emery", "plan", "--help"]).await;
-    assert_eq!(plan_help.exit, 0);
-    let plan_help = String::from_utf8_lossy(&plan_help.stdout);
-    assert!(!plan_help.contains("approve"), "no plan approve subcommand: {plan_help}");
-    // `plan refine` is the RFC-91 refinement drain — a real subcommand.
-    assert!(
-        plan_help.lines().any(|line| line.trim_start().starts_with("refine")),
-        "plan help must list refine: {plan_help}"
-    );
-    assert!(
-        !plan_help.lines().any(|line| {
-            let trimmed = line.trim_start();
-            trimmed.starts_with("approve")
-                || trimmed.starts_with("advance")
-                || trimmed.starts_with("undo")
-        }),
-        "plan help must not list approve/advance/undo: {plan_help}"
-    );
 }
 
 #[tokio::test]
@@ -243,49 +154,31 @@ async fn version_host_semver() {
 #[tokio::test]
 async fn argv_zero_replaced() {
     let router = command_router(".");
-    let expected = router.execute(["emery", "plan", "drop"]).await;
-    let forwarded = router.execute(["emery:engine@0.1.0", "plan", "drop"]).await;
+    let expected = router.execute(["emery", "init", "--no-such-flag"]).await;
+    let forwarded = router.execute(["emery:engine@0.1.0", "init", "--no-such-flag"]).await;
 
     assert_eq!(expected.exit, 2);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
-    assert!(stderr.contains("Usage: emery plan drop"));
+    assert!(stderr.contains("Usage: emery init"), "{stderr}");
     assert!(!stderr.contains("emery:engine@0.1.0"));
-}
-
-#[derive(Clone, Copy)]
-enum Fixture {
-    Project,
-    Cycle,
-    TooNew,
 }
 
 struct Case {
     name: &'static str,
     argv: &'static [&'static str],
-    fixture: Fixture,
     exit: u8,
     stdout: &'static str,
     stderr: &'static str,
     json_channels: bool,
 }
 
-const fn cases() -> [Case; 10] {
+const fn cases() -> [Case; 5] {
     [
-        Case {
-            name: "debt empty baseline",
-            argv: &["emery", "debt"],
-            fixture: Fixture::Project,
-            exit: 0,
-            stdout: "baseline debt: none",
-            stderr: "",
-            json_channels: false,
-        },
         Case {
             name: "help",
             argv: &["emery", "--help"],
-            fixture: Fixture::Project,
             exit: 0,
             stdout: "Usage: emery [OPTIONS] <COMMAND>",
             stderr: "",
@@ -294,7 +187,6 @@ const fn cases() -> [Case; 10] {
         Case {
             name: "version",
             argv: &["emery", "--version"],
-            fixture: Fixture::Project,
             exit: 0,
             stdout: concat!("emery ", env!("CARGO_PKG_VERSION")),
             stderr: "",
@@ -303,64 +195,25 @@ const fn cases() -> [Case; 10] {
         Case {
             name: "completions",
             argv: &["emery", "completions", "zsh"],
-            fixture: Fixture::Project,
             exit: 0,
             stdout: "_emery",
             stderr: "",
             json_channels: false,
         },
         Case {
-            name: "text",
-            argv: &["emery", "journal", "show"],
-            fixture: Fixture::Project,
-            exit: 0,
-            stdout: "no events",
-            stderr: "",
+            name: "init source required",
+            argv: &["emery", "init"],
+            exit: 2,
+            stdout: "",
+            stderr: "init-source-required",
             json_channels: false,
         },
         Case {
-            name: "json",
-            argv: &["emery", "--format", "json", "journal", "show"],
-            fixture: Fixture::Project,
-            exit: 0,
-            stdout: "\"count\": 0",
-            stderr: "",
-            json_channels: true,
-        },
-        Case {
-            name: "generic failure",
-            argv: &["emery", "plan", "validate"],
-            fixture: Fixture::Project,
+            name: "specify uninitialized",
+            argv: &["emery", "--format", "json", "specify"],
             exit: 1,
             stdout: "",
-            stderr: "plan.yaml",
-            json_channels: false,
-        },
-        Case {
-            name: "usage",
-            argv: &["emery", "plan", "drop"],
-            fixture: Fixture::Project,
-            exit: 2,
-            stdout: "",
-            stderr: "Usage: emery plan drop",
-            json_channels: false,
-        },
-        Case {
-            name: "validation report",
-            argv: &["emery", "--format", "json", "plan", "validate"],
-            fixture: Fixture::Cycle,
-            exit: 2,
-            stdout: "cycle-in-depends-on",
-            stderr: "\"exit-code\": 2",
-            json_channels: true,
-        },
-        Case {
-            name: "version floor",
-            argv: &["emery", "--format", "json", "journal", "show"],
-            fixture: Fixture::TooNew,
-            exit: 3,
-            stdout: "",
-            stderr: "emery-version-too-old",
+            stderr: "not-initialized",
             json_channels: true,
         },
     ]
@@ -369,7 +222,10 @@ const fn cases() -> [Case; 10] {
 #[tokio::test]
 async fn native_response_contract() {
     for case in cases() {
-        let project = project(case.fixture);
+        // A bare uninitialized tempdir: no case needs a scaffolded
+        // project, and `init` without an adapter must refuse rather
+        // than take the already-initialized re-entry path.
+        let project = tempfile::tempdir().expect("tempdir");
         let response = command_router(project.path()).execute(case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");
@@ -388,29 +244,4 @@ async fn native_response_contract() {
             }
         }
     }
-}
-
-fn project(fixture: Fixture) -> TempDir {
-    let project = tempfile::tempdir().expect("tempdir");
-    let emery = project.path().join(".emery");
-    fs::create_dir(&emery).expect("create .emery");
-    let version = match fixture {
-        Fixture::TooNew => "999.0.0",
-        Fixture::Project | Fixture::Cycle => env!("CARGO_PKG_VERSION"),
-    };
-    fs::write(
-        emery.join("project.yaml"),
-        format!("name: router-parity\nadapter: omnia\nemery: {version}\nrules: {{}}\n"),
-    )
-    .expect("write project config");
-    if matches!(fixture, Fixture::Cycle) {
-        let plan_path = project.path().join(".emery/change/plan.yaml");
-        fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
-        fs::write(
-            &plan_path,
-            "name: cycle\ntargets:\n  default:\n    adapter: emery:mock@0.0.0\n    locator: \".\"\n    cid: sha256:0000000000000000000000000000000000000000000000000000000000000000\nslices:\n  - name: first\n    target: default\n    depends-on: [second]\n  - name: second\n    target: default\n    depends-on: [first]\n",
-        )
-        .expect("write cyclic plan");
-    }
-    project
 }

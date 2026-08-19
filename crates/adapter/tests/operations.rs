@@ -1,18 +1,14 @@
 //! Operations-trait dispatch and references-server identity.
 
-use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, evidence_tail, leads_tail};
+use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
 use adapter::registry::Doc;
-use adapter::seam::{
-    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
-    PhaseSource, RepairOrigin, Report, SourceInput, SourceMetadata, SurveyResult, TargetMetadata,
-    Workspace,
-};
-use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
+use adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
+use adapter::{AdapterIdentity, Model, Source, references, repaired};
 use omnia_testkit::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
-    path: "prompts/survey.md",
-    body: "SURVEY",
+    path: "prompts/extract.md",
+    body: "EXTRACT",
 }];
 
 struct Probe;
@@ -31,95 +27,19 @@ impl Source for Probe {
         DOCS
     }
 
-    async fn survey<P: Model>(
-        model: &P, ctx: &Context<'_>, _input: &SourceInput,
-    ) -> Result<SurveyResult, Error> {
-        repaired(
-            model,
-            ctx,
-            "SYSTEM".to_string(),
-            "USER".to_string(),
-            "leads",
-            LEADS_ANSWER_SCHEMA,
-            leads_tail,
-        )
-        .await
-    }
-
     async fn extract<P: Model>(
         model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
-        let prompt = input.focus.as_ref().map_or(String::new(), Lead::render);
         repaired(
             model,
             ctx,
             "SYSTEM".to_string(),
-            prompt,
+            input.key.clone(),
             "evidence",
             EVIDENCE_ANSWER_SCHEMA,
             evidence_tail,
         )
         .await
-    }
-}
-
-impl Target for Probe {
-    const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "probe",
-        version: "0.0.0",
-    };
-
-    fn metadata() -> TargetMetadata {
-        TargetMetadata {
-            emery_floor: None,
-            inputs: Vec::new(),
-            platforms: None,
-            writable_artifacts: Vec::new(),
-        }
-    }
-
-    fn docs() -> &'static [Doc] {
-        DOCS
-    }
-
-    async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
-        if ctx.adapter_id.contains("fail-guidance") {
-            return Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)));
-        }
-        Ok("GUIDANCE".to_string())
-    }
-
-    async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _workspace: &Workspace,
-    ) -> Result<PhaseReport, Error> {
-        Ok(PhaseReport::completed(PhaseSource::Deterministic))
-    }
-
-    async fn verify<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
-    ) -> Result<PhaseReport, Error> {
-        Ok(PhaseReport::not_applicable())
-    }
-
-    async fn repair<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
-        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
-    ) -> Result<PhaseReport, Error> {
-        Ok(PhaseReport::not_applicable())
-    }
-
-    async fn review<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
-        _workspace: &Workspace,
-    ) -> Result<PhaseReport, Error> {
-        Ok(PhaseReport::not_applicable())
-    }
-
-    async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
     }
 }
 
@@ -132,63 +52,22 @@ fn ctx() -> Context<'static> {
     }
 }
 
-async fn survey_of<A: Source, M: Model>(
-    model: &M, ctx: &Context<'_>,
-) -> Result<SurveyResult, Error> {
-    A::survey(model, ctx, &SourceInput::value("main", "")).await
-}
-
 #[tokio::test]
 async fn source_dispatch() {
-    let model = Harness::answering([r#"{"leads":[{"lead":"one","synopsis":"the lead"}]}"#]);
+    let model = Harness::answering([
+        r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim"}]}"#,
+    ]);
 
-    let result = survey_of::<Probe, _>(&model, &ctx()).await.expect("scripted survey succeeds");
-    assert_eq!(result.leads.len(), 1);
-    assert_eq!(result.leads[0].lead, "one");
+    let evidence = Probe::extract(&model, &ctx(), &SourceInput::value("main", ""))
+        .await
+        .expect("scripted extract succeeds");
+    assert_eq!(evidence.claims.len(), 1);
+    assert_eq!(evidence.claims[0].id.as_deref(), Some("one.claim"));
 
     assert_eq!(<Probe as Source>::IDENTITY.name, "probe");
     assert_eq!(<Probe as Source>::IDENTITY.version, "0.0.0");
     assert_eq!(<Probe as Source>::metadata(), SourceMetadata { emery_floor: None });
-    assert_eq!(<Probe as Source>::docs()[0].path, "prompts/survey.md");
-}
-
-#[tokio::test]
-async fn target_dispatch() {
-    let model = Harness::answering([""; 0]);
-    let workspace = Workspace {
-        id: "ws-1".to_string(),
-        root: "/emery-workspaces/ws-1".to_string(),
-        artifacts: "/host/project".to_string(),
-        artifact_stage: None,
-    };
-
-    let report = Probe::build(&model, &ctx(), "demo", &[], &BuildContext::default(), &workspace)
-        .await
-        .expect("build succeeds");
-    assert_eq!(report, PhaseReport::completed(PhaseSource::Deterministic));
-    let report = Probe::verify(&model, &ctx(), &workspace).await.expect("verify succeeds");
-    assert_eq!(report, PhaseReport::not_applicable());
-    let report = Probe::merge(&model, &ctx(), "demo", MergePhase::Preflight, &workspace)
-        .await
-        .expect("merge succeeds");
-    assert_eq!(report, Report::success());
-    let guidance = Probe::guidance(&model, &ctx()).await.expect("guidance succeeds");
-    assert_eq!(guidance, "GUIDANCE");
-}
-
-// The WIT marks guidance fallible; a typed adapter error crosses the
-// trait surface intact.
-#[tokio::test]
-async fn guidance_failure() {
-    let model = Harness::answering([""; 0]);
-    let failing = Context {
-        adapter_id: "target:probe-fail-guidance",
-        project_root: std::path::Path::new("."),
-        mcp_url: None,
-        lend: Some(".".to_string()),
-    };
-    let err = Probe::guidance(&model, &failing).await.expect_err("guidance fails");
-    assert!(matches!(err, Error::Internal(detail) if detail.contains("probe-fail-guidance")));
+    assert_eq!(<Probe as Source>::docs()[0].path, "prompts/extract.md");
 }
 
 #[test]

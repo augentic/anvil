@@ -14,25 +14,14 @@ name = "launcher"
 
 [dependencies]
 anyhow.workspace = true
-jiff.workspace = true
-emery-artifacts.workspace = true
-emery-diagnostics.workspace = true
+emery-engine.workspace = true
 emery-error.workspace = true
-oci-client.workspace = true
-oci-wasm.workspace = true
 omnia.workspace = true
-omnia-filesystem.workspace = true
-omnia-wasi-blobstore.workspace = true
-emery-project.workspace = true
-emery-slice.workspace = true
-emery-transport.workspace = true
 semver.workspace = true
 
 [dev-dependencies]
-axum.workspace = true
-serde_json.workspace = true
+emery-diagnostics.workspace = true
 tempfile.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true

@@ -1,0 +1,8 @@
+# The journey binary (tests/journey.rs) is the walking-skeleton rung:
+# the Phase 3 exit criterion, green and run by its own required CI
+# job (`cargo make journey`, which first builds the mock component
+# and the journey host it drives). It stays out of the per-push
+# default set because those build artifacts are its preconditions
+# (ADR-0008, ADR-0009 §5).
+[profile.default]
+default-filter = "not (package(=emery) & binary(=journey))"

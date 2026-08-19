@@ -427,7 +427,7 @@ version = "1.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.h2]]
-version = "0.4.15"
+version = "0.4.16"
 criteria = "safe-to-deploy"
 
 [[exemptions.hashbrown]]
@@ -596,10 +596,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.konst_macro_rules]]
 version = "0.2.19"
-criteria = "safe-to-deploy"
-
-[[exemptions.layout-rs]]
-version = "0.1.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.leb128]]

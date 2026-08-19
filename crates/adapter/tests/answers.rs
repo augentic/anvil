@@ -1,56 +1,17 @@
-//! The judgment-answer deserializers: schema pins, envelope shapes, and
-//! the report projection onto the compact seam types.
+//! The judgment-answer deserializer: schema pin, envelope shape, and
+//! the extract validation tail.
 
-use adapter::answers::{
-    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, PHASE_REPORT_ANSWER, PhaseReportAnswer,
-    REPORT_ANSWER_SCHEMA, ReportAnswer, parse_evidence, parse_leads, validate_evidence,
-    validate_leads,
-};
-use adapter::seam::{Authority, Backing, ClaimKind, Error, Severity, Status};
+use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, parse_evidence, validate_evidence};
+use adapter::seam::{Authority, Backing, ClaimKind, Error};
 
 #[test]
-fn schema_pins() {
-    for (pin, file) in [
-        (LEADS_ANSWER_SCHEMA, "leads.schema.json"),
-        (EVIDENCE_ANSWER_SCHEMA, "evidence.schema.json"),
-        (REPORT_ANSWER_SCHEMA, "report.schema.json"),
-        (PHASE_REPORT_ANSWER, "phase-report.schema.json"),
-    ] {
-        let on_disk = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/answers").join(file),
-        )
-        .expect("vendored schema file");
-        assert_eq!(pin, on_disk, "pin matches {file}");
-    }
-}
-
-#[test]
-fn leads_deserialize() {
-    let leads = parse_leads(
-        r#"{"leads":[
-            {"lead":"password-reset","synopsis":"Reset flow with expiry.","topics":["auth","email"]},
-            {"lead":"session-timeout","synopsis":"Sessions expire after 30 minutes."}
-        ]}"#,
+fn schema_pin() {
+    let on_disk = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("schemas/answers/evidence.schema.json"),
     )
-    .expect("leads envelope parses");
-
-    assert_eq!(leads.leads.len(), 2);
-    assert_eq!(leads.leads[0].lead, "password-reset");
-    assert_eq!(leads.leads[0].topics, vec!["auth", "email"]);
-    assert_eq!(leads.leads[1].synopsis, "Sessions expire after 30 minutes.");
-    assert!(leads.leads[1].topics.is_empty(), "omitted topics defaults to empty");
-    assert!(leads.children.is_empty(), "unfocused envelope has no children");
-
-    let focused = parse_leads(
-        r#"{"children":[{"lead":"login-lockout","synopsis":"Five failures lock out.","parent":"login-flow","focus":"login-flow"}]}"#,
-    )
-    .expect("focused envelope parses");
-    assert!(focused.leads.is_empty(), "focused envelope has no top-level leads");
-    assert_eq!(focused.children[0].lead, "login-lockout");
-    assert_eq!(focused.children[0].parent.as_deref(), Some("login-flow"));
-    assert_eq!(focused.children[0].focus.as_deref(), Some("login-flow"));
-
-    assert!(parse_leads(r#"[{"lead":"bare"}]"#).is_err(), "a bare array is not the envelope");
+    .expect("vendored schema file");
+    assert_eq!(EVIDENCE_ANSWER_SCHEMA, on_disk, "pin matches evidence.schema.json");
 }
 
 // Covers both backing variants and tolerated open per-kind body fields
@@ -129,41 +90,6 @@ fn open_body_fields_lenient() {
 }
 
 #[test]
-fn leads_tail() {
-    let clean = parse_leads(
-        r#"{"leads":[{"lead":"password-reset","synopsis":"Reset flow with expiry."}]}"#,
-    )
-    .expect("clean leads parse");
-    validate_leads(&clean.leads).expect("clean leads pass the tail");
-
-    let malformed = parse_leads(
-        r#"{"leads":[
-            {"lead":"Bad_Id","synopsis":"Casing and underscore violate the pattern."},
-            {"lead":"blank-synopsis","synopsis":"   "}
-        ],"children":[
-            {"lead":"login-lockout","synopsis":"ok","parent":"Not_Kebab","focus":"Also_Bad"}
-        ]}"#,
-    )
-    .expect("the tail, not the parser, rejects malformed ids");
-    let Err(Error::Internal(detail)) = validate_leads(&malformed.leads) else {
-        panic!("malformed leads must fail the tail");
-    };
-    assert!(detail.contains("lead `Bad_Id`"), "finding names the malformed id: {detail}");
-    assert!(detail.contains("synopsis is empty"), "finding names the empty synopsis: {detail}");
-    let Err(Error::Internal(child_detail)) = validate_leads(&malformed.children) else {
-        panic!("malformed children must fail the tail");
-    };
-    assert!(
-        child_detail.contains("parent `Not_Kebab`"),
-        "finding names the malformed parent: {child_detail}"
-    );
-    assert!(
-        child_detail.contains("focus `Also_Bad`"),
-        "finding names the malformed focus: {child_detail}"
-    );
-}
-
-#[test]
 fn evidence_tail() {
     let clean = parse_evidence(
         r#"{"authority":"documentation","claims":[
@@ -186,68 +112,4 @@ fn evidence_tail() {
     };
     assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
     assert!(detail.contains("`Not.Valid`"), "finding names the malformed id: {detail}");
-}
-
-#[test]
-fn report_projection() {
-    let answer = ReportAnswer::parse(
-        r#"{
-            "status": "failure",
-            "findings": [{
-                "rule-id": "UNI-014",
-                "title": "Duplicate id",
-                "severity": "critical",
-                "impact": "Baseline is ambiguous.",
-                "remediation": "Rename one contract."
-            }],
-            "outputs": [{"platform": "ios", "path": "ios/App.swift"}],
-            "ui-surface": {"screens": 2}
-        }"#,
-    )
-    .expect("report body parses");
-    let report = answer.into_report();
-
-    assert_eq!(report.status, Status::Failure);
-    let finding = &report.findings[0];
-    assert_eq!(finding.rule_id.as_deref(), Some("UNI-014"));
-    assert_eq!(finding.severity, Severity::Critical);
-    assert_eq!(
-        finding.detail,
-        "Duplicate id — Baseline is ambiguous.; remediation: Rename one contract."
-    );
-    assert_eq!(report.outputs[0].path, "ios/App.swift");
-    assert_eq!(report.ui_surface.map(|surface| surface.screens), Some(2));
-
-    let minimal = ReportAnswer::parse(r#"{"status":"success","findings":[]}"#)
-        .expect("minimal report parses")
-        .into_report();
-    assert_eq!(minimal.status, Status::Success);
-    assert!(minimal.findings.is_empty() && minimal.outputs.is_empty());
-    assert!(minimal.ui_surface.is_none());
-}
-
-/// Schema-gated phase answers may emit `"related-rule-ids": null`
-/// (Diagnostic wire); the answer deserializer must accept that.
-#[test]
-fn phase_report_null_related() {
-    let report = PhaseReportAnswer::parse(
-        r#"{
-            "outcome": "completed",
-            "source": "model-assisted",
-            "findings": [{
-                "title": "Unused import",
-                "severity": "suggestion",
-                "source": "model-assisted",
-                "artifact": "code",
-                "evidence": {"kind": "snippet", "value": "import unused"},
-                "impact": "Noise.",
-                "remediation": "Delete it.",
-                "related-rule-ids": null
-            }]
-        }"#,
-    )
-    .expect("null related-rule-ids deserializes")
-    .into_report();
-
-    assert!(report.findings[0].related_rule_ids.is_empty());
 }

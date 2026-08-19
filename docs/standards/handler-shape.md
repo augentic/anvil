@@ -1,16 +1,16 @@
 # Operation shape
 
-The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in the engine crates (`project`, `slice`, `change`), how `Ctx` is constructed from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
+The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/engine`, how `RequestContext` is assembled from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
 
-## Shared operation plumbing (`project::handler`)
+## Shared operation plumbing (`engine::handler`)
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
 - **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
-- **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
-- **`type Error = project::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
+- **`call(input, context)`** assembles `RequestContext` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
+- **`type Error = engine::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + Source + Target` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
+Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`, so the same impl serves the wasm guest and tests against scripted providers.
 
 ```rust
 // GOOD — default shape
@@ -20,8 +20,8 @@ impl<P: Anchor> Operation<P> for Frob {
     type Output = FrobBody;
 
     async fn call(input: Self::Input, context: CallContext<'_, P>) -> Result<Self::Output, Self::Error> {
-        let cx = Ctx::load(context.provider)?;
-        let outcome = some_crate::do_work(cx.layout(), &input)?;
+        let request = RequestContext::load(context.provider)?;
+        let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
         Ok(FrobBody::from(&outcome))
     }
 }
@@ -29,11 +29,11 @@ impl<P: Anchor> Operation<P> for Frob {
 
 Operations live in each domain module's `handlers` submodule beside its kernels.
 
-## Ctx construction and the Anchor
+## RequestContext and the Anchor (C5)
 
-Operations construct `project::handler::Ctx` inside `call` via `Ctx::load(context.provider)`. The project location comes from the provider's `Anchor`; operations never read the process CWD themselves.
+Project-scoped operations assemble the one `engine::handler::RequestContext` inside `call` via `RequestContext::load(context.provider)`: the provider's `Anchor` supplies the paths, and the project loads fail-closed (version floor included) exactly once. Operations never read the process CWD themselves.
 
-`emery init` is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `Ctx`.
+`emery init` is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `RequestContext`.
 
 ## Output: `Render + Serialize`
 
@@ -45,7 +45,7 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 ## Errors and their projections
 
-`project::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
+`engine::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
 
 ## Exit codes
 
@@ -68,11 +68,11 @@ The four-slot CLI exit-code table is fixed:
 
 ## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the MCP reference shelves (the engine's `slice::shelf::PATH` plus the deployment-routed adapter shelves); every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::http_parity` holds the refusal.
+`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the deployment-routed adapter MCP shelves; every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 
-The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary.
+The reusable command route table lives in `crates/transport/src/command.rs`. The WASI shim (and any test harness) constructs an `Invoker`, assembles the router, executes it, and adapts the buffered response to its process boundary.
 
 On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run the router through `transport::command::execute` — the shared wrapper that emits the `emery.command` span (bounded verb label plus exit code) — with the same assembly and the same command `EmeryProjector`.
 
@@ -84,12 +84,6 @@ Target discipline per leaf arm:
 
 Never put domain logic in `transport` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
-## Operation-shape notes
-
-`source resolve <name>` and `target resolve <value>` never load a `Ctx`, because adapter resolution is read-only and runs before any project mutation; they invoke the provider's `Resolver` directly and anchor the default project dir on its `Anchor`. The two axes share one input shape; the axis is the request type. The target axis peels an opaque `@version` suffix (per the workflow contract §CLI surface).
-
-`plan amend` extends the canonical `with_state::<Plan, _, _>(...)` operation shape with the three `--sources` flag families: `--sources <binding>...` (wholesale replace), `--add-source <binding>` (repeatable), `--remove-source <key>` (repeatable). The operation applies `--add-source` / `--remove-source` *after* the wholesale `Plan::amend(name, patch)` call so wholesale replacement plus targeted edits compose cleanly in a single invocation. The `--divergence` flag accepts only `likely | accepted | rejected` from the wire and emits a `plan.amend.divergence` journal event when (and only when) the field flips. `emery plan amend --proposal <digest>` is a separate arm: it applies a retained amendment at `planning/proposals/<digest>.yaml` (journals `plan.amend.applied`) and cannot combine with entry-edit flags.
-
 ## Gotcha — `emery init` and the version floor
 
-`emery init` bypasses the `emery` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a route or operation site.
+`emery init` bypasses the `emery` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `RequestContext::load` (over `engine::project::Project::load`). Don't reimplement the floor check at a route or operation site.

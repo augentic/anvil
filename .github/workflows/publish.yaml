@@ -31,8 +31,21 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
+  # The eval release gate (CONSTITUTION invariant 6) guards the publish
+  # tip too: a green scorecard must name the sha being published, so
+  # backports and patch lines re-earn the record before artifacts cut.
+  scorecard:
+    if: ${{ startsWith(github.ref_name, 'release-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify the green scorecard names this tip
+        run: scripts/scorecard-gate.sh "$GITHUB_SHA"
+
   binaries:
-    needs: [ci]
+    needs: [ci, scorecard]
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -56,6 +69,27 @@ jobs:
       - name: Cargo version
         id: cargo
         uses: augentic/.github/.github/actions/cargo-version@main
+
+      - name: Install wkg
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wkg
+
+      # First-party source components ship embedded in the binary as
+      # default registry entries (ADR-0002 §2): pull each published
+      # component at its exact pin from scripts/first-party.txt and
+      # stage the directory for the launcher's build-time embed.
+      - name: Stage first-party components
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p first-party
+          while read -r name version; do
+            case "$name" in ''|'#'*) continue ;; esac
+            wkg oci pull "ghcr.io/augentic/emery-adapters/${name}:${version}" \
+              -o "first-party/${name}.wasm"
+          done < scripts/first-party.txt
+          echo "EMERY_EMBED_DIR=$PWD/first-party" >> "$GITHUB_ENV"
 
       - name: Build
         shell: bash

@@ -5,12 +5,12 @@
 //! router (paths from the route inventory, flags from the clap help),
 //! and every `/emery:<skill>` mention against the shipped skill tree.
 
+mod support;
+
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use native::{DynModel, Provider, ReferenceMode};
-use omnia_guest::api::invoke::Invoker;
-use omnia_testkit::model::Harness;
+use support::Inert;
 
 /// Global flags peeled or handled ahead of the verb grammar — they
 /// never appear in a route's own `--help`.
@@ -22,39 +22,19 @@ const BUILTIN_PATHS: &[&[&str]] = &[&["completions"]];
 /// The ultrathin wrapper contract: each skill invokes exactly one CLI
 /// verb, so a flag mentioned on a slash command validates against that
 /// verb's grammar.
-const SKILL_VERBS: &[(&str, &[&str])] = &[
-    ("init", &["init"]),
-    ("plan", &["plan", "author"]),
-    ("refine", &["plan", "refine"]),
-    ("execute", &["plan", "execute"]),
-    ("status", &["plan", "status"]),
-    ("finalize", &["plan", "archive"]),
-    ("system-survey", &["system", "survey"]),
-    ("system-plan", &["system", "plan"]),
-    ("system-review", &["system", "review"]),
-];
+const SKILL_VERBS: &[(&str, &[&str])] = &[("init", &["init"])];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")
 }
 
-fn router() -> omnia_guest::api::command::Router<Provider, transport::command::Globals> {
-    let locations = project::handler::Locations::explicit(
-        PathBuf::from("store"),
-        project::handler::CachePlacement::Parent(PathBuf::from("project-cache")),
-    );
-    let provider = Provider::new(
-        project::handler::ExecutionPaths::new(".", locations),
-        DynModel::new(Harness::answering(Vec::<String>::new())),
-        mock::catalog(),
-        ReferenceMode::Offline,
-    );
-    transport::command::router(Invoker::new("emery", provider)).expect("router")
+fn router() -> omnia_guest::api::command::Router<Inert, transport::command::Globals> {
+    support::router(".")
 }
 
 /// Every full route path plus every namespace prefix, kebab-joined.
 fn known_paths(
-    router: &omnia_guest::api::command::Router<Provider, transport::command::Globals>,
+    router: &omnia_guest::api::command::Router<Inert, transport::command::Globals>,
 ) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
     let mut full: BTreeSet<Vec<String>> = BTreeSet::new();
     let mut prefixes: BTreeSet<Vec<String>> = BTreeSet::new();
@@ -188,7 +168,7 @@ fn flags_of(text: &str) -> Vec<String> {
 }
 
 async fn assert_flags(
-    router: &omnia_guest::api::command::Router<Provider, transport::command::Globals>,
+    router: &omnia_guest::api::command::Router<Inert, transport::command::Globals>,
     path: &[String], text: &str,
 ) {
     let mut help: Option<String> = None;

@@ -32,30 +32,6 @@ impl From<crate::seam::SourceMetadata> for AdapterMetadata {
     }
 }
 
-impl From<crate::seam::Lead> for Lead {
-    fn from(lead: crate::seam::Lead) -> Self {
-        Self {
-            lead: lead.lead,
-            synopsis: lead.synopsis,
-            topics: lead.topics,
-            parent: lead.parent,
-            focus: lead.focus,
-        }
-    }
-}
-
-impl From<Lead> for crate::seam::Lead {
-    fn from(lead: Lead) -> Self {
-        Self {
-            lead: lead.lead,
-            synopsis: lead.synopsis,
-            topics: lead.topics,
-            parent: lead.parent,
-            focus: lead.focus,
-        }
-    }
-}
-
 impl From<crate::seam::SourceWorkspace> for Workspace {
     fn from(view: crate::seam::SourceWorkspace) -> Self {
         Self {
@@ -97,7 +73,6 @@ impl From<crate::seam::SourceInput> for Input {
         Self {
             key: input.key,
             content: input.content.into(),
-            focus: input.focus.map(Into::into),
         }
     }
 }
@@ -107,25 +82,6 @@ impl From<Input> for crate::seam::SourceInput {
         Self {
             key: input.key,
             content: input.content.into(),
-            focus: input.focus.map(Into::into),
-        }
-    }
-}
-
-impl From<crate::seam::SurveyResult> for SurveyResult {
-    fn from(result: crate::seam::SurveyResult) -> Self {
-        Self {
-            leads: result.leads.into_iter().map(Into::into).collect(),
-            children: result.children.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<SurveyResult> for crate::seam::SurveyResult {
-    fn from(result: SurveyResult) -> Self {
-        Self {
-            leads: result.leads.into_iter().map(Into::into).collect(),
-            children: result.children.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -214,17 +170,6 @@ pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
 
 /// # Errors
 ///
-/// As the implementor's [`survey`](crate::Source::survey).
-pub async fn dispatch_survey<A: crate::Source>(
-    id: AdapterId, input: Input,
-) -> Result<SurveyResult, Error> {
-    let input = crate::seam::SourceInput::from(input);
-    let ctx = source_ctx(&id, &input);
-    A::survey(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
-}
-
-/// # Errors
-///
 /// As the implementor's [`extract`](crate::Source::extract).
 pub async fn dispatch_extract<A: crate::Source>(
     id: AdapterId, input: Input,
@@ -259,13 +204,6 @@ macro_rules! source {
                 _id: $crate::source::AdapterId,
             ) -> $crate::source::AdapterMetadata {
                 $crate::source::dispatch_metadata::<$adapter>()
-            }
-
-            async fn survey(
-                id: $crate::source::AdapterId,
-                input: $crate::source::Input,
-            ) -> Result<$crate::source::SurveyResult, $crate::source::Error> {
-                $crate::source::dispatch_survey::<$adapter>(id, input).await
             }
 
             async fn extract(

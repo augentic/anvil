@@ -6,8 +6,8 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use clap::ValueEnum;
+use engine::handler::Render;
 use error::Error;
-use project::handler::Render;
 use serde::Serialize;
 
 /// Structured (`json`) or human (`text`) CLI output.

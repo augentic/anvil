@@ -1,10 +1,8 @@
 # `emery:adapter` WIT
 
-This directory owns [`emery.wit`](emery.wit) — the adapter contract alone (the `source` / `target` interfaces and the adapter worlds) — and publishes it as the wasm-pkg package `emery:adapter`. [augentic/emery-adapters](https://github.com/augentic/emery-adapters) consumes it as a vendored copy. The package is self-contained: it imports nothing outside itself, so this directory carries no `deps/`.
+This directory owns [`emery.wit`](emery.wit) — the adapter contract alone (one `source` interface exporting `extract` + `metadata`, and the `source-adapter` world — ADR-0008: survey and the target world are deleted; retrieve them from tag `v1`) — and publishes it as the wasm-pkg package `emery:adapter`. [augentic/emery-adapters](https://github.com/augentic/emery-adapters) consumes it as a vendored copy. The package is self-contained: it imports nothing outside itself, so this directory carries no `deps/`.
 
-The engine guest's `workflow` world lives in its own host-only package, `emery:engine@0.1.0`, owned by [`crates/guest/wit/`](../crates/guest/wit/) — the crate that binds it. Its `deps/` symlinks resolve this package plus the host capability packages. Host-seam changes (capability imports on the `workflow` world) therefore never move `emery:adapter` or the adapter release train; adapters never see the engine package.
-
-Host-only capabilities live in their capability crates (e.g. `emery:exec-mode` in [`crates/wasi-exec/wit/`](../crates/wasi-exec/wit/)), resolved into the engine package through `crates/guest/wit/deps/` symlinks; adapters never see those packages either.
+The engine guest's `workflow` world lives in its own host-only package, `emery:engine@0.1.0`, owned by [`crates/guest/wit/`](../crates/guest/wit/) — the crate that binds it. Its `deps/` symlinks resolve this package. Host-seam changes (capability imports on the `workflow` world) therefore never move `emery:adapter` or the adapter release train; adapters never see the engine package.
 
 ## Publishing
 

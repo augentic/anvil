@@ -10,22 +10,14 @@ mod bindings {
         world: "workflow",
         path: "wit",
         generate_all,
-        // The exec-mode legs are sync-lowered: the kernel's `ExecMode`
-        // seam is synchronous, and each leg is one quick host
-        // stat/chmod pass.
-        async: [
-            "-import:emery:exec-mode/exec-mode@0.1.0#read",
-            "-import:emery:exec-mode/exec-mode@0.1.0#apply",
-        ],
     });
 }
 
 mod provider;
-mod workspace;
 
 pub use provider::Provider;
 /// Re-exported for the [`export!`] macro expansion.
-pub use {omnia_guest, omnia_wasi_http, omnia_wasi_otel, slice, transport, wasip3};
+pub use {omnia_guest, omnia_wasi_http, omnia_wasi_otel, transport, wasip3};
 
 /// Export the engine guest from the invoking cdylib.
 ///
@@ -78,22 +70,9 @@ macro_rules! export {
                 $crate::wasip3::http::types::Response,
                 $crate::wasip3::http::types::ErrorCode,
             > {
-                // The engine's own MCP reference shelf (RFC-96 D9):
-                // the deployment's `http_paths` hook routes the shelf
-                // path back onto this guest.
-                let shelf = request
-                    .get_path_with_query()
-                    .is_some_and(|path| {
-                        path.split('?').next() == Some($crate::slice::shelf::PATH)
-                    });
-                if shelf {
-                    let router =
-                        $crate::omnia_guest::mcp::router($crate::slice::shelf::Shelf);
-                    return $crate::omnia_wasi_http::serve(router, request).await;
-                }
-                // C3: the unauthenticated listener serves nothing else
-                // — mutating ingress stays disabled until an operator
-                // ingress is designed (target-architecture §7).
+                // C3: every path answers the typed refusal until an
+                // authenticated operator ingress is designed
+                // (target-architecture §7).
                 $crate::omnia_wasi_http::serve(
                     $crate::transport::http::refusal(),
                     request,

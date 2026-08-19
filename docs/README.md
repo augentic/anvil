@@ -33,8 +33,6 @@ Output lands in `docs/book/html/` (the CI deploy step points Cloudflare Pages at
 - Project-owned chrome overrides: [`theme/css/chrome.css`](theme/css/chrome.css) (banner block at file bottom), [`theme/head.hbs`](theme/head.hbs).
 - Cross-cutting component CSS: [`assets/theme/emery-docs.css`](assets/theme/emery-docs.css).
 - Interactive authority widget: [`assets/theme/authority-widget.js`](assets/theme/authority-widget.js).
-- Copy-paste HTML scaffolds: [`authoring-snippets/`](authoring-snippets/README.md) (also listed in `SUMMARY.md` for the link gate).
-- SVG diagrams: `assets/diagrams/` — see `_STYLE.md` in that folder.
 
 ### Re-vendoring the theme after an mdBook upgrade
 
@@ -44,6 +42,6 @@ Output lands in `docs/book/html/` (the CI deploy step points Cloudflare Pages at
   - Augentic brand + breadcrumb in [`theme/index.hbs`](theme/index.hbs) (`menu-title`, `spec-footer`).
   - Banner block at the bottom of [`theme/css/chrome.css`](theme/css/chrome.css).
   - [`theme/head.hbs`](theme/head.hbs) and system-font override in [`theme/fonts/fonts.css`](theme/fonts/fonts.css).
-4. Run `mdbook build docs` and spot-check light + navy themes on [`index.md`](index.md) and [`explanation/concepts.md`](explanation/concepts.md).
+4. Run `mdbook build docs` and spot-check light + navy themes on [`index.md`](index.md).
 
 A first-run failure usually points at a missing tool — install the prerequisites above.
