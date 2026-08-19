@@ -156,8 +156,8 @@ where
 }
 
 /// Evidence returned by extract — mirrors the WIT `source.evidence`
-/// record (the canonical Evidence shape minus the envelope `lead` key:
-/// the extract call names the lead).
+/// record: the document-level authority class plus the extracted
+/// claim set.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Evidence {

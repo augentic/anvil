@@ -31,8 +31,21 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
+  # The eval release gate (CONSTITUTION invariant 6) guards the publish
+  # tip too: a green scorecard must name the sha being published, so
+  # backports and patch lines re-earn the record before artifacts cut.
+  scorecard:
+    if: ${{ startsWith(github.ref_name, 'release-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify the green scorecard names this tip
+        run: scripts/scorecard-gate.sh "$GITHUB_SHA"
+
   binaries:
-    needs: [ci]
+    needs: [ci, scorecard]
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60

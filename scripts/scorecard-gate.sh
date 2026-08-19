@@ -15,7 +15,11 @@ dir="rfcs/scorecards"
 
 shopt -s nullglob
 for card in "$dir"/*.md; do
+  # `catalog: complete` re-checks what the runner already enforces
+  # (a filtered run is never green): a hand-edited partial card
+  # cannot pass the gate.
   if grep -qx -- "- status: green" "$card" \
+    && grep -qx -- "- catalog: complete" "$card" \
     && grep -qx -- "- emery-sha: $sha" "$card"; then
     echo "release gate: $card is green and names $sha"
     exit 0

@@ -274,6 +274,14 @@ fn check_rows(parsed: &ast::Spec, rows: &[Row]) -> Result<(), Error> {
         if requirement.id != row.id {
             return Err(mismatch(format!("expected `{}`, found `{}`", row.id, requirement.id)));
         }
+        // The heading names the reconciliation subject — the re-mine
+        // diff's section key (ADR-0010) — so a rewrite is a mismatch.
+        if requirement.name != row.subject {
+            return Err(mismatch(format!(
+                "`{}` must head its subject `{}`, found `{}`",
+                row.id, row.subject, requirement.name
+            )));
+        }
         if requirement.status != row.status || requirement.tag != row.tag {
             return Err(mismatch(format!(
                 "`{}` must carry `Status: {}` and its mirroring tag",

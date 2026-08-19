@@ -191,3 +191,20 @@ async fn hidden_row_fails() {
         .expect_err("an answer hiding a conflict or gap is refused");
     assert!(err.to_string().contains("spec-provenance-mismatch"), "{err}");
 }
+
+#[tokio::test]
+async fn renamed_heading_fails() {
+    let sets = journey_sets();
+    let rows = reconcile(&sets);
+
+    // Headings are the re-mine diff's section key (ADR-0010): a model
+    // answer that retitles a subject is refused, not diffed around.
+    let mut retitled = rows.clone();
+    retitled[0].subject = "login.journey".to_string();
+    let model = Harness::answering(vec![spec_answer(&retitled)]);
+    let err = synthesise(&model, &sets, &rows)
+        .await
+        .expect_err("an answer rewriting a subject heading is refused");
+    assert!(err.to_string().contains("spec-provenance-mismatch"), "{err}");
+    assert!(err.to_string().contains("login.flow"), "{err}");
+}

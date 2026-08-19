@@ -24,7 +24,7 @@ Releases live on durable `release-X.Y.Z` branches, the same shape as Omnia's sha
 
 1. **Cut** — dispatch **Create Release** on `main`. A preflight `scorecard` job refuses the cut unless a committed green scorecard under [`rfcs/scorecards/`](../rfcs/scorecards/) names the release-tip sha (CONSTITUTION invariant 6; the live graded eval stays operator-invoked in `emery-adapters`). Then it pushes `release-X.Y.Z` at the current tip and opens a PR that bumps `main` to the next unreleased version and resets `RELEASES.md`. Merge that PR; edit release notes on the release branch, not on `main`.
 2. **Stabilize** — on the release branch only: check the omnia pins (`cargo build --locked` must resolve on a clean runner — re-pin any local-path `[patch.crates-io]` entry to a pushed rev) and backport fixes from `main` (fixes land on `main` first when applicable). See [the developer loop](contributing/dev-loop.md) for the local rungs.
-3. **Publish** — dispatch **Publish Release** on the release branch. Omnia shape: shared CI, then the `binaries` matrix builds the platform archives as workflow artifacts, then the shared publish workflow (dates `RELEASES.md`, pushes `vX.Y.Z`, creates the GitHub Release with notes and those archives attached), then the shared `crates.yaml` job publishes the `emery-*` workspace crates to crates.io. Then publish the wasm-pkg packages manually (below).
+3. **Publish** — dispatch **Publish Release** on the release branch. The same `scorecard` preflight guards this tip: backports and patch bumps re-earn a green scorecard naming the branch tip before artifacts cut. Omnia shape: shared CI, then the `binaries` matrix builds the platform archives as workflow artifacts, then the shared publish workflow (dates `RELEASES.md`, pushes `vX.Y.Z`, creates the GitHub Release with notes and those archives attached), then the shared `crates.yaml` job publishes the `emery-*` workspace crates to crates.io. Then publish the wasm-pkg packages manually (below).
 4. **Patch** — bugfix and security only, on the same `release-X.Y.Z` branch: land the fix on `main` when applicable, backport, dispatch **Create Patch** on the branch (bumps `X.Y.Z → X.Y.Z+1` and preps `RELEASES.md`), then dispatch **Publish Release** on the same branch. Never invent a new line from a floating tag; never merge to `main` as the publish trigger.
 
 Pre-1.0 SemVer follows Omnia's convention: **minor may be breaking**; patches remain compatible within the line. The hard major-cut / re-init product policy is called out in release notes, never smuggled into a patch.
@@ -51,9 +51,9 @@ Keep the table short — it is a statement of what was tested together, not a ve
 
 ## Jobs that run
 
-Publish composes four jobs (plus the release-branch skip gate):
+Publish composes five jobs (plus the release-branch skip gate):
 
-1. **`ci`.** Shared `augentic/.github` CI over the release branch.
+1. **`ci`.** Shared `augentic/.github` CI over the release branch, alongside the **`scorecard`** preflight (`scripts/scorecard-gate.sh` over the committed record in `rfcs/scorecards/`).
 2. **`binaries`.** Local matrix job in `publish.yaml`: each leg pulls the first-party components pinned in `scripts/first-party.txt` from GHCR into `EMERY_EMBED_DIR` (the launcher's build-time embedded registry), then builds and packages its archive, uploading it as a workflow artifact (`archive-<target>`).
 3. **`publish`.** Shared `augentic/.github` publish: date `RELEASES.md`, push `vX.Y.Z`, create the GitHub Release with notes and the `archive-*` workflow artifacts attached.
 4. **`crates`.** Shared `augentic/.github` `crates.yaml`: `cargo publish --workspace --locked` over the publishable `emery-*` packages (needs the org `CARGO_REGISTRY_TOKEN`). Until the omnia stack the workspace patches is itself on crates.io, this job fails on dependency resolution — expected, and no other artifact depends on it.
