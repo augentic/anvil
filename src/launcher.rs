@@ -6,8 +6,8 @@ use std::sync::OnceLock;
 /// Guest preopen name of the per-project cache.
 pub use engine::handler::GUEST_CACHE_MOUNT as CACHE_MOUNT;
 use engine::handler::{ExecutionPaths, Locations, PROJECT_ROOT_ENV};
+use engine::resolve::RoutedId;
 use engine::resolve::resolver::locate;
-use engine::resolve::{AdapterSelector, FIRST_PARTY_NAMESPACE, RoutedId};
 use error::Error;
 
 // Empty unless `EMERY_EMBED_DIR` stages components.
@@ -21,8 +21,8 @@ include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 pub fn assemble(invoked_dir: &Path, locations: Locations) -> ExecutionPaths {
     let root = invoked_dir
         .ancestors()
-        .find(|candidate| engine::project::Project::path(candidate).try_exists().unwrap_or(false))
-        .map_or_else(|| invoked_dir.to_path_buf(), Path::to_path_buf);
+        .find(|candidate| engine::project::Project::path(candidate).is_file())
+        .unwrap_or(invoked_dir);
     let paths = ExecutionPaths::new(root, locations);
     // Cache mount only — the store is host-owned and has no guest preopen.
     drop(std::fs::create_dir_all(paths.cache_dir()));
@@ -88,15 +88,14 @@ fn current() -> &'static ExecutionPaths {
 /// Map `/mcp/<axis>/<name>` to a guest id; anything else is `None`.
 #[must_use]
 pub fn mcp_route(path: &str) -> Option<omnia::GuestId> {
-    let rest = path.strip_prefix("/mcp/")?;
-    let (axis, rest) = rest.split_once('/')?;
-    let adapter = rest.split('/').next().filter(|segment| !segment.is_empty())?;
+    let (axis, rest) = path.strip_prefix("/mcp/")?.split_once('/')?;
+    let adapter = rest.split('/').next()?;
     let routed = RoutedId::parse(&format!("{axis}:{adapter}")).ok()?;
     Some(omnia::GuestId::from(routed.to_string()))
 }
 
 /// Local-only adapter resolution over one captured layout.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Resolver {
     paths: ExecutionPaths,
 }
@@ -117,7 +116,8 @@ impl Resolver {
         let routed = RoutedId::parse(id)?;
         let cache = self.paths.locations().component(self.paths.project_root(), &routed.name);
         if cache.is_file() {
-            log_use(&routed, "cache seed");
+            // Project files record no adapter versions — this is the audit trail.
+            eprintln!("emery: using {routed} (cache seed)");
             return Ok(std::fs::read(cache)?);
         }
         if routed.version.is_none()
@@ -125,21 +125,11 @@ impl Resolver {
                 .iter()
                 .find_map(|(entry, bytes)| (*entry == routed.name).then(|| bytes.to_vec()))
         {
-            log_use(&routed, "embedded");
+            eprintln!("emery: using {routed} (embedded)");
             return Ok(bytes);
         }
-        let selector = match &routed.version {
-            Some(version) => AdapterSelector::Package {
-                namespace: FIRST_PARTY_NAMESPACE.to_string(),
-                name: routed.name.clone(),
-                version: version.clone(),
-            },
-            None => AdapterSelector::Bare {
-                name: routed.name.clone(),
-            },
-        };
-        let location = locate(routed.axis, &selector, &routed.name, &self.paths)?;
-        log_use(&routed, "store");
+        let location = locate(routed.axis, &routed.name, routed.version.as_ref(), &self.paths)?;
+        eprintln!("emery: using {routed} (store)");
         Ok(std::fs::read(location.path())?)
     }
 }
@@ -148,15 +138,10 @@ impl omnia::GuestResolver for Resolver {
     fn resolve(
         &self, guest: omnia::GuestId, _expected_export: String,
     ) -> omnia::FutureResult<Option<omnia::GuestArtifact>> {
-        let resolver = self.clone();
-        Box::pin(async move {
-            let bytes = resolver.resolve_component(guest.as_str()).map_err(anyhow::Error::new)?;
-            Ok(Some(omnia::GuestArtifact::wasm(bytes)))
-        })
+        let artifact = self
+            .resolve_component(guest.as_str())
+            .map(|bytes| Some(omnia::GuestArtifact::wasm(bytes)))
+            .map_err(anyhow::Error::new);
+        Box::pin(async move { artifact })
     }
-}
-
-/// Project files record no adapter versions — this is the audit trail.
-fn log_use(routed: &RoutedId, origin: &str) {
-    eprintln!("emery {}: using {routed} ({origin})", env!("CARGO_PKG_VERSION"));
 }

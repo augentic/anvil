@@ -15,4 +15,4 @@ pub use core::{Axis, Origin, ResolvedSource, SourceAdapter};
 pub use ensure::ComponentMeta;
 pub use resolver::Resolver;
 pub use routed::RoutedId;
-pub use selector::{AdapterSelector, FIRST_PARTY_NAMESPACE};
+pub use selector::AdapterSelector;
