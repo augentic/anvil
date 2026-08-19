@@ -1,7 +1,8 @@
 //! Builds the wasm32 engine component with a child cargo build and
-//! embeds it at `$OUT_DIR/emery.bin` — AOT-serialized in release,
-//! raw wasm (JIT at startup) in debug. No placeholder fallback.
+//! embeds it at `$OUT_DIR/emery.bin` (AOT-serialized in release, raw
+//! in debug), and generates the embedded first-party registry.
 
+use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -14,11 +15,13 @@ const TARGET_HINT: &str = "the wasm32 engine could not be built; install the tar
 
 fn main() {
     // The wasm32 build runs this script too (the engine guest cdylib
-    // embeds nothing); returning here is the recursion guard for the
-    // child build below.
+    // embeds nothing; the `launcher` module is cfg'd out); returning
+    // here is the recursion guard for the child build below.
     if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
         return;
     }
+
+    embed_registry();
 
     let engine = build_engine();
 
@@ -36,6 +39,77 @@ fn main() {
             panic!("copying {} to {}: {err}", engine.display(), out.display())
         });
     }
+}
+
+/// Generate the embedded first-party registry (ADR-0002 §2) at
+/// `$OUT_DIR/embedded.rs` (included by `src/launcher/resolver.rs`)
+/// from `EMERY_EMBED_DIR` — built `<name>.wasm` components staged by
+/// the release build (first-party adapters) and by the journey rung
+/// (the mock component). Unset, missing, or empty, the table is empty
+/// and resolution stays local (cache seed, store).
+fn embed_registry() {
+    println!("cargo:rerun-if-env-changed=EMERY_EMBED_DIR");
+    let out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
+    let mut rows = String::new();
+    for (name, path) in components() {
+        #[expect(
+            clippy::unnecessary_debug_formatting,
+            reason = "Debug formatting emits the quoted, escaped path literal include_bytes! needs"
+        )]
+        writeln!(rows, "    (\"{name}\", include_bytes!({path:?}).as_slice()),")
+            .expect("write to a String");
+    }
+    let table = format!(
+        "/// First-party components embedded in the binary as default\n\
+         /// registry entries (ADR-0002 \u{a7}2), staged from `EMERY_EMBED_DIR`\n\
+         /// at build time.\n\
+         const EMBEDDED: &[(&str, &[u8])] = &[\n{rows}];\n"
+    );
+    std::fs::write(out.join("embedded.rs"), table).expect("write the embedded registry table");
+}
+
+/// Every `<name>.wasm` under `EMERY_EMBED_DIR`, sorted by the adapter
+/// name its file stem derives (the `emery_` artifact prefix stripped,
+/// underscores folded to kebab dashes — mirroring
+/// `engine::resolve::name_from_component`).
+fn components() -> Vec<(String, PathBuf)> {
+    let Some(dir) = std::env::var_os("EMERY_EMBED_DIR") else {
+        return Vec::new();
+    };
+    let dir = PathBuf::from(dir);
+    println!("cargo:rerun-if-changed={}", dir.display());
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Vec::new();
+    };
+    let mut components: Vec<(String, PathBuf)> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "wasm"))
+        .filter_map(|path| {
+            let stem = path.file_stem()?.to_str()?;
+            // Cargo also writes `{name}-{hash}.wasm` beside the
+            // example artifact; those must not become registry keys.
+            if fingerprint_stem(stem) {
+                return None;
+            }
+            println!("cargo:rerun-if-changed={}", path.display());
+            let name = stem
+                .strip_prefix("emery_")
+                .or_else(|| stem.strip_prefix("emery-"))
+                .unwrap_or(stem)
+                .replace('_', "-");
+            Some((name, path))
+        })
+        .collect();
+    components.sort();
+    components
+}
+
+/// Cargo's extra `{name}-{16 hex}.wasm` copy beside an example artifact.
+fn fingerprint_stem(stem: &str) -> bool {
+    stem.rsplit_once('-').is_some_and(|(_, suffix)| {
+        suffix.len() == 16 && suffix.bytes().all(|b| b.is_ascii_hexdigit())
+    })
 }
 
 /// Ahead-of-time compile the raw engine component into the serialized

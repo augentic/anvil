@@ -972,14 +972,16 @@ dependencies = [
  "cfg-if",
  "emery-adapter",
  "emery-diagnostics",
+ "emery-engine",
+ "emery-error",
  "emery-guest",
- "emery-launcher",
  "omnia",
  "omnia-cursor",
  "omnia-testkit",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
+ "semver",
  "serde_json",
  "tempfile",
 ]
@@ -1073,19 +1075,6 @@ dependencies = [
  "serde_json",
  "wasip3",
  "wit-bindgen 0.60.0",
-]
-
-[[package]]
-name = "emery-launcher"
-version = "0.38.0"
-dependencies = [
- "anyhow",
- "emery-diagnostics",
- "emery-engine",
- "emery-error",
- "omnia",
- "semver",
- "tempfile",
 ]
 
 [[package]]

@@ -12,8 +12,11 @@ use std::process::Command;
 /// dependencies only: dev-dependencies may legally cycle (test
 /// harnesses reach back down) and carry no layering authority.
 const ALLOWED: &[(&str, &str)] = &[
+    // The root's engine/error edges carry the folded launcher module
+    // (ADR-0011).
+    ("emery", "emery-engine"),
+    ("emery", "emery-error"),
     ("emery", "emery-guest"),
-    ("emery", "emery-launcher"),
     ("emery-artifacts", "emery-diagnostics"),
     ("emery-artifacts", "emery-error"),
     ("emery-engine", "emery-adapter"),
@@ -26,8 +29,6 @@ const ALLOWED: &[(&str, &str)] = &[
     ("emery-guest", "emery-engine"),
     ("emery-guest", "emery-error"),
     ("emery-guest", "emery-transport"),
-    ("emery-launcher", "emery-engine"),
-    ("emery-launcher", "emery-error"),
     ("emery-transport", "emery-adapter"),
     ("emery-transport", "emery-artifacts"),
     ("emery-transport", "emery-diagnostics"),

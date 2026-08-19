@@ -1,6 +1,7 @@
-//! Launcher integration coverage over the public [`launcher::Policy`]
-//! assembly and the guest resolver's typed kernel: anchored mounts,
-//! local-only adapter resolution, and fail-closed store verification.
+//! Launcher integration coverage over the public
+//! [`emery::launcher::Policy`] assembly and the guest resolver's typed
+//! kernel: anchored mounts, local-only adapter resolution, and
+//! fail-closed store verification.
 //!
 //! There is no download path (ADR-0002 deletions): resolution is the
 //! project cache seed, else the embedded first-party registry (empty
@@ -11,8 +12,8 @@
 
 use std::path::PathBuf;
 
+use emery::launcher::{self, Policy, Resolver};
 use engine::handler::{CachePlacement, ExecutionPaths, Locations};
-use launcher::{Policy, Resolver};
 
 /// One sandboxed invocation context: a project directory plus explicit
 /// store and cache roots, all inside one tempdir.

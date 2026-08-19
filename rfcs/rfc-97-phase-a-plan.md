@@ -324,7 +324,7 @@ RFC-97 implementation-requirement bullets (Phase A only) and acceptance criteria
 
 **Work.**
 
-- Place the first-party registry in the deployment-provider layer (`crates/wasi-verification` and/or `crates/launcher`), keyed by `(target name, platform, profile)`.
+- Place the first-party registry in the deployment-provider layer (`crates/wasi-verification` and/or the root `launcher` module, `src/launcher.rs`), keyed by `(target name, platform, profile)`.
 - First-cut Omnia/`core` commands (daemonless, check-only — no source mutation):
 
   | Profile | Command sketch |
