@@ -6,13 +6,14 @@ use std::sync::OnceLock;
 /// Guest preopen name of the per-project cache.
 pub use engine::handler::GUEST_CACHE_MOUNT as CACHE_MOUNT;
 use engine::handler::{ExecutionPaths, Locations, PROJECT_ROOT_ENV};
-use engine::resolve::{AdapterSelector, FIRST_PARTY_NAMESPACE, RoutedId, resolver as locate};
+use engine::resolve::resolver::locate;
+use engine::resolve::{AdapterSelector, FIRST_PARTY_NAMESPACE, RoutedId};
 use error::Error;
 
 // Empty unless `EMERY_EMBED_DIR` stages components.
 include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 
-/// Anchor the project, capture the layout, and create mount directories.
+/// Anchor the project, capture the layout, and create the cache mount.
 ///
 /// Total: an unanchored CWD boots in-place; a failed mkdir surfaces as
 /// the runtime's preopen error so the guest can still render.
@@ -23,10 +24,8 @@ pub fn assemble(invoked_dir: &Path, locations: Locations) -> ExecutionPaths {
         .find(|candidate| engine::project::Project::path(candidate).try_exists().unwrap_or(false))
         .map_or_else(|| invoked_dir.to_path_buf(), Path::to_path_buf);
     let paths = ExecutionPaths::new(root, locations);
-    // Store is host-owned — no guest mount.
-    for dir in [paths.cache_dir(), paths.project_root().to_path_buf()] {
-        drop(std::fs::create_dir_all(dir));
-    }
+    // Cache mount only — the store is host-owned and has no guest preopen.
+    drop(std::fs::create_dir_all(paths.cache_dir()));
     paths
 }
 
@@ -116,44 +115,32 @@ impl Resolver {
     /// A typed miss, a store verify failure, or a malformed routed id.
     pub fn resolve_component(&self, id: &str) -> Result<Vec<u8>, Error> {
         let routed = RoutedId::parse(id)?;
-        // Cache seed wins, pins included.
-        if let Some(bytes) = self.seed(&routed)? {
-            return Ok(bytes);
+        let cache = self.paths.locations().component(self.paths.project_root(), &routed.name);
+        if cache.is_file() {
+            log_use(&routed, "cache seed");
+            return Ok(std::fs::read(cache)?);
         }
-        // Embedded answers bare names only; pins go to the store.
         if routed.version.is_none()
             && let Some(bytes) = EMBEDDED
                 .iter()
                 .find_map(|(entry, bytes)| (*entry == routed.name).then(|| bytes.to_vec()))
         {
-            log_use(&routed, None, "embedded");
+            log_use(&routed, "embedded");
             return Ok(bytes);
         }
-        let selector = match routed.version.clone() {
+        let selector = match &routed.version {
             Some(version) => AdapterSelector::Package {
                 namespace: FIRST_PARTY_NAMESPACE.to_string(),
                 name: routed.name.clone(),
-                version,
+                version: version.clone(),
             },
             None => AdapterSelector::Bare {
                 name: routed.name.clone(),
             },
         };
-        let location = locate::locate(routed.axis, &selector, &routed.name, &self.paths)?;
-        log_use(&routed, routed.version.as_ref(), "store");
+        let location = locate(routed.axis, &selector, &routed.name, &self.paths)?;
+        log_use(&routed, "store");
         Ok(std::fs::read(location.path())?)
-    }
-
-    fn seed(&self, routed: &RoutedId) -> Result<Option<Vec<u8>>, Error> {
-        let name = routed.name.as_str();
-        let bare = AdapterSelector::Bare {
-            name: name.to_string(),
-        };
-        let Ok(location) = locate::locate(routed.axis, &bare, name, &self.paths) else {
-            return Ok(None);
-        };
-        log_use(routed, None, "cache seed");
-        Ok(Some(std::fs::read(location.path())?))
     }
 }
 
@@ -170,10 +157,6 @@ impl omnia::GuestResolver for Resolver {
 }
 
 /// Project files record no adapter versions — this is the audit trail.
-fn log_use(routed: &RoutedId, version: Option<&semver::Version>, origin: &str) {
-    let identity = version.map_or_else(
-        || format!("{}:{}", routed.axis.prefix(), routed.name),
-        |version| format!("{}:{}@{version}", routed.axis.prefix(), routed.name),
-    );
-    eprintln!("emery {}: using {identity} ({origin})", env!("CARGO_PKG_VERSION"));
+fn log_use(routed: &RoutedId, origin: &str) {
+    eprintln!("emery {}: using {routed} ({origin})", env!("CARGO_PKG_VERSION"));
 }
