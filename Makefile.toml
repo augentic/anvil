@@ -103,9 +103,12 @@ cargo build --locked --example runtime
 [tasks.journey]
 workspace = false
 dependencies = ["source", "runtime"]
-command = "cargo"
-args = ["nextest", "run", "-p", "emery", "-E", "binary(=journey)", "--ignore-default-filter"]
-env = { RUSTFLAGS = "-Dwarnings" }
+script_runner = "bash"
+script = '''
+export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
+export RUSTFLAGS="-Dwarnings"
+cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter
+'''
 
 # Coverage brake for unit-test reductions (docs/standards/testing.md).
 # Usage: CRATE=project cargo make cov

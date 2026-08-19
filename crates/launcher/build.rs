@@ -47,6 +47,12 @@ fn components() -> Vec<(String, PathBuf)> {
         .filter(|path| path.extension().is_some_and(|ext| ext == "wasm"))
         .filter_map(|path| {
             let stem = path.file_stem()?.to_str()?;
+            // Cargo also writes `{name}-{hash}.wasm` beside the
+            // example artifact; those must not become registry keys.
+            if fingerprint_stem(stem) {
+                return None;
+            }
+            println!("cargo:rerun-if-changed={}", path.display());
             let name = stem
                 .strip_prefix("emery_")
                 .or_else(|| stem.strip_prefix("emery-"))
@@ -57,4 +63,11 @@ fn components() -> Vec<(String, PathBuf)> {
         .collect();
     components.sort();
     components
+}
+
+/// Cargo's extra `{name}-{16 hex}.wasm` copy beside an example artifact.
+fn fingerprint_stem(stem: &str) -> bool {
+    stem.rsplit_once('-').is_some_and(|(_, suffix)| {
+        suffix.len() == 16 && suffix.bytes().all(|b| b.is_ascii_hexdigit())
+    })
 }

@@ -34,12 +34,13 @@ run = "cargo build --locked --example source --target wasm32-wasip2 --release"
 # into the embedded first-party registry (ADR-0002 §2) so the journey
 # exercises embedded resolution as a permanent rung.
 [tasks.runtime]
-description = "Build the scripted-model host"
+description = "Build the scripted-model runtime"
 depends = ["source"]
-run = '''
-export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
-cargo build --locked --example runtime
-'''
+# Task `env`, not a script `export`: mise runs each `run` line in a
+# fresh shell. The journey compile must see the same dir or cargo
+# rebuilds launcher with an empty registry and relinks this example.
+env = { EMERY_EMBED_DIR = "{{config_root}}/target/wasm32-wasip2/release/examples" }
+run = "cargo build --locked --example runtime"
 
 # The walking-skeleton journey test (target-architecture §8) over the
 # built seam fixture and the journey host — the Phase 3 exit
@@ -48,5 +49,5 @@ cargo build --locked --example runtime
 [tasks.journey]
 description = "Walking-skeleton rung over the component seam"
 depends = ["runtime"]
-env = { RUSTFLAGS = "-Dwarnings" }
+env = { RUSTFLAGS = "-Dwarnings", EMERY_EMBED_DIR = "{{config_root}}/target/wasm32-wasip2/release/examples" }
 run = "cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter"
