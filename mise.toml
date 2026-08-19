@@ -36,9 +36,6 @@ run = "cargo build --locked --example source --target wasm32-wasip2 --release"
 [tasks.runtime]
 description = "Build the scripted-model runtime"
 depends = ["source"]
-# Task `env`, not a script `export`: mise runs each `run` line in a
-# fresh shell. The journey compile must see the same dir or cargo
-# rebuilds launcher with an empty registry and relinks this example.
 env = { EMERY_EMBED_DIR = "{{config_root}}/target/wasm32-wasip2/release/examples" }
 run = "cargo build --locked --example runtime"
 
