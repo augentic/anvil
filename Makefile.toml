@@ -77,24 +77,23 @@ args = ["build", "docs"]
 
 # The journey-test seam fixture (remediation Phase 2): the mock source
 # adapter built as a wasm component, `target/wasm32-wasip2/release/
-# mock_component.wasm` — the recipe ported from the archived wasm rung
-# (tag `v1`, emery-adapters `[tasks.release]`).
-[tasks.mock-component]
+# examples/source.wasm`.
+[tasks.source]
 workspace = false
 command = "cargo"
-args = ["build", "--locked", "-p", "emery-mock-component", "--target", "wasm32-wasip2", "--release"]
+args = ["build", "--locked", "--example", "source", "--target", "wasm32-wasip2", "--release"]
 
 # The dev-only journey host (ADR-0009 §5): the shipped runtime shape
 # with a scripted `WasiModel` backend, embedding the engine guest
 # built from the same sources. `EMERY_EMBED_DIR` stages the built mock
 # component into the embedded first-party registry (ADR-0002 §2) so
 # the journey exercises embedded resolution as a permanent rung.
-[tasks.journey-host]
+[tasks.runtime]
 workspace = false
 script_runner = "bash"
 script = '''
-export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release"
-cargo build --locked -p emery-journey-host
+export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
+cargo build --locked --example runtime
 '''
 
 # The walking-skeleton journey test (target-architecture §8) over the
@@ -103,10 +102,13 @@ cargo build --locked -p emery-journey-host
 # `test` (excluded there by the nextest default-filter).
 [tasks.journey]
 workspace = false
-dependencies = ["mock-component", "journey-host"]
-command = "cargo"
-args = ["nextest", "run", "-p", "emery", "-E", "binary(=journey)", "--ignore-default-filter"]
-env = { RUSTFLAGS = "-Dwarnings" }
+dependencies = ["source", "runtime"]
+script_runner = "bash"
+script = '''
+export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
+export RUSTFLAGS="-Dwarnings"
+cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter
+'''
 
 # Coverage brake for unit-test reductions (docs/standards/testing.md).
 # Usage: CRATE=project cargo make cov

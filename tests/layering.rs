@@ -26,14 +26,8 @@ const ALLOWED: &[(&str, &str)] = &[
     ("emery-guest", "emery-engine"),
     ("emery-guest", "emery-error"),
     ("emery-guest", "emery-transport"),
-    // Dev-only journey harness (ADR-0009 §5): the shipped runtime
-    // shape over the launcher's deployment policy.
-    ("emery-journey-host", "emery-launcher"),
     ("emery-launcher", "emery-engine"),
     ("emery-launcher", "emery-error"),
-    ("emery-mock", "emery-adapter"),
-    ("emery-mock-component", "emery-adapter"),
-    ("emery-mock-component", "emery-mock"),
     ("emery-transport", "emery-adapter"),
     ("emery-transport", "emery-artifacts"),
     ("emery-transport", "emery-diagnostics"),

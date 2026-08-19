@@ -17,7 +17,7 @@ Nothing on this rung compiles Wasmtime. An ordinary change should never need to 
 
 ## `cargo make journey` — the seam rung
 
-Builds the mock source components (`cargo make mock-component`) and the dev-only journey host, then drives the walking-skeleton journey (`tests/journey.rs`) across the real component seam: `init` over local components, `specify` end-to-end with a scripted model, the generation-pointer swap. This is the one integration rung (ADR-0002); run it when a change touches dispatch, admission, the WIT seam, or the `init`/`specify` behavior itself.
+Builds the mock source component (`cargo make source`) and the runtime example, then drives the walking-skeleton journey (`tests/journey.rs`) across the real component seam: `init` over local components, `specify` end-to-end with a scripted model, the generation-pointer swap. This is the one integration rung (ADR-0002); run it when a change touches dispatch, admission, the WIT seam, or the `init`/`specify` behavior itself.
 
 ## What CI runs
 

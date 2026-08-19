@@ -4,8 +4,7 @@
 //!
 //! Excluded from the green per-push gate by the nextest
 //! `default-filter`; run via `cargo make journey` (its own required
-//! CI job). It drives the dev-only journey host (`crates/
-//! journey-host`) — the shipped runtime shape with the same guest
+//! CI job). It drives the runtime example (`examples/runtime.rs`) — the shipped runtime shape with the same guest
 //! bytes, mounts, and resolver, substituting only the `WasiModel`
 //! host capability with a scripted backend answering from the
 //! committed `tests/journey-script/` fixtures (ADR-0009 §5; ADR-0002
@@ -32,7 +31,7 @@ struct Home {
 impl Home {
     /// Stage the built mock component under each `name` inside a
     /// fresh project directory — no init yet. Adapter names derive
-    /// from the file stems, which select the `mock::behaviour`
+    /// from the file stems, which select the source example's extract
     /// profiles. Staged inside the project: the launcher mounts only
     /// the project root and the cache, so the guest cannot read a
     /// component outside them.
@@ -50,7 +49,7 @@ impl Home {
     }
 
     /// Answer synthesis from the minimal-profile fixture instead —
-    /// the claim set a single `mock-component` binding produces.
+    /// the claim set a single `source` binding produces.
     const fn minimal_script(mut self) -> Self {
         self.script = "tests/journey-script-minimal";
         self
@@ -364,7 +363,7 @@ fn adr_0010_remine_diff() {
 fn adr_0002_embedded() {
     let home = Home::stage(&[]).minimal_script();
 
-    let init = home.emery(&["init", "mock-component"]);
+    let init = home.emery(&["init", "source"]);
     assert!(
         init.status.success(),
         "a bare init over the embedded registry must scaffold:\n{}",
@@ -375,7 +374,7 @@ fn adr_0002_embedded() {
     let stderr = String::from_utf8_lossy(&specify.stderr);
     assert!(specify.status.success(), "specify over the embedded component:\n{stderr}");
     assert!(
-        stderr.contains("using source:mock-component (embedded)"),
+        stderr.contains("using source:source (embedded)"),
         "resolution names the embedded origin: {stderr}"
     );
     assert!(find(&home.project(), "spec.md").is_some(), "the embedded run commits a spec set");
@@ -393,13 +392,13 @@ fn cc_17_exact_pin_admission() {
     let home = Home::stage(&[]).minimal_script();
     let store = home.temp.path().join("emery-home/store");
     fs::create_dir_all(&store).expect("mkdir store");
-    let entry = store.join("mock-component@1.2.3.wasm");
+    let entry = store.join("source@1.2.3.wasm");
     fs::copy(component(), &entry).expect("install the component into the store");
     let digest = diagnostics::cache::file_content_digest(&entry);
-    diagnostics::cache::write_store_meta(&store.join("mock-component@1.2.3.meta"), &digest, None)
+    diagnostics::cache::write_store_meta(&store.join("source@1.2.3.meta"), &digest, None)
         .expect("write the digest sidecar");
 
-    let init = home.emery(&["init", "mock-component@1.2.3"]);
+    let init = home.emery(&["init", "source@1.2.3"]);
     assert!(
         init.status.success(),
         "an exact-pin init over the store must scaffold:\n{}",
@@ -410,7 +409,7 @@ fn cc_17_exact_pin_admission() {
     let stderr = String::from_utf8_lossy(&specify.stderr);
     assert!(specify.status.success(), "specify over the store-admitted component:\n{stderr}");
     assert!(
-        stderr.contains("using source:mock-component@1.2.3 (store)"),
+        stderr.contains("using source:source@1.2.3 (store)"),
         "the pin resolves the verified store entry, not the embedded default: {stderr}"
     );
     assert!(find(&home.project(), "spec.md").is_some(), "the admitted run commits a spec set");
@@ -418,10 +417,10 @@ fn cc_17_exact_pin_admission() {
 
 /// The built seam fixture, honouring a redirected target directory.
 fn component() -> PathBuf {
-    let built = target_dir().join("wasm32-wasip2/release/mock_component.wasm");
+    let built = target_dir().join("wasm32-wasip2/release/examples/source.wasm");
     assert!(
         built.is_file(),
-        "seam fixture missing at {}; run `cargo make journey` (or `cargo make mock-component`)",
+        "seam fixture missing at {}; run `cargo make journey` (or `cargo make source`)",
         built.display()
     );
     built
@@ -430,7 +429,7 @@ fn component() -> PathBuf {
 /// The built journey host (ADR-0009 §5), honouring a redirected
 /// target directory.
 fn harness() -> PathBuf {
-    let built = target_dir().join("debug/emery-journey-host");
+    let built = target_dir().join("debug/examples/runtime");
     assert!(
         built.is_file(),
         "journey host missing at {}; run `cargo make journey`",

@@ -20,18 +20,11 @@
 "crates/engine" = 2750
 "crates/error" = 267
 "crates/guest" = 220
-# Dev-only journey harness (ADR-0009 §5): one runtime! plus the
-# scripted model backend.
-"crates/journey-host" = 150
 # Post-T10 ceilings (ADR-0009 §6): the native provider and the
 # launcher distribution machinery are deleted; the launcher is
-# local-only resolution and the mock is the wasm-free adapter core.
-# Launcher +10 for the embedded first-party registry (ADR-0002 §2);
-# mock +25 for the workspace-override lever the re-mine diff journey
-# reads (ADR-0010).
+# local-only resolution.
+# Launcher +10 for the embedded first-party registry (ADR-0002 §2).
 "crates/launcher" = 285
-"crates/mock" = 240
-"crates/mock-component" = 10
 "crates/prose" = 147
 "crates/transport" = 425
 

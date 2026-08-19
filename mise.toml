@@ -1,0 +1,41 @@
+# Install: https://mise.jdx.dev
+# Run: `mise run <task>` (the root Makefile forwards `make <task>` here)
+#
+# Shared leaf tasks live in `mise/rust.toml` (local include). After that
+# file moves to `augentic/.github`, replace the path below with
+# `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
+
+[task_config]
+includes = ["mise-rust.toml"]
+# includes = ["git::https://github.com/augentic/.github.git//mise/rust.toml?ref=v0.1.0"]
+
+# -------------------------------------
+# Emery-only / policy overrides
+# -------------------------------------
+
+[tasks.links]
+description = "mdbook build docs (linkcheck)"
+run = "mdbook build docs"
+
+[tasks.cov]
+description = "llvm-cov nextest summary for $CRATE"
+run = "cargo llvm-cov nextest -p ${CRATE} --summary-only"
+
+# Skeleton guest
+[tasks.source]
+description = "Build the mock source component (wasm32-wasip2, release)"
+run = "cargo build --locked --example source --target wasm32-wasip2 --release"
+
+# Skeleton runtime
+[tasks.runtime]
+description = "Build the scripted-model runtime"
+depends = ["source"]
+env = { EMERY_EMBED_DIR = "{{config_root}}/target/wasm32-wasip2/release/examples" }
+run = "cargo build --locked --example runtime"
+
+# Walking-skeleton test
+[tasks.journey]
+description = "Walking-skeleton rung over the component seam"
+depends = ["runtime"]
+env = { RUSTFLAGS = "-Dwarnings", EMERY_EMBED_DIR = "{{config_root}}/target/wasm32-wasip2/release/examples" }
+run = "cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter"

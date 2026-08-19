@@ -26,7 +26,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Emery owns scenario content: scripted answers and assertions.
-- `mock::behaviour` (in `crates/mock`) is the only adapter double. Do not add another mock adapter or mock-adapter copy.
+- `examples/source/adapter.rs` is the only adapter double. Do not add another mock adapter or mock-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `emery-adapters`; no Emery gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Consistency (links)
