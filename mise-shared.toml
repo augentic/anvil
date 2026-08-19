@@ -1,0 +1,74 @@
+# Shared Rust workspace tasks. Include format: task names are top-level
+# keys (no `[tasks.]` prefix). Local stand-in for the forthcoming
+# `augentic/.github` remote include — swap the path in `mise.toml` to
+# `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
+#
+# Intersection of emery `mise.toml` and omnia `Makefile.toml`. Repo-
+# specific composition (`check`, `ci`) and policy (emery's read-only
+# `vet`, omnia's ignored `outdated`) stay in the consuming `mise.toml`.
+
+# -------------------------------------
+# CI Checks (emery composition)
+# -------------------------------------
+
+[tasks.check]
+description = "Pre-commit subset: fmt, lint, test, test-docs, doc"
+depends = ["fmt", "lint", "test", "test-docs", "doc"]
+
+[tasks.ci]
+description = "Full local gate: check + links + vet + deny"
+depends = ["check", "vet", "deny"]
+
+[fmt]
+description = "nightly rustfmt --all (writes)"
+run = "cargo +nightly fmt --all"
+
+[lint]
+description = "clippy --workspace under -D warnings"
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+
+[doc]
+description = "cargo doc --no-deps under -Dwarnings"
+env = { RUSTDOCFLAGS = "-Dwarnings" }
+run = "cargo doc --no-deps --workspace --all-features --locked"
+
+[test]
+description = "nextest workspace run under -Dwarnings"
+env = { RUSTFLAGS = "-Dwarnings" }
+run = "cargo nextest run --workspace --all-features --no-tests=pass"
+
+[test-docs]
+description = "cargo test --doc --workspace"
+run = "cargo test --doc --workspace --all-features"
+
+[vet]
+description = "Regenerate cargo-vet inputs, then verify"
+run = '''
+cargo vet regenerate imports
+cargo vet regenerate exemptions
+cargo vet regenerate unpublished
+cargo vet --locked
+'''
+
+[miri]
+description = "nightly miri nextest (advisory; not part of ci)"
+run = '''
+cargo +nightly miri setup
+cargo +nightly miri nextest run --workspace --no-tests=pass
+'''
+
+# -------------------------------------
+# Advisory Checks (omnia composition)
+# -------------------------------------
+
+[audit]
+description = "cargo audit (advisory; not part of ci)"
+run = "cargo audit"
+
+[deny]
+description = "cargo deny --workspace check"
+run = "cargo deny --workspace check"
+
+[tasks.outdated]
+description = "cargo outdated (advisory; not part of ci)"
+run = "cargo outdated --depth 1"
