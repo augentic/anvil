@@ -13,25 +13,28 @@ cfg_if::cfg_if! {
         omnia::runtime!({
             mode: command,
             program: "emery",
-            guests: [{
+            guests: [
+                {
                 id: "emery",
-                // AOT-serialized in release, raw wasm in debug
-                // (adapters always stay raw and JIT at admission).
-                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
-            }],
+                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
+                },
+                {
+                    id: "source:source",
+                    source: include_bytes!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/target/wasm32-wasip2/release/examples/source.wasm",
+                    )),
+                    link: ["emery:adapter/source@0.1.0"],
+                },
+            ],
             mounts: [
                 { name: ".", path: launcher::project_root(), writable: true },
                 { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
             ],
-            link: ["emery:adapter/source@0.1.0"],
-            resolver: launcher::resolver(),
-            // `/mcp/<axis>/<name>` reaches the adapter guest's own
-            // `wasi:http` handler. Declined path or definitive miss →
-            // 404; a fault on a claimed shelf → error-logged 500.
-            http_paths: launcher::mcp_route,
-            // Its local address becomes the guest-visible `HTTP_ADDR`
-            // the adapter SDK derives grant URLs from.
-            http_listener: launcher::http_listener(),
+            // link: ["emery:adapter/source@0.1.0"],
+            // resolver: launcher::resolver(),
+            // http_paths: launcher::mcp_route,
+            // http_listener: launcher::http_listener(),
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,

@@ -974,9 +974,11 @@ dependencies = [
  "emery-diagnostics",
  "emery-engine",
  "emery-error",
- "emery-guest",
+ "emery-transport",
+ "jiff",
  "omnia",
  "omnia-cursor",
+ "omnia-guest",
  "omnia-testkit",
  "omnia-wasi-http",
  "omnia-wasi-model",
@@ -984,6 +986,8 @@ dependencies = [
  "semver",
  "serde_json",
  "tempfile",
+ "wasip3",
+ "wit-bindgen 0.60.0",
 ]
 
 [[package]]
@@ -1058,23 +1062,6 @@ version = "0.38.0"
 dependencies = [
  "serde-saphyr",
  "thiserror 2.0.20",
-]
-
-[[package]]
-name = "emery-guest"
-version = "0.38.0"
-dependencies = [
- "emery-adapter",
- "emery-engine",
- "emery-error",
- "emery-transport",
- "jiff",
- "omnia-guest",
- "omnia-wasi-http",
- "omnia-wasi-otel",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.60.0",
 ]
 
 [[package]]

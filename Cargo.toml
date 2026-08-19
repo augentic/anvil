@@ -5,7 +5,7 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["emery", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
-autoexamples = false
+# autoexamples = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -13,9 +13,11 @@ version.workspace = true
 
 [lib]
 path = "src/lib.rs"
-# The rlib exists solely so the package's own binary, example, and
-# test targets link the native `launcher` module (ADR-0011).
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "emery"
+path = "src/main.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -30,7 +32,18 @@ omnia-wasi-otel.workspace = true
 semver.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-emery-guest.workspace = true
+cfg-if.workspace = true
+emery-adapter.workspace = true
+emery-engine.workspace = true
+emery-error.workspace = true
+emery-transport.workspace = true
+jiff.workspace = true
+omnia-guest.workspace = true
+omnia-wasi-http.workspace = true
+omnia-wasi-otel.workspace = true
+serde_json.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
 
 [build-dependencies]
 omnia.workspace = true
@@ -47,7 +60,7 @@ emery-adapter.workspace = true
 
 [[example]]
 name = "source"
-path = "examples/source/guest.rs"
+path = "examples/source.rs"
 crate-type = ["cdylib"]
 
 [[example]]
@@ -187,7 +200,6 @@ emery-artifacts = { path = "crates/artifacts" }
 emery-diagnostics = { path = "crates/diagnostics" }
 emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
-emery-guest = { path = "crates/guest" }
 emery-prose = { path = "crates/prose" }
 emery-transport = { path = "crates/transport" }
 

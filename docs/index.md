@@ -1,12 +1,12 @@
 # Emery Developer Guide
 
-Emery is being rebuilt as a **spec generator** under the remediation programme ([ADR-0008](https://github.com/augentic/emery/blob/main/rfcs/decisions/0008-spec-generator-programme.md)). The v1 delivery engine — the `plan → refine → execute → finalize` workflow, the target-adapter build loop, and the definition loop — is frozen and archived at git tag `v1`:
+Emery is being rebuilt as a **spec generator**. The v1 delivery engine — the `plan → refine → execute → finalize` workflow, the target-adapter build loop, and the definition loop — is frozen and archived at git tag `v1`:
 
 ```bash
 git worktree add ../emery-v1 v1
 ```
 
-This guide documents what ships **today**: the `emery` CLI's reduced surface (`init` plus the `specify` spec generator), the source-adapter seam, and the contributor standards for the Rust workspace. The plan of record is [`rfcs/remediation-plan.md`](https://github.com/augentic/emery/blob/main/rfcs/remediation-plan.md).
+This guide documents what ships **today**: the `emery` CLI's reduced surface (`init` plus the `specify` spec generator), the source-adapter seam, and the contributor standards for the Rust workspace.
 
 ## Guide structure
 

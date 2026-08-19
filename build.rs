@@ -1,5 +1,5 @@
 //! Builds the wasm32 engine component with a child cargo build and
-//! embeds it at `$OUT_DIR/emery.bin` (AOT-serialized in release, raw
+//! embeds it at `$OUT_DIR/emery.cwasm` (AOT-serialized in release, raw
 //! in debug), and generates the embedded first-party registry.
 
 use std::fmt::Write as _;
@@ -28,7 +28,7 @@ fn main() {
     let len = std::fs::metadata(&engine).map(|meta| meta.len()).unwrap_or_default();
     assert!(len > 0, "engine component at {} is empty; refusing to embed it", engine.display());
 
-    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.bin");
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.cwasm");
     if std::env::var("PROFILE").as_deref() == Ok("release") {
         precompile(&engine, &out);
     } else {
@@ -141,7 +141,7 @@ fn precompile(raw: &std::path::Path, out: &std::path::Path) {
 fn build_engine() -> PathBuf {
     let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
     // Re-embed whenever the engine's sources change.
-    for tracked in ["src/lib.rs", "crates", "Cargo.toml", "Cargo.lock"] {
+    for tracked in ["src", "crates", "Cargo.toml", "Cargo.lock"] {
         println!("cargo:rerun-if-changed={}", manifest_dir.join(tracked).display());
     }
 

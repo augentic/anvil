@@ -1,15 +1,15 @@
 # Committed ratchet baseline (CONSTITUTION.md invariant 4; remediation
 # Phase 2). Ceilings are non-blank line counts enforced by
-# `tests/ratchet.rs`: growth past a ceiling is a red build, and raising
-# a ceiling requires an ADR reference in the same PR (invariant 5).
+# `tests/ratchet.rs`: growth past a ceiling is a red build.
 # Shrinking a ceiling is free — ratchet down, never up.
 
 # Per-tree non-blank `.rs` line ceilings over each `src/` tree
 # (integration tests are uncapped). Every workspace crate must carry
 # an entry; a deleted crate's entry is removed in the same change.
 [rust]
-# Root deployment unit (guest lib + runtime + launcher, ADR-0011).
-"src" = 195
+# Root deployment unit (guest + runtime + launcher; ADR-0011,
+# ADR-0012, ADR-0013).
+"src" = 379
 "crates/adapter" = 912
 # Post-T10 (ADR-0009 §4): the fail-closed spec AST, evidence, and the
 # atomic writer; the lenient v1 parsers fell at the spine cut.
@@ -20,7 +20,6 @@
 # re-mine diff kernel and its envelope projection (ADR-0010).
 "crates/engine" = 2750
 "crates/error" = 267
-"crates/guest" = 220
 "crates/prose" = 147
 "crates/transport" = 425
 
@@ -30,8 +29,8 @@
 [prose]
 # +2 lines for the engine and journey-host workspace-map entries
 # (ADR-0009).
-"AGENTS.md" = 85
-"CONSTITUTION.md" = 26
+"AGENTS.md" = 78
+"CONSTITUTION.md" = 25
 # The reviewed v1 synthesis-prompt port (remediation Phase 3, ADR-0009 §4).
 "crates/engine/prose" = 140
 "plugins/emery" = 69

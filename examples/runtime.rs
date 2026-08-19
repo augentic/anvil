@@ -13,11 +13,47 @@ cfg_if::cfg_if! {
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
-        /// Environment variable naming the script directory: every file in
-        /// it, sorted by name, is one model answer in dispatch order.
+        omnia::runtime!({
+            mode: command,
+            program: "emery",
+            guests: [
+                {
+                id: "emery",
+                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
+                },
+                {
+                    id: "source:source",
+                    source: include_bytes!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/target/wasm32-wasip2/release/examples/source.wasm",
+                    )),
+                    link: ["emery:adapter/source@0.1.0"],
+                },
+            ],
+            mounts: [
+                { name: ".", path: launcher::project_root(), writable: true },
+                { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
+            ],
+            routes: {
+                http: [
+                    { prefix: "/mcp/source/source", guest: "source:source" },
+                ],
+            },
+            // link: ["emery:adapter/source@0.1.0"],
+            // resolver: launcher::resolver(),
+            // http_paths: launcher::mcp_route,
+            // http_listener: launcher::http_listener(),
+            hosts: {
+                WasiHttp: HttpDefault,
+                WasiOtel: OtelDefault,
+                WasiModel: ScriptedModel,
+            }
+        });
+
+        // script directory: each file is one model answer.
         const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";
 
-        /// The scripted `wasi:model` backend behind the unchanged seam.
+        // The scripted `wasi:model` backend behind the unchanged seam.
         #[derive(Clone, Debug)]
         struct ScriptedModel(Scripted);
 
@@ -55,54 +91,6 @@ cfg_if::cfg_if! {
                 self.0.complete(request, tool_host)
             }
         }
-
-        omnia::runtime!({
-            mode: command,
-            program: "emery",
-            guests: [{
-                id: "emery",
-                // The root `build.rs` already embeds this for the shipped
-                // binary; the example shares the same `OUT_DIR`.
-                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
-            }],
-            mounts: [
-                { name: ".", path: launcher::project_root(), writable: true },
-                { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
-            ],
-            link: ["emery:adapter/source@0.1.0"],
-            resolver: launcher::resolver(),
-            http_paths: launcher::mcp_route,
-            http_listener: launcher::http_listener(),
-            hosts: {
-                WasiHttp: HttpDefault,
-                WasiOtel: OtelDefault,
-                WasiModel: ScriptedModel,
-            }
-        });
-
-        // omnia::runtime!({
-        //     mode: command,
-        //     program: "emery",
-        //     guests: [{
-        //         id: "emery",
-        //         // The root `build.rs` already embeds this for the shipped
-        //         // binary; the example shares the same `OUT_DIR`.
-        //         source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
-        //     }],
-        //     mounts: [
-        //         { name: ".", path: launcher::project_root(), writable: true },
-        //         { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
-        //     ],
-        //     link: ["emery:adapter/source@0.1.0"],
-        //     resolver: launcher::resolver(),
-        //     http_paths: launcher::mcp_route,
-        //     http_listener: launcher::http_listener(),
-        //     hosts: {
-        //         WasiHttp: HttpDefault,
-        //         WasiOtel: OtelDefault,
-        //         WasiModel: ScriptedModel,
-        //     }
-        // });
     } else {
         fn main() {}
     }
