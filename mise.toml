@@ -6,7 +6,7 @@
 # `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
 
 [task_config]
-includes = ["mise-shared.toml"]
+includes = ["mise-rust.toml"]
 # includes = ["git::https://github.com/augentic/.github.git//mise/rust.toml?ref=v0.1.0"]
 
 # -------------------------------------
@@ -23,24 +23,22 @@ run = "cargo llvm-cov nextest -p ${CRATE} --summary-only"
 
 # The journey-test seam fixture (remediation Phase 2): the mock source
 # adapter built as a wasm component, `target/wasm32-wasip2/release/
-# mock_component.wasm` — the recipe ported from the archived wasm rung
-# (tag `v1`, emery-adapters release task).
-[tasks.mock-component]
+# examples/source.wasm`.
+[tasks.source]
 description = "Build the mock source component (wasm32-wasip2, release)"
-run = "cargo build --locked -p emery-mock-component --target wasm32-wasip2 --release"
+run = "cargo build --locked --example source --target wasm32-wasip2 --release"
 
-# The dev-only journey host (ADR-0009 §5): the shipped runtime shape
-# with a scripted `WasiModel` backend, embedding the engine guest
-# built from the same sources. `EMERY_EMBED_DIR` stages the built mock
-# component into the embedded first-party registry (ADR-0002 §2) so
-# the journey exercises embedded resolution as a permanent rung.
-# Depends on mock-component: the host embeds whatever is at that path.
-[tasks.journey-host]
-description = "Build the scripted-model journey host"
-depends = ["mock-component"]
+# The journey host (ADR-0009 §5): the shipped runtime shape with a
+# scripted `WasiModel` backend, embedding the engine guest built from
+# the same sources. `EMERY_EMBED_DIR` stages the built mock component
+# into the embedded first-party registry (ADR-0002 §2) so the journey
+# exercises embedded resolution as a permanent rung.
+[tasks.runtime]
+description = "Build the scripted-model host"
+depends = ["source"]
 run = '''
-export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release"
-cargo build --locked -p emery-journey-host
+export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
+cargo build --locked --example runtime
 '''
 
 # The walking-skeleton journey test (target-architecture §8) over the
@@ -49,6 +47,6 @@ cargo build --locked -p emery-journey-host
 # `test` (excluded there by the nextest default-filter).
 [tasks.journey]
 description = "Walking-skeleton rung over the component seam"
-depends = ["journey-host"]
+depends = ["runtime"]
 env = { RUSTFLAGS = "-Dwarnings" }
 run = "cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter"

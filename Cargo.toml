@@ -5,6 +5,7 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["emery", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
+autoexamples = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -36,8 +37,21 @@ omnia.workspace = true
 
 [dev-dependencies]
 emery-diagnostics.workspace = true
+omnia-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+emery-adapter.workspace = true
+
+[[example]]
+name = "source"
+path = "examples/source/guest.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "runtime"
+path = "examples/runtime.rs"
 
 [lints]
 workspace = true

@@ -6,7 +6,7 @@ reconciled with no disagreement and one acceptance gap.
 ### Requirement: greeting.behaviour
 
 ID: REQ-001
-Sources: [mock-component]
+Sources: [source]
 Status: agreed
 
 GET /greeting returns the static string 'hello'.

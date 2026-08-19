@@ -11,11 +11,11 @@
 # CI Checks (emery composition)
 # -------------------------------------
 
-[tasks.check]
+[check]
 description = "Pre-commit subset: fmt, lint, test, test-docs, doc"
 depends = ["fmt", "lint", "test", "test-docs", "doc"]
 
-[tasks.ci]
+[ci]
 description = "Full local gate: check + links + vet + deny"
 depends = ["check", "vet", "deny"]
 
@@ -42,13 +42,8 @@ description = "cargo test --doc --workspace"
 run = "cargo test --doc --workspace --all-features"
 
 [vet]
-description = "Regenerate cargo-vet inputs, then verify"
-run = '''
-cargo vet regenerate imports
-cargo vet regenerate exemptions
-cargo vet regenerate unpublished
-cargo vet --locked
-'''
+description = "Verify cargo-vet inputs"
+run = "cargo vet --locked"
 
 [miri]
 description = "nightly miri nextest (advisory; not part of ci)"
@@ -69,6 +64,18 @@ run = "cargo audit"
 description = "cargo deny --workspace check"
 run = "cargo deny --workspace check"
 
-[tasks.outdated]
+[outdated]
 description = "cargo outdated (advisory; not part of ci)"
 run = "cargo outdated --depth 1"
+
+# -------------------------------------
+# Helpers
+# -------------------------------------
+
+[vetgen]
+description = "Regenerate cargo-vet inputs"
+run = '''
+cargo vet regenerate imports
+cargo vet regenerate exemptions
+cargo vet regenerate unpublished
+'''

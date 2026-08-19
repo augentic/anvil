@@ -24,7 +24,7 @@ Artifact authority is unchanged in spirit: when authoritative inputs are incompl
 
 ## The Rust workspace
 
-Leaf → root. Each publishing package is `emery-<crate>` on crates.io; short `use` paths come from each crate's `[lib] name` (the root binary and `guest` / `launcher` / `mock` stay `publish = false`).
+Leaf → root. Each publishing package is `emery-<crate>` on crates.io; short `use` paths come from each crate's `[lib] name` (the root binary and `guest` / `launcher` stay `publish = false`).
 
 ```text
 error        # leaf — thiserror + serde-saphyr only
@@ -36,9 +36,6 @@ transport    # typed command router over Invoker: init + specify + completions, 
 launcher     # native-only deployment policy (publish = false) — anchoring, mounts, HTTP listener + /mcp/<axis>/<name> routing, fail-closed adapters-only GuestResolver (local-only: cache seed, embedded registry, verified store; no download path)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, guest::export!
-mock         # dev-only mock crate (publish = false) — the wasm-free mock source adapter core behind mock-component
-mock-component # dev-only journey fixture (publish = false) — the mock source adapter exported as a wasm component (one adapter::source! over crates/mock)
-journey-host # dev-only journey harness (publish = false) — the shipped runtime shape with a scripted WasiModel backend over the same embedded engine guest (ADR-0009 §5)
 emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.bin)
 ```
 
@@ -47,6 +44,7 @@ emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shi
 ```text
 src/               shipped binary (omnia::runtime!) + wasm32 engine guest cdylib (guest::export!)
 crates/            the workspace crates above
+examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:init skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
@@ -87,7 +85,7 @@ cargo make test   # cargo nextest run --locked --workspace --all-features --no-t
 cargo make lint   # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt    # nightly cargo fmt --all
 cargo make journey        # walking-skeleton rung over the component seam (required CI job)
-cargo make mock-component # build the journey's mock source component (wasm32-wasip2, release)
+cargo make source         # build the journey's mock source component (wasm32-wasip2, release)
 ```
 
 Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/emery` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
