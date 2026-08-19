@@ -79,6 +79,30 @@ cfg_if::cfg_if! {
                 WasiModel: ScriptedModel,
             }
         });
+
+        // omnia::runtime!({
+        //     mode: command,
+        //     program: "emery",
+        //     guests: [{
+        //         id: "emery",
+        //         // The root `build.rs` already embeds this for the shipped
+        //         // binary; the example shares the same `OUT_DIR`.
+        //         source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
+        //     }],
+        //     mounts: [
+        //         { name: ".", path: launcher::project_root(), writable: true },
+        //         { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
+        //     ],
+        //     link: ["emery:adapter/source@0.1.0"],
+        //     resolver: launcher::resolver(),
+        //     http_paths: launcher::mcp_route,
+        //     http_listener: launcher::http_listener(),
+        //     hosts: {
+        //         WasiHttp: HttpDefault,
+        //         WasiOtel: OtelDefault,
+        //         WasiModel: ScriptedModel,
+        //     }
+        // });
     } else {
         fn main() {}
     }
