@@ -34,10 +34,17 @@ from the root package's own library target.
 
 Option 3. The launcher is deployment wiring of the root Omnia unit, not a product crate:
 
-- The sources move verbatim to `src/launcher.rs` (+ `src/launcher/{anchor,resolver}.rs`),
+- The sources move to `src/launcher.rs` (+ `src/launcher/{anchor,resolver}.rs`),
   public from the root lib behind `cfg(not(target_arch = "wasm32"))`. The wasm32 guest
   cdylib is unchanged; `cargo check --lib -p emery --target wasm32-wasip2` stays the
   guest compile gate.
+- The fold applies two simplifications rather than moving verbatim. The `Policy`
+  wrapper — a single-instance newtype over `ExecutionPaths` whose methods only
+  delegated — collapses into the pure `launcher::assemble` seam returning
+  `ExecutionPaths` directly. And the operator-set `HTTP_ADDR` listener override is
+  deleted: nothing sets it, so `launcher::http_listener` always binds an ephemeral
+  loopback port (the runtime still injects the guest-visible `HTTP_ADDR` from the
+  bound address, so the adapter seam is unaffected).
 - The embedded first-party registry generation (`EMERY_EMBED_DIR` → `embedded.rs`,
   ADR-0002 §2) merges into the root `build.rs` beside the engine embed.
 - ADR-0009 §5 is preserved structurally: the shipped binary and the journey host link
@@ -51,8 +58,10 @@ Option 3. The launcher is deployment wiring of the root Omnia unit, not a produc
 ## Deletions
 
 The `emery-launcher` package (manifest, workspace-dependency entry, crates map row) and
-its three layering edges. Concept-count effect: −1 workspace crate; zero operator-visible
-change — no verb, noun, artifact, or envelope field moves.
+its three layering edges; the `Policy` type; the operator-set `HTTP_ADDR` bind override
+(the guest-visible injected `HTTP_ADDR` is unchanged). Concept-count effect: −1 workspace
+crate, −1 exported type, −1 environment knob; no verb, noun, artifact, or envelope field
+moves.
 
 ## Consequences
 

@@ -1,5 +1,5 @@
 //! Launcher integration coverage over the public
-//! [`emery::launcher::Policy`] assembly and the guest resolver's typed
+//! [`emery::launcher::assemble`] seam and the guest resolver's typed
 //! kernel: anchored mounts, local-only adapter resolution, and
 //! fail-closed store verification.
 //!
@@ -7,12 +7,12 @@
 //! project cache seed, else the embedded first-party registry (empty
 //! until Phase 4), else a verified global-store entry — nothing local
 //! is a typed miss. Every test injects explicit [`Locations`] rooted
-//! in a tempdir through `Policy::new`, so no process environment is
-//! read or mutated.
+//! in a tempdir through `launcher::assemble`, so no process
+//! environment is read or mutated.
 
 use std::path::PathBuf;
 
-use emery::launcher::{self, Policy, Resolver};
+use emery::launcher::{self, Resolver};
 use engine::handler::{CachePlacement, ExecutionPaths, Locations};
 
 /// One sandboxed invocation context: a project directory plus explicit
@@ -67,13 +67,13 @@ impl Sandbox {
         bytes
     }
 
-    fn policy(&self) -> Policy {
-        Policy::new(&self.root, self.locations.clone())
+    fn paths(&self) -> ExecutionPaths {
+        launcher::assemble(&self.root, self.locations.clone())
     }
 
     /// The deployment's resolver, assembled the way the binary does it.
     fn resolver(&self) -> Resolver {
-        self.policy().resolver()
+        Resolver::new(self.paths())
     }
 }
 
@@ -91,13 +91,13 @@ fn code(err: &error::Error) -> &str {
 #[test]
 fn mounts_are_well_known() {
     let sandbox = Sandbox::new();
-    let policy = sandbox.policy();
+    let paths = sandbox.paths();
 
-    assert_eq!(policy.project_root(), sandbox.root);
+    assert_eq!(paths.project_root(), sandbox.root);
     // The writable mount directories are created pre-run so the
     // guest's preopens exist. The global store gets no guest mount —
     // it is host-owned.
-    assert!(policy.cache_dir().is_dir());
+    assert!(paths.cache_dir().is_dir());
 }
 
 #[test]
@@ -116,18 +116,17 @@ fn anchors_at_project_root() {
     let nested = sandbox.root.join("src/deeply/nested");
     std::fs::create_dir_all(&nested).expect("mkdir nested dir");
 
-    let policy = Policy::new(&nested, sandbox.locations.clone());
-    assert_eq!(policy.project_root(), sandbox.root);
+    let paths = launcher::assemble(&nested, sandbox.locations.clone());
+    assert_eq!(paths.project_root(), sandbox.root);
 }
 
 #[test]
 fn unanchored_cwd_in_place() {
-    // No `project.yaml` ancestor: the policy stays total — it boots
+    // No `project.yaml` ancestor: assembly stays total — it boots
     // in-place at the cwd (pre-init) so `emery init` works and later
     // verbs fail typed in-guest.
     let sandbox = Sandbox::new();
-    let policy = sandbox.policy();
-    assert_eq!(policy.project_root(), sandbox.root);
+    assert_eq!(sandbox.paths().project_root(), sandbox.root);
 }
 
 // ---------------------------------------------------------------------------

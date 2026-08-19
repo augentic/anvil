@@ -1,85 +1,51 @@
 //! Deployment policy for the shipped `emery` binary (ADR-0011).
 //!
 //! The macro-facing mount and resolver expressions the hosts evaluate;
-//! one invocation captures the layout once ([`Policy::new`]).
+//! one invocation captures the layout once ([`assemble`]).
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use engine::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations, PROJECT_ROOT_ENV};
+use engine::handler::{ExecutionPaths, Locations, PROJECT_ROOT_ENV};
 use engine::resolve::RoutedId;
 
 mod anchor;
 mod resolver;
 
+/// Guest-visible preopen name of the per-project derived cache.
+pub use engine::handler::GUEST_CACHE_MOUNT as CACHE_MOUNT;
 pub use resolver::Resolver;
 
-/// Guest-visible preopen name of the per-project derived cache.
-pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
-
-/// One invocation's deployment policy: the anchored layout.
+/// Assemble one invocation's deployment layout — the pure seam over
+/// explicit inputs.
 ///
-/// [`Policy::new`] is the pure assembly over explicit inputs (the
-/// integration seam); the module-level accessors evaluate it exactly
-/// once per process over the working directory and
-/// `Locations::from_env`.
-#[derive(Debug)]
-pub struct Policy {
-    paths: ExecutionPaths,
+/// Anchors the project root, captures it as [`ExecutionPaths`], and
+/// creates the writable mount directories. Total by design — the
+/// runtime must always boot so the guest renders every diagnostic:
+/// an unanchored invocation boots in-place, and mount-creation
+/// failures surface as the runtime's preopen error.
+#[must_use]
+pub fn assemble(invoked_dir: &Path, locations: Locations) -> ExecutionPaths {
+    let paths = ExecutionPaths::new(anchor::root(invoked_dir), locations);
+    // The global store is host-owned (no guest mount).
+    for dir in [paths.cache_dir(), paths.project_root().to_path_buf()] {
+        drop(std::fs::create_dir_all(dir));
+    }
+    paths
 }
 
-impl Policy {
-    /// Assemble the policy for one invocation: anchor the project
-    /// root, capture the layout, and create the writable mount
-    /// directories.
-    ///
-    /// Total by design — the runtime must always boot so the guest
-    /// renders every diagnostic: an unanchored invocation boots
-    /// in-place, and mount-directory creation failures are left for
-    /// the runtime's own preopen error.
-    #[must_use]
-    pub fn new(invoked_dir: &Path, locations: Locations) -> Self {
-        let paths = ExecutionPaths::new(anchor::root(invoked_dir), locations);
-        // The global store is host-owned (no guest mount).
-        for dir in [paths.cache_dir(), paths.project_root().to_path_buf()] {
-            drop(std::fs::create_dir_all(dir));
-        }
-        Self { paths }
-    }
-
-    /// Host directory of the writable `.` project mount.
-    #[must_use]
-    pub fn project_root(&self) -> &Path {
-        self.paths.project_root()
-    }
-
-    /// Host directory of the writable cache mount, named
-    /// [`CACHE_MOUNT`].
-    #[must_use]
-    pub fn cache_dir(&self) -> PathBuf {
-        self.paths.cache_dir()
-    }
-
-    /// The fail-closed adapters-only guest resolver over this
-    /// invocation's captured layout.
-    #[must_use]
-    pub fn resolver(&self) -> Resolver {
-        Resolver::new(self.paths.clone())
-    }
-}
-
-/// The process-wide policy, evaluated once across the macro's mount
+/// The process-wide layout, evaluated once across the macro's mount
 /// and resolver expressions. The first evaluation also exports the
 /// host-absolute `.` mount: guests inherit the host environment, and
 /// the in-guest kernel derives the agent-visible artifact root from
 /// [`PROJECT_ROOT_ENV`].
-fn current() -> &'static Policy {
-    static POLICY: OnceLock<Policy> = OnceLock::new();
-    POLICY.get_or_init(|| {
+fn current() -> &'static ExecutionPaths {
+    static PATHS: OnceLock<ExecutionPaths> = OnceLock::new();
+    PATHS.get_or_init(|| {
         let invoked_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let policy = Policy::new(&invoked_dir, Locations::from_env());
-        export_roots(&policy.paths);
-        policy
+        let paths = assemble(&invoked_dir, Locations::from_env());
+        export_roots(&paths);
+        paths
     })
 }
 
@@ -102,28 +68,20 @@ fn export_roots(paths: &ExecutionPaths) {
 /// Macro expression: this invocation's pre-bound HTTP trigger
 /// listener, feeding the `/mcp/<axis>/<name>` reference shelves.
 ///
-/// Its local address becomes the guest-visible `HTTP_ADDR` (distinct
-/// ports across concurrent invocations); an operator-set `HTTP_ADDR`
-/// must bind, else an ephemeral loopback port — any bind failure is a
-/// startup failure. A successful bind also injects the fully-formed
+/// Binds an ephemeral loopback port, so concurrent invocations get
+/// distinct ports; its local address becomes the guest-visible
+/// `HTTP_ADDR`. A successful bind also injects the fully-formed
 /// `MCP_URL_BASE` (`http://127.0.0.1:<port>`), which guests prefer
 /// over re-deriving the base from `HTTP_ADDR`.
 ///
 /// # Errors
 ///
-/// Returns an error when an operator-set `HTTP_ADDR` is invalid or
-/// cannot be bound, or when the ephemeral loopback bind fails.
+/// Returns an error when the loopback bind fails — a startup failure.
 pub fn http_listener() -> anyhow::Result<std::net::TcpListener> {
     use anyhow::Context as _;
 
-    let listener = if let Some(addr) = std::env::var_os("HTTP_ADDR") {
-        let addr = addr.to_string_lossy().into_owned();
-        std::net::TcpListener::bind(&addr)
-            .with_context(|| format!("binding operator-set HTTP_ADDR `{addr}`"))?
-    } else {
-        std::net::TcpListener::bind(("127.0.0.1", 0))
-            .context("binding an ephemeral loopback port for the MCP reference shelves")?
-    };
+    let listener = std::net::TcpListener::bind(("127.0.0.1", 0))
+        .context("binding an ephemeral loopback port for the MCP reference shelves")?;
     let port =
         listener.local_addr().context("reading the bound trigger listener's address")?.port();
     // SAFETY: one write during runtime assembly, before guest stores
@@ -153,7 +111,7 @@ pub fn cache_dir() -> PathBuf {
 /// Macro expression: the fail-closed adapters-only guest resolver.
 #[must_use]
 pub fn resolver() -> Resolver {
-    current().resolver()
+    Resolver::new(current().clone())
 }
 
 /// Macro expression: the deployment's `http_paths:` hook, mapping
