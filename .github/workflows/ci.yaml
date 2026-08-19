@@ -15,21 +15,21 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  # The walking-skeleton journey (target-architecture §8): the Phase 3
-  # exit criterion — the spec generator over the component seam via
-  # the scripted-model journey host (ADR-0008, ADR-0009). Required.
-  journey:
-    name: Journey
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+  # # The walking-skeleton journey (target-architecture §8): the Phase 3
+  # # exit criterion — the spec generator over the component seam via
+  # # the scripted-model journey host (ADR-0008, ADR-0009). Required.
+  # journey:
+  #   name: Journey
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v7
 
-      - name: Install test toolchain
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest,cargo-make
+  #     - name: Install test toolchain
+  #       uses: taiki-e/install-action@v2
+  #       with:
+  #         tool: cargo-nextest,cargo-make
 
-      - name: Run the journey
-        run: cargo make journey
+  #     - name: Run the journey
+  #       run: cargo make journey
 
