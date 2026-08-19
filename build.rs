@@ -42,7 +42,7 @@ fn main() {
 }
 
 /// Generate the embedded first-party registry (ADR-0002 §2) at
-/// `$OUT_DIR/embedded.rs` (included by `src/launcher/resolver.rs`)
+/// `$OUT_DIR/embedded.rs` (included by `src/launcher.rs`)
 /// from `EMERY_EMBED_DIR` — built `<name>.wasm` components staged by
 /// the release build (first-party adapters) and by the journey rung
 /// (the mock component). Unset, missing, or empty, the table is empty

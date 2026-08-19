@@ -34,10 +34,10 @@ from the root package's own library target.
 
 Option 3. The launcher is deployment wiring of the root Omnia unit, not a product crate:
 
-- The sources move to `src/launcher.rs` (+ `src/launcher/{anchor,resolver}.rs`),
-  public from the root lib behind `cfg(not(target_arch = "wasm32"))`. The wasm32 guest
-  cdylib is unchanged; `cargo check --lib -p emery --target wasm32-wasip2` stays the
-  guest compile gate.
+- The sources fold into one native-only file (`src/launcher.rs`), public from the
+  root lib behind `cfg(not(target_arch = "wasm32"))`. The wasm32 guest cdylib is
+  unchanged; `cargo check --lib -p emery --target wasm32-wasip2` stays the guest
+  compile gate.
 - The fold applies two simplifications rather than moving verbatim. The `Policy`
   wrapper — a single-instance newtype over `ExecutionPaths` whose methods only
   delegated — collapses into the pure `launcher::assemble` seam returning
