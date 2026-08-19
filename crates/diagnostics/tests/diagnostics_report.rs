@@ -1,7 +1,7 @@
 //! Triage predicates over diagnostic slices: `is_blocking`,
 //! `has_blocking`, the severity tally, and `renumber`.
 
-use diagnostics::{
+use emery_diagnostics::{
     DiagnosticKind, DiagnosticSummary, Severity, has_blocking, is_blocking, renumber,
 };
 

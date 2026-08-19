@@ -30,7 +30,7 @@ impl Render for FailureBody {
 pub enum Error {
     /// The plain workspace failure taxonomy.
     #[error(transparent)]
-    Core(#[from] error::Error),
+    Core(#[from] emery_error::Error),
 
     /// A failure carrying a stdout body the transport renders
     /// alongside the failure envelope (findings on stdout, the
@@ -40,21 +40,21 @@ pub enum Error {
         /// The body rendered on the success channel.
         body: FailureBody,
         /// The payload-free failure for the error channel.
-        source: error::Error,
+        source: emery_error::Error,
     },
 }
 
 impl Error {
     /// The underlying taxonomy error.
     #[must_use]
-    pub const fn core(&self) -> &error::Error {
+    pub const fn core(&self) -> &emery_error::Error {
         match self {
             Self::Core(err) | Self::Report { source: err, .. } => err,
         }
     }
 
     /// Construct [`Error::Report`]: a diagnostic report bundled with a
-    /// payload-free [`error::Error::validation_failed`] failure — the
+    /// payload-free [`emery_error::Error::validation_failed`] failure — the
     /// gate verbs' contract (findings on stdout, the `code`-keyed
     /// envelope on stderr, exit 2).
     #[must_use]
@@ -63,7 +63,7 @@ impl Error {
     ) -> Self {
         Self::Report {
             body: FailureBody::Findings(body),
-            source: error::Error::validation_failed(code, rule, detail),
+            source: emery_error::Error::validation_failed(code, rule, detail),
         }
     }
 }

@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 /// Guest preopen name of the per-project cache.
-pub use engine::handler::GUEST_CACHE_MOUNT as CACHE_MOUNT;
-use engine::handler::{ExecutionPaths, Locations, PROJECT_ROOT_ENV};
-use engine::resolve::RoutedId;
-use engine::resolve::resolver::locate;
-use error::Error;
+pub use emery_engine::handler::GUEST_CACHE_MOUNT as CACHE_MOUNT;
+use emery_engine::handler::{ExecutionPaths, Locations, PROJECT_ROOT_ENV};
+use emery_engine::resolve::RoutedId;
+use emery_engine::resolve::resolver::locate;
+use emery_error::Error;
 
 // Empty unless `EMERY_EMBED_DIR` stages components.
 include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
@@ -21,7 +21,7 @@ include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 pub fn assemble(invoked_dir: &Path, locations: Locations) -> ExecutionPaths {
     let root = invoked_dir
         .ancestors()
-        .find(|candidate| engine::project::Project::path(candidate).is_file())
+        .find(|candidate| emery_engine::project::Project::path(candidate).is_file())
         .unwrap_or(invoked_dir);
     let paths = ExecutionPaths::new(root, locations);
     // Cache mount only — the store is host-owned and has no guest preopen.
@@ -41,10 +41,10 @@ pub fn http_listener() -> anyhow::Result<std::net::TcpListener> {
         .context("binding an ephemeral loopback port for the MCP reference shelves")?;
     let port =
         listener.local_addr().context("reading the bound trigger listener's address")?.port();
+
     // SAFETY: once, at assembly, before guest stores snapshot the env.
     #[expect(unsafe_code, reason = "the guest inherits the shelf base through the env")]
     let () = unsafe {
-        // IPv4 literal: `localhost` can resolve to `::1` and miss the bind.
         std::env::set_var("MCP_URL_BASE", format!("http://127.0.0.1:{port}"));
     };
     Ok(listener)
@@ -76,6 +76,7 @@ fn current() -> &'static ExecutionPaths {
         let paths = assemble(&invoked_dir, Locations::from_env());
         let mount = std::path::absolute(paths.project_root())
             .unwrap_or_else(|_io| paths.project_root().to_path_buf());
+
         // SAFETY: once, at assembly, before guest stores snapshot the env.
         #[expect(unsafe_code, reason = "the guest inherits the root through the env")]
         let () = unsafe {

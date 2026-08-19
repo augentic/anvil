@@ -10,7 +10,7 @@ includes = ["mise-rust.toml"]
 # includes = ["git::https://github.com/augentic/.github.git//mise/rust.toml?ref=v0.1.0"]
 
 # -------------------------------------
-# Emery-only / policy overrides
+# Emery overrides
 # -------------------------------------
 
 [tasks.links]

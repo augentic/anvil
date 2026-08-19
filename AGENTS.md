@@ -24,24 +24,24 @@ Artifact authority is unchanged in spirit: when authoritative inputs are incompl
 
 ## The Rust workspace
 
-Leaf → root. Each publishing package is `emery-<crate>` on crates.io; short `use` paths come from each crate's `[lib] name` (the root binary and `guest` stay `publish = false`).
+Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_error::`, `emery_engine::`, …). The root binary and `emery-guest` stay `publish = false`.
 
 ```text
 error        # leaf — thiserror + serde-saphyr only
-diagnostics  # neutral Diagnostic substrate + diagnostics::digest (SHA-256)
+diagnostics  # neutral Diagnostic substrate + emery_diagnostics::digest (SHA-256)
 artifacts    # artifact types + parsers (evidence, atomic writer, validate registry); no engine deps
 adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, seam DTOs, embedded prose registry
-engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and engine::handler (Anchor, RequestContext, Render, Error)
+engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and emery_engine::handler (Anchor, RequestContext, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, guest::export!
+guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, emery_guest::export!
 emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.bin) + the native launcher module (src/launcher.rs, ADR-0011 — anchoring, mounts, HTTP listener + /mcp/<axis>/<name> routing, fail-closed adapters-only GuestResolver; local-only: cache seed, embedded registry, verified store; no download path)
 ```
 
 ### Repository map
 
 ```text
-src/               shipped binary (omnia::runtime!) + wasm32 engine guest cdylib (guest::export!) + the native launcher module
+src/               shipped binary (omnia::runtime!) + wasm32 engine guest cdylib (emery_guest::export!) + the native launcher module
 crates/            the workspace crates above
 examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README

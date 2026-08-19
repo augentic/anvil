@@ -1,9 +1,9 @@
 //! Operations-trait dispatch and references-server identity.
 
-use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
-use adapter::registry::Doc;
-use adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
-use adapter::{AdapterIdentity, Model, Source, references, repaired};
+use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
+use emery_adapter::registry::Doc;
+use emery_adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
+use emery_adapter::{AdapterIdentity, Model, Source, references, repaired};
 use omnia_testkit::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {

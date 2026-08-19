@@ -17,7 +17,7 @@ mod provider;
 
 pub use provider::Provider;
 /// Re-exported for the [`export!`] macro expansion.
-pub use {omnia_guest, omnia_wasi_http, omnia_wasi_otel, transport, wasip3};
+pub use {emery_transport, omnia_guest, omnia_wasi_http, omnia_wasi_otel, wasip3};
 
 /// Export the engine guest from the invoking cdylib.
 ///
@@ -42,9 +42,9 @@ macro_rules! export {
                 let telemetry = $crate::omnia_wasi_otel::init();
                 let invoker =
                     $crate::omnia_guest::api::invoke::Invoker::new("emery", $crate::Provider);
-                let router = $crate::transport::command::router(invoker).map_err(|_e| ())?;
+                let router = $crate::emery_transport::command::router(invoker).map_err(|_e| ())?;
                 let argv = $crate::wasip3::cli::environment::get_arguments();
-                let response = $crate::transport::command::execute(&router, argv).await;
+                let response = $crate::emery_transport::command::execute(&router, argv).await;
                 if std::io::stdout().write_all(&response.stdout).is_err()
                     || std::io::stderr().write_all(&response.stderr).is_err()
                 {
@@ -74,7 +74,7 @@ macro_rules! export {
                 // authenticated operator ingress is designed
                 // (target-architecture §7).
                 $crate::omnia_wasi_http::serve(
-                    $crate::transport::http::refusal(),
+                    $crate::emery_transport::http::refusal(),
                     request,
                 )
                 .await

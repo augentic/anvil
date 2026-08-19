@@ -39,7 +39,7 @@ pub fn body(docs: &[Doc], path: &str) -> &'static str {
 ///
 /// ```ignore
 /// mod registry {
-///     adapter::registry!();
+///     emery_adapter::registry!();
 /// }
 /// ```
 #[macro_export]

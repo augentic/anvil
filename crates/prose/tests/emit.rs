@@ -22,7 +22,7 @@ fn table_sorted_complete() {
     let out = tmp.path().join("out");
     fs::create_dir_all(&out).expect("mkdir out");
 
-    prose::emit_from(&tree, &out).expect("emit succeeds");
+    emery_prose::emit_from(&tree, &out).expect("emit succeeds");
 
     let generated = fs::read_to_string(out.join("prose_docs.rs")).expect("generated file");
     let a = generated.find("path: \"a.md\"").expect("a.md embedded");
@@ -40,7 +40,7 @@ fn dangling_link_fails() {
     let out = tmp.path().join("out");
     fs::create_dir_all(&out).expect("mkdir out");
 
-    let err = prose::emit_from(&tree, &out).expect_err("dangling link must fail");
+    let err = emery_prose::emit_from(&tree, &out).expect_err("dangling link must fail");
     assert!(err.contains("nope.md"), "{err}");
 }
 
@@ -53,7 +53,7 @@ fn good_links_pass() {
     let out = tmp.path().join("out");
     fs::create_dir_all(&out).expect("mkdir out");
 
-    prose::emit_from(&tree, &out).expect("emit succeeds");
+    emery_prose::emit_from(&tree, &out).expect("emit succeeds");
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn fenced_casts_links() {
     let out = tmp.path().join("out");
     fs::create_dir_all(&out).expect("mkdir out");
 
-    prose::emit_from(&tree, &out).expect("emit succeeds");
+    emery_prose::emit_from(&tree, &out).expect("emit succeeds");
 }
 
 #[test]
@@ -74,6 +74,7 @@ fn empty_tree_fails() {
     let out = tmp.path().join("out");
     fs::create_dir_all(&out).expect("mkdir out");
 
-    let err = prose::emit_from(&tmp.path().join("prompts"), &out).expect_err("empty tree fails");
+    let err =
+        emery_prose::emit_from(&tmp.path().join("prompts"), &out).expect_err("empty tree fails");
     assert!(err.contains("no markdown documents"), "{err}");
 }

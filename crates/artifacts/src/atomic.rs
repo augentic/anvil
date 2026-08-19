@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use error::Error;
+use emery_error::Error;
 use serde::Serialize;
 
 /// Serialise `value` as YAML (with a guaranteed trailing newline) and

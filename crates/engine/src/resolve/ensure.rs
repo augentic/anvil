@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use error::Error;
+use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
 use super::core::ResolvedSource;

@@ -10,8 +10,10 @@ use tower::ServiceExt as _;
 async fn send(method: Method, path: &str) -> (StatusCode, serde_json::Value) {
     let request =
         Request::builder().method(method).uri(path).body(Body::empty()).expect("build request");
-    let response =
-        transport::http::refusal().oneshot(request).await.expect("refusal serves the request");
+    let response = emery_transport::http::refusal()
+        .oneshot(request)
+        .await
+        .expect("refusal serves the request");
     let status = response.status();
     let bytes = to_bytes(response.into_body(), usize::MAX).await.expect("collect body");
     let value = serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);

@@ -10,10 +10,6 @@ categories = ["development-tools"]
 keywords = ["emery", "errors"]
 readme = "../../README.md"
 
-# Workspace code imports the short crate name; the package publishes as emery-error.
-[lib]
-name = "error"
-
 [lints]
 workspace = true
 

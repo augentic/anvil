@@ -1,7 +1,7 @@
 //! The seam vocabulary's own behavior: the model-to-seam error mapping.
 
-use adapter::Error as ModelError;
-use adapter::seam::Error;
+use emery_adapter::Error as ModelError;
+use emery_adapter::seam::Error;
 
 #[test]
 fn error_mapping() {

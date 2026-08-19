@@ -13,7 +13,7 @@
 use std::path::PathBuf;
 
 use emery::launcher::{self, Resolver};
-use engine::handler::{CachePlacement, ExecutionPaths, Locations};
+use emery_engine::handler::{CachePlacement, ExecutionPaths, Locations};
 
 /// One sandboxed invocation context: a project directory plus explicit
 /// store and cache roots, all inside one tempdir.
@@ -61,9 +61,10 @@ impl Sandbox {
         let bytes = format!("{name} {version} store bytes").into_bytes();
         let entry = self.store.join(format!("{name}@{version}.wasm"));
         std::fs::write(&entry, &bytes).expect("write store entry");
-        let digest = diagnostics::cache::file_content_digest(&entry);
+        let digest = emery_diagnostics::cache::file_content_digest(&entry);
         let meta = self.store.join(format!("{name}@{version}.meta"));
-        diagnostics::cache::write_store_meta(&meta, &digest, None).expect("write store sidecar");
+        emery_diagnostics::cache::write_store_meta(&meta, &digest, None)
+            .expect("write store sidecar");
         bytes
     }
 
@@ -77,9 +78,9 @@ impl Sandbox {
     }
 }
 
-fn code(err: &error::Error) -> &str {
+fn code(err: &emery_error::Error) -> &str {
     match err {
-        error::Error::Diag { code, .. } => code,
+        emery_error::Error::Diag { code, .. } => code,
         other => panic!("expected a Diag error, got {other:?}"),
     }
 }

@@ -5,9 +5,9 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
-use artifacts::spec::ast::{self, Status, Tag};
-use error::Error;
+use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
+use emery_artifacts::spec::ast::{self, Status, Tag};
+use emery_error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Message, Request, Role};
 

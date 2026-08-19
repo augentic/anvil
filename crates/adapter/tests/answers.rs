@@ -1,8 +1,8 @@
 //! The judgment-answer deserializer: schema pin, envelope shape, and
 //! the extract validation tail.
 
-use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, parse_evidence, validate_evidence};
-use adapter::seam::{Authority, Backing, ClaimKind, Error};
+use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, parse_evidence, validate_evidence};
+use emery_adapter::seam::{Authority, Backing, ClaimKind, Error};
 
 #[test]
 fn schema_pin() {

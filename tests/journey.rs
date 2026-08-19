@@ -394,8 +394,8 @@ fn cc_17_exact_pin_admission() {
     fs::create_dir_all(&store).expect("mkdir store");
     let entry = store.join("source@1.2.3.wasm");
     fs::copy(component(), &entry).expect("install the component into the store");
-    let digest = diagnostics::cache::file_content_digest(&entry);
-    diagnostics::cache::write_store_meta(&store.join("source@1.2.3.meta"), &digest, None)
+    let digest = emery_diagnostics::cache::file_content_digest(&entry);
+    emery_diagnostics::cache::write_store_meta(&store.join("source@1.2.3.meta"), &digest, None)
         .expect("write the digest sidecar");
 
     let init = home.emery(&["init", "source@1.2.3"]);

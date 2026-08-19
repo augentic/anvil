@@ -71,7 +71,7 @@ fn embed_registry() {
 /// Every `<name>.wasm` under `EMERY_EMBED_DIR`, sorted by the adapter
 /// name its file stem derives (the `emery_` artifact prefix stripped,
 /// underscores folded to kebab dashes — mirroring
-/// `engine::resolve::name_from_component`).
+/// `emery_engine::resolve::name_from_component`).
 fn components() -> Vec<(String, PathBuf)> {
     let Some(dir) = std::env::var_os("EMERY_EMBED_DIR") else {
         return Vec::new();

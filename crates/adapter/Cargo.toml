@@ -10,10 +10,6 @@ categories = ["development-tools"]
 keywords = ["emery", "adapter", "sdk"]
 readme = "../../README.md"
 
-# Workspace code imports the short crate name; the package publishes as emery-adapter.
-[lib]
-name = "adapter"
-
 [lints]
 workspace = true
 

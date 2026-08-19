@@ -10,7 +10,7 @@ The authoritative leaf → root crate graph (with per-crate roles) lives in [AGE
 
 There is no lint engine or `Check` substrate. Repo consistency is the mdBook links gate (`cargo make links`).
 
-The artifact validation rule registry (`artifacts::validate`) sits on `artifacts`, which depends on none of the engine crates nor anything named lint, so an artifact rule cannot reach workflow lifecycle types. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry the engine layer reads, alongside `diagnostics` and `error` at the bottom. The neutral `Diagnostic` substrate lives in the `diagnostics` crate, so every check producer mints findings without depending on anything named `lint`.
+The artifact validation rule registry (`emery_artifacts::validate`) sits on `artifacts`, which depends on none of the engine crates nor anything named lint, so an artifact rule cannot reach workflow lifecycle types. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry the engine layer reads, alongside `diagnostics` and `error` at the bottom. The neutral `Diagnostic` substrate lives in the `diagnostics` crate, so every check producer mints findings without depending on anything named `lint`.
 
 ### Engineering standards live in the adapters
 
@@ -22,13 +22,13 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-The `source` example (`examples/source/`) is the one mock source adapter: a wasm-free `adapter::Source` implementor (`adapter.rs`) exported as the journey's seam fixture (`guest.rs`). Behaviour keys off the routed adapter id. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
+The `source` example (`examples/source/guest.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor exported as the journey's seam fixture in the same file. Behaviour keys off the routed adapter id. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
 
 ## Deployment: the Wasm provider
 
-The engine core (`engine` / `transport`) is deployment-neutral: it consumes model, adapter, ensure/resolve, and anchoring capabilities through provider traits. One provider exists — the **Wasm deployment** (the `guest` crate behind the root cdylib's `guest::export!()`) satisfies them over WIT imports: component adapters, the global store with digest verification, and Omnia hosting. The native provider was deleted at the Phase 3 spine cut (ADR-0002: "deleted, not demoted"); integration coverage runs over the component seam via the dev-only journey host, while pure kernels test natively against the provider traits directly.
+The engine core (`engine` / `transport`) is deployment-neutral: it consumes model, adapter, ensure/resolve, and anchoring capabilities through provider traits. One provider exists — the **Wasm deployment** (the `guest` crate behind the root cdylib's `emery_guest::export!()`) satisfies them over WIT imports: component adapters, the global store with digest verification, and Omnia hosting. The native provider was deleted at the Phase 3 spine cut (ADR-0002: "deleted, not demoted"); integration coverage runs over the component seam via the dev-only journey host, while pure kernels test natively against the provider traits directly.
 
-The root `emery` package carries the Omnia deployment unit under `src/`: the guest cdylib (`src/lib.rs`, one `guest::export!()` invocation) and the shipped runtime (`src/main.rs`, one `omnia::runtime!` invocation embedding the engine bytes). The `guest` crate (`crates/guest`) owns the `workflow`-world WIT bindings, the WIT-backed `Provider`, and the `export!` macro that wires both transports — `wasi:cli/run` (`CliGuest` + `Guest::run`) and `wasi:http/incoming-handler` (`Http` + `Guest::handle`, which answers every mutating path with `transport::http`'s typed refusal — C3) — so downstream deployments build the identical guest from one macro invocation instead of vendoring sources. Commands live in `engine` as transport-neutral `Operation<P>` implementations beside their domain kernels (shared plumbing in `engine::handler`). `crates/transport/src/command.rs` owns the explicit typed command route inventory over `Invoker<P>`; the WASI and native shims only construct invokers and adapt transport output. The routing design is documented in [handler-shape.md](handler-shape.md).
+The root `emery` package carries the Omnia deployment unit under `src/`: the guest cdylib (`src/lib.rs`, one `emery_guest::export!()` invocation) and the shipped runtime (`src/main.rs`, one `omnia::runtime!` invocation embedding the engine bytes). The `guest` crate (`crates/guest`) owns the `workflow`-world WIT bindings, the WIT-backed `Provider`, and the `export!` macro that wires both transports — `wasi:cli/run` (`CliGuest` + `Guest::run`) and `wasi:http/incoming-handler` (`Http` + `Guest::handle`, which answers every mutating path with `emery_transport::http`'s typed refusal — C3) — so downstream deployments build the identical guest from one macro invocation instead of vendoring sources. Commands live in `engine` as transport-neutral `Operation<P>` implementations beside their domain kernels (shared plumbing in `emery_engine::handler`). `crates/transport/src/command.rs` owns the explicit typed command route inventory over `Invoker<P>`; the WASI and native shims only construct invokers and adapt transport output. The routing design is documented in [handler-shape.md](handler-shape.md).
 
 ## Domain modules of note
 
@@ -49,7 +49,7 @@ The two adapter validators — `contract` and `vectis` — are in-guest adapter 
 
 ## Layout boundary
 
-`.emery/` is framework-managed state every CLI verb writes through. Two owners cover it: `engine::project::Project::path` for `project.yaml`, and `engine::home::Home` for the spec output home (generation directories plus the `current` pointer). Do not hard-code `.emery/` paths elsewhere; a new `.emery/` path lands on one of those owners.
+`.emery/` is framework-managed state every CLI verb writes through. Two owners cover it: `emery_engine::project::Project::path` for `project.yaml`, and `emery_engine::home::Home` for the spec output home (generation directories plus the `current` pointer). Do not hard-code `.emery/` paths elsewhere; a new `.emery/` path lands on one of those owners.
 
 ## Time injection
 

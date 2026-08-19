@@ -3,7 +3,7 @@
 //! the binary and the journey host share (ADR-0011).
 
 #[cfg(target_arch = "wasm32")]
-guest::export!();
+emery_guest::export!();
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod launcher;

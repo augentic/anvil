@@ -8,10 +8,6 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 
-# Workspace code imports the short crate name.
-[lib]
-name = "guest"
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 emery-adapter.workspace = true
 emery-engine.workspace = true

@@ -5,7 +5,7 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use error::Error;
+use emery_error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};

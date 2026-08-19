@@ -1,6 +1,6 @@
 //! Error discriminant and Display contract.
 
-use error::Error;
+use emery_error::Error;
 
 #[test]
 fn diag_round_trip() {

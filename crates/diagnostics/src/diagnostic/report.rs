@@ -67,7 +67,7 @@ impl DiagnosticSummary {
 /// emitted by every check producer.
 ///
 /// ```
-/// use diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary};
+/// use emery_diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary};
 ///
 /// let findings = vec![Diagnostic::violation(
 ///     "spec.requirement-id-missing",

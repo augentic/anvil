@@ -28,13 +28,13 @@ fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")
 }
 
-fn router() -> omnia_guest::api::command::Router<Inert, transport::command::Globals> {
+fn router() -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
     support::router(".")
 }
 
 /// Every full route path plus every namespace prefix, kebab-joined.
 fn known_paths(
-    router: &omnia_guest::api::command::Router<Inert, transport::command::Globals>,
+    router: &omnia_guest::api::command::Router<Inert, emery_transport::command::Globals>,
 ) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
     let mut full: BTreeSet<Vec<String>> = BTreeSet::new();
     let mut prefixes: BTreeSet<Vec<String>> = BTreeSet::new();
@@ -168,7 +168,7 @@ fn flags_of(text: &str) -> Vec<String> {
 }
 
 async fn assert_flags(
-    router: &omnia_guest::api::command::Router<Inert, transport::command::Globals>,
+    router: &omnia_guest::api::command::Router<Inert, emery_transport::command::Globals>,
     path: &[String], text: &str,
 ) {
     let mut help: Option<String> = None;

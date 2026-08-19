@@ -1,6 +1,6 @@
-//! Example-claim wire-shape matrix (`artifacts::evidence::claim::example`).
+//! Example-claim wire-shape matrix (`emery_artifacts::evidence::claim::example`).
 
-use artifacts::evidence::claim::example::*;
+use emery_artifacts::evidence::claim::example::*;
 use serde_json::json;
 
 fn fixture() -> ExampleClaim {

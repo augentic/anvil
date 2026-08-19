@@ -18,7 +18,7 @@ The seam rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo ma
 
 ### The mock source example
 
-The `source` example (`examples/source/`) is the one mock source adapter: a wasm-free `adapter::Source` implementor (`adapter.rs`) exported as the journey's seam fixture (`guest.rs`). It produces controlled evidence with stable authority and claim anchors, plus typed failure profiles keyed off the routed adapter id. The file stems staged by `tests/journey.rs` select those profiles. The launcher's resolver / store suite (the root `tests/launcher.rs`) builds its own fixture components instead — component-metadata resolution is not a catalog concern. Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
+The `source` example (`examples/source/guest.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor exported as the journey's seam fixture in the same file. It produces controlled evidence with stable authority and claim anchors, plus typed failure profiles keyed off the routed adapter id. The file stems staged by `tests/journey.rs` select those profiles. The launcher's resolver / store suite (the root `tests/launcher.rs`) builds its own fixture components instead — component-metadata resolution is not a catalog concern. Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
 
 Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the engine suites script directly); the journey host wraps `Scripted` as its `WasiModel` backend. Emery owns only scenario content and assertions.
 

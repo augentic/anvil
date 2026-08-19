@@ -1,6 +1,6 @@
-//! Authority-class wire and resolution matrix (`artifacts::evidence::authority`).
+//! Authority-class wire and resolution matrix (`emery_artifacts::evidence::authority`).
 
-use artifacts::evidence::authority::*;
+use emery_artifacts::evidence::authority::*;
 
 #[test]
 fn enum_wire_matrix() {

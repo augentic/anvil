@@ -6,8 +6,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use artifacts::spec::ast;
-use error::Error;
+use emery_artifacts::spec::ast;
+use emery_error::Error;
 use serde::Serialize;
 
 /// The output-home directory under `.emery/`.
@@ -60,7 +60,7 @@ impl SpecSet {
     /// is unambiguous.
     #[must_use]
     pub fn id(&self) -> String {
-        let mut hasher = diagnostics::digest::Hasher::new();
+        let mut hasher = emery_diagnostics::digest::Hasher::new();
         for (name, body) in self.files() {
             hasher.update(&(name.len() as u64).to_be_bytes());
             hasher.update(name.as_bytes());
@@ -201,9 +201,9 @@ impl Home {
         let id = set.id();
         let dir = self.root.join(GENERATIONS_DIR).join(&id);
         for (name, body) in set.files() {
-            artifacts::atomic::bytes_write(&dir.join(name), body.as_bytes())?;
+            emery_artifacts::atomic::bytes_write(&dir.join(name), body.as_bytes())?;
         }
-        artifacts::atomic::bytes_write(
+        emery_artifacts::atomic::bytes_write(
             &self.root.join(CURRENT_FILE),
             format!("{id}\n").as_bytes(),
         )?;

@@ -16,7 +16,7 @@ pub use locations::{CachePlacement, GUEST_CACHE_MOUNT, Locations, PROJECT_ROOT_E
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
 
-/// Result alias for operation bodies: any `error::Error` coerces via
+/// Result alias for operation bodies: any `emery_error::Error` coerces via
 /// `From`, and the report-carrying failures construct
 /// [`Error::Report`] explicitly.
 pub type Result<T, E = Error> = std::result::Result<T, E>;

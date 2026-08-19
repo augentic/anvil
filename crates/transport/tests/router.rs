@@ -11,7 +11,7 @@ use std::path::PathBuf;
 // adapter seam, so the inert provider's capabilities are never reached.
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<support::Inert, transport::command::Globals> {
+) -> omnia_guest::api::command::Router<support::Inert, emery_transport::command::Globals> {
     support::router(root)
 }
 
@@ -38,7 +38,7 @@ async fn adr_0002_http_refusal() {
                 .uri(&path)
                 .body(omnia_guest::axum::body::Body::empty())
                 .expect("build request");
-            let response = transport::http::refusal()
+            let response = emery_transport::http::refusal()
                 .oneshot(request)
                 .await
                 .expect("refusal serves the request");
