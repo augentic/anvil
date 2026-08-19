@@ -15,8 +15,9 @@
 "crates/artifacts" = 730
 "crates/diagnostics" = 884
 # New-spine crate (remediation Phase 3, ADR-0009 §6): the loop plus the
-# handler/resolver kernels ported at the T9 spine cut.
-"crates/engine" = 2600
+# handler/resolver kernels ported at the T9 spine cut. +150 for the
+# re-mine diff kernel and its envelope projection (ADR-0010).
+"crates/engine" = 2750
 "crates/error" = 267
 "crates/guest" = 220
 # Dev-only journey harness (ADR-0009 §5): one runtime! plus the
@@ -25,8 +26,11 @@
 # Post-T10 ceilings (ADR-0009 §6): the native provider and the
 # launcher distribution machinery are deleted; the launcher is
 # local-only resolution and the mock is the wasm-free adapter core.
-"crates/launcher" = 275
-"crates/mock" = 215
+# Launcher +10 for the embedded first-party registry (ADR-0002 §2);
+# mock +25 for the workspace-override lever the re-mine diff journey
+# reads (ADR-0010).
+"crates/launcher" = 285
+"crates/mock" = 240
 "crates/mock-component" = 10
 "crates/prose" = 147
 "crates/transport" = 425

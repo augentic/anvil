@@ -2,10 +2,13 @@
 //! (ADR-0001 Option C, ADR-0009 §2): content-addressed generations
 //! behind one swapped `current` pointer; reads fail closed.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use artifacts::spec::ast;
 use error::Error;
+use serde::Serialize;
 
 /// The output-home directory under `.emery/`.
 const SPEC_DIR: &str = "spec";
@@ -75,6 +78,98 @@ pub struct Committed {
     pub id: String,
     /// The generation directory carrying the complete spec set.
     pub dir: PathBuf,
+}
+
+/// One re-mine diff: how an incoming spec set differs from the
+/// outgoing generation it supersedes (ADR-0010).
+///
+/// Computed at commit time — the outgoing set is pruned immediately
+/// after the swap — and emitted in the `specify` success envelope
+/// only; nothing persists (ADR-0009 §2). An identical re-run yields
+/// an [`empty`](Self::is_empty) diff, making "nothing changed" an
+/// explicit, reviewable statement.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Diff {
+    /// The outgoing generation id this run superseded.
+    pub from: String,
+    /// Spec-set file names whose bytes changed, in `FILES` order.
+    pub artifacts: Vec<String>,
+    /// Requirement subjects present only in the incoming `spec.md`.
+    pub added: Vec<String>,
+    /// Requirement subjects present only in the outgoing `spec.md`.
+    pub removed: Vec<String>,
+    /// Requirement subjects whose block changed (status, tag,
+    /// sources, or body).
+    pub changed: Vec<String>,
+}
+
+impl Diff {
+    /// Diff `incoming` against the `outgoing` set committed as `from`.
+    ///
+    /// Section lists compare `spec.md` requirement blocks keyed by
+    /// heading subject — the reconciliation join key — ignoring the
+    /// positional `REQ-NNN` ids, which shift when rows are inserted
+    /// or removed. The outgoing spec parsing fails only across a
+    /// binary upgrade (pre-1.0: re-init); the diff is advisory, so
+    /// that leaves the artifact list standing and the section lists
+    /// empty rather than failing the commit (ADR-0010).
+    #[must_use]
+    pub fn between(from: String, outgoing: &SpecSet, incoming: &SpecSet) -> Self {
+        let artifacts = outgoing
+            .files()
+            .iter()
+            .zip(incoming.files())
+            .filter(|((_, old), (_, new))| old != new)
+            .map(|((name, _), _)| (*name).to_string())
+            .collect();
+        let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
+        if let (Ok(old), Ok(new)) = (ast::parse(&outgoing.spec), ast::parse(&incoming.spec)) {
+            let old = subjects(&old);
+            let new = subjects(&new);
+            for (subject, block) in &new {
+                match old.get(subject) {
+                    None => added.push((*subject).to_string()),
+                    Some(previous) if !same_block(previous, block) => {
+                        changed.push((*subject).to_string());
+                    }
+                    Some(_) => {}
+                }
+            }
+            removed.extend(
+                old.keys().filter(|subject| !new.contains_key(*subject)).map(ToString::to_string),
+            );
+        }
+        Self {
+            from,
+            artifacts,
+            added,
+            removed,
+            changed,
+        }
+    }
+
+    /// No artifact or section differs — the byte-stable re-run.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.artifacts.is_empty()
+            && self.added.is_empty()
+            && self.removed.is_empty()
+            && self.changed.is_empty()
+    }
+}
+
+/// Requirement blocks keyed by heading subject, in subject order.
+fn subjects(spec: &ast::Spec) -> BTreeMap<&str, &ast::Requirement> {
+    spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
+}
+
+/// Block equality minus the positional `REQ-NNN` id.
+fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
+    old.status == new.status
+        && old.tag == new.tag
+        && old.sources == new.sources
+        && old.body == new.body
 }
 
 /// The output home rooted at one project's `.emery/spec/`.
@@ -147,6 +242,27 @@ impl Home {
             }
         }
         Ok(Some(Committed { id, dir }))
+    }
+
+    /// The outgoing spec set for a re-mine diff (ADR-0010): the id
+    /// the `current` pointer names and its complete set, read before
+    /// the commit that will prune it.
+    ///
+    /// Total by design: the diff is advisory reporting, never a gate,
+    /// and `specify` must stay the recovery path for a corrupt home —
+    /// a missing, incomplete, or unreadable outgoing generation is
+    /// `None`, not a failure. The commit itself remains the authority.
+    #[must_use]
+    pub fn outgoing(&self) -> Option<(String, SpecSet)> {
+        let committed = self.current().ok().flatten()?;
+        let read = |name: &str| fs::read_to_string(committed.dir.join(name)).ok();
+        let set = SpecSet {
+            bindings: read(FILES[0])?,
+            receipts: read(FILES[1])?,
+            spec: read(FILES[2])?,
+            design: read(FILES[3])?,
+        };
+        Some((committed.id, set))
     }
 
     /// Keep only the `current` pointer and the generation it names:

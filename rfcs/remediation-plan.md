@@ -68,6 +68,8 @@ New crates only, per target-architecture v1's module map; borrow from tag `v1` b
 
 ## Phase 4 — Make the generator reliable, then stop
 
+> Status: **landed 2026-08-19** — the three items below are in the tree ([capability-conservation.md](capability-conservation.md) Phase 4 exit carries the acceptance evidence); the conditional fourth-source ports (contracts, screenshots, captures) wait on demonstrated Propellerhead need, and the first live green scorecard is the operator's to record.
+
 Each increment keeps the skeleton green:
 
 1. **Sources:** documentation, code, intent. Then contracts, screenshots, captures if Propellerhead needs them — porting extract prose from `emery-adapters` at tag `v1`, extras honored per A8.

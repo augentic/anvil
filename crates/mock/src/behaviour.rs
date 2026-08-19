@@ -5,14 +5,16 @@
 pub use source::extract;
 
 mod source {
-    use adapter::seam::{Authority, Backing, Claim, ClaimKind, Error, Evidence, SourceInput};
+    use adapter::seam::{
+        Authority, Backing, Claim, ClaimKind, Error, Evidence, SourceContent, SourceInput,
+    };
 
     /// Extract the controlled Evidence for the source selected by `id`.
     ///
     /// # Errors
     ///
     /// `Internal` when the id selects the `fail-extract` profile.
-    pub fn extract(id: &str, _input: &SourceInput) -> Result<Evidence, Error> {
+    pub fn extract(id: &str, input: &SourceInput) -> Result<Evidence, Error> {
         if id.contains("fail-extract") {
             return Err(Error::Internal(format!("mock extract failure for `{id}`")));
         }
@@ -31,10 +33,10 @@ mod source {
                 }],
             });
         }
-        Ok(evidence_for(profile(id)))
+        Ok(evidence_for(profile(id), input))
     }
 
-    fn evidence_for(profile: Profile) -> Evidence {
+    fn evidence_for(profile: Profile, input: &SourceInput) -> Evidence {
         match profile {
             Profile::Docs => Evidence {
                 authority: Authority::Documentation,
@@ -51,7 +53,7 @@ mod source {
                     requirement(
                         "session.timeout",
                         "Documented session expiry",
-                        "Sessions expire after 30 minutes of inactivity.",
+                        &session_policy(input),
                     ),
                 ],
             },
@@ -92,6 +94,24 @@ mod source {
                 )],
             },
         }
+    }
+
+    /// The Docs profile's `session.timeout` statement: the fixed
+    /// 30-minute line, unless the bound workspace carries a
+    /// `session-policy.md` override — the journey's "change one
+    /// source claim between runs" lever (ADR-0010 re-mine diff).
+    fn session_policy(input: &SourceInput) -> String {
+        const DEFAULT: &str = "Sessions expire after 30 minutes of inactivity.";
+        const OVERRIDE: &str = "session-policy.md";
+        let SourceContent::Workspace(workspace) = &input.content else {
+            return DEFAULT.to_string();
+        };
+        // Native hosts resolve the workspace root directly; the wasm
+        // guest falls back to its `.` preopen — equivalent because
+        // the journey binds the project directory itself.
+        std::fs::read_to_string(std::path::Path::new(&workspace.root).join(OVERRIDE))
+            .or_else(|_| std::fs::read_to_string(OVERRIDE))
+            .map_or_else(|_| DEFAULT.to_string(), |text| text.trim().to_string())
     }
 
     /// The behaviour profile a routed adapter id selects.

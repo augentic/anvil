@@ -6,11 +6,10 @@ use engine::handler::ExecutionPaths;
 use engine::resolve::{AdapterSelector, FIRST_PARTY_NAMESPACE, RoutedId, resolver as locate};
 use error::Error;
 
-/// First-party components embedded in the binary as default registry
-/// entries (ADR-0002 §2). Empty until Phase 4 ports the first-party
-/// adapters; the journey's local-component admission is the permanent
-/// out-of-binary conformance rung until then.
-const EMBEDDED: &[(&str, &[u8])] = &[];
+// The embedded first-party registry (ADR-0002 §2): `build.rs` stages
+// `EMERY_EMBED_DIR` components (release: first-party adapters;
+// journey: the mock). Without the env the table is empty.
+include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 
 /// The Emery guest resolver over one captured [`ExecutionPaths`].
 ///
@@ -45,8 +44,13 @@ impl Resolver {
         if let Some(bytes) = self.seed(&routed)? {
             return Ok(bytes);
         }
-        if let Some(bytes) = embedded(&routed.name) {
-            log_use(&routed, routed.version.as_ref(), "embedded");
+        // The embedded entry is the unpinned *default* (ADR-0002 §2):
+        // an exact pin is an explicit operator decision, so it resolves
+        // the verified store only, never the binary's own bytes.
+        if routed.version.is_none()
+            && let Some(bytes) = embedded(&routed.name)
+        {
+            log_use(&routed, None, "embedded");
             return Ok(bytes);
         }
         let selector = match routed.version.clone() {

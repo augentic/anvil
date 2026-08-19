@@ -2,14 +2,14 @@
 
 > **Remediation programme in flight ([ADR-0008](rfcs/decisions/0008-spec-generator-programme.md)).** Before starting any task, read [`CONSTITUTION.md`](CONSTITUTION.md) (standing invariants) and [`rfcs/remediation-plan.md`](rfcs/remediation-plan.md) (the plan of record). The product yardstick is [`rfcs/product.md`](rfcs/product.md); the destination is [`rfcs/target-architecture.md`](rfcs/target-architecture.md) — cite the spec-generator sections, not the deferred annex. Decisions flow through [`rfcs/decisions/`](rfcs/decisions/). Feature work is frozen until the spec walking skeleton is green.
 >
-> **This file maps the reduced Phase 0 tree** — what exists after the freeze, never a spec of what to build. The v1 implementation (survey + extract, plan/refine/execute, target adapters, the definition loop) is archived at git tag `v1`; retrieve it with `git worktree add ../emery-v1 v1`. First-party adapter prose lives in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters), itself tagged `v1` and untouched by this phase.
+> **This file maps the reduced Phase 0 tree** — what exists after the freeze, never a spec of what to build. The v1 implementation (survey + extract, plan/refine/execute, target adapters, the definition loop) is archived at git tag `v1`; retrieve it with `git worktree add ../emery-v1 v1`. First-party adapters live in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) — re-seamed extract-only in Phase 4 (its `v1` tag keeps the survey-era tree).
 
 ## What this repository is now
 
 A Rust workspace at the repository root producing the `emery` runtime binary, plus one Cursor plugin (`plugins/emery/` carrying the `/emery:init` skill wrapper). The live CLI grammar is three verbs:
 
 - `emery init <adapter>... [--value <adapter>=<text>]` — scaffold `.emery/`, resolve/cache each source adapter, write the `sources:` bindings on `project.yaml` (ADR-0009 §1; `--upgrade` is the re-entry path).
-- `emery specify` — the spec generator (ADR-0008 §3, ADR-0009): extract every source binding over the adapter seam, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer.
+- `emery specify` — the spec generator (ADR-0008 §3, ADR-0009): extract every source binding over the adapter seam, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. A re-run reports the re-mine diff against the superseded generation in the success envelope — never persisted (ADR-0010).
 - `emery completions <shell>` — auto-derived from the clap surface.
 
 Deleted verbs are deleted from the grammar, not hidden — there are no compatibility aliases or deprecated stubs. The guest's mutating HTTP catch-all remains a typed refusal (C3, `crates/transport/src/http.rs`); the pre-bound listener serves adapter MCP shelves only.
@@ -50,7 +50,7 @@ crates/            the workspace crates above
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:init skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
-rfcs/              product yardstick, target architecture, remediation plan, decisions/
+rfcs/              product yardstick, target architecture, remediation plan, decisions/, scorecards/ (the eval release-gate record)
 ```
 
 ### Exit codes
@@ -94,7 +94,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Adapter resolution is local-only.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path. Resolution is the seeded project cache (always wins), the embedded first-party registry (empty until Phase 4), else a verified global-store entry (`$EMERY_HOME/store/`, else `~/.emery/store/`) for pins; there is no download path — installs arrive with the explicit install verb (ADR-0002 §2). GitHub URLs are refused (`adapter-github-uri-unsupported`).
+- **Adapter resolution is local-only.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path. Resolution is the seeded project cache (always wins), the embedded first-party registry (staged from `scripts/first-party.txt` into the release build via `EMERY_EMBED_DIR`; unpinned names only — an exact pin resolves the store), else a verified global-store entry (`$EMERY_HOME/store/`, else `~/.emery/store/`) for pins; there is no download path — installs arrive with the explicit install verb (ADR-0002 §2). GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.

@@ -15,6 +15,18 @@ permissions:
   pull-requests: write
 
 jobs:
+  # The eval release gate (CONSTITUTION invariant 6): refuse to cut
+  # unless a committed green scorecard names the release-tip sha. CI
+  # verifies the record only — the live graded eval stays
+  # operator-invoked in emery-adapters (`cargo make eval`).
+  scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the green scorecard names this tip
+        run: scripts/scorecard-gate.sh "$GITHUB_SHA"
+
   release:
+    needs: scorecard
     uses: augentic/.github/.github/workflows/release.yaml@main
     secrets: inherit

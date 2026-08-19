@@ -57,6 +57,27 @@ jobs:
         id: cargo
         uses: augentic/.github/.github/actions/cargo-version@main
 
+      - name: Install wkg
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wkg
+
+      # First-party source components ship embedded in the binary as
+      # default registry entries (ADR-0002 §2): pull each published
+      # component at its exact pin from scripts/first-party.txt and
+      # stage the directory for the launcher's build-time embed.
+      - name: Stage first-party components
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p first-party
+          while read -r name version; do
+            case "$name" in ''|'#'*) continue ;; esac
+            wkg oci pull "ghcr.io/augentic/emery-adapters/${name}:${version}" \
+              -o "first-party/${name}.wasm"
+          done < scripts/first-party.txt
+          echo "EMERY_EMBED_DIR=$PWD/first-party" >> "$GITHUB_ENV"
+
       - name: Build
         shell: bash
         run: cargo build --release --locked --target ${{ matrix.target }} --bin emery

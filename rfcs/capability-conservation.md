@@ -185,9 +185,11 @@ Unless a later ADR reopens them, this programme does not preserve:
 
 ### Phase 4 exit (generator reliable)
 
-- First-party source adapters needed by Propellerhead (documentation, code, intent; others as required) over the conserved seam;
-- graded eval against product.md's "time to first reviewable specification";
-- re-mine diffs.
+Checked 2026-08-19:
+
+- ✅ **First-party source adapters over the conserved seam** — `documentation`, `typescript` (code), and `intent` in `emery-adapters/sources/` are extract-only ports of the v1 prose (survey deleted, never ported), emitting the A8 required extras fail-closed; they embed in the release binary as default registry entries (ADR-0002 §2, `scripts/first-party.txt`) and the CC-17 acceptance is the permanent `cc_17_exact_pin_admission` journey rung. Contracts/screenshots/captures wait on demonstrated Propellerhead need (plan of record item 1).
+- ✅ **Re-mine diffs** — ADR-0010: `emery specify` computes the outgoing→incoming diff at commit time and emits it in the success envelope (per-artifact, section-level); byte-stable re-runs report an explicit empty diff. Evidence: the `adr_0010_remine_diff` journey rung and the `engine::home` diff tests.
+- ✅ **Graded eval, wired as the release gate** — `emery-adapters/examples/eval` is a public-contract client (T6): it spawns the shipped binary over built components, wall-clocks init → committed generation pointer against the ≤30-minute target, records per-operation success from typed outcomes, grades the CC-05/CC-06 mechanical properties, and writes the dated scorecard. The Create Release workflow refuses to cut without a committed green scorecard naming the release tip ([`rfcs/scorecards/`](scorecards/README.md), `scripts/scorecard-gate.sh`; invariant 6). The product.md numbers themselves stay `unconfirmed` until the operator records the first live green run.
 
 ### Build-programme exit
 

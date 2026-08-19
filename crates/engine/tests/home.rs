@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use engine::home::{Home, SpecSet};
+use engine::home::{Diff, Home, SpecSet};
 
 fn set(spec: &str) -> SpecSet {
     SpecSet {
@@ -94,6 +94,73 @@ fn crash_litter_pruned() {
     home.commit(&set("# Spec\n")).expect("re-run commit");
     assert!(!partial.exists(), "crash litter is pruned on the next commit");
     assert!(!project.path().join(".emery/spec/.tmpXYZ").exists());
+}
+
+/// One parseable requirement block for the diff kernel's spec fixtures.
+fn block(id: u32, name: &str, body: &str) -> String {
+    format!(
+        "### Requirement: {name}\n\nID: REQ-{id:03}\nSources: [mock-docs]\nStatus: agreed\n\n{body}\n\n"
+    )
+}
+
+#[test]
+fn outgoing_reads_current() {
+    let project = tempfile::tempdir().expect("tempdir");
+    let home = Home::new(project.path());
+    assert!(home.outgoing().is_none(), "no generation, no outgoing set");
+
+    let committed = home.commit(&set("# Spec\n")).expect("commit");
+    let (from, outgoing) = home.outgoing().expect("outgoing after commit");
+    assert_eq!(from, committed.id, "the outgoing id is the pointer's");
+    assert_eq!(outgoing, set("# Spec\n"), "the outgoing set reads back verbatim");
+}
+
+/// ADR-0010: the re-mine diff names changed artifacts and `spec.md`
+/// sections by heading subject — immune to positional `REQ-NNN`
+/// shifts when blocks are inserted or removed.
+#[test]
+fn remine_diff_sections() {
+    let old_spec = format!(
+        "# Specification\n\n{}{}{}",
+        block(1, "login.flow", "Users sign in with email and password."),
+        block(2, "legacy.export", "Exports ship nightly."),
+        block(3, "session.timeout", "Sessions expire after 30 minutes of inactivity."),
+    );
+    let new_spec = format!(
+        "# Specification\n\n{}{}{}",
+        block(1, "access.audit", "Access is audited."),
+        block(2, "login.flow", "Users sign in with email and password."),
+        block(3, "session.timeout", "Sessions expire after 45 minutes of inactivity."),
+    );
+    let outgoing = SpecSet {
+        receipts: "receipts: [old]\n".to_string(),
+        ..set(&old_spec)
+    };
+    let incoming = SpecSet {
+        receipts: "receipts: [new]\n".to_string(),
+        ..set(&new_spec)
+    };
+
+    let diff = Diff::between("cafe".to_string(), &outgoing, &incoming);
+
+    assert!(!diff.is_empty());
+    assert_eq!(diff.from, "cafe");
+    assert_eq!(diff.artifacts, ["receipts.yaml", "spec.md"], "changed artifacts in set order");
+    assert_eq!(diff.added, ["access.audit"]);
+    assert_eq!(diff.removed, ["legacy.export"]);
+    assert_eq!(
+        diff.changed,
+        ["session.timeout"],
+        "`login.flow` shifted from REQ-001 to REQ-002 unchanged — positional ids never count"
+    );
+}
+
+#[test]
+fn remine_diff_empty() {
+    let identical =
+        set(&format!("# Specification\n\n{}", block(1, "login.flow", "Users sign in.")));
+    let diff = Diff::between("cafe".to_string(), &identical, &identical);
+    assert!(diff.is_empty(), "a byte-stable re-run is an explicit empty diff: {diff:?}");
 }
 
 #[test]

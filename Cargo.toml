@@ -35,6 +35,7 @@ emery-guest.workspace = true
 omnia.workspace = true
 
 [dev-dependencies]
+emery-diagnostics.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 

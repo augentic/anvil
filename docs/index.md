@@ -6,7 +6,7 @@ Emery is being rebuilt as a **spec generator** under the remediation programme (
 git worktree add ../emery-v1 v1
 ```
 
-This guide documents what ships **today**: the `emery` CLI's reduced surface (`init` plus the reserved `specify` stub), the source-adapter seam, and the contributor standards for the Rust workspace. Feature work is frozen until the spec walking skeleton is green; the plan of record is [`rfcs/remediation-plan.md`](https://github.com/augentic/emery/blob/main/rfcs/remediation-plan.md).
+This guide documents what ships **today**: the `emery` CLI's reduced surface (`init` plus the `specify` spec generator), the source-adapter seam, and the contributor standards for the Rust workspace. The plan of record is [`rfcs/remediation-plan.md`](https://github.com/augentic/emery/blob/main/rfcs/remediation-plan.md).
 
 ## Guide structure
 

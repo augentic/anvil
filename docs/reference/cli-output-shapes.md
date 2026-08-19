@@ -51,9 +51,18 @@ The success body names the committed generation and its reviewable set:
 {
   "generation": "9f8e7d6c…",
   "requirements": 3,
-  "sources": 3
+  "sources": 3,
+  "diff": {
+    "from": "1a2b3c4d…",
+    "artifacts": ["receipts.yaml", "spec.md"],
+    "added": [],
+    "removed": [],
+    "changed": ["session.timeout"]
+  }
 }
 ```
+
+`diff` is the re-mine diff against the superseded generation (ADR-0010): the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
 Outside an initialised project the verb fails with `error: "not-initialized"` (exit 1). Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
 

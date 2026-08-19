@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract::{Extract, Receipt, extract_all};
 use crate::handler::{Anchor, Render, RequestContext};
-use crate::home::{Home, SpecSet};
+use crate::home::{Diff, Home, SpecSet};
 use crate::resolve::Resolver;
 use crate::synthesise::{reconcile, synthesise};
 
@@ -29,6 +29,10 @@ pub struct SpecifyBody {
     pub requirements: usize,
     /// Sources extracted this run.
     pub sources: usize,
+    /// The re-mine diff against the superseded generation (ADR-0010);
+    /// absent on a first run, empty on a byte-stable re-run.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff: Option<Diff>,
 }
 
 impl Render for SpecifyBody {
@@ -36,6 +40,22 @@ impl Render for SpecifyBody {
         writeln!(w, "committed generation {}", self.generation)?;
         writeln!(w, "  requirements: {}", self.requirements)?;
         writeln!(w, "  sources: {}", self.sources)?;
+        if let Some(diff) = &self.diff {
+            if diff.is_empty() {
+                writeln!(w, "  diff vs {}: none (byte-stable)", diff.from)?;
+            } else {
+                writeln!(w, "  diff vs {}: {}", diff.from, diff.artifacts.join(", "))?;
+                for subject in &diff.added {
+                    writeln!(w, "    + {subject}")?;
+                }
+                for subject in &diff.removed {
+                    writeln!(w, "    - {subject}")?;
+                }
+                for subject in &diff.changed {
+                    writeln!(w, "    ~ {subject}")?;
+                }
+            }
+        }
         Ok(())
     }
 }
@@ -69,11 +89,17 @@ impl<P: Anchor + Resolver + Extract + Model> Operation<P> for Specify {
             spec: documents.spec,
             design: documents.design,
         };
-        let committed = Home::new(project_dir).commit(&set)?;
+        let home = Home::new(project_dir);
+        // Read the outgoing set before the commit prunes it; the diff
+        // is computed in memory and emitted only here (ADR-0010).
+        let outgoing = home.outgoing();
+        let committed = home.commit(&set)?;
+        let diff = outgoing.map(|(from, previous)| Diff::between(from, &previous, &set));
         Ok(SpecifyBody {
             generation: committed.id,
             requirements: rows.len(),
             sources: sets.len(),
+            diff,
         })
     }
 }
