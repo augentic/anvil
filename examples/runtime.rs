@@ -7,6 +7,7 @@ cfg_if::cfg_if! {
         use std::sync::Arc;
 
         use anyhow::Context as _;
+        use emery::launcher;
         use omnia_testkit::model::Scripted;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};

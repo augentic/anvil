@@ -9,8 +9,8 @@ The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module
 ```rust
 // crates/engine/src/resolve/resolver.rs
 // BAD: AdapterResolverComponent GOOD: Component
-// crates/launcher/src/install.rs
-// BAD: LauncherInstallError     GOOD: Error
+// crates/engine/src/resolve/ensure.rs
+// BAD: ResolveEnsureError       GOOD: Error
 ```
 
 ## Error variants budgeted by recovery, not source

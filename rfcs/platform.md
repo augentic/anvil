@@ -235,7 +235,7 @@ The commercial interpretation is services-led: Emery supports Propellerhead's ac
 
 Unchanged and orthogonal:
 
-- [CLI architecture](../docs/contributing/cli-architecture.md) and `crates/launcher/`, except [RFC-104](archive/rfc-104-system-archaeology.md)'s `system *` mount projection (`--dir` or CWD as the guest `.`; no `project.yaml` walk).
+- [CLI architecture](../docs/contributing/cli-architecture.md) and `src/launcher.rs`, except [RFC-104](archive/rfc-104-system-archaeology.md)'s `system *` mount projection (`--dir` or CWD as the guest `.`; no `project.yaml` walk).
 - [Release process](../docs/release.md).
 - [RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md), an optional cost lever.
 - [RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md), content-triggered Vectis work.

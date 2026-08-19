@@ -77,7 +77,7 @@ impl Resolver for Component {
             let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, None)?;
             return source(&name, None, metadata, bare_origin(Axis::Source, &name));
         }
-        let location = locate(Axis::Source, selector, &name, paths)?;
+        let location = locate(Axis::Source, &name, selector.version(), paths)?;
         let metadata =
             metadata::load(self.metadata, &location, Axis::Source, &name, selector.version())?;
         source(&name, selector.version().cloned(), metadata, location.origin())
@@ -141,23 +141,16 @@ pub fn source(
     })
 }
 
-/// Project component cache directory under the execution context's
-/// cache placement.
-#[must_use]
-pub(crate) fn component_cache_dir(paths: &ExecutionPaths) -> PathBuf {
-    paths.cache_dir().join("components")
-}
-
 /// Project component cache entry for `name`.
 #[must_use]
 pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathBuf {
-    component_cache_dir(paths).join(format!("{name}.wasm"))
+    paths.locations().component(paths.project_root(), name)
 }
 
-/// Locate the single component file for one selector without
+/// Locate the single component file for one adapter identity without
 /// dispatching metadata.
 ///
-/// Probes the verified global store entry for a package pin, else the
+/// Probes the verified global store entry for a version pin, else the
 /// project component cache. Resolution is project-contained — no
 /// sibling-checkout or build-tree probe. The deployment launcher
 /// derives closure component paths through this before the runtime exists.
@@ -168,9 +161,9 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 /// `adapter-digest-mismatch` / `adapter-store-unreadable` when a store
 /// entry fails verify-on-read.
 pub fn locate(
-    axis: Axis, selector: &AdapterSelector, name: &str, paths: &ExecutionPaths,
+    axis: Axis, name: &str, version: Option<&semver::Version>, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
-    if let AdapterSelector::Package { version, .. } = selector {
+    if let Some(version) = version {
         let version = version.to_string();
         let entry = paths.locations().store_entry(name, &version);
         if !entry.is_file() {
@@ -222,9 +215,9 @@ pub fn locate(
         return Ok(AdapterLocation::Store(entry));
     }
 
-    // Bare shorthand and persisted local-component selectors share the
-    // seeded project-cache probe; a component selector resolves through
-    // its mirror, so it survives removal of the operator's original file.
+    // Bare shorthand and persisted local components share the seeded
+    // project-cache probe; a local component resolves through its
+    // mirror, so it survives removal of the operator's original file.
     let entry = component_cache_entry(paths, name);
     if entry.is_file() {
         return Ok(AdapterLocation::Cache(entry));

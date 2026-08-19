@@ -8,7 +8,8 @@
 # (integration tests are uncapped). Every workspace crate must carry
 # an entry; a deleted crate's entry is removed in the same change.
 [rust]
-"src" = 46
+# Root deployment unit (guest lib + runtime + launcher, ADR-0011).
+"src" = 195
 "crates/adapter" = 912
 # Post-T10 (ADR-0009 §4): the fail-closed spec AST, evidence, and the
 # atomic writer; the lenient v1 parsers fell at the spine cut.
@@ -20,11 +21,6 @@
 "crates/engine" = 2750
 "crates/error" = 267
 "crates/guest" = 220
-# Post-T10 ceilings (ADR-0009 §6): the native provider and the
-# launcher distribution machinery are deleted; the launcher is
-# local-only resolution.
-# Launcher +10 for the embedded first-party registry (ADR-0002 §2).
-"crates/launcher" = 285
 "crates/prose" = 147
 "crates/transport" = 425
 

@@ -13,17 +13,21 @@ version.workspace = true
 
 [lib]
 path = "src/lib.rs"
-crate-type = ["cdylib"]
+# The rlib exists solely so the package's own binary, example, and
+# test targets link the native `launcher` module (ADR-0011).
+crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
-emery-launcher.workspace = true
+emery-engine.workspace = true
+emery-error.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
+semver.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 emery-guest.workspace = true
@@ -187,7 +191,6 @@ emery-diagnostics = { path = "crates/diagnostics" }
 emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
 emery-guest = { path = "crates/guest" }
-emery-launcher = { path = "crates/launcher" }
 emery-prose = { path = "crates/prose" }
 emery-transport = { path = "crates/transport" }
 
