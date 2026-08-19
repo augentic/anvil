@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use diagnostics::cache::{
+use emery_diagnostics::cache::{
     OciProvenance, StoreVerifyError, file_content_digest, project_id, read_store_meta,
     read_store_provenance, verify_store_entry, write_store_meta,
 };

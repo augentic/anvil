@@ -5,7 +5,7 @@
 
 use std::io::Write;
 
-use diagnostics::{
+use emery_diagnostics::{
     Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, has_blocking,
     renumber,
 };

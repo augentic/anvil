@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use engine::home::{Diff, Home, SpecSet};
+use emery_engine::home::{Diff, Home, SpecSet};
 
 fn set(spec: &str) -> SpecSet {
     SpecSet {

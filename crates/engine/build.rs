@@ -3,5 +3,5 @@
 //! registry module includes; relative links are checked at build time.
 
 fn main() {
-    prose::emit("prose");
+    emery_prose::emit("prose");
 }

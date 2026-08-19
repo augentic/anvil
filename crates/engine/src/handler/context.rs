@@ -3,7 +3,7 @@
 //! Assembled once where a project-scoped operation enters, so paths,
 //! the loaded project, and the version floor are derived exactly once.
 
-use error::Error;
+use emery_error::Error;
 
 use super::anchor::Anchor;
 use super::paths::ExecutionPaths;

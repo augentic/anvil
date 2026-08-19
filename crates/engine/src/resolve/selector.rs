@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use error::Error;
+use emery_error::Error;
 
 /// The operator-supplied adapter reference, preserving its input kind.
 ///

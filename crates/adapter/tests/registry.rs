@@ -1,6 +1,6 @@
 //! The prose lookup helpers over a sorted doc table.
 
-use adapter::registry::{Doc, body, find};
+use emery_adapter::registry::{Doc, body, find};
 
 /// A sorted table, as the `prose` codegen emits.
 static DOCS: &[Doc] = &[

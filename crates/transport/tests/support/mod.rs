@@ -6,8 +6,8 @@
 
 use std::path::PathBuf;
 
-use engine::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
-use engine::resolve::{AdapterSelector, ResolvedSource, Resolver};
+use emery_engine::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
+use emery_engine::resolve::{AdapterSelector, ResolvedSource, Resolver};
 use omnia_guest::api::invoke::Invoker;
 
 /// The inert provider: a real anchored layout, unreachable capabilities.
@@ -25,15 +25,15 @@ impl Anchor for Inert {
 impl Resolver for Inert {
     fn resolve_source(
         &self, _selector: &AdapterSelector, _paths: &ExecutionPaths,
-    ) -> Result<ResolvedSource, error::Error> {
+    ) -> Result<ResolvedSource, emery_error::Error> {
         unreachable!("the wire suites never dispatch adapter resolution")
     }
 }
 
-impl engine::extract::Extract for Inert {
+impl emery_engine::extract::Extract for Inert {
     async fn extract(
-        &self, _id: &str, _input: &adapter::seam::SourceInput,
-    ) -> Result<adapter::seam::Evidence, error::Error> {
+        &self, _id: &str, _input: &emery_adapter::seam::SourceInput,
+    ) -> Result<emery_adapter::seam::Evidence, emery_error::Error> {
         unreachable!("the wire suites never dispatch the adapter seam")
     }
 }
@@ -49,12 +49,12 @@ impl omnia_guest::Model for Inert {
 /// The command router over an inert provider anchored at `root`.
 pub fn router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<Inert, transport::command::Globals> {
+) -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
     let root = root.into();
     let locations =
         Locations::explicit(root.join("store"), CachePlacement::Parent(root.join("project-cache")));
     let provider = Inert {
         paths: ExecutionPaths::new(root, locations),
     };
-    transport::command::router(Invoker::new("emery", provider)).expect("router")
+    emery_transport::command::router(Invoker::new("emery", provider)).expect("router")
 }

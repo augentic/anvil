@@ -124,14 +124,14 @@ impl Locations {
     /// Resolved per-project cache directory for `project_root`.
     ///
     /// [`CachePlacement::Parent`] appends the stable project-id digest
-    /// (`diagnostics::cache::project_id`), so each checkout gets its
+    /// (`emery_diagnostics::cache::project_id`), so each checkout gets its
     /// own collision-free cache; [`CachePlacement::Project`] returns
     /// the carried, already-resolved root directly.
     #[must_use]
     pub fn project_cache_dir(&self, project_root: &Path) -> PathBuf {
         match &self.cache {
             CachePlacement::Parent(parent) => {
-                parent.join(diagnostics::cache::project_id(project_root))
+                parent.join(emery_diagnostics::cache::project_id(project_root))
             }
             CachePlacement::Project(dir) => dir.clone(),
         }

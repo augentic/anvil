@@ -14,7 +14,7 @@ The engine is versioned by the binary — the binary *contains* its engine, so n
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). The headline shape: `error` is the leaf; `engine` owns the domain and the `init` / `specify` operations (shared plumbing in `engine::handler`, resolution in `engine::resolve`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root package's `launcher` module owns the native deployment policy (ADR-0011); the root binary is one `omnia::runtime!` invocation embedding the engine bytes. Architecture standards beyond the graph (the `.emery/` layout boundary, WASI carve-outs, atomic writes) live in [architecture.md](../standards/architecture.md).
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). The headline shape: `error` is the leaf; `engine` owns the domain and the `init` / `specify` operations (shared plumbing in `emery_engine::handler`, resolution in `emery_engine::resolve`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root package's `launcher` module owns the native deployment policy (ADR-0011); the root binary is one `omnia::runtime!` invocation embedding the engine bytes. Architecture standards beyond the graph (the `.emery/` layout boundary, WASI carve-outs, atomic writes) live in [architecture.md](../standards/architecture.md).
 
 ## Dispatch pattern
 
@@ -54,14 +54,14 @@ Guest commands inherit the same contract: `omnia_guest::api::command` projects p
 
 ## Error handling
 
-Most commands use `error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, permission failures, runtime failures, and more.
+Most commands use `emery_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, permission failures, runtime failures, and more.
 
 The pattern for a command operation:
 
-1. Call into a library crate function that returns `Result<T, error::Error>`
+1. Call into a library crate function that returns `Result<T, emery_error::Error>`
 2. Return a typed body implementing `Serialize + Render`
 3. Let the command or HTTP projector render success or apply the shared error contract
 
 ## Public Rust API
 
-The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `engine::project::Project` or `error::Error`.
+The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::project::Project` or `emery_error::Error`.

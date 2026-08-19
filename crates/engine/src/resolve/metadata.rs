@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use error::Error;
+use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
 use super::core::{AdapterLocation, Axis};
@@ -75,7 +75,7 @@ pub(super) fn load(
     version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {
     let component = location.path();
-    let digest = diagnostics::cache::file_content_digest(component);
+    let digest = emery_diagnostics::cache::file_content_digest(component);
     let cache_path = metadata_cache_path(component);
     if let Some(answer) = read_cache(&cache_path, &digest) {
         return Ok(answer);

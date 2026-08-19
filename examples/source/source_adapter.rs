@@ -1,12 +1,12 @@
 //! Deterministic mock source: extract keys off the routed adapter id
 //! (`docs` / `code` / `intent` / `fail-*` substrings, else greeting).
 
-use adapter::registry::Doc;
-use adapter::seam::{
+use emery_adapter::registry::Doc;
+use emery_adapter::seam::{
     Authority, Backing, Claim, ClaimKind, Context, Error, Evidence, SourceContent, SourceInput,
     SourceMetadata,
 };
-use adapter::{AdapterIdentity, Model, Source};
+use emery_adapter::{AdapterIdentity, Model, Source};
 
 /// Unpublished mock identity: a development placeholder version,
 /// never a pin-matchable release.

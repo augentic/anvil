@@ -14,7 +14,7 @@ const STREAM_CHUNK: usize = 16 * 1024;
 /// Lowercase hex encoding of a SHA-256 digest over `bytes`.
 ///
 /// ```
-/// use diagnostics::digest::sha256_hex;
+/// use emery_diagnostics::digest::sha256_hex;
 ///
 /// assert_eq!(sha256_hex(b"").len(), 64);
 /// assert!(sha256_hex(b"emery").starts_with(|c: char| c.is_ascii_hexdigit()));
@@ -35,7 +35,7 @@ fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
 /// module is the single home for the digest dependency.
 ///
 /// ```
-/// use diagnostics::digest::{Hasher, sha256_hex};
+/// use emery_diagnostics::digest::{Hasher, sha256_hex};
 ///
 /// let mut hasher = Hasher::new();
 /// hasher.update(b"em");
@@ -92,7 +92,7 @@ impl Hasher {
 /// ```
 /// use std::io::Cursor;
 ///
-/// use diagnostics::digest::{sha256_hex, sha256_reader};
+/// use emery_diagnostics::digest::{sha256_hex, sha256_reader};
 ///
 /// let mut cursor = Cursor::new(b"emery");
 /// assert_eq!(sha256_reader(&mut cursor).unwrap(), sha256_hex(b"emery"));

@@ -1,9 +1,9 @@
 //! Behavioural coverage for the crash-safe atomic writers
-//! (`artifacts::atomic`).
+//! (`emery_artifacts::atomic`).
 
 use std::collections::BTreeMap;
 
-use artifacts::atomic::{bytes_write, yaml_write};
+use emery_artifacts::atomic::{bytes_write, yaml_write};
 
 #[test]
 fn string_appends_newline() {
@@ -69,7 +69,7 @@ fn bytes_empty() {
 
 #[test]
 fn copy_matches_bytes() {
-    use artifacts::atomic::copy_write;
+    use emery_artifacts::atomic::copy_write;
 
     let dir = tempfile::tempdir().expect("tempdir");
     let src = dir.path().join("src.bin");

@@ -3,10 +3,10 @@
 //! fail-closed AST + row gate. Seam dispatch itself is covered over
 //! the component seam (`tests/journey.rs`, ADR-0002).
 
-use artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
-use artifacts::spec::ast::{Status, Tag};
-use engine::extract::SourceSet;
-use engine::synthesise::{Row, reconcile, synthesise};
+use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
+use emery_artifacts::spec::ast::{Status, Tag};
+use emery_engine::extract::SourceSet;
+use emery_engine::synthesise::{Row, reconcile, synthesise};
 use omnia_testkit::model::Harness;
 
 fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {

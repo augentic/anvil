@@ -4,9 +4,9 @@
 
 use std::future::Future;
 
-use adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
-use artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
-use error::Error;
+use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
+use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
+use emery_error::Error;
 use serde::Serialize;
 
 use crate::handler::ExecutionPaths;
@@ -67,13 +67,16 @@ impl Receipt {
             "authority": set.authority,
             "claims": set.claims,
         });
-        let canonical = diagnostics::fingerprint::canonical_json(&body);
+        let canonical = emery_diagnostics::fingerprint::canonical_json(&body);
         Self {
             key: set.key.clone(),
             adapter: set.adapter.clone(),
             authority: set.authority,
             claims: set.claims.len(),
-            digest: format!("sha256:{}", diagnostics::digest::sha256_hex(canonical.as_bytes())),
+            digest: format!(
+                "sha256:{}",
+                emery_diagnostics::digest::sha256_hex(canonical.as_bytes())
+            ),
         }
     }
 }
@@ -202,8 +205,8 @@ fn claim(seam: seam::Claim) -> Claim {
     mapped.path = seam.path;
     mapped.synopsis = seam.synopsis;
     mapped.set_backing(seam.backing.map(|backing| match backing {
-        seam::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
-        seam::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
+        seam::Backing::Payload(payload) => emery_artifacts::evidence::Backing::Payload(payload),
+        seam::Backing::Path(path) => emery_artifacts::evidence::Backing::Path(path),
     }));
     mapped.extras = seam.extras;
     mapped

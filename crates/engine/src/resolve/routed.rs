@@ -5,7 +5,7 @@
 
 use std::str::FromStr;
 
-use error::Error;
+use emery_error::Error;
 
 use super::core::Axis;
 use super::selector::AdapterSelector;

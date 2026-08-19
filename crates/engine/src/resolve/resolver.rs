@@ -4,7 +4,7 @@
 use std::future::Future;
 use std::path::PathBuf;
 
-use error::Error;
+use emery_error::Error;
 
 use super::core::{
     AdapterLocation, Axis, Origin, ResolvedSource, SourceAdapter, check_requires_emery, parse_floor,
@@ -179,9 +179,9 @@ pub fn locate(
             });
         }
         let meta = paths.locations().store_meta(name, &version);
-        match diagnostics::cache::verify_store_entry(&entry, &meta) {
+        match emery_diagnostics::cache::verify_store_entry(&entry, &meta) {
             Ok(()) => {}
-            Err(diagnostics::cache::StoreVerifyError::MissingSidecar) => {
+            Err(emery_diagnostics::cache::StoreVerifyError::MissingSidecar) => {
                 return Err(Error::Diag {
                     code: "adapter-sidecar-missing",
                     detail: format!(
@@ -191,7 +191,7 @@ pub fn locate(
                     ),
                 });
             }
-            Err(diagnostics::cache::StoreVerifyError::Unreadable(io)) => {
+            Err(emery_diagnostics::cache::StoreVerifyError::Unreadable(io)) => {
                 return Err(Error::Diag {
                     code: "adapter-store-unreadable",
                     detail: format!(
@@ -201,7 +201,7 @@ pub fn locate(
                     ),
                 });
             }
-            Err(diagnostics::cache::StoreVerifyError::Mismatch(mismatch)) => {
+            Err(emery_diagnostics::cache::StoreVerifyError::Mismatch(mismatch)) => {
                 return Err(digest_mismatch(
                     &format!(
                         "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
@@ -242,7 +242,7 @@ pub fn locate(
 /// deployment launcher's install leg.
 #[must_use]
 pub fn digest_mismatch(
-    subject: &str, phase: &str, mismatch: &diagnostics::cache::DigestMismatch,
+    subject: &str, phase: &str, mismatch: &emery_diagnostics::cache::DigestMismatch,
 ) -> Error {
     Error::Diag {
         code: "adapter-digest-mismatch",

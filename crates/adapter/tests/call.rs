@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
-use adapter::seam::{Context, Error, mcp_url_for};
-use adapter::{Error as ModelError, Format, judgment};
+use emery_adapter::seam::{Context, Error, mcp_url_for};
+use emery_adapter::{Error as ModelError, Format, judgment};
 use omnia_testkit::model::{Harness, mcp_grants};
 use serde::Deserialize;
 
@@ -85,7 +85,7 @@ async fn no_mcp_no_grant() {
 async fn error_mapping() {
     let model = Harness::scripted([
         Err(ModelError::InvalidRequest("messages must not be empty".to_string())),
-        Ok(adapter::Reply {
+        Ok(emery_adapter::Reply {
             answer: "this is not json".to_string(),
             usage: None,
         }),
@@ -110,7 +110,7 @@ async fn error_mapping() {
 // re-prompt with the findings inlined; everything else returns
 // immediately.
 mod repaired {
-    use adapter::{MAX_REPAIRS, repaired};
+    use emery_adapter::{MAX_REPAIRS, repaired};
 
     use super::*;
 
@@ -253,7 +253,7 @@ fn mcp_url_port_from_trigger() {
 // an empty base yields no grant.
 #[test]
 fn mcp_url_base_preferred() {
-    use adapter::seam::mcp_url_with_base;
+    use emery_adapter::seam::mcp_url_with_base;
     assert_eq!(
         mcp_url_with_base("http://127.0.0.1:8080", "target:omnia").as_deref(),
         Some("http://127.0.0.1:8080/mcp/target/omnia")

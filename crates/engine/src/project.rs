@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use error::Error;
+use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
 /// In-memory representation of the spec generator's `project.yaml`.
@@ -103,7 +103,7 @@ impl Project {
     /// Propagates serialization and filesystem failures.
     pub fn store(&self, project_dir: &Path) -> Result<PathBuf, Error> {
         let path = Self::path(project_dir);
-        artifacts::atomic::yaml_write(&path, self)?;
+        emery_artifacts::atomic::yaml_write(&path, self)?;
         Ok(path)
     }
 }

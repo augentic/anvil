@@ -3,11 +3,11 @@
 
 use std::sync::LazyLock;
 
-use adapter::seam;
-use engine::handler::{Anchor, ExecutionPaths};
-use engine::resolve::metadata::{Metadata, Request};
-use engine::resolve::{AdapterSelector, Axis, ResolvedSource, Resolver};
-use error::Error;
+use emery_adapter::seam;
+use emery_engine::handler::{Anchor, ExecutionPaths};
+use emery_engine::resolve::metadata::{Metadata, Request};
+use emery_engine::resolve::{AdapterSelector, Axis, ResolvedSource, Resolver};
+use emery_error::Error;
 
 use crate::bindings::emery::adapter::source;
 
@@ -33,17 +33,17 @@ impl Resolver for Provider {
     fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        engine::resolve::resolver::Component::new(metadata).resolve_source(selector, paths)
+        emery_engine::resolve::resolver::Component::new(metadata).resolve_source(selector, paths)
     }
 
     async fn ensure_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        engine::resolve::ensure::source(metadata, selector, paths, jiff::Timestamp::now())
+        emery_engine::resolve::ensure::source(metadata, selector, paths, jiff::Timestamp::now())
     }
 }
 
-impl engine::extract::Extract for Provider {
+impl emery_engine::extract::Extract for Provider {
     async fn extract(&self, id: &str, input: &seam::SourceInput) -> Result<seam::Evidence, Error> {
         let wire = wire_input(input);
         let evidence = source::extract(id.to_string(), wire).await.map_err(|err| Error::Diag {

@@ -2,7 +2,7 @@
 //! gate over `spec.md`. Unparseable is a typed error, never a lenient
 //! pass; the v1 lenient parsers fall with their consumers at the cut.
 
-use error::Error;
+use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
 /// Markdown heading prefix opening a requirement block.

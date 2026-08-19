@@ -3,9 +3,9 @@
 //! verbs are gone from the grammar — no hidden routes, no aliases.
 
 use clap::Args;
-use engine::extract::Extract;
-use engine::handler::Anchor;
-use engine::resolve::Resolver;
+use emery_engine::extract::Extract;
+use emery_engine::handler::Anchor;
+use emery_engine::resolve::Resolver;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
@@ -40,8 +40,8 @@ pub(super) struct InitArgs {
 #[derive(Debug, Args)]
 pub(super) struct SpecifyArgs;
 
-impl TryFrom<SpecifyArgs> for engine::specify::SpecifyInput {
-    type Error = error::Error;
+impl TryFrom<SpecifyArgs> for emery_engine::specify::SpecifyInput {
+    type Error = emery_error::Error;
 
     fn try_from(args: SpecifyArgs) -> Result<Self, Self::Error> {
         let SpecifyArgs = args;
@@ -81,14 +81,14 @@ where
     route!(
         ["init"],
         InitArgs,
-        engine::init::Init,
+        emery_engine::init::Init,
         "Initialize .emery/ with source bindings",
         "Initialize .emery/ with source bindings.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources. No sources fails typed with `init-source-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
     );
     route!(
         ["specify"],
         SpecifyArgs,
-        engine::specify::Specify,
+        emery_engine::specify::Specify,
         "Generate spec.md and design.md from the bound sources",
         "Generate spec.md and design.md from the bound sources.\n\nExtracts every source binding over the adapter seam, reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff."
     );
@@ -100,7 +100,7 @@ macro_rules! convert {
     // flag missing from the field list is a compile error.
     ($args:path => $input:path { $($field:ident),* $(,)? }) => {
         impl TryFrom<$args> for $input {
-            type Error = error::Error;
+            type Error = emery_error::Error;
 
             fn try_from(args: $args) -> Result<Self, Self::Error> {
                 let $args { $($field),* } = args;
@@ -110,4 +110,4 @@ macro_rules! convert {
     };
 }
 
-convert!(InitArgs => engine::init::InitInput { adapters, values, name, description, upgrade });
+convert!(InitArgs => emery_engine::init::InitInput { adapters, values, name, description, upgrade });

@@ -14,7 +14,7 @@ pub use report::{DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary};
 /// < Suggestion < Optional`.
 ///
 /// ```
-/// use diagnostics::Severity;
+/// use emery_diagnostics::Severity;
 ///
 /// assert!(Severity::Critical < Severity::Suggestion);
 /// ```
@@ -297,7 +297,7 @@ impl Diagnostic {
     /// the default shape for a structural workflow invariant breach.
     ///
     /// ```
-    /// use diagnostics::{Artifact, Diagnostic, Severity};
+    /// use emery_diagnostics::{Artifact, Diagnostic, Severity};
     ///
     /// let finding = Diagnostic::violation(
     ///     "spec.requirement-id-missing",

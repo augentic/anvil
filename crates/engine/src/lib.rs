@@ -14,5 +14,5 @@ pub mod synthesise;
 /// The embedded synthesis-prose registry (the reviewed v1 port under
 /// `prose/`, walked and link-checked at build time).
 mod prose {
-    adapter::registry!();
+    emery_adapter::registry!();
 }

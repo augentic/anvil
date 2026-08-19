@@ -1,8 +1,8 @@
 //! `v1` fingerprint algorithm: determinism, the excluded/included
 //! field matrix, `verify_fingerprint`, and canonical JSON.
 
-use diagnostics::digest::sha256_hex;
-use diagnostics::{
+use emery_diagnostics::digest::sha256_hex;
+use emery_diagnostics::{
     Confidence, DiagnosticKind, FindingEvidence, FindingLocation, Severity, canonical_json,
     fingerprint, verify_fingerprint,
 };
@@ -22,7 +22,7 @@ fn empty_digest_kat() {
 fn streamed_digest_parity() {
     use std::io::Cursor;
 
-    use diagnostics::digest::sha256_reader;
+    use emery_diagnostics::digest::sha256_reader;
 
     let payload: Vec<u8> = (0_u8..=250).cycle().take(200_000).collect();
     let mut cursor = Cursor::new(&payload);

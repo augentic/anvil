@@ -8,8 +8,8 @@ pub use error::Error;
 
 /// Workspace-wide `Result` alias bound to [`Error`].
 ///
-/// Lets call sites write `error::Result<T>` (or `Result<T>`
-/// after `use error::Result`) without restating the error
+/// Lets call sites write `emery_error::Result<T>` (or `Result<T>`
+/// after `use emery_error::Result`) without restating the error
 /// parameter; supply an explicit `E` to override on the rare path that
 /// returns a non-[`Error`] failure.
 pub type Result<T, E = Error> = std::result::Result<T, E>;

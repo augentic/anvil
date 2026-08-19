@@ -1,7 +1,7 @@
 //! The fail-closed spec AST (A17, ADR-0009 §4) at its public surface:
 //! the reviewable set parses; everything else is a typed error.
 
-use artifacts::spec::ast::{Status, Tag, parse};
+use emery_artifacts::spec::ast::{Status, Tag, parse};
 
 const REVIEWABLE: &str = "\
 # Session handling

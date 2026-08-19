@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use error::Error;
+use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
 /// Axis discriminator for an adapter component.

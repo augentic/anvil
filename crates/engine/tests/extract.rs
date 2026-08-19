@@ -3,8 +3,8 @@
 //! Seam dispatch is covered over the component seam
 //! (`tests/journey.rs`, ADR-0002).
 
-use artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
-use engine::extract::{Receipt, SourceSet, validate_set};
+use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
+use emery_engine::extract::{Receipt, SourceSet, validate_set};
 
 fn requirement(id: &str, statement: Option<&str>) -> Claim {
     let mut claim = Claim::new(ClaimKind::Requirement);

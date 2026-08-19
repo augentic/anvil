@@ -122,7 +122,7 @@ match format {
 Ok(SomeBody::from(&result))
 ```
 
-Text mode renders through the body's `engine::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
+Text mode renders through the body's `emery_engine::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
 
 ## One emit path
 
@@ -190,7 +190,7 @@ impl From<&Outcome> for HandleBody {
 
 ## Errors
 
-`error::Error` variants are **structured**, not `Variant(String)` catch-alls. The kebab-case identifier in `#[error("…")]` (and in `Error::Diag.code`) is part of the public contract that skills and tests grep for; treat any rename as a breaking change.
+`emery_error::Error` variants are **structured**, not `Variant(String)` catch-alls. The kebab-case identifier in `#[error("…")]` (and in `Error::Diag.code`) is part of the public contract that skills and tests grep for; treat any rename as a breaking change.
 
 **Diag-first error policy.** New diagnostic sites use `Error::Diag { code: "<kebab>", detail: format!(…) }`. Promote to a typed `Error::*` variant **only** when:
 
@@ -212,9 +212,9 @@ A dedicated typed variant remains correct for entries that already meet the crit
 
 ## YAML, JSON, and atomic writes
 
-YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
+YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `emery_error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, emery_error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
 
-Writes that must not be observed mid-update use the shared atomic helpers in `artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (e.g. `project.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
+Writes that must not be observed mid-update use the shared atomic helpers in `emery_artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (e.g. `project.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
 
 ## Module layout
 

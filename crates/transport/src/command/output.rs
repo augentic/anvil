@@ -6,8 +6,8 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use clap::ValueEnum;
-use engine::handler::Render;
-use error::Error;
+use emery_engine::handler::Render;
+use emery_error::Error;
 use serde::Serialize;
 
 /// Structured (`json`) or human (`text`) CLI output.
@@ -105,7 +105,7 @@ impl From<&Error> for Exit {
 /// Payload-free: `error` carries the variant discriminant, `message`
 /// the rendered detail, `exit-code` the numeric exit, and `hint` the
 /// optional recovery guidance (present in text and JSON alike). No
-/// per-finding rows — handlers render `diagnostics::DiagnosticReport`
+/// per-finding rows — handlers render `emery_diagnostics::DiagnosticReport`
 /// on stdout before returning this. Construct via `ErrorBody::from`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]

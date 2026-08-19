@@ -1,7 +1,7 @@
 //! `source-adapter` WIT bindings and the `source!` export macro.
 //!
 //! One `wit_bindgen::generate!` here; leaf crates wire a [`crate::Source`]
-//! implementor with `adapter::source!(…)`.
+//! implementor with `emery_adapter::source!(…)`.
 
 mod generated {
     #![allow(
@@ -191,7 +191,7 @@ fn source_ctx<'a>(id: &'a str, input: &'a crate::seam::SourceInput) -> crate::se
 /// Wire a [`crate::Source`] implementor into the component exports.
 ///
 /// ```ignore
-/// adapter::source!(crate::Captures);
+/// emery_adapter::source!(crate::Captures);
 /// ```
 #[macro_export]
 macro_rules! source {

@@ -2,7 +2,7 @@
 
 #![expect(dead_code, reason = "shared fixtures; each consuming binary uses a subset")]
 
-use diagnostics::{
+use emery_diagnostics::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence,
     FindingLocation, Severity,
 };

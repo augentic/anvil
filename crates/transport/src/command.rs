@@ -1,8 +1,8 @@
 //! Typed command grammar, conversions, and Emery projection policy.
 
 use clap::Args;
-use engine::handler::{Anchor, Render};
-use engine::resolve::Resolver;
+use emery_engine::handler::{Anchor, Render};
+use emery_engine::resolve::Resolver;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
 use serde::Serialize;
@@ -27,14 +27,15 @@ pub struct Globals {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EmeryProjector;
 
-impl<T> Projector<T, engine::handler::Error, error::Error, Globals> for EmeryProjector
+impl<T> Projector<T, emery_engine::handler::Error, emery_error::Error, Globals> for EmeryProjector
 where
     T: Render + Serialize + Send + 'static,
 {
-    type Error = error::Error;
+    type Error = emery_error::Error;
 
     fn project(
-        &self, outcome: Outcome<T, engine::handler::Error, error::Error>, globals: &Globals,
+        &self, outcome: Outcome<T, emery_engine::handler::Error, emery_error::Error>,
+        globals: &Globals,
     ) -> Result<CommandResponse, Self::Error> {
         match outcome {
             Outcome::Output(output) => {
@@ -55,13 +56,15 @@ where
 fn encode<T: Serialize>(
     format: Format, value: &T,
     text: impl FnOnce(&mut dyn std::io::Write, &T) -> std::io::Result<()>,
-) -> Result<Vec<u8>, error::Error> {
+) -> Result<Vec<u8>, emery_error::Error> {
     let mut bytes = Vec::new();
     emit(&mut bytes, format, value, text)?;
     Ok(bytes)
 }
 
-fn error_response(format: Format, error: &error::Error) -> Result<CommandResponse, error::Error> {
+fn error_response(
+    format: Format, error: &emery_error::Error,
+) -> Result<CommandResponse, emery_error::Error> {
     let body = ErrorBody::from(error);
     let stderr = encode(format, &body, write_error_text)?;
     Ok(CommandResponse::failure(stderr, Exit::from(error).code()))
@@ -69,17 +72,17 @@ fn error_response(format: Format, error: &error::Error) -> Result<CommandRespons
 
 /// [`render_failure`] mapped onto a `CommandResponse` — the terminal
 /// fallback (a plain exit-1 line) lives in one place.
-fn failure_response(format: Format, error: &error::Error) -> CommandResponse {
+fn failure_response(format: Format, error: &emery_error::Error) -> CommandResponse {
     let (stderr, code) = render_failure(format, error);
     CommandResponse::failure(stderr, code)
 }
 
 fn operation_response(
-    format: Format, error: engine::handler::Error,
-) -> Result<CommandResponse, error::Error> {
+    format: Format, error: emery_engine::handler::Error,
+) -> Result<CommandResponse, emery_error::Error> {
     match error {
-        engine::handler::Error::Core(source) => error_response(format, &source),
-        engine::handler::Error::Report { body, source } => {
+        emery_engine::handler::Error::Core(source) => error_response(format, &source),
+        emery_engine::handler::Error::Report { body, source } => {
             let stdout = encode(format, &body, |w, v| v.render(w))?;
             let mut response = error_response(format, &source)?;
             response.stdout = stdout;

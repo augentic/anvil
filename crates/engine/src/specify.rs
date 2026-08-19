@@ -84,8 +84,8 @@ impl<P: Anchor + Resolver + Extract + Model> Operation<P> for Specify {
 
         let receipts: Vec<Receipt> = sets.iter().map(Receipt::of).collect();
         let set = SpecSet {
-            bindings: artifacts::atomic::serialise_yaml(&project.sources)?,
-            receipts: artifacts::atomic::serialise_yaml(&receipts)?,
+            bindings: emery_artifacts::atomic::serialise_yaml(&project.sources)?,
+            receipts: emery_artifacts::atomic::serialise_yaml(&receipts)?,
             spec: documents.spec,
             design: documents.design,
         };
