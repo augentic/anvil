@@ -18,41 +18,16 @@ include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 /// the runtime's preopen error so the guest can still render.
 #[must_use]
 pub fn assemble(invoked_dir: &Path, locations: Locations) -> ExecutionPaths {
-    let paths = ExecutionPaths::new(root(invoked_dir), locations);
+    let root = invoked_dir
+        .ancestors()
+        .find(|candidate| engine::project::Project::path(candidate).try_exists().unwrap_or(false))
+        .map_or_else(|| invoked_dir.to_path_buf(), Path::to_path_buf);
+    let paths = ExecutionPaths::new(root, locations);
     // Store is host-owned — no guest mount.
     for dir in [paths.cache_dir(), paths.project_root().to_path_buf()] {
         drop(std::fs::create_dir_all(dir));
     }
     paths
-}
-
-/// Nearest `.emery/project.yaml` ancestor; a miss stays at `invoked_dir`.
-fn root(invoked_dir: &Path) -> PathBuf {
-    invoked_dir
-        .ancestors()
-        .find(|candidate| engine::project::Project::path(candidate).try_exists().unwrap_or(false))
-        .map_or_else(|| invoked_dir.to_path_buf(), Path::to_path_buf)
-}
-
-fn current() -> &'static ExecutionPaths {
-    // Shared across the macro's separate mount/resolver expressions.
-    static PATHS: OnceLock<ExecutionPaths> = OnceLock::new();
-    PATHS.get_or_init(|| {
-        let invoked_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let paths = assemble(&invoked_dir, Locations::from_env());
-        export_roots(&paths);
-        paths
-    })
-}
-
-fn export_roots(paths: &ExecutionPaths) {
-    let mount = std::path::absolute(paths.project_root())
-        .unwrap_or_else(|_io| paths.project_root().to_path_buf());
-    // SAFETY: once, at assembly, before guest stores snapshot the env.
-    #[expect(unsafe_code, reason = "the guest inherits the root through the env")]
-    let () = unsafe {
-        std::env::set_var(PROJECT_ROOT_ENV, mount.as_os_str());
-    };
 }
 
 /// Bind the MCP trigger listener and export `MCP_URL_BASE`.
@@ -94,6 +69,23 @@ pub fn resolver() -> Resolver {
     Resolver::new(current().clone())
 }
 
+fn current() -> &'static ExecutionPaths {
+    // Shared across the macro's separate mount/resolver expressions.
+    static PATHS: OnceLock<ExecutionPaths> = OnceLock::new();
+    PATHS.get_or_init(|| {
+        let invoked_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let paths = assemble(&invoked_dir, Locations::from_env());
+        let mount = std::path::absolute(paths.project_root())
+            .unwrap_or_else(|_io| paths.project_root().to_path_buf());
+        // SAFETY: once, at assembly, before guest stores snapshot the env.
+        #[expect(unsafe_code, reason = "the guest inherits the root through the env")]
+        let () = unsafe {
+            std::env::set_var(PROJECT_ROOT_ENV, mount.as_os_str());
+        };
+        paths
+    })
+}
+
 /// Map `/mcp/<axis>/<name>` to a guest id; anything else is `None`.
 #[must_use]
 pub fn mcp_route(path: &str) -> Option<omnia::GuestId> {
@@ -130,7 +122,9 @@ impl Resolver {
         }
         // Embedded answers bare names only; pins go to the store.
         if routed.version.is_none()
-            && let Some(bytes) = embedded(&routed.name)
+            && let Some(bytes) = EMBEDDED
+                .iter()
+                .find_map(|(entry, bytes)| (*entry == routed.name).then(|| bytes.to_vec()))
         {
             log_use(&routed, None, "embedded");
             return Ok(bytes);
@@ -163,19 +157,6 @@ impl Resolver {
     }
 }
 
-fn embedded(name: &str) -> Option<Vec<u8>> {
-    EMBEDDED.iter().find_map(|(entry, bytes)| (*entry == name).then(|| bytes.to_vec()))
-}
-
-/// Project files record no adapter versions — this is the audit trail.
-fn log_use(routed: &RoutedId, version: Option<&semver::Version>, origin: &str) {
-    let identity = version.map_or_else(
-        || format!("{}:{}", routed.axis.prefix(), routed.name),
-        |version| format!("{}:{}@{version}", routed.axis.prefix(), routed.name),
-    );
-    eprintln!("emery {}: using {identity} ({origin})", env!("CARGO_PKG_VERSION"));
-}
-
 impl omnia::GuestResolver for Resolver {
     fn resolve(
         &self, guest: omnia::GuestId, _expected_export: String,
@@ -186,4 +167,13 @@ impl omnia::GuestResolver for Resolver {
             Ok(Some(omnia::GuestArtifact::wasm(bytes)))
         })
     }
+}
+
+/// Project files record no adapter versions — this is the audit trail.
+fn log_use(routed: &RoutedId, version: Option<&semver::Version>, origin: &str) {
+    let identity = version.map_or_else(
+        || format!("{}:{}", routed.axis.prefix(), routed.name),
+        |version| format!("{}:{}@{version}", routed.axis.prefix(), routed.name),
+    );
+    eprintln!("emery {}: using {identity} ({origin})", env!("CARGO_PKG_VERSION"));
 }
