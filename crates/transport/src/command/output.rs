@@ -130,7 +130,7 @@ impl From<&Error> for ErrorBody {
 
 /// Render a success `body` as the stdout bytes the command projector
 /// would emit — the success envelope for callers outside a router
-/// dispatch (the deployment launcher's host-side `adapter add`).
+/// dispatch.
 ///
 /// # Errors
 ///
@@ -144,7 +144,7 @@ pub fn render_success<T: Serialize + Render>(format: Format, body: &T) -> Result
 
 /// Render `error` as the stderr bytes and exit code the command
 /// projector would emit — the failure envelope for callers outside a
-/// router dispatch (the deployment launcher's pre-run rejections).
+/// router dispatch.
 ///
 /// Rendering failures collapse onto a plain exit-1 line, mirroring the
 /// projector's terminal fallback.

@@ -152,8 +152,7 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 ///
 /// Probes the verified global store entry for a version pin, else the
 /// project component cache. Resolution is project-contained — no
-/// sibling-checkout or build-tree probe. The deployment launcher
-/// derives closure component paths through this before the runtime exists.
+/// sibling-checkout or build-tree probe.
 ///
 /// # Errors
 ///
@@ -238,8 +237,8 @@ pub fn locate(
 ///
 /// `subject` names what the caller was resolving; `phase` is the
 /// verification leg (`verify-on-read` / `verify-after-write`). One
-/// constructor keeps the wording identical across [`locate`] and the
-/// deployment launcher's install leg.
+/// constructor keeps the wording identical across every verification
+/// caller.
 #[must_use]
 pub fn digest_mismatch(
     subject: &str, phase: &str, mismatch: &emery_diagnostics::cache::DigestMismatch,

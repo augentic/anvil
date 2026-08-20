@@ -1,6 +1,6 @@
 # Contributing to Emery
 
-This section is for developers working on the Emery framework itself — the Rust runtime, the Cursor skill wrapper, and docs. The remediation programme (ADR-0008) is in flight: the v1 workflow is archived at git tag `v1`, feature work is frozen until the spec walking skeleton is green, and the plan of record is [`rfcs/remediation-plan.md`](https://github.com/augentic/emery/blob/main/rfcs/remediation-plan.md).
+This section is for developers working on the Emery framework itself — the Rust runtime, the Cursor skill wrapper, and docs. The v1 workflow is archived at git tag `v1`; feature work is frozen until the spec walking skeleton is green.
 
 ## Repository map
 
@@ -9,7 +9,7 @@ The engine and operator plugin live in [`augentic/emery`](https://github.com/aug
 | Path | Contents | Language |
 | ---- | -------- | -------- |
 | `src/`, `crates/` | The runtime and workspace crates | Rust |
-| `plugins/`, `docs/`, `rfcs/` | The ultrathin Cursor skill wrapper, documentation, decisions | Markdown, YAML |
+| `plugins/`, `docs/` | The ultrathin Cursor skill wrapper and documentation | Markdown, YAML |
 | `emery-adapters/sources/` | Source adapter crates plus embedded prose | Rust, Markdown |
 
 The Rust workspace owns deterministic operations. The `/emery:init` skill under `plugins/emery/` is an ultrathin invoke-and-relay wrapper over the CLI verb.

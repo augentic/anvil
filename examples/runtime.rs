@@ -1,23 +1,61 @@
-//! The journey host (ADR-0009 §5): the shipped runtime shape with one
-//! substitution — `WasiModel` answers from a script directory instead
-//! of the Cursor backend. Never shipped.
+//! The journey host (ADR-0009 §5): the shipped runtime shape with the
+//! mock source component as the one adapter guest and `WasiModel`
+//! answering from a script directory instead of the Cursor backend.
+//! Never shipped.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
         use std::sync::Arc;
 
         use anyhow::Context as _;
-        use emery::launcher;
         use omnia_testkit::model::Scripted;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
-        /// Environment variable naming the script directory: every file in
-        /// it, sorted by name, is one model answer in dispatch order.
+        omnia::runtime!({
+            mode: command,
+            program: "emery",
+            command_guest: "emery",
+            guests: [
+                {
+                    id: "emery",
+                    source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
+                },
+                {
+                    id: "source:source",
+                    source: concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/target/wasm32-wasip2/release/examples/source.wasm",
+                    ),
+                    link: ["emery:adapter/source@0.1.0"],
+                },
+            ],
+            mounts: [
+                { name: ".", path: ".", writable: true },
+                { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
+            ],
+            routes: {
+                http: [
+                    { prefix: "/mcp/source/source", guest: "source:source" },
+                ],
+            },
+            hosts: {
+                WasiHttp: HttpDefault,
+                WasiOtel: OtelDefault,
+                WasiModel: ScriptedModel,
+            }
+        });
+
+        fn cache_dir() -> &'static str {
+            drop(std::fs::create_dir_all(".emery-cache"));
+            ".emery-cache"
+        }
+
+        // script directory: each file is one model answer.
         const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";
 
-        /// The scripted `wasi:model` backend behind the unchanged seam.
+        // The scripted `wasi:model` backend behind the unchanged seam.
         #[derive(Clone, Debug)]
         struct ScriptedModel(Scripted);
 
@@ -55,54 +93,6 @@ cfg_if::cfg_if! {
                 self.0.complete(request, tool_host)
             }
         }
-
-        omnia::runtime!({
-            mode: command,
-            program: "emery",
-            guests: [{
-                id: "emery",
-                // The root `build.rs` already embeds this for the shipped
-                // binary; the example shares the same `OUT_DIR`.
-                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
-            }],
-            mounts: [
-                { name: ".", path: launcher::project_root(), writable: true },
-                { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
-            ],
-            link: ["emery:adapter/source@0.1.0"],
-            resolver: launcher::resolver(),
-            http_paths: launcher::mcp_route,
-            http_listener: launcher::http_listener(),
-            hosts: {
-                WasiHttp: HttpDefault,
-                WasiOtel: OtelDefault,
-                WasiModel: ScriptedModel,
-            }
-        });
-
-        // omnia::runtime!({
-        //     mode: command,
-        //     program: "emery",
-        //     guests: [{
-        //         id: "emery",
-        //         // The root `build.rs` already embeds this for the shipped
-        //         // binary; the example shares the same `OUT_DIR`.
-        //         source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
-        //     }],
-        //     mounts: [
-        //         { name: ".", path: launcher::project_root(), writable: true },
-        //         { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
-        //     ],
-        //     link: ["emery:adapter/source@0.1.0"],
-        //     resolver: launcher::resolver(),
-        //     http_paths: launcher::mcp_route,
-        //     http_listener: launcher::http_listener(),
-        //     hosts: {
-        //         WasiHttp: HttpDefault,
-        //         WasiOtel: OtelDefault,
-        //         WasiModel: ScriptedModel,
-        //     }
-        // });
     } else {
         fn main() {}
     }

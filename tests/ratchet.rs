@@ -79,7 +79,7 @@ fn enforce(kind: &str, ceilings: &BTreeMap<String, usize>, measured: &BTreeMap<S
     assert!(
         violations.is_empty(),
         "ratchet violations (CONSTITUTION.md invariant 4). Raising a ceiling in {BASELINE} \
-         requires an ADR reference in the same change; shrinking is free:\n{violations}"
+         is a red build; shrinking is free:\n{violations}"
     );
 }
 

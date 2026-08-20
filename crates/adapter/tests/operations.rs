@@ -3,7 +3,7 @@
 use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
 use emery_adapter::registry::Doc;
 use emery_adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{AdapterIdentity, Model, Source, references, repaired};
+use emery_adapter::{Model, Source, references, repaired};
 use omnia_testkit::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
@@ -14,10 +14,7 @@ const DOCS: &[Doc] = &[Doc {
 struct Probe;
 
 impl Source for Probe {
-    const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "probe",
-        version: "0.0.0",
-    };
+    const IDENTITY: &str = "probe@0.0.0";
 
     fn metadata() -> SourceMetadata {
         SourceMetadata { emery_floor: None }
@@ -64,8 +61,7 @@ async fn source_dispatch() {
     assert_eq!(evidence.claims.len(), 1);
     assert_eq!(evidence.claims[0].id.as_deref(), Some("one.claim"));
 
-    assert_eq!(<Probe as Source>::IDENTITY.name, "probe");
-    assert_eq!(<Probe as Source>::IDENTITY.version, "0.0.0");
+    assert_eq!(<Probe as Source>::IDENTITY, "probe@0.0.0");
     assert_eq!(<Probe as Source>::metadata(), SourceMetadata { emery_floor: None });
     assert_eq!(<Probe as Source>::docs()[0].path, "prompts/extract.md");
 }

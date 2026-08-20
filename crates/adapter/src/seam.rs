@@ -43,21 +43,14 @@ pub struct Context<'a> {
     pub adapter_id: &'a str,
     /// The guest's `"."` preopen root (the shared project mount).
     pub project_root: &'a Path,
-    /// The adapter's MCP references endpoint, granted to the spawned
-    /// agent so it can fetch `doc://` references lazily.
+    /// Adapter MCP references endpoint, when the runtime injected one.
     pub mcp_url: Option<String>,
-    /// Deployment-local path every judgment leg lends through
-    /// `grants.workspace`. Defaults to the `"."` project mount
-    /// (guidance); build and merge lend their prepared workspace via
-    /// [`Self::lending`]. Source legs lend the CID view or [`None`]
-    /// for an inline value — never the change home.
+    /// Judgment-leg workspace lend; `None` for an inline value.
     pub lend: Option<String>,
 }
 
 impl<'a> Context<'a> {
-    /// Guest-side context rooted at the guest's own `"."` preopen,
-    /// granting the adapter's own references shelf ([`mcp_url`]) when
-    /// the runtime injected an `HTTP_ADDR`.
+    /// Guest context at `"."`, granting [`mcp_url`] when injected.
     #[must_use]
     pub fn guest(adapter_id: &'a str) -> Self {
         Self {
@@ -68,9 +61,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Lend `path` (a deployment-local directory, e.g. a prepared
-    /// workspace root) to this context's judgment legs instead of the
-    /// `"."` project mount.
+    /// Lend `path` to judgment legs instead of the `"."` project mount.
     #[must_use]
     pub fn lending(mut self, path: impl Into<String>) -> Self {
         self.lend = Some(path.into());
@@ -84,11 +75,7 @@ impl<'a> Context<'a> {
         self
     }
 
-    /// MCP grants offered on every judgment leg: the adapter's own
-    /// references, when an endpoint is set. Named `<name>-references`
-    /// after the axis- and version-stripped adapter id, so a pinned
-    /// dispatch (`target:omnia@1.0.0`) grants the same server name as
-    /// an unpinned one.
+    /// Adapter references grant, named from the axis- and version-stripped id.
     #[must_use]
     pub fn grants(&self) -> Vec<McpGrant> {
         let name = self.adapter_id.rsplit(':').next().unwrap_or(self.adapter_id);
@@ -105,14 +92,7 @@ impl<'a> Context<'a> {
     }
 }
 
-/// The adapter's own MCP references endpoint on the runtime's HTTP
-/// trigger: `<base>/mcp/<axis>/<name>[@<version>]`.
-///
-/// The base is the guest's injected fully-formed `MCP_URL_BASE` (D6),
-/// so grants and listener cannot drift apart; a deployment predating
-/// the injection falls back to deriving the base from `HTTP_ADDR`.
-/// `None` when neither is usable: no listener means no shelf and no
-/// grant — coherent degradation, never a wrong-port guess.
+/// Adapter references URL: `MCP_URL_BASE` or `HTTP_ADDR`, else `None`.
 #[must_use]
 pub fn mcp_url(adapter_id: &str) -> Option<String> {
     if let Ok(base) = std::env::var("MCP_URL_BASE") {
@@ -121,12 +101,7 @@ pub fn mcp_url(adapter_id: &str) -> Option<String> {
     mcp_url_for(std::env::var("HTTP_ADDR").ok().as_deref(), adapter_id)
 }
 
-/// [`mcp_url`] over the injected fully-formed base URL.
-///
-/// The path mirrors the routed adapter id verbatim (`:` becomes `/`,
-/// the version pin stays), so the deployment's `http_paths` hook maps
-/// it back onto the exact identity this guest was faulted in under and
-/// the component's own `wasi:http` handler serves the shelf.
+/// [`mcp_url`] over an injected base (`:` → `/`; the version pin stays).
 #[must_use]
 pub fn mcp_url_with_base(base: &str, adapter_id: &str) -> Option<String> {
     let base = base.trim_end_matches('/');
@@ -136,12 +111,7 @@ pub fn mcp_url_with_base(base: &str, adapter_id: &str) -> Option<String> {
     Some(format!("{base}/mcp/{}", adapter_id.replacen(':', "/", 1)))
 }
 
-/// [`mcp_url`] over an explicit trigger address — the `HTTP_ADDR`
-/// fallback for deployments that inject no `MCP_URL_BASE`.
-///
-/// Only the port is taken from `addr`: the host stays the `IPv4`
-/// loopback literal, not `localhost` — an agent whose resolver prefers
-/// `::1` would otherwise fail to connect.
+/// [`mcp_url`] over `HTTP_ADDR`; host is `127.0.0.1`, never `localhost`.
 #[must_use]
 pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
     let port = addr?.rsplit_once(':')?.1.parse::<u16>().ok()?;

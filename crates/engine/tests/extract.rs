@@ -1,7 +1,4 @@
-//! The extract kernel at the crate's public surface (ADR-0009 §3):
-//! the fail-closed required-extras gate and deterministic receipts.
-//! Seam dispatch is covered over the component seam
-//! (`tests/journey.rs`, ADR-0002).
+//! The extract kernel at the crate's public surface.
 
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
 use emery_engine::extract::{Receipt, SourceSet, validate_set};
@@ -18,7 +15,7 @@ fn requirement(id: &str, statement: Option<&str>) -> Claim {
 fn docs_set(claims: Vec<Claim>) -> SourceSet {
     SourceSet {
         key: "mock-docs".to_string(),
-        adapter: "source:mock-docs".to_string(),
+        adapter: "source:source".to_string(),
         authority: AuthorityClass::Documentation,
         claims,
     }

@@ -1,8 +1,8 @@
 # Emery - Agent Instructions
 
-> **Remediation programme in flight ([ADR-0008](rfcs/decisions/0008-spec-generator-programme.md)).** Before starting any task, read [`CONSTITUTION.md`](CONSTITUTION.md) (standing invariants) and [`rfcs/remediation-plan.md`](rfcs/remediation-plan.md) (the plan of record). The product yardstick is [`rfcs/product.md`](rfcs/product.md); the destination is [`rfcs/target-architecture.md`](rfcs/target-architecture.md) — cite the spec-generator sections, not the deferred annex. Decisions flow through [`rfcs/decisions/`](rfcs/decisions/). Feature work is frozen until the spec walking skeleton is green.
+> **Remediation programme in flight.** Before starting any task, read [`CONSTITUTION.md`](CONSTITUTION.md) (standing invariants). This file maps the reduced Phase 0 tree — what exists after the freeze, never a spec of what to build. Feature work is frozen until the spec walking skeleton is green.
 >
-> **This file maps the reduced Phase 0 tree** — what exists after the freeze, never a spec of what to build. The v1 implementation (survey + extract, plan/refine/execute, target adapters, the definition loop) is archived at git tag `v1`; retrieve it with `git worktree add ../emery-v1 v1`. First-party adapters live in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) — re-seamed extract-only in Phase 4 (its `v1` tag keeps the survey-era tree).
+> The v1 implementation (survey + extract, plan/refine/execute, target adapters, the definition loop) is archived at git tag `v1`; retrieve it with `git worktree add ../emery-v1 v1`. First-party adapters live in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) — re-seamed extract-only in Phase 4 (its `v1` tag keeps the survey-era tree).
 
 ## What this repository is now
 
@@ -24,7 +24,7 @@ Artifact authority is unchanged in spirit: when authoritative inputs are incompl
 
 ## The Rust workspace
 
-Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_error::`, `emery_engine::`, …). The root binary and `emery-guest` stay `publish = false`.
+Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_error::`, `emery_engine::`, …). The root package stays `publish = false`.
 
 ```text
 error        # leaf — thiserror + serde-saphyr only
@@ -34,20 +34,19 @@ adapter      # the adapter SDK — the Source operations trait (extract + metada
 engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and emery_engine::handler (Anchor, RequestContext, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-guest        # the engine guest as a library (wasm32-only) — WIT bindings, WIT-backed Provider, emery_guest::export!
-emery (root) # Omnia deployment unit under src/: guest cdylib (src/lib.rs) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.bin) + the native launcher module (src/launcher.rs, ADR-0011 — anchoring, mounts, HTTP listener + /mcp/<axis>/<name> routing, fail-closed adapters-only GuestResolver; local-only: cache seed, embedded registry, verified store; no download path)
+emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — Provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts as `.`, the CWD-relative .emery-cache backs the cache preopen, the staged first-party components are the only adapter guests, and /mcp/source/<name> routes serve their shelves; dynamic resolution is deferred)
 ```
 
 ### Repository map
 
 ```text
-src/               shipped binary (omnia::runtime!) + wasm32 engine guest cdylib (emery_guest::export!) + the native launcher module
+src/               shipped binary (omnia::runtime!, static CWD-rooted deployment) + wasm32 engine guest cdylib (Provider, wasi:cli/run, HTTP refusal)
 crates/            the workspace crates above
 examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:init skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
-rfcs/              product yardstick, target architecture, remediation plan, decisions/, scorecards/ (the eval release-gate record)
+scorecards/        the eval release-gate record
 ```
 
 ### Exit codes
@@ -91,11 +90,11 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Adapter resolution is local-only.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path. Resolution is the seeded project cache (always wins), the embedded first-party registry (staged from `scripts/first-party.txt` into the release build via `EMERY_EMBED_DIR`; unpinned names only — an exact pin resolves the store), else a verified global-store entry (`$EMERY_HOME/store/`, else `~/.emery/store/`) for pins; there is no download path — installs arrive with the explicit install verb (ADR-0002 §2). GitHub URLs are refused (`adapter-github-uri-unsupported`).
+- **Adapter admission is static.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path — but until the dynamic resolver returns, the shipped binary dispatches only the first-party components compiled in at build time (`scripts/first-party.txt` staged through `EMERY_EMBED_DIR`; both bare and pinned ids), and the journey host only its mock `source`. A local `.wasm` still mirrors into the project cache at init; extract dispatch beyond the static set fails at the seam. There is no download path (ADR-0002 §2), and GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.
-- Brevity caps are mechanically enforced by root-crate tests (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`, part of `cargo make test`), alongside the Phase 2 fitness functions: the LOC/prose ratchet (`tests/ratchet.rs` over `scripts/ratchet.toml` — raising a ceiling needs an ADR; shrinking is free) and the crate-DAG gate (`tests/layering.rs`). PRs touching ADR-gated paths (`scripts/adr-required-paths.txt`) must carry a `rfcs/decisions/` change.
+- Brevity caps are mechanically enforced by root-crate tests (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`, part of `cargo make test`), alongside the Phase 2 fitness functions: the LOC/prose ratchet (`tests/ratchet.rs` over `scripts/ratchet.toml` — raising a ceiling needs a cited decision; shrinking is free) and the crate-DAG gate (`tests/layering.rs`).
 
 ## Related coding standards
 

@@ -6,7 +6,7 @@
 
 Emery reconciles intent, documentation, existing code, and captured behaviour into reviewable specifications — durable artifacts, not chat history.
 
-> **Remediation programme in flight.** The v1 delivery workflow (survey/extract, plan/refine/execute/finalize, target adapters) is archived at git tag `v1` under [ADR-0008](rfcs/decisions/0008-spec-generator-programme.md). This tree carries the spec generator: `emery init` binds sources, `emery specify` synthesises the reviewable set. Retrieve the archived implementation with `git worktree add ../emery-v1 v1`. The plan of record is [rfcs/remediation-plan.md](rfcs/remediation-plan.md); the destination is [rfcs/target-architecture.md](rfcs/target-architecture.md).
+> **Remediation programme in flight.** The v1 delivery workflow (survey/extract, plan/refine/execute/finalize, target adapters) is archived at git tag `v1`. This tree carries the spec generator: `emery init` binds sources, `emery specify` synthesises the reviewable set. Retrieve the archived implementation with `git worktree add ../emery-v1 v1`.
 
 ## The live surface
 
@@ -29,7 +29,7 @@ emery --version
 
 - **CLI reference:** [docs/reference/cli/index.md](docs/reference/cli/index.md)
 - **Contributing:** [docs/contributing/index.md](docs/contributing/index.md)
-- **Remediation programme:** [rfcs/remediation-plan.md](rfcs/remediation-plan.md) · [rfcs/decisions/](rfcs/decisions/) · [CONSTITUTION.md](CONSTITUTION.md)
+- **Invariants:** [CONSTITUTION.md](CONSTITUTION.md)
 - **Full Developer Guide:** [emery.augentic.io](https://emery.augentic.io/) · [In-tree book source](docs/SUMMARY.md)
 
 ## Developing Emery (contributors)

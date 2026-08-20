@@ -224,9 +224,12 @@ macro_rules! source {
                 $crate::wasip3::http::types::Response,
                 $crate::wasip3::http::types::ErrorCode,
             > {
+                let (name, version) = <$adapter as $crate::Source>::IDENTITY
+                    .split_once('@')
+                    .expect("IDENTITY is name@version");
                 $crate::references::serve(
-                    <$adapter as $crate::Source>::IDENTITY.name,
-                    <$adapter as $crate::Source>::IDENTITY.version,
+                    name,
+                    version,
                     <$adapter as $crate::Source>::docs(),
                     request,
                 )

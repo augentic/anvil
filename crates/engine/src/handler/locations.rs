@@ -23,13 +23,6 @@ pub const GUEST_CACHE_MOUNT: &str = "/emery-cache";
 /// never I/O.
 pub const GUEST_STORE_MOUNT: &str = "/emery-store";
 
-/// Environment key carrying the host-absolute project root into the
-/// engine guest.
-///
-/// Guests inherit the host environment; the in-guest kernel derives
-/// the artifact root from this key.
-pub const PROJECT_ROOT_ENV: &str = "EMERY_PROJECT_ROOT";
-
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CachePlacement {
@@ -56,21 +49,6 @@ pub struct Locations {
 }
 
 impl Locations {
-    /// Production layout: capture `EMERY_HOME` once. A non-empty
-    /// absolute override wins; otherwise `$HOME/.emery`, then
-    /// `<temp>/emery`. Both roots derive together as
-    /// `<home>/{store,cache}`.
-    ///
-    /// Composition-root only — never called from kernels or handlers.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[must_use]
-    pub fn from_env() -> Self {
-        let home = env_path("EMERY_HOME")
-            .or_else(|| env_path("HOME").map(|user_home| user_home.join(".emery")))
-            .unwrap_or_else(|| std::env::temp_dir().join("emery"));
-        Self::explicit(home.join("store"), CachePlacement::Parent(home.join("cache")))
-    }
-
     /// Explicit layout — no environment reads. Sandboxed sessions and
     /// tests pass [`CachePlacement::Parent`]; the wasm32 engine guest
     /// passes [`CachePlacement::Project`] for its already-resolved
@@ -143,17 +121,4 @@ impl Locations {
     pub fn component(&self, project_root: &Path, name: &str) -> PathBuf {
         self.project_cache_dir(project_root).join("components").join(format!("{name}.wasm"))
     }
-}
-
-/// Read one environment override, accepting only a non-empty absolute
-/// path; empty or relative values fall through to the effective
-/// default.
-#[cfg(not(target_arch = "wasm32"))]
-fn env_path(key: &str) -> Option<PathBuf> {
-    let value = std::env::var_os(key)?;
-    if value.is_empty() {
-        return None;
-    }
-    let path = PathBuf::from(value);
-    path.is_absolute().then_some(path)
 }

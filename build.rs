@@ -1,6 +1,6 @@
-//! Builds the wasm32 engine component with a child cargo build and
-//! embeds it at `$OUT_DIR/emery.bin` (AOT-serialized in release, raw
-//! in debug), and generates the embedded first-party registry.
+//! Builds the wasm32 engine with a child cargo build, embeds it at
+//! `$OUT_DIR/emery.cwasm` (AOT-serialized in release, raw in debug),
+//! and stages first-party components as static guests.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -14,21 +14,22 @@ const TARGET_HINT: &str = "the wasm32 engine could not be built; install the tar
                            target add wasm32-wasip2` and retry";
 
 fn main() {
+    println!("cargo::rustc-check-cfg=cfg(emery_first_party)");
     // The wasm32 build runs this script too (the engine guest cdylib
-    // embeds nothing; the `launcher` module is cfg'd out); returning
-    // here is the recursion guard for the child build below.
+    // embeds nothing); returning here is the recursion guard for the
+    // child build below.
     if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
         return;
     }
 
-    embed_registry();
+    stage_first_party();
 
     let engine = build_engine();
 
     let len = std::fs::metadata(&engine).map(|meta| meta.len()).unwrap_or_default();
     assert!(len > 0, "engine component at {} is empty; refusing to embed it", engine.display());
 
-    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.bin");
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.cwasm");
     if std::env::var("PROFILE").as_deref() == Ok("release") {
         precompile(&engine, &out);
     } else {
@@ -41,75 +42,67 @@ fn main() {
     }
 }
 
-/// Generate the embedded first-party registry (ADR-0002 §2) at
-/// `$OUT_DIR/embedded.rs` (included by `src/launcher.rs`)
-/// from `EMERY_EMBED_DIR` — built `<name>.wasm` components staged by
-/// the release build (first-party adapters) and by the journey rung
-/// (the mock component). Unset, missing, or empty, the table is empty
-/// and resolution stays local (cache seed, store).
-fn embed_registry() {
+/// Stage the pinned first-party components (`scripts/first-party.txt`)
+/// as static guests: generate `$OUT_DIR/first_party.rs` — one bytes
+/// constant and one pinned-id constant per adapter, consumed by
+/// `src/main.rs` — and set the `emery_first_party` cfg.
+///
+/// `EMERY_EMBED_DIR` unset builds the engine-only binary (kernel and
+/// wire suites need no adapters). Set, every pin must be staged as
+/// `<dir>/<name>.wasm` — a partial set fails the build rather than
+/// shipping a binary missing a documented adapter.
+fn stage_first_party() {
     println!("cargo:rerun-if-env-changed=EMERY_EMBED_DIR");
-    let out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
-    let mut rows = String::new();
-    for (name, path) in components() {
+    println!("cargo:rerun-if-changed=scripts/first-party.txt");
+    let Some(dir) = std::env::var_os("EMERY_EMBED_DIR") else {
+        return;
+    };
+    let dir = PathBuf::from(dir);
+    let mut consts = String::new();
+    for (name, version) in first_party_pins() {
+        let path = dir.join(format!("{name}.wasm"));
+        assert!(
+            path.is_file(),
+            "EMERY_EMBED_DIR is set but `{name}` is not staged at {}; stage every pin in \
+             scripts/first-party.txt or unset EMERY_EMBED_DIR for an engine-only build",
+            path.display()
+        );
+        println!("cargo:rerun-if-changed={}", path.display());
+        let upper = name.to_uppercase().replace('-', "_");
         #[expect(
             clippy::unnecessary_debug_formatting,
             reason = "Debug formatting emits the quoted, escaped path literal include_bytes! needs"
         )]
-        writeln!(rows, "    (\"{name}\", include_bytes!({path:?}).as_slice()),")
-            .expect("write to a String");
+        write!(
+            consts,
+            "/// Staged `{name}` component bytes.\n\
+             pub const {upper}: &[u8] = include_bytes!({path:?});\n\
+             /// The pinned `{name}` routed id.\n\
+             pub const {upper}_PIN: &str = \"source:{name}@{version}\";\n"
+        )
+        .expect("write to a String");
     }
-    let table = format!(
-        "/// First-party components embedded in the binary as default\n\
-         /// registry entries (ADR-0002 \u{a7}2), staged from `EMERY_EMBED_DIR`\n\
-         /// at build time.\n\
-         const EMBEDDED: &[(&str, &[u8])] = &[\n{rows}];\n"
-    );
-    std::fs::write(out.join("embedded.rs"), table).expect("write the embedded registry table");
+    let out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
+    std::fs::write(out.join("first_party.rs"), consts).expect("write the first-party constants");
+    println!("cargo:rustc-cfg=emery_first_party");
 }
 
-/// Every `<name>.wasm` under `EMERY_EMBED_DIR`, sorted by the adapter
-/// name its file stem derives (the `emery_` artifact prefix stripped,
-/// underscores folded to kebab dashes — mirroring
-/// `emery_engine::resolve::name_from_component`).
-fn components() -> Vec<(String, PathBuf)> {
-    let Some(dir) = std::env::var_os("EMERY_EMBED_DIR") else {
-        return Vec::new();
-    };
-    let dir = PathBuf::from(dir);
-    println!("cargo:rerun-if-changed={}", dir.display());
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return Vec::new();
-    };
-    let mut components: Vec<(String, PathBuf)> = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "wasm"))
-        .filter_map(|path| {
-            let stem = path.file_stem()?.to_str()?;
-            // Cargo also writes `{name}-{hash}.wasm` beside the
-            // example artifact; those must not become registry keys.
-            if fingerprint_stem(stem) {
-                return None;
-            }
-            println!("cargo:rerun-if-changed={}", path.display());
-            let name = stem
-                .strip_prefix("emery_")
-                .or_else(|| stem.strip_prefix("emery-"))
-                .unwrap_or(stem)
-                .replace('_', "-");
-            Some((name, path))
+/// The `<name> <version>` pins in `scripts/first-party.txt`, comments
+/// and blank lines skipped.
+fn first_party_pins() -> Vec<(String, String)> {
+    let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
+    let pins = std::fs::read_to_string(manifest_dir.join("scripts/first-party.txt"))
+        .expect("read scripts/first-party.txt");
+    pins.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(|line| {
+            let (name, version) = line
+                .split_once(' ')
+                .unwrap_or_else(|| panic!("malformed first-party pin `{line}`"));
+            (name.to_owned(), version.trim().to_owned())
         })
-        .collect();
-    components.sort();
-    components
-}
-
-/// Cargo's extra `{name}-{16 hex}.wasm` copy beside an example artifact.
-fn fingerprint_stem(stem: &str) -> bool {
-    stem.rsplit_once('-').is_some_and(|(_, suffix)| {
-        suffix.len() == 16 && suffix.bytes().all(|b| b.is_ascii_hexdigit())
-    })
+        .collect()
 }
 
 /// Ahead-of-time compile the raw engine component into the serialized
@@ -141,7 +134,7 @@ fn precompile(raw: &std::path::Path, out: &std::path::Path) {
 fn build_engine() -> PathBuf {
     let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
     // Re-embed whenever the engine's sources change.
-    for tracked in ["src/lib.rs", "crates", "Cargo.toml", "Cargo.lock"] {
+    for tracked in ["src", "crates", "Cargo.toml", "Cargo.lock"] {
         println!("cargo:rerun-if-changed={}", manifest_dir.join(tracked).display());
     }
 

@@ -15,7 +15,7 @@ pub mod seam;
 pub mod source;
 
 pub use call::{MAX_REPAIRS, judgment, repaired};
-pub use identity::AdapterIdentity;
+pub use identity::{AdapterIdentity, IdentityError};
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;

@@ -7,7 +7,6 @@ use std::future::Future;
 
 use omnia_guest::Model;
 
-use crate::identity::AdapterIdentity;
 use crate::registry::Doc;
 use crate::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
 
@@ -16,9 +15,8 @@ use crate::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
 /// Generic over [`Model`] so native tests bind scripted doubles and the
 /// wasm shim binds `WasiModel`.
 pub trait Source {
-    /// Compile-time `(name, version)` identity, e.g.
-    /// `AdapterIdentity { name: "captures", version: env!("CARGO_PKG_VERSION") }`.
-    const IDENTITY: AdapterIdentity;
+    /// Compile-time `name@version` identity.
+    const IDENTITY: &str;
 
     /// Resolve-time metadata.
     fn metadata() -> SourceMetadata;

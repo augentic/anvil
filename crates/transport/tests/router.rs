@@ -48,7 +48,7 @@ async fn adr_0002_http_refusal() {
 }
 
 // Gate tripwire for ADR-0008 §3 (CONSTITUTION invariant 2): the route
-// budget is the live verb list in rfcs/remediation-plan.md — `init` +
+// budget is the live verb list — `init` +
 // `specify` (+ auto-derived `completions`) and nothing else. Deleted
 // verbs are deletions from the grammar, not hidden routes or
 // "deprecated" stubs; widening this list requires an ADR.
