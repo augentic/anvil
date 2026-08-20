@@ -14,18 +14,18 @@ cfg_if::cfg_if! {
 
         omnia::runtime!({
             mode: command,
-            program: "emery",
-            command_guest: "emery",
             guests: [
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                },
+                    routes: {http: ["/mcp/source/source"]},
+                }
             ],
             mounts: [
                 { name: ".", path: ".", writable: true },
                 { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
             ],
+            dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
