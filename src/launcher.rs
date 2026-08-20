@@ -24,6 +24,7 @@ pub fn assemble(invoked_dir: &Path, locations: Locations) -> ExecutionPaths {
         .find(|candidate| emery_engine::project::Project::path(candidate).is_file())
         .unwrap_or(invoked_dir);
     let paths = ExecutionPaths::new(root, locations);
+
     // Cache mount only — the store is host-owned and has no guest preopen.
     drop(std::fs::create_dir_all(paths.cache_dir()));
     paths

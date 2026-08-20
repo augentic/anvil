@@ -31,7 +31,10 @@ run = "cargo build --example source --target wasm32-wasip2 --release"
 description = "Build the scripted-model runtime"
 depends = ["source"]
 env = { EMERY_EMBED_DIR = "{{config_root}}/target/wasm32-wasip2/release/examples" }
-run = "cargo build --example runtime"
+run = '''
+mkdir -p /tmp/emery-cache
+cargo build --example runtime
+'''
 
 # Walking-skeleton test
 [tasks.journey]

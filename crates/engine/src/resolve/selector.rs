@@ -298,9 +298,6 @@ pub fn name_from_component(path: &Path) -> Result<String, Error> {
         code: "adapter-dir-name-unresolved",
         detail: format!("cannot derive adapter name from {}", path.display()),
     })?;
-    let stem = stem
-        .strip_prefix("emery_")
-        .or_else(|| stem.strip_prefix("emery-"))
-        .unwrap_or(stem);
+    let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
     Ok(stem.replace('_', "-"))
 }

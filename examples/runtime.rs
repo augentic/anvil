@@ -1,13 +1,10 @@
-//! The journey host (ADR-0009 §5): the shipped runtime shape with one
-//! substitution — `WasiModel` answers from a script directory instead
-//! of the Cursor backend. Never shipped.
+//! The journey host
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
         use std::sync::Arc;
 
         use anyhow::Context as _;
-        use emery::launcher;
         use omnia_testkit::model::Scripted;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
@@ -31,8 +28,8 @@ cfg_if::cfg_if! {
                 },
             ],
             mounts: [
-                { name: ".", path: launcher::project_root(), writable: true },
-                { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
+                { name: ".", path: ".", writable: true },
+                { name: "/emery-cache", path: "/tmp/emery-cache/", writable: true },
             ],
             routes: {
                 http: [

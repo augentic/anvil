@@ -1,19 +1,34 @@
-//! Compile-time adapter identity for native (statically composed)
-//! deployments.
-//!
-//! Identity never travels in the WIT `metadata` answer.
+//! Parsed adapter identity (`name@version`).
 
-/// The immutable `(name, version)` identity a catalog entry provides.
-///
-/// Published adapters set the exact package version, normally from
-/// `env!("CARGO_PKG_VERSION")`. Unpublished mock/probe adapters may
-/// use a development placeholder version; they remain bare-only
-/// identities for pin matching.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+use std::str::FromStr;
+
+/// Catalog identity: kebab `name` plus exact SemVer `version`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AdapterIdentity {
-    /// Kebab-case adapter name, globally unique across axes for
-    /// published adapters.
-    pub name: &'static str,
+    /// Kebab-case adapter name.
+    pub name: String,
     /// Exact SemVer version string.
-    pub version: &'static str,
+    pub version: String,
+}
+
+/// Invalid `name@version` adapter identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("adapter identity must be `name@version`")]
+pub struct IdentityError;
+
+impl FromStr for AdapterIdentity {
+    type Err = IdentityError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some((name, version)) = s.split_once('@') else {
+            return Err(IdentityError);
+        };
+        if name.is_empty() || version.is_empty() || version.contains('@') {
+            return Err(IdentityError);
+        }
+        Ok(Self {
+            name: name.to_string(),
+            version: version.to_string(),
+        })
+    }
 }

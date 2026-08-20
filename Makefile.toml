@@ -92,6 +92,7 @@ args = ["build", "--locked", "--example", "source", "--target", "wasm32-wasip2",
 workspace = false
 script_runner = "bash"
 script = '''
+mkdir -p /tmp/emery-cache
 export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
 cargo build --locked --example runtime
 '''
@@ -105,6 +106,7 @@ workspace = false
 dependencies = ["source", "runtime"]
 script_runner = "bash"
 script = '''
+mkdir -p /tmp/emery-cache
 export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
 export RUSTFLAGS="-Dwarnings"
 cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter

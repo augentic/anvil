@@ -53,10 +53,7 @@ impl Home {
     fn scaffold() -> Self {
         let home = Self::stage(&["source"]);
         let init = home.emery(&["init", "source.wasm"]);
-        // Holds today: the built component crosses the launcher
-        // mounts and mirrors into the project cache with provenance —
-        // the seam fixture itself is sound (CC-17).
-        let mirrored = find(home.temp.path(), "components/source.wasm");
+        let mirrored = find(Path::new("/tmp/emery-cache"), "components/source.wasm");
         assert!(mirrored.is_some(), "the local component is mirrored into the project cache");
         assert!(
             init.status.success(),
@@ -80,8 +77,7 @@ impl Home {
             .current_dir(self.project())
             .env("EMERY_HOME", self.temp.path().join("emery-home"))
             .env("EMERY_JOURNEY_SCRIPT", script)
-            // Ephemeral bind so parallel journey processes do not
-            // collide on Omnia's default `0.0.0.0:8080`.
+            // Ephemeral bind so parallel runs do not share :8080.
             .env("HTTP_ADDR", "127.0.0.1:0")
             .args(args)
             .output()
@@ -136,9 +132,7 @@ fn adr_0001_generation_swap() {
     assert!(second.status.success(), "re-run is the resume path (ADR-0001)");
     assert_eq!(before, snapshot(&home.project()), "re-run must be byte-stable (§8 item 2)");
 
-    // Crash injection: stage exactly the residue a kill between
-    // generation write and pointer swap leaves — a partial generation
-    // directory and temp litter the pointer never named.
+    // Partial generation + unnamed temp, as a kill mid-swap would leave.
     let spec_home = home.project().join(".emery/spec");
     let partial = spec_home.join("generations/deadbeef");
     fs::create_dir_all(&partial).expect("stage the partial generation");
@@ -167,14 +161,12 @@ fn init_contract() {
     let home = Home::stage(&["source"]);
     let manifest = home.project().join(".emery/project.yaml");
 
-    // No sources is a typed refusal that writes nothing.
     let refused = home.emery(&["init"]);
     assert_eq!(refused.status.code(), Some(2), "init-source-required is a validation refusal");
     let stderr = String::from_utf8_lossy(&refused.stderr);
     assert!(stderr.contains("init-source-required"), "{stderr}");
     assert!(!manifest.exists(), "a refused init scaffolds nothing");
 
-    // A twice-bound key and a `--value` without `=` refuse likewise.
     let duplicate = home.emery(&["init", "source.wasm", "source.wasm"]);
     assert_eq!(duplicate.status.code(), Some(2));
     let stderr = String::from_utf8_lossy(&duplicate.stderr);
@@ -184,7 +176,6 @@ fn init_contract() {
     let stderr = String::from_utf8_lossy(&malformed.stderr);
     assert!(stderr.contains("--value"), "{stderr}");
 
-    // First init scaffolds; re-entry changes nothing.
     let first = home.emery(&["init", "source.wasm"]);
     assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
     let before = fs::read_to_string(&manifest).expect("project.yaml");
@@ -192,9 +183,7 @@ fn init_contract() {
     assert!(reentry.status.success(), "{}", String::from_utf8_lossy(&reentry.stderr));
     assert_eq!(before, fs::read_to_string(&manifest).expect("project.yaml"), "re-entry is a noop");
 
-    // Age the pin (simulating a project initialised by an older
-    // binary), then `--upgrade`: bindings survive, the pin returns to
-    // the running binary's version.
+    // Age the pin; `--upgrade` restores this binary's version.
     let aged = before.replace(&format!("emery: {}", env!("CARGO_PKG_VERSION")), "emery: 0.1.0");
     assert_ne!(aged, before, "the fixture must carry the pin to age");
     fs::write(&manifest, aged).expect("age the pin");
@@ -229,18 +218,13 @@ fn adr_0010_remine_diff() {
         "an unchanged re-run reports an explicit empty diff: {stdout}"
     );
 
-    // Nothing persists for the diff: one generation, no retained
-    // history, no diff artifact (ADR-0009 §2).
     let generations: Vec<_> = fs::read_dir(home.project().join(".emery/spec/generations"))
         .expect("generations dir")
         .collect();
     assert_eq!(generations.len(), 1, "the superseded generation is pruned, never retained");
 }
 
-// ADR-0002 embedded-registry and CC-17 exact-pin admission are parked
-// while `resolver` is unused by `src/main.rs` / `examples/runtime.rs`.
-// Bare `source` and `source@1.2.3` dispatch guest ids the static
-// `source:source` registration does not serve.
+// Bare `source` / pin dispatch is parked while `resolver` is unused.
 
 /// The built seam fixture, honouring a redirected target directory.
 fn component() -> PathBuf {
