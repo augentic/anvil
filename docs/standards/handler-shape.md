@@ -1,26 +1,26 @@
 # Operation shape
 
-The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/engine`, how `RequestContext` is assembled from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
+The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/engine`, how `RequestContext` is assembled over the deployed preopen layout, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
 
 ## Shared operation plumbing (`emery_engine::handler`)
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
 - **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
-- **`call(input, context)`** assembles `RequestContext` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
+- **`call(input, context)`** assembles `RequestContext` over the deployed layout, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = emery_engine::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`, so the same impl serves the wasm guest and tests against scripted providers.
+Deterministic operations bind `P: Provider` only unless their kernel issues model judgments, in which case they additionally bind `Model` — the one capability the provider still carries. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
 
 ```rust
 // GOOD — default shape
-impl<P: Anchor> Operation<P> for Frob {
+impl<P: Provider> Operation<P> for Frob {
     type Error = crate::handler::Error;
     type Input = FrobInput;
     type Output = FrobBody;
 
-    async fn call(input: Self::Input, context: CallContext<'_, P>) -> Result<Self::Output, Self::Error> {
-        let request = RequestContext::load(context.provider)?;
+    async fn call(input: Self::Input, _context: CallContext<'_, P>) -> Result<Self::Output, Self::Error> {
+        let request = RequestContext::load()?;
         let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
         Ok(FrobBody::from(&outcome))
     }
@@ -29,11 +29,11 @@ impl<P: Anchor> Operation<P> for Frob {
 
 Operations live in each domain module's `handlers` submodule beside its kernels.
 
-## RequestContext and the Anchor (C5)
+## RequestContext and the deployed layout (C5)
 
-Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load(context.provider)`: the provider's `Anchor` supplies the paths, and the project loads fail-closed (version floor included) exactly once. Operations never read the process CWD themselves.
+Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load()`: paths are constants relative to the named preopens (`.` is the project-root mount — the invocation directory natively — and `GUEST_CACHE_MOUNT` the cache preopen), and the project loads fail-closed (version floor included) exactly once. Operations never derive paths any other way — no environment reads, no ancestor walks; native tests that need a scratch root chdir into a tempdir (one nextest process per test).
 
-`emery init` is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `RequestContext`.
+`emery init` is the one operation that runs before a project exists: it anchors at the raw `ExecutionPaths::deployed()` root instead of loading `RequestContext`.
 
 ## Output: `Render + Serialize`
 

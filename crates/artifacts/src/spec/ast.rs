@@ -1,6 +1,5 @@
-//! The one fail-closed spec AST (A17, ADR-0009 §4): the engine's load
-//! gate over `spec.md`. Unparseable is a typed error, never a lenient
-//! pass; the v1 lenient parsers fall with their consumers at the cut.
+//! The one fail-closed spec AST: the engine's load gate over
+//! `spec.md`. Unparseable is a typed error, never a lenient pass.
 
 use emery_error::Error;
 use serde::{Deserialize, Serialize};
@@ -35,8 +34,8 @@ pub enum Status {
     Divergence,
 }
 
-/// Inline heading tag paired with every non-`agreed` status
-/// (ADR-0004 Option D: honesty stays inline, nothing auto-defers).
+/// Inline heading tag paired with every non-`agreed` status —
+/// honesty stays inline, nothing auto-defers.
 #[derive(
     Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString, strum::IntoStaticStr,
 )]
@@ -89,7 +88,7 @@ pub struct Requirement {
     pub body: String,
 }
 
-/// Parse `text` as `spec.md` under the fail-closed AST (A17).
+/// Parse `text` as `spec.md` under the fail-closed AST.
 ///
 /// # Errors
 ///
@@ -146,8 +145,8 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
     }
 }
 
-/// One requirement block being accumulated by the strict line scan:
-/// metadata lines first, then body once a non-metadata line appears.
+// One requirement block being accumulated by the strict line scan:
+// metadata lines first, then body once a non-metadata line appears.
 struct Block {
     line_no: usize,
     name: String,
@@ -264,8 +263,8 @@ impl Block {
     }
 }
 
-/// Split a trailing ` [tag]` off the heading. An unrecognised bracket
-/// suffix is a finding, never silently part of the name (A17).
+// Split a trailing ` [tag]` off the heading. An unrecognised bracket
+// suffix is a finding, never silently part of the name (A17).
 fn split_tag(heading: &str, line_no: usize, findings: &mut Vec<String>) -> (String, Option<Tag>) {
     if let Some(open) = heading.rfind(" [")
         && heading.ends_with(']')
@@ -308,8 +307,8 @@ fn is_req_id(id: &str) -> bool {
         .is_some_and(|tail| tail.len() == 3 && tail.bytes().all(|b| b.is_ascii_digit()))
 }
 
-/// Kebab-case source-key grammar: `[a-z][a-z0-9-]*`, no doubled or
-/// trailing dash.
+// Kebab-case source-key grammar: `[a-z][a-z0-9-]*`, no doubled or
+// trailing dash.
 fn is_source_key(key: &str) -> bool {
     let mut bytes = key.bytes();
     let Some(first) = bytes.next() else { return false };

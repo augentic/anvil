@@ -1,7 +1,6 @@
-//! The synthesis leg at the crate's public surface (ADR-0009 §4):
-//! deterministic reconciliation, the scripted model dispatch, and the
-//! fail-closed AST + row gate. Seam dispatch itself is covered over
-//! the component seam (`tests/journey.rs`, ADR-0002).
+//! The synthesis leg at the crate's public surface: deterministic
+//! reconciliation, scripted model dispatch, and the fail-closed
+//! AST + row gate. Seam dispatch is covered by `tests/journey.rs`.
 
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
 use emery_artifacts::spec::ast::{Status, Tag};
@@ -25,9 +24,9 @@ fn set(key: &str, authority: AuthorityClass, claims: Vec<Claim>) -> SourceSet {
     }
 }
 
-/// The journey's three-source scenario: the adversarial docs/code
-/// pair disagreeing on both requirements, the intent directive
-/// outranking them on the timeout, and one uncovered acceptance gap.
+// The journey's three-source scenario: the adversarial docs/code
+// pair disagreeing on both requirements, the intent directive
+// outranking them on the timeout, and one uncovered acceptance gap.
 fn journey_sets() -> Vec<SourceSet> {
     vec![
         set(
@@ -87,7 +86,7 @@ fn docs_set(key: &str, statement: &str) -> SourceSet {
     )
 }
 
-/// A spec answer rendering `rows` verbatim, for the scripted model.
+// A spec answer rendering `rows` verbatim, for the scripted model.
 fn spec_answer(rows: &[Row]) -> String {
     use std::fmt::Write as _;
     let mut spec = String::from("# Fixture spec\n");
@@ -176,7 +175,7 @@ async fn hidden_row_fails() {
     let rows = reconcile(&sets);
 
     // A valid AST document that rewrites every row as agreed — the
-    // dishonest answer the gate exists to refuse (ADR-0004 Option D).
+    // dishonest answer the gate exists to refuse.
     let mut dishonest = rows.clone();
     for row in &mut dishonest {
         row.status = Status::Agreed;
@@ -197,8 +196,8 @@ async fn renamed_heading_fails() {
     let sets = journey_sets();
     let rows = reconcile(&sets);
 
-    // Headings are the re-mine diff's section key (ADR-0010): a model
-    // answer that retitles a subject is refused, not diffed around.
+    // Headings are the re-mine diff's section key: a model answer
+    // that retitles a subject is refused, not diffed around.
     let mut retitled = rows.clone();
     retitled[0].subject = "login.journey".to_string();
     let model = Harness::answering(vec![spec_answer(&retitled)]);

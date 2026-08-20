@@ -31,16 +31,16 @@ error        # leaf — thiserror + serde-saphyr only
 diagnostics  # neutral Diagnostic substrate + emery_diagnostics::digest (SHA-256)
 artifacts    # artifact types + parsers (evidence, atomic writer, validate registry); no engine deps
 adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, the engine guest's source::import seam wrappers, seam DTOs, embedded prose registry
-engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and emery_engine::handler (Anchor, RequestContext, Render, Error)
+engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate) over the WIT source imports, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::deployed) and emery_engine::handler (RequestContext, preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — Provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts as `.`, the CWD-relative .emery-cache backs the cache preopen; adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
+emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts as `.`, the CWD-relative .emery-cache backs the cache preopen; adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
 ```
 
 ### Repository map
 
 ```text
-src/               shipped binary (omnia::runtime!, static CWD-rooted deployment) + wasm32 engine guest cdylib (Provider, wasi:cli/run, HTTP refusal)
+src/               shipped binary (omnia::runtime!, static CWD-rooted deployment) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run, HTTP refusal)
 crates/            the workspace crates above
 examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README

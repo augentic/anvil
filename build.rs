@@ -4,10 +4,10 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/// The engine guest's compilation target.
+// The engine guest's compilation target.
 const WASM_TARGET: &str = "wasm32-wasip2";
 
-/// Install instruction surfaced whenever the child build cannot run.
+// Install instruction surfaced whenever the child build cannot run.
 const TARGET_HINT: &str = "the wasm32 engine could not be built; install the target with `rustup \
                            target add wasm32-wasip2` and retry";
 
@@ -37,13 +37,9 @@ fn main() {
     }
 }
 
-/// Ahead-of-time compile the raw engine component into the serialized
-/// wasmtime artifact at `out` that `src/main.rs` embeds.
-///
-/// The env-driven compile-affecting `RuntimeOptions` must match
-/// between this build and the running binary or deserialization
-/// rejects the artifact at startup; cargo's `TARGET` pins the code to
-/// the binary's triple, so cross-compiles embed a loadable artifact.
+// Ahead-of-time compile the raw engine component into the serialized
+// wasmtime artifact `src/main.rs` embeds. The env-driven `RuntimeOptions`
+// must match the running binary (cargo's `TARGET` pins the triple).
 fn precompile(raw: &std::path::Path, out: &std::path::Path) {
     let options = omnia::RuntimeOptions::load_env().expect("runtime options from the build env");
     let mut config = omnia::wasmtime::Config::from(&options);
@@ -61,8 +57,8 @@ fn precompile(raw: &std::path::Path, out: &std::path::Path) {
         .unwrap_or_else(|err| panic!("writing {}: {err}", out.display()));
 }
 
-/// Compile the engine guest cdylib for `wasm32-wasip2` with a child
-/// Cargo invocation and return the built component path.
+// Compile the engine guest cdylib for `wasm32-wasip2` with a child
+// Cargo invocation and return the built component path.
 fn build_engine() -> PathBuf {
     let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
     // Re-embed whenever the engine's sources change.
@@ -106,14 +102,9 @@ fn build_engine() -> PathBuf {
     target_dir.join(WASM_TARGET).join(if release { "release" } else { "debug" }).join("emery.wasm")
 }
 
-/// Strip the parent build's Cargo and rustc environment from the
-/// child so host flags (`RUSTFLAGS=-Dwarnings`, wrappers) do not leak
-/// into the wasm32 build. `CARGO_HOME` and `CARGO_NET_OFFLINE`
-/// survive so registry caches and offline policy carry over.
-/// `RUSTUP_TOOLCHAIN` is deliberately kept: it pins every rustc the
-/// child spawns to the parent's toolchain — removing it lets the
-/// rustup shim fall back to the machine default mid-build, mixing
-/// compiler versions (E0514).
+// Strip the parent build's Cargo/rustc env so host flags do not leak
+// into the wasm32 child; `CARGO_HOME`, `CARGO_NET_OFFLINE`, and
+// `RUSTUP_TOOLCHAIN` survive (the last avoids mixed compilers, E0514).
 fn sanitize(child: &mut Command) {
     for (key, _) in std::env::vars_os() {
         let Some(key) = key.to_str() else { continue };
@@ -127,10 +118,9 @@ fn sanitize(child: &mut Command) {
     }
 }
 
-/// Fail fast with the install instruction when the `wasm32-wasip2`
-/// standard library is not installed for the active toolchain. A
-/// probe failure is not fatal — the child build carries the same
-/// instruction on failure.
+// Fail fast with the install instruction when the `wasm32-wasip2`
+// stdlib is missing for the active toolchain. A probe failure is not
+// fatal — the child build carries the same instruction on failure.
 fn check_wasm_target() {
     let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
     let Ok(output) =

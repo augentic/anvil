@@ -1,8 +1,7 @@
 //! Typed command grammar, conversions, and Emery projection policy.
 
 use clap::Args;
-use emery_engine::handler::{Anchor, Render};
-use emery_engine::resolve::Resolver;
+use emery_engine::handler::Render;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
 use serde::Serialize;
@@ -51,8 +50,8 @@ where
     }
 }
 
-/// Buffer one [`emit`] rendering of `value` for a `CommandResponse`
-/// channel.
+// Buffer one [`emit`] rendering of `value` for a `CommandResponse`
+// channel.
 fn encode<T: Serialize>(
     format: Format, value: &T,
     text: impl FnOnce(&mut dyn std::io::Write, &T) -> std::io::Result<()>,
@@ -70,8 +69,8 @@ fn error_response(
     Ok(CommandResponse::failure(stderr, Exit::from(error).code()))
 }
 
-/// [`render_failure`] mapped onto a `CommandResponse` — the terminal
-/// fallback (a plain exit-1 line) lives in one place.
+// [`render_failure`] mapped onto a `CommandResponse` — the terminal
+// fallback (a plain exit-1 line) lives in one place.
 fn failure_response(format: Format, error: &emery_error::Error) -> CommandResponse {
     let (stderr, code) = render_failure(format, error);
     CommandResponse::failure(stderr, code)
@@ -100,7 +99,7 @@ fn operation_response(
 /// the engine guest's `wasi:cli/run` exporter.
 pub async fn execute<P>(router: &Router<P, Globals>, argv: Vec<String>) -> CommandResponse
 where
-    P: Provider + Anchor + Resolver,
+    P: Provider,
 {
     let span = tracing::info_span!(
         "emery.command",
@@ -116,8 +115,8 @@ where
     .await
 }
 
-/// The bounded span label: the first two non-flag tokens after the
-/// binary name (`plan author`, `slice list`).
+// The bounded span label: the first two non-flag tokens after the
+// binary name (`plan author`, `slice list`).
 fn label(argv: &[String]) -> String {
     let words: Vec<&str> = argv
         .iter()

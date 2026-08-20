@@ -7,8 +7,8 @@ use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-/// Stream buffer for [`Hasher::update_reader`]: large enough to keep
-/// syscall count down, small enough for the stack.
+// Stream buffer for [`Hasher::update_reader`]: large enough to keep
+// syscall count down, small enough for the stack.
 const STREAM_CHUNK: usize = 16 * 1024;
 
 /// Lowercase hex encoding of a SHA-256 digest over `bytes`.

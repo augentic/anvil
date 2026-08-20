@@ -1,7 +1,6 @@
 //! Deployment-neutral source-adapter resolution and the component
-//! implementation used by the shipped WASI provider.
+//! resolver the routed operations call directly.
 
-use std::future::Future;
 use std::path::PathBuf;
 
 use emery_error::Error;
@@ -13,39 +12,9 @@ use super::metadata::{self, Metadata};
 use super::selector::AdapterSelector;
 use crate::handler::ExecutionPaths;
 
-/// Provider capability for resolving source adapters.
-///
-/// `resolve_source` is read-only re-resolution of an already-provisioned
-/// selector; `ensure_source` owns deployment policy for making a
-/// selector usable before resolving it. Package installation is
-/// host-owned, so a package pin ensures without guest-side
-/// provisioning. The default makes `ensure_source` a side-effect-free
-/// resolve.
-pub trait Resolver: Send + Sync {
-    /// Resolve one source adapter selector.
-    ///
-    /// # Errors
-    ///
-    /// Preserves location, metadata, and compatibility failures.
-    fn resolve_source(
-        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
-    ) -> Result<ResolvedSource, Error>;
-
-    /// Make `selector` usable under this deployment, then resolve it.
-    ///
-    /// # Errors
-    ///
-    /// Deployment provisioning failures (mirror, digest) ahead of the
-    /// resolve failures.
-    fn ensure_source(
-        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
-    ) -> impl Future<Output = Result<ResolvedSource, Error>> + Send {
-        let resolved = self.resolve_source(selector, paths);
-        async move { resolved }
-    }
-}
-
-/// Component-backed resolver used by the shipped WASI provider.
+/// Component-backed resolver: read-only re-resolution of an
+/// already-provisioned selector over an injected metadata dispatch
+/// ([`super::ensure::source`] owns the provisioning leg).
 #[derive(Clone, Copy, Debug)]
 pub struct Component {
     metadata: metadata::Runner,
@@ -57,10 +26,13 @@ impl Component {
     pub const fn new(metadata: metadata::Runner) -> Self {
         Self { metadata }
     }
-}
 
-impl Resolver for Component {
-    fn resolve_source(
+    /// Resolve one source adapter selector.
+    ///
+    /// # Errors
+    ///
+    /// Preserves location, metadata, and compatibility failures.
+    pub fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
@@ -84,24 +56,17 @@ impl Resolver for Component {
     }
 }
 
-/// Whether a bare selector must resolve dispatch-first: no seeded
-/// project-cache entry exists, so local-first deployment policy on the
-/// other side of the seam locates the component. The guest never
-/// learns which version the deployment chose — resolved bare versions
-/// stay `None`.
+// Whether a bare selector must resolve dispatch-first: no seeded
+// project-cache entry exists, so deployment policy locates the
+// component. Resolved bare versions stay `None`.
 fn dispatch_first(selector: &AdapterSelector, name: &str, paths: &ExecutionPaths) -> bool {
     matches!(selector, AdapterSelector::Bare { .. })
         && !component_cache_entry(paths, name).is_file()
 }
 
-/// The deployment-neutral origin of a package-pin resolve: the global
-/// store identity the pin maps to.
-///
-/// Built from the carried layout rather than a probed file — package
-/// metadata dispatches by routed id before any store file is visible
-/// to the caller (the host resolver installs a missing pin during that
-/// dispatch), so the origin names where the deployment keeps the pin,
-/// not a file the caller read.
+// The store identity a package pin maps to, built from the carried
+// layout rather than a probed file: the origin names where the
+// deployment keeps the pin, not a file the caller read.
 fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -> Origin {
     Origin {
         label: "store".to_string(),
@@ -109,10 +74,9 @@ fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -
     }
 }
 
-/// The deployment-neutral origin of a bare dispatch-first resolve: the
-/// routed id the deployment resolved local-first. The caller never
-/// sees a component file (the store is host-owned with no guest
-/// mount), so the origin carries the identity, not a path.
+// The origin of a bare dispatch-first resolve: the caller never sees
+// a component file (the store is host-owned with no guest mount), so
+// the origin carries the routed identity, not a path.
 fn bare_origin(axis: Axis, name: &str) -> Origin {
     Origin {
         label: "store".to_string(),
@@ -144,7 +108,7 @@ pub fn source(
 /// Project component cache entry for `name`.
 #[must_use]
 pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathBuf {
-    paths.locations().component(paths.project_root(), name)
+    paths.locations().component(name)
 }
 
 /// Locate the single component file for one adapter identity without

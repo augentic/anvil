@@ -1,6 +1,6 @@
-//! The output home — the one module owning every spec-set read/write
-//! (ADR-0001 Option C, ADR-0009 §2): content-addressed generations
-//! behind one swapped `current` pointer; reads fail closed.
+//! The output home — the one module owning every spec-set read/write:
+//! content-addressed generations behind one swapped `current` pointer;
+//! reads fail closed.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -10,17 +10,17 @@ use emery_artifacts::spec::ast;
 use emery_error::Error;
 use serde::Serialize;
 
-/// The output-home directory under `.emery/`.
+// The output-home directory under `.emery/`.
 const SPEC_DIR: &str = "spec";
 
-/// The generation-pointer document at the output-home root.
+// The generation-pointer document at the output-home root.
 const CURRENT_FILE: &str = "current";
 
-/// The generation directories' parent under the output home.
+// The generation directories' parent under the output home.
 const GENERATIONS_DIR: &str = "generations";
 
-/// Every document of one complete generation, in the fixed on-disk
-/// order the generation digest folds them.
+// Every document of one complete generation, in the fixed on-disk
+// order the generation digest folds them.
 const FILES: [&str; 4] = ["bindings.yaml", "receipts.yaml", "spec.md", "design.md"];
 
 /// One complete spec set, assembled in memory before any write.
@@ -81,11 +81,11 @@ pub struct Committed {
 }
 
 /// One re-mine diff: how an incoming spec set differs from the
-/// outgoing generation it supersedes (ADR-0010).
+/// outgoing generation it supersedes.
 ///
 /// Computed at commit time — the outgoing set is pruned immediately
 /// after the swap — and emitted in the `specify` success envelope
-/// only; nothing persists (ADR-0009 §2). An identical re-run yields
+/// only; nothing persists. An identical re-run yields
 /// an [`empty`](Self::is_empty) diff, making "nothing changed" an
 /// explicit, reviewable statement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -113,7 +113,7 @@ impl Diff {
     /// or removed. The outgoing spec parsing fails only across a
     /// binary upgrade (pre-1.0: re-init); the diff is advisory, so
     /// that leaves the artifact list standing and the section lists
-    /// empty rather than failing the commit (ADR-0010).
+    /// empty rather than failing the commit.
     #[must_use]
     pub fn between(from: String, outgoing: &SpecSet, incoming: &SpecSet) -> Self {
         let artifacts = outgoing
@@ -159,12 +159,12 @@ impl Diff {
     }
 }
 
-/// Requirement blocks keyed by heading subject, in subject order.
+// Requirement blocks keyed by heading subject, in subject order.
 fn subjects(spec: &ast::Spec) -> BTreeMap<&str, &ast::Requirement> {
     spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
 }
 
-/// Block equality minus the positional `REQ-NNN` id.
+// Block equality minus the positional `REQ-NNN` id.
 fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
     old.status == new.status
         && old.tag == new.tag
@@ -244,9 +244,9 @@ impl Home {
         Ok(Some(Committed { id, dir }))
     }
 
-    /// The outgoing spec set for a re-mine diff (ADR-0010): the id
-    /// the `current` pointer names and its complete set, read before
-    /// the commit that will prune it.
+    /// The outgoing spec set for a re-mine diff: the id the `current`
+    /// pointer names and its complete set, read before the commit
+    /// that will prune it.
     ///
     /// Total by design: the diff is advisory reporting, never a gate,
     /// and `specify` must stay the recovery path for a corrupt home —
@@ -265,10 +265,9 @@ impl Home {
         Some((committed.id, set))
     }
 
-    /// Keep only the `current` pointer and the generation it names:
-    /// remove every other entry at the home root and under
-    /// `generations/` — superseded generations and any temp-file or
-    /// partial-directory litter a crash left behind.
+    // Keep only the `current` pointer and the generation it names —
+    // superseded generations and any temp-file or partial-directory
+    // litter a crash left behind are removed.
     fn prune(&self, keep: &str) -> Result<(), Error> {
         for entry in fs::read_dir(&self.root)? {
             let path = entry?.path();

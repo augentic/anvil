@@ -209,10 +209,9 @@ mod repaired {
     }
 }
 
-// The guest grant surface: the URL mirrors the routed id verbatim on
-// the runtime's `/mcp/` prefix (version pin included, so the HTTP
-// router maps it back onto the registered identity), while the grant
-// name strips both axis and pin.
+// The URL mirrors the routed id verbatim (version pin included) so
+// the HTTP router maps it back onto the registered identity; the
+// grant name strips both axis and pin.
 #[test]
 fn mcp_url_mirrors_routed_id() {
     let addr = Some("127.0.0.1:8080");
@@ -230,10 +229,9 @@ fn mcp_url_mirrors_routed_id() {
     );
 }
 
-// The port follows the trigger's `HTTP_ADDR` (any bind form); the
-// connect host stays the IPv4 loopback literal. An absent or
-// unparseable address yields no URL at all — no listener means no
-// shelf and no grant, never a wrong-port guess.
+// The port follows `HTTP_ADDR` (any bind form); the connect host stays
+// the IPv4 loopback literal. An absent or unparseable address yields
+// no URL at all — never a wrong-port guess.
 #[test]
 fn mcp_url_port_from_trigger() {
     for (addr, expected) in [

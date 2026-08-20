@@ -1,17 +1,17 @@
 //! [`Locations`] — well-known on-disk roots (adapter store, component
-//! cache). Kernels and handlers receive the value through
-//! [`super::ExecutionPaths`] and never read `std::env` themselves.
+//! cache) as fixed layout formulas. Every path is a constant relative
+//! to a named preopen; kernels never read `std::env` themselves.
 
 use std::path::{Path, PathBuf};
 
-/// Guest-visible preopen name of the per-project derived cache inside
-/// the engine guest's WASI sandbox.
+/// Guest-visible preopen name of the per-project derived cache.
 ///
-/// The generated deployment manifest mounts the host's resolved
-/// [`Locations::project_cache_dir`] under this name; the guest
-/// constructs its `Locations` over the preopen directly — one project
-/// per deployment, so no project-id keying is needed in-guest.
-pub const GUEST_CACHE_MOUNT: &str = "/emery-cache";
+/// The deployment manifest mounts the host's CWD-relative
+/// `.emery-cache` under the same name, so the string resolves
+/// identically against the wasm32 preopen table and the native
+/// invocation directory; one project per deployment, so no project-id
+/// keying is needed.
+pub const GUEST_CACHE_MOUNT: &str = ".emery-cache";
 
 /// Nominal store root inside the engine guest's layout.
 ///
@@ -23,58 +23,20 @@ pub const GUEST_CACHE_MOUNT: &str = "/emery-cache";
 /// never I/O.
 pub const GUEST_STORE_MOUNT: &str = "/emery-store";
 
-/// How the cache root carried by [`Locations`] is interpreted.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CachePlacement {
-    /// Host parent holding every project's cache: the per-project
-    /// directory is created beneath it, keyed by the canonical
-    /// project-id digest.
-    Parent(PathBuf),
-    /// Already-resolved per-project cache root, such as the engine
-    /// guest's preopen — one project per deployment, no keying.
-    Project(PathBuf),
-}
-
 /// Well-known on-disk locations for resolvable artifacts.
 ///
-/// Owns the production roots — the global adapter store (pinned
-/// identities plus digest sidecars) and the project component cache
-/// (operator-seeded local components) — and the layout formulas over
-/// them. Methods are pure path math; the roots are fixed at
-/// construction.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Locations {
-    store_root: PathBuf,
-    cache: CachePlacement,
-}
+/// Owns the layout formulas over the two fixed roots — the nominal
+/// global adapter store and the project component cache preopen.
+/// Methods are pure path math over the mount constants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Locations;
 
 impl Locations {
-    /// Explicit layout — no environment reads. Sandboxed sessions and
-    /// tests pass [`CachePlacement::Parent`]; the wasm32 engine guest
-    /// passes [`CachePlacement::Project`] for its already-resolved
-    /// preopen.
-    #[must_use]
-    pub const fn explicit(store_root: PathBuf, cache: CachePlacement) -> Self {
-        Self { store_root, cache }
-    }
-
-    /// The engine guest's layout: the writable cache preopen the
-    /// deployment manifest grants plus the nominal (never-opened)
-    /// store root — no environment, no project-id suffix below the
-    /// cache mount.
-    #[must_use]
-    pub fn guest() -> Self {
-        Self {
-            store_root: PathBuf::from(GUEST_STORE_MOUNT),
-            cache: CachePlacement::Project(PathBuf::from(GUEST_CACHE_MOUNT)),
-        }
-    }
-
     /// Global store root — host-side installs and verify-and-load;
     /// origin display in-guest.
     #[must_use]
     pub fn store_root(&self) -> &Path {
-        &self.store_root
+        Path::new(GUEST_STORE_MOUNT)
     }
 
     /// Global store entry for an immutable `(name, version)` identity —
@@ -85,7 +47,7 @@ impl Locations {
     /// shared, immutable entry (the Cargo `~/.cargo/registry` model).
     #[must_use]
     pub fn store_entry(&self, name: &str, version: &str) -> PathBuf {
-        self.store_root.join(format!("{name}@{version}.wasm"))
+        self.store_root().join(format!("{name}@{version}.wasm"))
     }
 
     /// Verify-on-read digest sidecar sibling of [`Self::store_entry`] —
@@ -96,29 +58,19 @@ impl Locations {
     /// read-only immutability of the installed component file.
     #[must_use]
     pub fn store_meta(&self, name: &str, version: &str) -> PathBuf {
-        self.store_root.join(format!("{name}@{version}.meta"))
+        self.store_root().join(format!("{name}@{version}.meta"))
     }
 
-    /// Resolved per-project cache directory for `project_root`.
-    ///
-    /// [`CachePlacement::Parent`] appends the stable project-id digest
-    /// (`emery_diagnostics::cache::project_id`), so each checkout gets its
-    /// own collision-free cache; [`CachePlacement::Project`] returns
-    /// the carried, already-resolved root directly.
+    /// The per-project derived cache root: the cache preopen.
     #[must_use]
-    pub fn project_cache_dir(&self, project_root: &Path) -> PathBuf {
-        match &self.cache {
-            CachePlacement::Parent(parent) => {
-                parent.join(emery_diagnostics::cache::project_id(project_root))
-            }
-            CachePlacement::Project(dir) => dir.clone(),
-        }
+    pub fn cache_dir(&self) -> PathBuf {
+        PathBuf::from(GUEST_CACHE_MOUNT)
     }
 
     /// Project component cache entry for `name` under
     /// `<project-cache>/components/<name>.wasm`.
     #[must_use]
-    pub fn component(&self, project_root: &Path, name: &str) -> PathBuf {
-        self.project_cache_dir(project_root).join("components").join(format!("{name}.wasm"))
+    pub fn component(&self, name: &str) -> PathBuf {
+        self.cache_dir().join("components").join(format!("{name}.wasm"))
     }
 }

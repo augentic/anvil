@@ -1,17 +1,16 @@
-//! Mechanical doc-density gate over every workspace `src/` tree and
-//! WIT contract (docs/standards/coding-standards.md § Comments):
-//! module `//!` docs 1–3 prose lines, `///` overviews under 8 before
-//! a `#` section, `//` runs ≤ 3.
+//! Mechanical doc-density gate (docs/standards/coding-standards.md
+//! § Comments): module `//!` docs 1–3 prose lines, `///` overviews
+//! under 8 before a `#` section, `//` runs ≤ 3.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Non-blank `//!` lines allowed per module-doc block.
+// Non-blank `//!` lines allowed per module-doc block.
 const MODULE_DOC_CAP: usize = 3;
-/// Non-blank `///` overview lines allowed before the first `#` section.
+// Non-blank `///` overview lines allowed before the first `#` section.
 const ITEM_DOC_CAP: usize = 8;
-/// Consecutive non-blank `//` lines allowed per run.
+// Consecutive non-blank `//` lines allowed per run.
 const LINE_COMMENT_CAP: usize = 3;
 
 #[test]
@@ -19,11 +18,14 @@ fn caps() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut files = vec![root.join("build.rs")];
     collect(&root.join("src"), "rs", &mut files);
+    collect(&root.join("tests"), "rs", &mut files);
+    collect(&root.join("examples"), "rs", &mut files);
     collect(&root.join("wit"), "wit", &mut files);
     let crates = fs::read_dir(root.join("crates")).expect("crates directory");
     for entry in crates {
         let crate_dir = entry.expect("crate directory entry").path();
         collect(&crate_dir.join("src"), "rs", &mut files);
+        collect(&crate_dir.join("tests"), "rs", &mut files);
         collect(&crate_dir.join("wit"), "wit", &mut files);
     }
     files.sort();
@@ -43,7 +45,7 @@ fn caps() {
     );
 }
 
-/// Recursively gather `.{ext}` files under `dir` (absent dirs are fine).
+// Recursively gather `.{ext}` files under `dir` (absent dirs are fine).
 fn collect(dir: &Path, ext: &str, files: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
     for entry in entries {
@@ -66,14 +68,14 @@ struct Finding {
     message: String,
 }
 
-/// One contiguous comment block under measurement.
+// One contiguous comment block under measurement.
 struct Block {
     kind: Kind,
     start: usize,
-    /// Non-blank, non-fenced prose lines counted against the cap.
+    // Non-blank, non-fenced prose lines counted against the cap.
     prose: usize,
     in_fence: bool,
-    /// An item-doc `# Section` heading was seen; later lines are exempt.
+    // An item-doc `# Section` heading was seen; later lines are exempt.
     sectioned: bool,
 }
 
@@ -110,9 +112,9 @@ impl Kind {
     }
 }
 
-/// Line-based scan: group consecutive same-kind comment lines into
-/// blocks, count prose lines (fenced code and blank separators exempt),
-/// and report every block over its kind's cap.
+// Line-based scan: group consecutive same-kind comment lines into
+// blocks, count prose lines (fenced code and blank separators exempt),
+// and report every block over its kind's cap.
 fn scan(text: &str) -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut block: Option<Block> = None;

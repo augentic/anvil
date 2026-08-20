@@ -138,14 +138,14 @@ pub struct Claim {
     pub backing: Option<Backing>,
     /// Open per-kind body fields (`statement`, `criterion`,
     /// `replay-digest`, …), captured verbatim from the answer instead
-    /// of being dropped (A8) — synthesis reads them from the persisted
+    /// of being dropped — synthesis reads them from the persisted
     /// Evidence document.
     #[serde(flatten)]
     pub extras: serde_json::Map<String, serde_json::Value>,
 }
 
-/// Deserialize an open per-kind body field tolerantly: a value that does
-/// not match the modeled shape is treated as absent.
+// Deserialize an open per-kind body field tolerantly: a value that does
+// not match the modeled shape is treated as absent.
 fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,

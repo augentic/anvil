@@ -2,7 +2,7 @@
 
 use emery_adapter::registry::{Doc, body, find};
 
-/// A sorted table, as the `prose` codegen emits.
+// A sorted table, as the `prose` codegen emits.
 static DOCS: &[Doc] = &[
     Doc {
         path: "prompts/build.md",

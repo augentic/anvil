@@ -17,7 +17,7 @@ use serde_json::Value;
 use crate::diagnostic::{Diagnostic, FindingEvidence, FindingLocation};
 use crate::digest::sha256_hex;
 
-/// Wire-format version embedded into every fingerprint preimage.
+// Wire-format version embedded into every fingerprint preimage.
 const FINGERPRINT_VERSION: &str = "v1";
 
 /// Compute the diagnostic fingerprint for `diagnostic`.

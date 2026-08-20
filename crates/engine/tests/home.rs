@@ -1,5 +1,5 @@
 //! Output-home integration: the generation-pointer commit contract
-//! (ADR-0001 Option C, ADR-0009 §2) at the crate's public surface.
+//! at the crate's public surface.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -16,7 +16,7 @@ fn set(spec: &str) -> SpecSet {
     }
 }
 
-/// Every file under `dir` by relative path and bytes.
+// Every file under `dir` by relative path and bytes.
 fn snapshot(dir: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
     fn walk(root: &Path, dir: &Path, tree: &mut BTreeMap<PathBuf, Vec<u8>>) {
         for entry in fs::read_dir(dir).expect("read dir") {
@@ -96,7 +96,7 @@ fn crash_litter_pruned() {
     assert!(!project.path().join(".emery/spec/.tmpXYZ").exists());
 }
 
-/// One parseable requirement block for the diff kernel's spec fixtures.
+// One parseable requirement block for the diff kernel's spec fixtures.
 fn block(id: u32, name: &str, body: &str) -> String {
     format!(
         "### Requirement: {name}\n\nID: REQ-{id:03}\nSources: [mock-docs]\nStatus: agreed\n\n{body}\n\n"
@@ -115,9 +115,9 @@ fn outgoing_reads_current() {
     assert_eq!(outgoing, set("# Spec\n"), "the outgoing set reads back verbatim");
 }
 
-/// ADR-0010: the re-mine diff names changed artifacts and `spec.md`
-/// sections by heading subject — immune to positional `REQ-NNN`
-/// shifts when blocks are inserted or removed.
+// The re-mine diff names changed artifacts and `spec.md` sections
+// by heading subject — immune to positional `REQ-NNN` shifts when
+// blocks are inserted or removed.
 #[test]
 fn remine_diff_sections() {
     let old_spec = format!(

@@ -99,10 +99,9 @@ fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), 
     Ok(())
 }
 
-/// Fail when a relative markdown link in `body` does not resolve to a
-/// file on disk. Scheme-carrying URLs and same-document anchors are
-/// out of scope for the embed check. Fenced code blocks are ignored so
-/// language casts such as Swift `[UInt8](data)` are not treated as links.
+// Fail when a relative markdown link in `body` does not resolve on
+// disk; URLs and same-document anchors are out of scope. Fenced code
+// is ignored so casts like Swift `[UInt8](data)` are not links.
 fn check_links(source: &Path, body: &str) -> Result<(), String> {
     let dir = source.parent().ok_or_else(|| format!("{} has no parent", source.display()))?;
     let prose = strip_fenced_code(body);
@@ -123,8 +122,8 @@ fn check_links(source: &Path, body: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Drop fenced code blocks (` ``` ` … ` ``` `) so link extraction only
-/// sees prose. Fence marker lines themselves are discarded.
+// Drop fenced code blocks (` ``` ` … ` ``` `) so link extraction only
+// sees prose. Fence marker lines themselves are discarded.
 fn strip_fenced_code(body: &str) -> String {
     let mut out = String::with_capacity(body.len());
     let mut in_fence = false;
@@ -141,7 +140,7 @@ fn strip_fenced_code(body: &str) -> String {
     out
 }
 
-/// Every inline markdown link destination (`](…)`) in `body`, in order.
+// Every inline markdown link destination (`](…)`) in `body`, in order.
 fn link_targets(body: &str) -> Vec<&str> {
     let mut targets = Vec::new();
     let mut rest = body;

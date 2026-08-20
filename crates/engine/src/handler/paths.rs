@@ -1,7 +1,6 @@
 //! [`ExecutionPaths`] — the project root plus artifact [`Locations`].
-//!
-//! A composition root constructs the value once; kernels read it and
-//! never consult the environment themselves.
+//! Every path is a fixed constant relative to a named preopen;
+//! kernels read the value and never consult the environment.
 
 use std::path::{Path, PathBuf};
 
@@ -10,28 +9,24 @@ use super::locations::Locations;
 /// The project root plus the carried artifact locations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutionPaths {
-    /// Guest `.` mount: the project tree.
+    /// The `.` mount: the project tree.
     project_root: PathBuf,
     locations: Locations,
 }
 
 impl ExecutionPaths {
-    /// Anchor at `project_root` with the carried `locations`.
+    /// The deployed layout: `.` is the project-root mount and the
+    /// cache root is the named cache preopen — identical strings on
+    /// wasm32 (preopen table) and native (invocation directory).
     #[must_use]
-    pub fn new(project_root: impl Into<PathBuf>, locations: Locations) -> Self {
+    pub fn deployed() -> Self {
         Self {
-            project_root: project_root.into(),
-            locations,
+            project_root: PathBuf::from("."),
+            locations: Locations,
         }
     }
 
-    /// The engine guest's paths: `.` is the mount preopen.
-    #[must_use]
-    pub fn guest() -> Self {
-        Self::new(".", Locations::guest())
-    }
-
-    /// Directory the guest `.` mount is anchored at.
+    /// Directory the `.` mount is anchored at.
     #[must_use]
     pub fn project_root(&self) -> &Path {
         &self.project_root
@@ -43,10 +38,9 @@ impl ExecutionPaths {
         &self.locations
     }
 
-    /// The per-project derived cache directory for this value's `.`
-    /// mount.
+    /// The per-project derived cache directory.
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
-        self.locations.project_cache_dir(&self.project_root)
+        self.locations.cache_dir()
     }
 }

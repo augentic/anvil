@@ -1,11 +1,8 @@
-//! The exhaustive route inventory (ADR-0008 §3): `init`, the live
-//! `specify` generator, and the auto-derived `completions`. Deleted
-//! verbs are gone from the grammar — no hidden routes, no aliases.
+//! The exhaustive route inventory: `init`, the live `specify`
+//! generator, and the auto-derived `completions`. Deleted verbs are
+//! gone from the grammar — no hidden routes, no aliases.
 
 use clap::Args;
-use emery_engine::extract::Extract;
-use emery_engine::handler::Anchor;
-use emery_engine::resolve::Resolver;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
@@ -13,7 +10,7 @@ use omnia_guest::api::invoke::Invoker;
 
 use super::{EmeryProjector, Globals};
 
-/// One-line application description.
+// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
 /// Flags for `emery init`.
@@ -36,7 +33,7 @@ pub(super) struct InitArgs {
     pub(super) upgrade: bool,
 }
 
-/// Flags for `emery specify` (none — ADR-0008 §3).
+/// Flags for `emery specify` (none, deliberately).
 #[derive(Debug, Args)]
 pub(super) struct SpecifyArgs;
 
@@ -56,7 +53,7 @@ impl TryFrom<SpecifyArgs> for emery_engine::specify::SpecifyInput {
 /// Returns a deterministic route or argument conflict.
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Resolver + Extract + Model,
+    P: Provider + Model,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)

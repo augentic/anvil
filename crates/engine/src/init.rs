@@ -1,18 +1,19 @@
-//! `emery init` (ADR-0009 §1): resolve each requested source adapter
-//! on the source axis, record the authored bindings on
-//! `project.yaml`, and scaffold `.emery/`.
+//! `emery init`: resolve each requested source adapter on the source
+//! axis, record the authored bindings on `project.yaml`, and scaffold
+//! `.emery/`.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use emery_error::Error;
+use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, ExecutionPaths, Render};
+use crate::handler::{ExecutionPaths, Render};
 use crate::project::{BindingContent, Project, SourceBinding};
-use crate::resolve::{AdapterSelector, ComponentMeta, Resolver};
+use crate::resolve::{AdapterSelector, ComponentMeta, ensure, metadata};
 
 /// Wire input for `emery init` — the full argument surface.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -35,18 +36,18 @@ pub struct InitInput {
     pub upgrade: bool,
 }
 
-/// `emery init` against the provider's anchor root (`"."` on both
-/// sides: the guest's mount preopen, the native process CWD).
+/// `emery init` against the deployed root (`"."` on both sides: the
+/// guest's mount preopen, the native process CWD).
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
 
-impl<P: Anchor + Resolver> Operation<P> for Init {
+impl<P: Provider> Operation<P> for Init {
     type Error = crate::handler::Error;
     type Input = InitInput;
     type Output = InitBody;
 
     async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
+        input: Self::Input, _context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let InitInput {
             adapters,
@@ -55,11 +56,11 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             description,
             upgrade,
         } = input;
-        let paths = context.provider.paths();
+        let paths = ExecutionPaths::deployed();
         let project_dir = paths.project_root();
 
         if upgrade {
-            return Ok(run_upgrade(context.provider, project_dir, paths).await?);
+            return Ok(run_upgrade(project_dir, &paths)?);
         }
 
         // Re-entry: an already-initialized project is a no-op that
@@ -81,16 +82,12 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
 
         let mut sources = Vec::new();
         for value in &adapters {
-            let bound =
-                bind(context.provider, value, paths, BindingContent::Workspace(".".to_string()))
-                    .await?;
+            let bound = bind(value, &paths, BindingContent::Workspace(".".to_string()))?;
             push_unique(&mut sources, bound)?;
         }
         for entry in &values {
             let (adapter, text) = split_value(entry)?;
-            let bound =
-                bind(context.provider, adapter, paths, BindingContent::Value(text.to_string()))
-                    .await?;
+            let bound = bind(adapter, &paths, BindingContent::Value(text.to_string()))?;
             push_unique(&mut sources, bound)?;
         }
 
@@ -106,30 +103,27 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
     }
 }
 
-/// The `--upgrade` re-entry: re-ensure every recorded binding and bump
-/// the `emery` pin, preserving everything else.
-async fn run_upgrade(
-    provider: &impl Resolver, project_dir: &Path, paths: &ExecutionPaths,
-) -> Result<InitBody, Error> {
+// The `--upgrade` re-entry: re-ensure every recorded binding and bump
+// the `emery` pin, preserving everything else.
+fn run_upgrade(project_dir: &Path, paths: &ExecutionPaths) -> Result<InitBody, Error> {
     let mut project = Project::load(project_dir)?;
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        provider.ensure_source(&selector, paths).await?;
+        ensure::source(metadata::deployed, &selector, paths, jiff::Timestamp::now())?;
     }
     project.emery_version = Some(env!("CARGO_PKG_VERSION").to_string());
     project.store(project_dir)?;
     Ok(InitBody::from_project(InitMode::Upgraded, &project, project_dir))
 }
 
-/// Ensure one adapter on the source axis and shape its binding: the
-/// key is the resolved adapter name; the persisted selector value
-/// outlives the CWD (a local component records its canonical
-/// `file://` form from the cache mirror's provenance sidecar).
-async fn bind(
-    provider: &impl Resolver, value: &str, paths: &ExecutionPaths, content: BindingContent,
+// Ensure one adapter on the source axis and shape its binding: the
+// key is the resolved adapter name; a local component persists its
+// canonical `file://` form so the selector value outlives the CWD.
+fn bind(
+    value: &str, paths: &ExecutionPaths, content: BindingContent,
 ) -> Result<SourceBinding, Error> {
     let selector = AdapterSelector::parse(value)?;
-    let resolved = provider.ensure_source(&selector, paths).await?;
+    let resolved = ensure::source(metadata::deployed, &selector, paths, jiff::Timestamp::now())?;
     let key = resolved.manifest.name;
     let adapter = match &selector {
         AdapterSelector::Component { .. } => ComponentMeta::load(paths, &key)
@@ -143,7 +137,7 @@ async fn bind(
     })
 }
 
-/// Append `binding` unless its key is already bound.
+// Append `binding` unless its key is already bound.
 fn push_unique(sources: &mut Vec<SourceBinding>, binding: SourceBinding) -> Result<(), Error> {
     if sources.iter().any(|existing| existing.key == binding.key) {
         return Err(Error::validation_failed(
@@ -156,7 +150,7 @@ fn push_unique(sources: &mut Vec<SourceBinding>, binding: SourceBinding) -> Resu
     Ok(())
 }
 
-/// Split one `--value <adapter>=<text>` entry at the first `=`.
+// Split one `--value <adapter>=<text>` entry at the first `=`.
 fn split_value(entry: &str) -> Result<(&str, &str), Error> {
     entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
         Error::Argument {

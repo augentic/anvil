@@ -1,7 +1,6 @@
-//! The journey host (ADR-0009 §5): the shipped runtime shape with the
-//! mock source component as the one adapter guest and `WasiModel`
-//! answering from a script directory instead of the Cursor backend.
-//! Never shipped.
+//! The journey host: the shipped runtime shape with the mock source
+//! component as the one adapter guest and `WasiModel` answering from
+//! a script directory instead of the Cursor backend.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {

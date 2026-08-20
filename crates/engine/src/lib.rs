@@ -1,6 +1,5 @@
-//! The spec-generator engine (remediation Phase 3): the one loop —
-//! extract → synthesise → emit `spec.md` / `design.md` — behind the
-//! generation-pointer output home (ADR-0001 Option C, ADR-0009).
+//! The spec-generator engine: extract → synthesise → emit `spec.md` /
+//! `design.md` behind the generation-pointer output home.
 
 pub mod extract;
 pub mod handler;
@@ -11,8 +10,8 @@ pub mod resolve;
 pub mod specify;
 pub mod synthesise;
 
-/// The embedded synthesis-prose registry (the reviewed v1 port under
-/// `prose/`, walked and link-checked at build time).
+// The embedded synthesis-prose registry under `prose/`, walked and
+// link-checked at build time.
 mod prose {
     emery_adapter::registry!();
 }

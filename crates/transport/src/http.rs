@@ -13,7 +13,7 @@ pub fn refusal() -> Router {
     Router::new().fallback(refuse)
 }
 
-/// The typed refusal, naming the one served surface.
+// The typed refusal, naming the one served surface.
 async fn refuse() -> Response {
     (
         StatusCode::NOT_FOUND,

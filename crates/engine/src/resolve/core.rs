@@ -1,7 +1,7 @@
 //! Adapter identity model and post-resolve coherence gates.
 //!
 //! Identity lives in the package reference, axis in the exported world;
-//! there is no on-disk manifest. Only the source axis is live (ADR-0008).
+//! there is no on-disk manifest. Only the source axis is live.
 
 use std::path::PathBuf;
 

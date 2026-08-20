@@ -1,8 +1,6 @@
-//! The extract leg (ADR-0008 §2, ADR-0009 §3): dispatch each authored
-//! binding over the source seam, fail closed on the required-extras
-//! table, and record one receipt per source.
-
-use std::future::Future;
+//! The extract leg: dispatch each authored binding over the source
+//! seam, fail closed on the required-extras table, and record one
+//! receipt per source.
 
 use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
@@ -11,25 +9,44 @@ use serde::Serialize;
 
 use crate::handler::ExecutionPaths;
 use crate::project::{BindingContent, Project, SourceBinding};
-use crate::resolve::{AdapterSelector, Axis, Resolver, RoutedId};
+use crate::resolve::{AdapterSelector, Axis, RoutedId, metadata, resolver};
 
-/// Provider capability dispatching one `extract` over the source seam
-/// (guest: the `emery:adapter/source` WIT import; native: the compiled
-/// catalog, until the Phase 3 spine cut).
-pub trait Extract: Send + Sync {
-    /// Extract the claim set of the source routed by `id`.
-    ///
-    /// # Errors
-    ///
-    /// The seam failure, typed with the routed identity.
-    fn extract(
-        &self, id: &str, input: &SourceInput,
-    ) -> impl Future<Output = Result<seam::Evidence, Error>> + Send;
+// Dispatch one `extract` over the `emery:adapter/source` WIT import —
+// Omnia's host-mediated link routes the call to the exporting guest by
+// the routed `id`, mapping the seam failures onto operator codes.
+#[cfg(target_arch = "wasm32")]
+async fn dispatch(id: &str, input: &SourceInput) -> Result<seam::Evidence, Error> {
+    use emery_adapter::source::import;
+    import::extract(id, input).await.map_err(|err| match err {
+        import::Error::Seam(seam) => Error::Diag {
+            code: "source-extract-failed",
+            detail: format!("source `{id}`: {seam}"),
+        },
+        extras @ import::Error::Extras { .. } => Error::Diag {
+            code: "claim-extras-malformed",
+            detail: format!("source `{id}` {extras}"),
+        },
+    })
+}
+
+// Native builds have no source seam; dispatch refuses typed.
+#[cfg(not(target_arch = "wasm32"))]
+#[expect(
+    clippy::unused_async,
+    reason = "signature parity with the wasm32 dispatch the call site awaits"
+)]
+async fn dispatch(id: &str, _input: &SourceInput) -> Result<seam::Evidence, Error> {
+    Err(Error::Diag {
+        code: "source-extract-unsupported",
+        detail: format!(
+            "source `{id}`: extract dispatches over the component seam; the native path is deleted (ADR-0002)"
+        ),
+    })
 }
 
 /// One extracted source: the binding key, the routed adapter identity
 /// it dispatched by, and the validated claim set in the persisted
-/// Evidence dialect (the seam mirror — one dialect, A16).
+/// Evidence dialect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceSet {
     /// The authored binding key.
@@ -43,7 +60,7 @@ pub struct SourceSet {
 }
 
 /// One extract receipt persisted into the generation: source identity
-/// plus the claim-set digest. No timestamps (ADR-0001).
+/// plus the claim-set digest. No timestamps.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Receipt {
@@ -89,12 +106,13 @@ impl Receipt {
 /// Resolution failures, seam failures, and the typed validation
 /// refusals from [`validate_set`].
 pub async fn extract_all(
-    provider: &(impl Extract + Resolver), project: &Project, paths: &ExecutionPaths,
+    project: &Project, paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
+    let component = resolver::Component::new(metadata::deployed);
     let mut sets = Vec::with_capacity(project.sources.len());
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let resolved = provider.resolve_source(&selector, paths)?;
+        let resolved = component.resolve_source(&selector, paths)?;
         let id = RoutedId::new(
             Axis::Source,
             resolved.manifest.name.clone(),
@@ -102,7 +120,7 @@ pub async fn extract_all(
         )
         .to_string();
         let input = input_for(binding, paths);
-        let evidence = provider.extract(&id, &input).await?;
+        let evidence = dispatch(&id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
             adapter: id,
@@ -115,12 +133,9 @@ pub async fn extract_all(
     Ok(sets)
 }
 
-/// The typed seam input for one binding: the key plus a read-only
-/// workspace view (rooted at the project mount) or the inline value.
-///
-/// A `.`-rooted view spans the project preopen, `.emery/` included —
-/// the per-guest output-home exclusion is a D7 capability profile,
-/// deferred with the build programme (CC-01 note, ADR-0008).
+// The typed seam input for one binding. A `.`-rooted view spans the
+// project preopen, `.emery/` included — the per-guest output-home
+// exclusion is a deferred capability profile.
 fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
@@ -142,8 +157,8 @@ fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
     }
 }
 
-/// The closed required-extras table per claim kind (ADR-0009 §3).
-/// Widening it is a contract change gated by the decision log.
+/// The closed required-extras table per claim kind. Widening it is a
+/// contract change gated by the decision log.
 #[must_use]
 pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
     match kind {
@@ -154,7 +169,7 @@ pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
     }
 }
 
-/// Fail-closed claim-set validation (A8/A16, CC-01).
+/// Fail-closed claim-set validation.
 ///
 /// Id grammar and presence per the persisted dialect, plus the
 /// required-extras table: a violating claim is a typed error naming
@@ -188,7 +203,7 @@ pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
     Ok(())
 }
 
-/// Map the seam authority onto the persisted dialect.
+// Map the seam authority onto the persisted dialect.
 const fn authority(seam: seam::Authority) -> AuthorityClass {
     match seam {
         seam::Authority::Intent => AuthorityClass::Intent,
@@ -197,8 +212,8 @@ const fn authority(seam: seam::Authority) -> AuthorityClass {
     }
 }
 
-/// Map one seam claim onto the persisted dialect, conserving extras
-/// verbatim (A8).
+// Map one seam claim onto the persisted dialect, conserving extras
+// verbatim.
 fn claim(seam: seam::Claim) -> Claim {
     let mut mapped = Claim::new(kind(seam.kind));
     mapped.id = seam.id;
@@ -212,7 +227,7 @@ fn claim(seam: seam::Claim) -> Claim {
     mapped
 }
 
-/// Map the seam claim kind onto the persisted dialect.
+// Map the seam claim kind onto the persisted dialect.
 const fn kind(seam: seam::ClaimKind) -> ClaimKind {
     match seam {
         seam::ClaimKind::Intent => ClaimKind::Intent,

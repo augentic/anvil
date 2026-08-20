@@ -36,20 +36,20 @@ pub fn file_content_digest(file: &Path) -> String {
     bytes_digest(&std::fs::read(file).unwrap_or_default())
 }
 
-/// The `sha256:<hex>` digest of a byte slice.
+// The `sha256:<hex>` digest of a byte slice.
 fn bytes_digest(bytes: &[u8]) -> String {
     let mut hasher = Hasher::new();
     hasher.update(bytes);
     format!("sha256:{}", hasher.finalize_hex())
 }
 
-/// Verify-on-read sidecar contents. Registry-internal YAML;
-/// deliberately *not* an embedded JSON Schema artifact.
+// Verify-on-read sidecar contents. Registry-internal YAML;
+// deliberately *not* an embedded JSON Schema artifact.
 #[derive(Debug, Serialize, Deserialize)]
 struct StoreMeta {
-    /// Deterministic [`file_content_digest`] of the installed component.
+    // Deterministic [`file_content_digest`] of the installed component.
     tree_digest: String,
-    /// Registry provenance recorded at install time.
+    // Registry provenance recorded at install time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     oci: Option<OciProvenance>,
 }

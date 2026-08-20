@@ -205,13 +205,9 @@ fn is_github_url(value: &str) -> bool {
     value.starts_with("https://github.com/")
 }
 
-/// Recognise an adapter package reference `<namespace>:<name>@<semver>`.
-///
-/// Returns `None` when `value` is not a package-ref shape — so URL
-/// schemes (`https://`, `file://`), Windows drive paths (`C:\…`), bare
-/// names, and local paths keep flowing through the shorthand / local
-/// branches. Returns `Some(Err(_))` when the shape *is* a package
-/// reference but the version pin is missing or not exact SemVer.
+// Recognise an adapter package reference `<namespace>:<name>@<semver>`:
+// `None` when the shape is not a package ref (other branches handle it);
+// `Some(Err(_))` when it is but the pin is missing or not exact SemVer.
 fn recognize_package(value: &str) -> Option<Result<AdapterSelector, Error>> {
     let (namespace, rest) = value.split_once(':')?;
     // `//` after the colon is a URL authority (`https://`, `file://`);
@@ -253,14 +249,9 @@ fn parse_validated_package(
     })
 }
 
-/// Recognise a first-party adapter shorthand and split it into
-/// `(name, version)`. A bare `name` carries no pin (`None`) and
-/// resolves the seeded cache entry; a `name@<semver>` carries the
-/// parsed [`semver::Version`] and is sugar for the
-/// `emery:<name>@<semver>` package reference. Returns `None` for
-/// paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying `:`
-/// or `/`), and for a `@suffix` that is not exact semver — so those
-/// keep flowing through the component branch.
+// Recognise a first-party shorthand as `(name, version)`: a bare
+// `name` resolves the seeded cache entry; `name@<semver>` is sugar
+// for `emery:<name>@<semver>`. `None` flows to the component branch.
 fn parse_shorthand(value: &str) -> Option<(&str, Option<semver::Version>)> {
     if value.contains('/') || value.contains(':') {
         return None;
@@ -275,7 +266,7 @@ fn parse_shorthand(value: &str) -> Option<(&str, Option<semver::Version>)> {
     }
 }
 
-/// `^[a-z][a-z0-9-]*$` — a kebab-case first-party adapter name.
+// `^[a-z][a-z0-9-]*$` — a kebab-case first-party adapter name.
 fn is_first_party_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {

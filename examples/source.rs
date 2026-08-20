@@ -10,8 +10,8 @@ use emery_adapter::seam::{
 };
 use emery_adapter::{Model, Source};
 
-/// Unpublished mock identity: a development placeholder version,
-/// never a pin-matchable release.
+// Unpublished mock identity: a development placeholder version,
+// never a pin-matchable release.
 #[derive(Clone, Copy, Debug)]
 struct Mock;
 
@@ -41,11 +41,8 @@ impl Source for Mock {
     }
 }
 
-/// Extract the controlled Evidence for the source selected by `id`.
-///
-/// # Errors
-///
-/// `Internal` when the id selects the `fail-extract` profile.
+// Extract the controlled Evidence for the source selected by `id`;
+// `Internal` when the id selects the `fail-extract` profile.
 fn extract(id: &str, input: &SourceInput) -> Result<Evidence, Error> {
     if id.contains("fail-extract") {
         return Err(Error::Internal(format!("mock extract failure for `{id}`")));
@@ -124,10 +121,9 @@ fn evidence_for(profile: Profile, input: &SourceInput) -> Evidence {
     }
 }
 
-/// The Docs profile's `session.timeout` statement: the fixed
-/// 30-minute line, unless the bound workspace carries a
-/// `session-policy.md` override — the journey's "change one
-/// source claim between runs" lever (ADR-0010 re-mine diff).
+// The Docs profile's `session.timeout` statement: fixed, unless the
+// bound workspace carries a `session-policy.md` override — the
+// journey's "change one source claim between runs" lever.
 fn session_policy(input: &SourceInput) -> String {
     const DEFAULT: &str = "Sessions expire after 30 minutes of inactivity.";
     const OVERRIDE: &str = "session-policy.md";
@@ -142,16 +138,16 @@ fn session_policy(input: &SourceInput) -> String {
         .map_or_else(|_| DEFAULT.to_string(), |text| text.trim().to_string())
 }
 
-/// The behaviour profile a routed adapter id selects.
+// The behaviour profile a routed adapter id selects.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Profile {
-    /// Documentation half of the adversarial pair.
+    // Documentation half of the adversarial pair.
     Docs,
-    /// Behaviour (code) half of the adversarial pair.
+    // Behaviour (code) half of the adversarial pair.
     Code,
-    /// The inline operator-intent source.
+    // The inline operator-intent source.
     Intent,
-    /// The single-claim `greeting` profile.
+    // The single-claim `greeting` profile.
     Minimal,
 }
 
@@ -167,8 +163,8 @@ fn profile(id: &str) -> Profile {
     }
 }
 
-/// Open per-kind body extras, mirroring the fields first-party
-/// extract prompts emit (A8 — the seam must conserve them).
+// Open per-kind body extras, mirroring the fields first-party
+// extract prompts emit (A8 — the seam must conserve them).
 fn extras(key: &str, value: &str) -> serde_json::Map<String, serde_json::Value> {
     let mut extras = serde_json::Map::new();
     extras.insert(key.to_string(), serde_json::Value::String(value.to_string()));

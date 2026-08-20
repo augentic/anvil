@@ -1,7 +1,6 @@
-//! Wire coverage of the guest's non-MCP HTTP surface (C3): every
-//! path and method answers the typed refusal — there is no HTTP
-//! operation route table until an authenticated operator ingress is
-//! designed (target-architecture §7).
+//! Wire coverage of the guest's non-MCP HTTP surface: every path and
+//! method answers the typed refusal — there is no HTTP operation
+//! route table.
 
 use omnia_guest::axum::body::{Body, to_bytes};
 use omnia_guest::http::{Method, Request, StatusCode};
@@ -22,7 +21,7 @@ async fn send(method: Method, path: &str) -> (StatusCode, serde_json::Value) {
 
 #[tokio::test]
 async fn every_route_refuses() {
-    // Former operation routes, the root, and an arbitrary path all
+    // The root, an arbitrary path, and would-be operation routes all
     // answer the same typed 404 — no method is special.
     let paths = [
         "/",
