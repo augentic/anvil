@@ -167,9 +167,9 @@ pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<
     Ok(())
 }
 
-/// ANSI red for the `error:` line. `NO_COLOR` (any non-empty value),
-/// a missing `TERM`, and `TERM=dumb` opt out; under wasm32 there is no
-/// terminal probe, so the env guards alone decide.
+// ANSI red for the `error:` line. `NO_COLOR` (any non-empty value),
+// a missing `TERM`, and `TERM=dumb` opt out; under wasm32 there is no
+// terminal probe, so the env guards alone decide.
 fn error_style() -> (&'static str, &'static str) {
     let opted_out = std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
         || !std::env::var_os("TERM").is_some_and(|term| !term.is_empty() && term != "dumb");

@@ -1,9 +1,6 @@
-//! P14 tripwire: the always-applied plugin rule
-//! (`plugins/emery/rules/emery.mdc`) is prose the model trusts, so it
-//! must never name a verb, flag, or skill the shipped surface does not
-//! have. Every `emery …` mention is validated against the live typed
-//! router (paths from the route inventory, flags from the clap help),
-//! and every `/emery:<skill>` mention against the shipped skill tree.
+//! The plugin rule (`plugins/emery/rules/emery.mdc`) must never name
+//! a verb, flag, or skill the shipped surface does not have: every
+//! mention is validated against the live router and skill tree.
 
 mod support;
 
@@ -12,16 +9,16 @@ use std::path::{Path, PathBuf};
 
 use support::Inert;
 
-/// Global flags peeled or handled ahead of the verb grammar — they
-/// never appear in a route's own `--help`.
+// Global flags peeled or handled ahead of the verb grammar — they
+// never appear in a route's own `--help`.
 const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
 
-/// Builtin routes outside the operation inventory.
+// Builtin routes outside the operation inventory.
 const BUILTIN_PATHS: &[&[&str]] = &[&["completions"]];
 
-/// The ultrathin wrapper contract: each skill invokes exactly one CLI
-/// verb, so a flag mentioned on a slash command validates against that
-/// verb's grammar.
+// The ultrathin wrapper contract: each skill invokes exactly one CLI
+// verb, so a flag mentioned on a slash command validates against that
+// verb's grammar.
 const SKILL_VERBS: &[(&str, &[&str])] = &[("init", &["init"])];
 
 fn plugin_dir() -> PathBuf {
@@ -29,10 +26,10 @@ fn plugin_dir() -> PathBuf {
 }
 
 fn router() -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
-    support::router(".")
+    support::router()
 }
 
-/// Every full route path plus every namespace prefix, kebab-joined.
+// Every full route path plus every namespace prefix, kebab-joined.
 fn known_paths(
     router: &omnia_guest::api::command::Router<Inert, emery_transport::command::Globals>,
 ) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
@@ -51,17 +48,16 @@ fn known_paths(
     (full, prefixes)
 }
 
-/// One `emery …` or `/emery:<skill>` mention lifted from the rule.
+// One `emery …` or `/emery:<skill>` mention lifted from the rule.
 #[derive(Debug)]
 enum Mention {
     Cli(String),
     Skill { name: String, rest: String },
 }
 
-/// Lift every mention from `text` (one inline code span or one fenced
-/// line). `.emery/`, `emery-adapters`, and similar tokens never match:
-/// `emery` must stand alone at a word boundary followed by whitespace
-/// or the end of the span.
+// Lift every mention from one inline code span or fenced line.
+// `.emery/` and `emery-adapters` never match: `emery` must stand
+// alone at a word boundary followed by whitespace or the span end.
 fn mentions_in(text: &str, out: &mut Vec<Mention>) {
     let bytes = text.as_bytes();
     let mut i = 0;
@@ -91,8 +87,8 @@ fn mentions_in(text: &str, out: &mut Vec<Mention>) {
     }
 }
 
-/// Every mention in the rule document: fenced lines verbatim, inline
-/// code spans from prose lines.
+// Every mention in the rule document: fenced lines verbatim, inline
+// code spans from prose lines.
 fn mentions(doc: &str) -> Vec<Mention> {
     let mut out = Vec::new();
     let mut in_fence = false;
@@ -122,9 +118,9 @@ fn is_kebab(token: &str) -> bool {
         && !token.starts_with('-')
 }
 
-/// Walk the mention's leading kebab tokens while they extend a known
-/// route path or namespace prefix. Returns the walked path and the
-/// first unconsumed token.
+// Walk the mention's leading kebab tokens while they extend a known
+// route path or namespace prefix. Returns the walked path and the
+// first unconsumed token.
 fn walk_path<'a>(
     tokens: &[&'a str], base: &[String], full: &BTreeSet<Vec<String>>,
     prefixes: &BTreeSet<Vec<String>>,
@@ -148,8 +144,8 @@ fn walk_path<'a>(
     (path, rest)
 }
 
-/// The mention's flag tokens (`--…`), stripped of surrounding
-/// brackets/quotes.
+// The mention's flag tokens (`--…`), stripped of surrounding
+// brackets/quotes.
 fn flags_of(text: &str) -> Vec<String> {
     text.split_whitespace()
         .filter_map(|token| {

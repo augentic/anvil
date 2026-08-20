@@ -40,9 +40,7 @@ jiff.workspace = true
 omnia-guest.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-otel.workspace = true
-serde_json.workspace = true
 wasip3.workspace = true
-wit-bindgen.workspace = true
 
 [build-dependencies]
 omnia.workspace = true

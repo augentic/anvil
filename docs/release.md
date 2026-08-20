@@ -16,15 +16,15 @@ The engine guest imports `emery:adapter/source`; it has no separate WIT package.
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
-The host embeds no adapter-version recommendation and — since the Phase 3 spine cut (ADR-0002) — no download path: until dynamic loading returns, the first-party components are the release binary's only adapter guests, compiled in as static guests at release-build time. The Publish Release workflow pulls each component pinned in [`scripts/first-party.txt`](../scripts/first-party.txt) from GHCR into `EMERY_EMBED_DIR` before building the binary; a staged-but-incomplete set fails the build. Bumping a pin is a release act — the adapter train publishes first, then the pin file moves in the release PR.
+The host embeds no adapter-version recommendation and — since the Phase 3 spine cut (ADR-0002) — no download path. Adapter guests, when present, are declared in the runtime invocation the same way the journey host declares its mock source ([`examples/runtime.rs`](../examples/runtime.rs)); the shipped `src/main.rs` embeds the engine only.
 
 ## Release lines
 
 Releases live on durable `release-X.Y.Z` branches, the same shape as Omnia's shared `augentic/.github` workflows. `main` always carries the *next unreleased* version (Cargo version plus the `Unreleased` heading in `RELEASES.md`). The four verbs:
 
-1. **Cut** — dispatch **Create Release** on `main`. A preflight `scorecard` job refuses the cut unless a committed green scorecard under [`scorecards/`](../scorecards/) names the release-tip sha (CONSTITUTION invariant 6; the live graded eval stays operator-invoked in `emery-adapters`). Then it pushes `release-X.Y.Z` at the current tip and opens a PR that bumps `main` to the next unreleased version and resets `RELEASES.md`. Merge that PR; edit release notes on the release branch, not on `main`.
+1. **Cut** — dispatch **Create Release** on `main`. It pushes `release-X.Y.Z` at the current tip and opens a PR that bumps `main` to the next unreleased version and resets `RELEASES.md`. Merge that PR; edit release notes on the release branch, not on `main`.
 2. **Stabilize** — on the release branch only: check the omnia pins (`cargo build --locked` must resolve on a clean runner — re-pin any local-path `[patch.crates-io]` entry to a pushed rev) and backport fixes from `main` (fixes land on `main` first when applicable). See [the developer loop](contributing/dev-loop.md) for the local rungs.
-3. **Publish** — dispatch **Publish Release** on the release branch. The same `scorecard` preflight guards this tip: backports and patch bumps re-earn a green scorecard naming the branch tip before artifacts cut. Omnia shape: shared CI, then the `binaries` matrix builds the platform archives as workflow artifacts, then the shared publish workflow (dates `RELEASES.md`, pushes `vX.Y.Z`, creates the GitHub Release with notes and those archives attached), then the shared `crates.yaml` job publishes the `emery-*` workspace crates to crates.io. Then publish the wasm-pkg packages manually (below).
+3. **Publish** — dispatch **Publish Release** on the release branch. Omnia shape: shared CI, then the `binaries` matrix builds the platform archives as workflow artifacts, then the shared publish workflow (dates `RELEASES.md`, pushes `vX.Y.Z`, creates the GitHub Release with notes and those archives attached), then the shared `crates.yaml` job publishes the `emery-*` workspace crates to crates.io. Then publish the wasm-pkg packages manually (below).
 4. **Patch** — bugfix and security only, on the same `release-X.Y.Z` branch: land the fix on `main` when applicable, backport, dispatch **Create Patch** on the branch (bumps `X.Y.Z → X.Y.Z+1` and preps `RELEASES.md`), then dispatch **Publish Release** on the same branch. Never invent a new line from a floating tag; never merge to `main` as the publish trigger.
 
 Pre-1.0 SemVer follows Omnia's convention: **minor may be breaking**; patches remain compatible within the line. The hard major-cut / re-init product policy is called out in release notes, never smuggled into a patch.
@@ -51,10 +51,10 @@ Keep the table short — it is a statement of what was tested together, not a ve
 
 ## Jobs that run
 
-Publish composes five jobs (plus the release-branch skip gate):
+Publish composes four jobs (plus the release-branch skip gate):
 
-1. **`ci`.** Shared `augentic/.github` CI over the release branch, alongside the **`scorecard`** preflight (`scripts/scorecard-gate.sh` over the committed record in `scorecards/`).
-2. **`binaries`.** Local matrix job in `publish.yaml`: each leg pulls the first-party components pinned in `scripts/first-party.txt` from GHCR into `EMERY_EMBED_DIR` (the root build script stages them as static guests), then builds and packages its archive, uploading it as a workflow artifact (`archive-<target>`).
+1. **`ci`.** Shared `augentic/.github` CI over the release branch.
+2. **`binaries`.** Local matrix job in `publish.yaml`: each leg builds and packages its archive, uploading it as a workflow artifact (`archive-<target>`).
 3. **`publish`.** Shared `augentic/.github` publish: date `RELEASES.md`, push `vX.Y.Z`, create the GitHub Release with notes and the `archive-*` workflow artifacts attached.
 4. **`crates`.** Shared `augentic/.github` `crates.yaml`: `cargo publish --workspace --locked` over the publishable `emery-*` packages (needs the org `CARGO_REGISTRY_TOKEN`). Until the omnia stack the workspace patches is itself on crates.io, this job fails on dependency resolution — expected, and no other artifact depends on it.
 
@@ -67,7 +67,7 @@ Each leg runs native `cargo build --release --locked --target <triple> --bin eme
 
 Each leg produces `emery-v${VERSION}-${TARGET}.tar.gz` (unix) or `.zip` (Windows) plus a companion `.sha256`; the shared publish workflow attaches both when it creates the GitHub Release. Root `Cargo.toml` carries `[package.metadata.binstall]` pointing at those archive names.
 
-The shipped surface is the `emery` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/main.rs`) embedding the engine guest as static component bytes alongside the staged first-party adapter guests, with the CWD-rooted mounts inline — so there is no second binary or component to package.
+The shipped surface is the `emery` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/main.rs`) embedding the engine guest as static component bytes, with the CWD-rooted mounts inline — so there is no second binary or component to package.
 
 ## Publishing the wasm-pkg packages
 
@@ -85,19 +85,11 @@ wkg publish target/wasm32-wasip2/release/emery.wasm \
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `cargo make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. There is no pull-on-miss (ADR-0002). The release binaries carry the first-party components compiled in as static guests under their bare and pinned ids: the `binaries` job pulls each pin in [`scripts/first-party.txt`](../scripts/first-party.txt) from GHCR and stages it as `EMERY_EMBED_DIR` before building.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `cargo make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. There is no pull-on-miss (ADR-0002). A host that wants those components as static guests builds them and declares them in the runtime invocation, the same way the journey host declares its mock source.
 
 ## Installing a release
 
 Supported install paths:
-
-- **Installer script** — [`scripts/install.sh`](../scripts/install.sh) downloads the Release archive for the detected platform, verifies the `.sha256` companion, and installs to `~/.local/bin`:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
-```
-
-`/emery:init` bootstraps the CLI through the same script with an exact `--version` pin; bumping that pin in `plugins/emery/skills/init/SKILL.md` (and the version examples in the install docs) is a release-checklist step when a new host version publishes.
 
 - **Homebrew** — [`augentic/homebrew-tap`](https://github.com/augentic/homebrew-tap) formula over these Release archives:
 
@@ -126,8 +118,7 @@ Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-ta
 1. Add a native `matrix.include` entry to the `binaries` job in `.github/workflows/publish.yaml` (`runs-on` must provide that triple without `cross`).
 2. If the target needs system packages (e.g. `musl-tools` for `*-musl`), add an `apt-get install` step gated on `matrix.target == '<new triple>'`.
 3. Update `[package.metadata.binstall]` overrides if the archive format differs from `tgz`.
-4. Add the `uname -sm` → triple mapping to the platform detection in [`scripts/install.sh`](../scripts/install.sh).
-5. Document the new target in this file.
+4. Document the new target in this file.
 
 ## Troubleshooting
 

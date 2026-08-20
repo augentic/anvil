@@ -1,4 +1,4 @@
-//! Walking-skeleton journey: scripted specify over the mock source (ADR-0009).
+//! Walking-skeleton journey: scripted specify over the mock source.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -185,10 +185,9 @@ fn adr_0010_remine_diff() {
     assert_eq!(generations.len(), 1, "the superseded generation is pruned, never retained");
 }
 
-/// Deployment policy is CWD-rooted: the invocation directory itself
-/// mounts as the guest's `.` — there is no ancestor walk, so a verb
-/// run below the project root fails typed instead of anchoring to a
-/// parent's `.emery/project.yaml`.
+// Deployment policy is CWD-rooted with no ancestor walk: a verb run
+// below the project root fails typed instead of anchoring to a
+// parent's `.emery/project.yaml`.
 #[test]
 fn cwd_is_the_project_root() {
     let home = Home::scaffold();
@@ -205,8 +204,8 @@ fn cwd_is_the_project_root() {
     assert!(stderr.contains("not-initialized"), "{stderr}");
 }
 
-// Bare-name and pin dispatch beyond the statically registered
-// first-party set is parked with the dynamic resolver.
+// Bare-name and pin dispatch beyond guests declared in the runtime
+// invocation is parked with the dynamic resolver.
 
 fn component() -> PathBuf {
     let built = target_dir().join("wasm32-wasip2/release/examples/source.wasm");

@@ -10,7 +10,7 @@ use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
 use super::core::ResolvedSource;
-use super::resolver::{Component, Resolver as _, component_cache_entry};
+use super::resolver::{Component, component_cache_entry};
 use super::selector::canonicalize_component;
 use super::{AdapterSelector, metadata, selector};
 use crate::handler::ExecutionPaths;
@@ -46,13 +46,9 @@ pub fn provision(
     }
 }
 
-/// Mirror an operator-supplied local component into the project
-/// component cache, stamping provenance in [`ComponentMeta`].
-///
-/// Carries the persisted-mirror fallback: a component selector stays
-/// resolvable after the original file is removed because the earlier
-/// mirror satisfies re-ensure. The explicit [`seed`] verb has no such
-/// fallback — a missing path there is an operator mistake to surface.
+// Mirror an operator-supplied local component into the project cache,
+// stamping provenance: a component selector stays resolvable after the
+// original file is removed because the earlier mirror satisfies re-ensure.
 fn mirror(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<(), Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };

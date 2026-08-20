@@ -5,7 +5,8 @@ The `emery` CLI owns all deterministic operations. Under the remediation program
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
+brew tap augentic/tap
+brew install emery
 
 # or: cargo install --git https://github.com/augentic/emery --locked
 ```

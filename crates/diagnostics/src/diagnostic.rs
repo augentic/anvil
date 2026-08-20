@@ -347,9 +347,9 @@ impl Diagnostic {
     }
 }
 
-/// Substitute `fallback` when `value` is blank so schema `minLength: 1`
-/// fields (`title`, `impact`, `remediation`, snippet `value`) never go
-/// empty.
+// Substitute `fallback` when `value` is blank so schema `minLength: 1`
+// fields (`title`, `impact`, `remediation`, snippet `value`) never go
+// empty.
 fn non_empty(value: String, fallback: &str) -> String {
     if value.trim().is_empty() { fallback.to_string() } else { value }
 }

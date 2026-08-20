@@ -1,18 +1,16 @@
-//! Shared plumbing for command operations: [`Anchor`],
-//! [`RequestContext`], [`Render`], [`ReportBody`], and the
-//! operation-layer [`Error`]. Transports stay out.
+//! Shared plumbing for command operations: [`RequestContext`],
+//! [`Render`], [`ReportBody`], and the operation-layer [`Error`].
+//! Transports stay out.
 
-mod anchor;
 mod context;
 mod error;
 mod locations;
 mod output;
 mod paths;
 
-pub use anchor::Anchor;
 pub use context::RequestContext;
 pub use error::{Error, FailureBody};
-pub use locations::{CachePlacement, GUEST_CACHE_MOUNT, Locations};
+pub use locations::{GUEST_CACHE_MOUNT, Locations};
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
 

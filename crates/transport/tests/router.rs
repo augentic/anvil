@@ -1,26 +1,21 @@
 //! Typed command grammar, conversion, and HTTP parity coverage over
-//! the two-verb surface (ADR-0008 §3): `init`, the live `specify`
-//! generator, and the auto-derived `completions`.
+//! the two-verb surface: `init`, the live `specify` generator, and
+//! the auto-derived `completions`.
 
 mod support;
 
 use std::fs;
-use std::path::PathBuf;
 
 // Grammar and parity coverage only: no test dispatches judgment or an
 // adapter seam, so the inert provider's capabilities are never reached.
-fn command_router(
-    root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<support::Inert, emery_transport::command::Globals> {
-    support::router(root)
+fn command_router()
+-> omnia_guest::api::command::Router<support::Inert, emery_transport::command::Globals> {
+    support::router()
 }
 
-// Gate tripwire for ADR-0002 §5 / finding C3: the guest HTTP listener
-// serves only the MCP reference shelves — the engine's whole non-shelf
-// surface is one typed refusal with no operation route table. If an
-// HTTP operation surface returns, it must arrive with an authenticated
-// operator ingress design (target-architecture §7) and delete this
-// test in the same decision.
+// Gate tripwire: the guest HTTP listener serves only the MCP shelves;
+// an HTTP operation surface must arrive with an authenticated ingress
+// design and delete this test in the same decision.
 #[tokio::test]
 async fn adr_0002_http_refusal() {
     use omnia_guest::http::{Method, Request, StatusCode};
@@ -29,7 +24,7 @@ async fn adr_0002_http_refusal() {
     // Every command-router verb, projected as an HTTP-ish path, must
     // refuse — derived from the live command inventory so a new verb
     // can never quietly gain an HTTP twin.
-    let command = command_router(".");
+    let command = command_router();
     for route in command.inventory() {
         let path = format!("/{}", route.selector().path().join("/"));
         for method in [Method::GET, Method::POST] {
@@ -47,14 +42,11 @@ async fn adr_0002_http_refusal() {
     }
 }
 
-// Gate tripwire for ADR-0008 §3 (CONSTITUTION invariant 2): the route
-// budget is the live verb list — `init` +
-// `specify` (+ auto-derived `completions`) and nothing else. Deleted
-// verbs are deletions from the grammar, not hidden routes or
-// "deprecated" stubs; widening this list requires an ADR.
+// Gate tripwire: the route budget is the live verb list and nothing
+// else; widening it requires an ADR.
 #[tokio::test]
 async fn adr_0008_route_budget() {
-    let router = command_router(".");
+    let router = command_router();
 
     let inventory: Vec<Vec<String>> =
         router.inventory().iter().map(|route| route.selector().path().to_vec()).collect();
@@ -105,8 +97,11 @@ async fn adr_0008_route_budget() {
 // orchestration, no output-home scaffolding, no artifacts.
 #[tokio::test]
 async fn specify_uninitialized() {
+    // Paths are CWD-relative constants; nextest gives this test its
+    // own process, so the chdir cannot leak into another test.
     let home = tempfile::tempdir().expect("tempdir");
-    let router = command_router(home.path());
+    std::env::set_current_dir(home.path()).expect("chdir into the scratch project root");
+    let router = command_router();
 
     let response = router.execute(["emery", "specify"]).await;
     assert_eq!(response.exit, 1);
@@ -128,7 +123,7 @@ async fn specify_uninitialized() {
 
 #[tokio::test]
 async fn globals_and_completions() {
-    let router = command_router(".");
+    let router = command_router();
 
     let completions = router.execute(["emery", "completions", "zsh"]).await;
     assert_eq!(completions.exit, 0);
@@ -143,7 +138,7 @@ async fn globals_and_completions() {
 async fn version_host_semver() {
     // No adapter-train suffix: adapters version independently and
     // resolve local-first, so the binary reports only its own SemVer.
-    let router = command_router(".");
+    let router = command_router();
     let response = router.execute(["emery", "--version"]).await;
     assert_eq!(response.exit, 0);
     let stdout = String::from_utf8_lossy(&response.stdout);
@@ -153,7 +148,7 @@ async fn version_host_semver() {
 
 #[tokio::test]
 async fn argv_zero_replaced() {
-    let router = command_router(".");
+    let router = command_router();
     let expected = router.execute(["emery", "init", "--no-such-flag"]).await;
     let forwarded = router.execute(["emery:engine@0.1.0", "init", "--no-such-flag"]).await;
 
@@ -222,11 +217,12 @@ const fn cases() -> [Case; 5] {
 #[tokio::test]
 async fn native_response_contract() {
     for case in cases() {
-        // A bare uninitialized tempdir: no case needs a scaffolded
-        // project, and `init` without an adapter must refuse rather
-        // than take the already-initialized re-entry path.
+        // A bare uninitialized tempdir: `init` without an adapter must
+        // refuse rather than take the re-entry path. Paths are CWD-
+        // relative, so each case chdirs into its own scratch root.
         let project = tempfile::tempdir().expect("tempdir");
-        let response = command_router(project.path()).execute(case.argv).await;
+        std::env::set_current_dir(project.path()).expect("chdir into the scratch project root");
+        let response = command_router().execute(case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");
 

@@ -1,7 +1,6 @@
-//! `source-adapter` WIT bindings and the `source!` export macro.
-//!
-//! One `wit_bindgen::generate!` here; leaf crates wire a [`crate::Source`]
-//! implementor with `emery_adapter::source!(…)`.
+//! `source-adapter` WIT bindings: the `source!` export macro plus the
+//! engine guest's [`import`] seam wrappers. One `wit_bindgen::generate!`
+//! here; leaf crates wire a [`crate::Source`] with `emery_adapter::source!(…)`.
 
 mod generated {
     #![allow(
@@ -158,6 +157,178 @@ impl From<crate::seam::Error> for Error {
             crate::seam::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
             crate::seam::Error::Io(detail) => Self::Io(detail),
             crate::seam::Error::Internal(detail) => Self::Internal(detail),
+        }
+    }
+}
+
+/// Import-side seam surface: the engine guest dispatches the linked
+/// source component through these wrappers, staying seam-typed.
+pub mod import {
+    use super::generated::emery::adapter::source as wire;
+    use crate::seam;
+
+    /// Import dispatch failure: the operation's seam error, or an
+    /// evidence extra whose wire value is not canonical JSON.
+    #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+    pub enum Error {
+        /// The dispatched operation failed across the seam.
+        #[error(transparent)]
+        Seam(#[from] seam::Error),
+        /// An open extra failed the canonical JSON parse (A8).
+        #[error("extra `{key}` is not canonical JSON ({detail}): {encoded}")]
+        Extras {
+            /// The extra's key.
+            key: String,
+            /// The parse failure.
+            detail: String,
+            /// The value as it crossed the wire.
+            encoded: String,
+        },
+    }
+
+    /// Resolve-time metadata of the source component routed by `id`.
+    #[must_use]
+    pub fn metadata(id: &str) -> seam::SourceMetadata {
+        let record = wire::metadata(id);
+        seam::SourceMetadata {
+            emery_floor: record.emery_floor,
+        }
+    }
+
+    /// Dispatch `extract` on the source component routed by `id`.
+    ///
+    /// The answer lifts onto the seam DTOs, parsing each open extra's
+    /// canonical JSON encoding fail-closed (A8): a value that does not
+    /// parse is a typed error, never a dropped key.
+    ///
+    /// # Errors
+    ///
+    /// The seam failure, or the A8 extras refusal.
+    pub async fn extract(id: &str, input: &seam::SourceInput) -> Result<seam::Evidence, Error> {
+        let answer = wire::extract(id.to_string(), input.clone().into())
+            .await
+            .map_err(|err| Error::Seam(err.into()))?;
+        answer.try_into()
+    }
+
+    impl From<seam::SourceWorkspace> for wire::Workspace {
+        fn from(view: seam::SourceWorkspace) -> Self {
+            Self {
+                id: view.id,
+                root: view.root,
+            }
+        }
+    }
+
+    impl From<seam::SourceContent> for wire::Content {
+        fn from(content: seam::SourceContent) -> Self {
+            match content {
+                seam::SourceContent::Workspace(view) => Self::Workspace(view.into()),
+                seam::SourceContent::Value(value) => Self::Value(value),
+            }
+        }
+    }
+
+    impl From<seam::SourceInput> for wire::Input {
+        fn from(input: seam::SourceInput) -> Self {
+            Self {
+                key: input.key,
+                content: input.content.into(),
+            }
+        }
+    }
+
+    impl From<wire::Error> for seam::Error {
+        fn from(error: wire::Error) -> Self {
+            match error {
+                wire::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
+                wire::Error::Io(detail) => Self::Io(detail),
+                wire::Error::Internal(detail) => Self::Internal(detail),
+            }
+        }
+    }
+
+    impl From<wire::Authority> for seam::Authority {
+        fn from(authority: wire::Authority) -> Self {
+            match authority {
+                wire::Authority::Intent => Self::Intent,
+                wire::Authority::Documentation => Self::Documentation,
+                wire::Authority::Behaviour => Self::Behaviour,
+            }
+        }
+    }
+
+    impl From<wire::ClaimKind> for seam::ClaimKind {
+        fn from(kind: wire::ClaimKind) -> Self {
+            match kind {
+                wire::ClaimKind::Intent => Self::Intent,
+                wire::ClaimKind::Requirement => Self::Requirement,
+                wire::ClaimKind::Criterion => Self::Criterion,
+                wire::ClaimKind::Decision => Self::Decision,
+                wire::ClaimKind::Section => Self::Section,
+                wire::ClaimKind::Diagram => Self::Diagram,
+                wire::ClaimKind::Contract => Self::Contract,
+                wire::ClaimKind::Example => Self::Example,
+                wire::ClaimKind::Excerpt => Self::Excerpt,
+                wire::ClaimKind::Type => Self::Type,
+                wire::ClaimKind::Call => Self::Call,
+                wire::ClaimKind::Region => Self::Region,
+                wire::ClaimKind::Container => Self::Container,
+                wire::ClaimKind::Leaf => Self::Leaf,
+            }
+        }
+    }
+
+    impl From<wire::Backing> for seam::Backing {
+        fn from(backing: wire::Backing) -> Self {
+            match backing {
+                wire::Backing::Payload(payload) => Self::Payload(payload),
+                wire::Backing::Path(path) => Self::Path(path),
+            }
+        }
+    }
+
+    impl TryFrom<wire::Claim> for seam::Claim {
+        type Error = Error;
+
+        fn try_from(claim: wire::Claim) -> Result<Self, Error> {
+            let mut extras = serde_json::Map::new();
+            for (key, encoded) in claim.extras {
+                let value = match serde_json::from_str(&encoded) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        return Err(Error::Extras {
+                            key,
+                            detail: err.to_string(),
+                            encoded,
+                        });
+                    }
+                };
+                extras.insert(key, value);
+            }
+            Ok(Self {
+                kind: claim.kind.into(),
+                id: claim.id,
+                path: claim.path,
+                synopsis: claim.synopsis,
+                backing: claim.backing.map(Into::into),
+                extras,
+            })
+        }
+    }
+
+    impl TryFrom<wire::Evidence> for seam::Evidence {
+        type Error = Error;
+
+        fn try_from(evidence: wire::Evidence) -> Result<Self, Error> {
+            Ok(Self {
+                authority: evidence.authority.into(),
+                claims: evidence
+                    .claims
+                    .into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<_, _>>()?,
+            })
         }
     }
 }

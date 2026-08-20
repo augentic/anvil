@@ -110,10 +110,10 @@ impl Error {
                 "author a plan first: run /emery:plan, or `emery plan author <name> --from <dir> --wave <id>`",
             ),
             Self::CliTooOld { .. } => Some(
-                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`), then rerun the command",
+                "update the installed binary through its install channel: `brew upgrade emery` (or `cargo install --git https://github.com/augentic/emery --locked`), then rerun the command",
             ),
             Self::AdapterCliTooOld { .. } => Some(
-                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter upgrade <name>` pulls its newest published version",
+                "update the installed binary through its install channel: `brew upgrade emery` (or `cargo install --git https://github.com/augentic/emery --locked`); if the adapter itself is stale instead, `emery adapter upgrade <name>` pulls its newest published version",
             ),
             Self::Diag { code, .. } => diag_hint(code),
             Self::Validation { code, .. } => match code.as_ref() {

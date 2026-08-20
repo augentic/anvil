@@ -1,6 +1,6 @@
-//! The synthesis leg (ADR-0009 §4): deterministic reconciliation over
-//! the typed claims, the ported v1 prose to the model, and the
-//! fail-closed AST + row gate over the answer.
+//! The synthesis leg: deterministic reconciliation over the typed
+//! claims, the embedded prose to the model, and the fail-closed
+//! AST + row gate over the answer.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -23,7 +23,7 @@ pub struct Documents {
 }
 
 /// One engine-resolved provenance row: the facts a `spec.md` block
-/// must render verbatim, in row order (ADR-0009 §4).
+/// must render verbatim, in row order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     /// The minted requirement id (`REQ-NNN`).
@@ -54,9 +54,9 @@ pub struct Contributor {
     pub statement: String,
 }
 
-/// Deterministic reconciliation (ADR-0009 §4): group requirement
-/// claims by id, resolve by authority precedence, and append one
-/// `[unknown]` gap row per requirement without acceptance evidence.
+/// Deterministic reconciliation: group requirement claims by id,
+/// resolve by authority precedence, and append one `[unknown]` gap
+/// row per requirement without acceptance evidence.
 #[must_use]
 pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
     let mut order: Vec<&str> = Vec::new();
@@ -113,8 +113,8 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
     rows
 }
 
-/// Resolve one requirement group: matching statements agree; a unique
-/// top authority wins as `divergence`; a top-authority tie conflicts.
+// Resolve one requirement group: matching statements agree; a unique
+// top authority wins as `divergence`; a top-authority tie conflicts.
 fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
     let sources: Vec<String> =
         contributors.iter().map(|contributor| contributor.source.clone()).collect();
@@ -173,7 +173,7 @@ pub async fn synthesise<M: Model>(
     Ok(Documents { spec, design })
 }
 
-/// The embedded prose assembled for the spec leg, in read order.
+// The embedded prose assembled for the spec leg, in read order.
 const SPEC_PROSE: &[&str] = &[
     "synthesis/synthesise.md",
     "synthesis/authority.md",
@@ -183,7 +183,7 @@ const SPEC_PROSE: &[&str] = &[
     "synthesis/tags.md",
 ];
 
-/// The embedded prose assembled for the design leg.
+// The embedded prose assembled for the design leg.
 const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-format.md"];
 
 async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<String, Error> {
@@ -203,8 +203,8 @@ async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<Str
     Ok(reply.answer)
 }
 
-/// The spec-leg user prompt: every claim, then the resolved rows the
-/// answer must render verbatim.
+// The spec-leg user prompt: every claim, then the resolved rows the
+// answer must render verbatim.
 fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
     let mut prompt = String::from("Author `spec.md`.\n\n");
     render_claims(&mut prompt, sets);
@@ -233,7 +233,7 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
     prompt
 }
 
-/// The design-leg user prompt: every claim plus the validated spec.
+// The design-leg user prompt: every claim plus the validated spec.
 fn design_prompt(sets: &[SourceSet], spec: &str) -> String {
     let mut prompt = String::from("Author `design.md`.\n\n");
     render_claims(&mut prompt, sets);
@@ -259,9 +259,9 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
     }
 }
 
-/// The row gate (ADR-0004 Option D): the parsed spec must carry
-/// exactly the reconciliation rows, in order — an answer that drops,
-/// reorders, or rewrites one is a typed error, never a spec.
+// The row gate: the parsed spec must carry exactly the
+// reconciliation rows, in order — an answer that drops, reorders,
+// or rewrites one is a typed error, never a spec.
 fn check_rows(parsed: &ast::Spec, rows: &[Row]) -> Result<(), Error> {
     if parsed.requirements.len() != rows.len() {
         return Err(mismatch(format!(
@@ -275,7 +275,7 @@ fn check_rows(parsed: &ast::Spec, rows: &[Row]) -> Result<(), Error> {
             return Err(mismatch(format!("expected `{}`, found `{}`", row.id, requirement.id)));
         }
         // The heading names the reconciliation subject — the re-mine
-        // diff's section key (ADR-0010) — so a rewrite is a mismatch.
+        // diff's section key — so a rewrite is a mismatch.
         if requirement.name != row.subject {
             return Err(mismatch(format!(
                 "`{}` must head its subject `{}`, found `{}`",
@@ -307,8 +307,8 @@ fn mismatch(detail: String) -> Error {
     )
 }
 
-/// The claim's required `statement` extra (A8-guaranteed by the
-/// extract gate), rendered from its JSON value.
+// The claim's required `statement` extra (guaranteed by the extract
+// gate), rendered from its JSON value.
 fn statement(claim: &Claim) -> String {
     match claim.extras.get("statement") {
         Some(serde_json::Value::String(text)) => text.clone(),
@@ -317,12 +317,12 @@ fn statement(claim: &Claim) -> String {
     }
 }
 
-/// Whitespace-normalised comparison form of a statement.
+// Whitespace-normalised comparison form of a statement.
 fn normalise(statement: &str) -> String {
     statement.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Authority precedence rank: lower outranks (`intent` wins).
+// Authority precedence rank: lower outranks (`intent` wins).
 const fn rank(authority: AuthorityClass) -> u8 {
     match authority {
         AuthorityClass::Intent => 0,

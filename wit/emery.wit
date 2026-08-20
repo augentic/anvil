@@ -154,7 +154,10 @@ interface source {
 }
 
 /// A source adapter component: the one axis interface plus the MCP
-/// references served over `wasi:http`.
+/// references served over `wasi:http`. The interface is imported as
+/// well as exported so the one binding generation in the SDK also
+/// carries the engine guest's caller side (`source::import`).
 world source-adapter {
+  import source;
   export source;
 }

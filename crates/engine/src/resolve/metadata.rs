@@ -34,6 +34,51 @@ pub struct Request<'a> {
 /// Deployment-supplied metadata dispatcher.
 pub type Runner = fn(&Request<'_>) -> Result<Metadata, Error>;
 
+/// The deployed metadata dispatcher: the `emery:adapter/source` WIT
+/// import, routed to the exporting guest by the request's adapter id.
+///
+/// # Errors
+///
+/// The target axis is deleted from the deployment (ADR-0008): a
+/// target-axis metadata request fails typed instead of dispatching.
+#[cfg(target_arch = "wasm32")]
+pub fn deployed(request: &Request<'_>) -> Result<Metadata, Error> {
+    match request.axis {
+        Axis::Source => {
+            let record = emery_adapter::source::import::metadata(request.adapter_id);
+            Ok(Metadata {
+                emery_floor: record.emery_floor,
+            })
+        }
+        Axis::Target => Err(Error::Diag {
+            code: "adapter-axis-removed",
+            detail: format!(
+                "the target adapter axis is deleted (ADR-0008); `{}` cannot be resolved",
+                request.adapter_id
+            ),
+        }),
+    }
+}
+
+/// Native builds have no adapter seam: the compiled catalog was
+/// deleted at the Phase 3 spine cut (ADR-0002), so dispatch refuses
+/// typed.
+///
+/// # Errors
+///
+/// Always `adapter-metadata-unsupported`.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn deployed(request: &Request<'_>) -> Result<Metadata, Error> {
+    Err(Error::Diag {
+        code: "adapter-metadata-unsupported",
+        detail: format!(
+            "adapter `{}`: metadata dispatches over the component seam; the native path is \
+             deleted (ADR-0002)",
+            request.adapter_id
+        ),
+    })
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct MetadataCache {
     digest: String,

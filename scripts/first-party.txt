@@ -1,9 +1,0 @@
-# First-party source components compiled into the release binary as
-# static adapter guests (ADR-0002 §2). One `<name> <version>` per
-# line; the Publish Release workflow pulls each published component
-# from `ghcr.io/augentic/emery-adapters/<name>:<version>` into
-# `EMERY_EMBED_DIR` before building the binary. Bumping a pin is a
-# release act: the adapters publish first, then this file moves.
-documentation 0.13.0
-intent 0.13.0
-typescript 0.13.0

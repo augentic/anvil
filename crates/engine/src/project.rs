@@ -1,6 +1,6 @@
-//! `Project` — the spec generator's `.emery/project.yaml` model
-//! (ADR-0009 §1): identity, the `emery` pin, and the authored source
-//! bindings. Written by `emery init`; read fail-closed by `specify`.
+//! `Project` — the spec generator's `.emery/project.yaml` model:
+//! identity, the `emery` pin, and the authored source bindings.
+//! Written by `emery init`; read fail-closed by `specify`.
 
 use std::path::{Path, PathBuf};
 
@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 /// In-memory representation of the spec generator's `project.yaml`.
 ///
 /// `deny_unknown_fields`: the file is machine-written; unknown keys
-/// (including every v1-shaped field) fail the load rather than being
-/// silently ignored — pre-1.0 a shape change means re-init.
+/// fail the load rather than being silently ignored — pre-1.0 a
+/// shape change means re-init.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Project {
@@ -108,9 +108,9 @@ impl Project {
     }
 }
 
-/// Returns `true` when `current < required` under semver ordering.
-/// Unparseable versions are treated as "not older" — a typo in the pin
-/// must not brick the project.
+// Returns `true` when `current < required` under semver ordering.
+// Unparseable versions are treated as "not older" — a typo in the pin
+// must not brick the project.
 fn version_is_older(current: &str, required: &str) -> bool {
     let (Ok(cur), Ok(req)) = (semver::Version::parse(current), semver::Version::parse(required))
     else {

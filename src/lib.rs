@@ -4,27 +4,17 @@
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        mod bindings {
-            #![allow(missing_docs)]
-
-            wit_bindgen::generate!({
-                world: "engine",
-                path: "wit",
-                inline: r#"
-                    package emery:engine;
-                    world engine {
-                        import emery:adapter/source@0.1.0;
-                    }
-                "#,
-                generate_all,
-            });
-        }
-
-        mod provider;
-
         use omnia_guest::api::invoke::Invoker;
         use emery_transport::{command, http};
         use wasip3::cli::environment;
+
+        // Bare provider over the WASI capability defaults: paths are
+        // preopen-relative constants and adapter dispatch rides the
+        // WIT imports, so no domain capabilities are needed.
+        #[derive(Clone, Copy, Debug)]
+        struct Engine;
+
+        impl omnia_guest::Model for Engine {}
 
         struct CliGuest;
         wasip3::cli::command::export!(CliGuest);
@@ -35,21 +25,22 @@ cfg_if::cfg_if! {
 
                 let telemetry = omnia_wasi_otel::init();
 
-                let invoker = Invoker::new("emery", provider::Provider);
-
+                let invoker = Invoker::new("emery", Engine);
                 let router = command::router(invoker).map_err(|_e| ())?;
                 let argv = environment::get_arguments();
                 let response = command::execute(&router, argv).await;
+
                 if std::io::stdout().write_all(&response.stdout).is_err()
                     || std::io::stderr().write_all(&response.stderr).is_err()
                 {
                     return Err(());
                 }
+
                 if response.exit != 0 {
-                    // `exit-with-code` does not return, so export telemetry first.
                     drop(telemetry);
                     wasip3::cli::exit::exit_with_code(response.exit);
                 }
+
                 Ok(())
             }
         }

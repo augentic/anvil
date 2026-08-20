@@ -1,19 +1,15 @@
-//! Layering gate over `cargo metadata` (CONSTITUTION.md invariant 3,
-//! remediation Phase 2): the workspace crate DAG must match the
-//! committed edge list — the Phase 3 spine cut revises it deliberately.
+//! Layering gate over `cargo metadata`: the workspace crate DAG must
+//! match the committed edge list.
 
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::Path;
 use std::process::Command;
 
-/// Every allowed `dependent -> dependency` edge between workspace
-/// crates, leaf → root per the AGENTS.md map. Normal and build
-/// dependencies only: dev-dependencies may legally cycle (test
-/// harnesses reach back down) and carry no layering authority.
+// Every allowed `dependent -> dependency` edge, leaf → root. Normal
+// and build dependencies only: dev-dependencies may legally cycle
+// and carry no layering authority.
 const ALLOWED: &[(&str, &str)] = &[
-    // The root's engine/error/adapter/transport edges carry the
-    // deployment unit and engine guest (ADR-0013).
     ("emery", "emery-adapter"),
     ("emery", "emery-engine"),
     ("emery", "emery-error"),
@@ -24,7 +20,7 @@ const ALLOWED: &[(&str, &str)] = &[
     ("emery-engine", "emery-artifacts"),
     ("emery-engine", "emery-diagnostics"),
     ("emery-engine", "emery-error"),
-    // Build dependency: the embed-time synthesis-prose walk (ADR-0009 §4).
+    // Build dependency: the embed-time synthesis-prose walk.
     ("emery-engine", "emery-prose"),
     ("emery-transport", "emery-adapter"),
     ("emery-transport", "emery-artifacts"),
@@ -55,8 +51,8 @@ fn dag() {
     );
 }
 
-/// Workspace-internal normal/build dependency edges from
-/// `cargo metadata`, resolved against the committed lockfile.
+// Workspace-internal normal/build dependency edges from
+// `cargo metadata`, resolved against the committed lockfile.
 fn edges() -> BTreeSet<(String, String)> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());

@@ -30,23 +30,22 @@ Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `us
 error        # leaf — thiserror + serde-saphyr only
 diagnostics  # neutral Diagnostic substrate + emery_diagnostics::digest (SHA-256)
 artifacts    # artifact types + parsers (evidence, atomic writer, validate registry); no engine deps
-adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, seam DTOs, embedded prose registry
-engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate), reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (Resolver, resolver::Component, ensure, Locations/ExecutionPaths) and emery_engine::handler (Anchor, RequestContext, Render, Error)
+adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, the engine guest's source::import seam wrappers, seam DTOs, embedded prose registry
+engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate) over the WIT source imports, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::deployed) and emery_engine::handler (RequestContext, preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — Provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts as `.`, the CWD-relative .emery-cache backs the cache preopen, the staged first-party components are the only adapter guests, and /mcp/source/<name> routes serve their shelves; dynamic resolution is deferred)
+emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts as `.`, the CWD-relative .emery-cache backs the cache preopen; adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
 ```
 
 ### Repository map
 
 ```text
-src/               shipped binary (omnia::runtime!, static CWD-rooted deployment) + wasm32 engine guest cdylib (Provider, wasi:cli/run, HTTP refusal)
+src/               shipped binary (omnia::runtime!, static CWD-rooted deployment) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run, HTTP refusal)
 crates/            the workspace crates above
 examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:init skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
-scorecards/        the eval release-gate record
 ```
 
 ### Exit codes
@@ -90,11 +89,11 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Adapter admission is static.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path — but until the dynamic resolver returns, the shipped binary dispatches only the first-party components compiled in at build time (`scripts/first-party.txt` staged through `EMERY_EMBED_DIR`; both bare and pinned ids), and the journey host only its mock `source`. A local `.wasm` still mirrors into the project cache at init; extract dispatch beyond the static set fails at the seam. There is no download path (ADR-0002 §2), and GitHub URLs are refused (`adapter-github-uri-unsupported`).
+- **Adapter admission is static.** `emery init <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache at init; extract dispatch beyond the declared set fails at the seam. There is no download path (ADR-0002 §2), and GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.
-- Brevity caps are mechanically enforced by root-crate tests (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`, part of `cargo make test`), alongside the Phase 2 fitness functions: the LOC/prose ratchet (`tests/ratchet.rs` over `scripts/ratchet.toml` — raising a ceiling needs a cited decision; shrinking is free) and the crate-DAG gate (`tests/layering.rs`).
+- Brevity caps are mechanically enforced by root-crate tests (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`, part of `cargo make test`), alongside the crate-DAG gate (`tests/layering.rs`).
 
 ## Related coding standards
 
