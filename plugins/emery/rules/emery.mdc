@@ -44,7 +44,7 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 | Error code | What it means | Next action |
 |------------|---------------|-------------|
 | `init-source-required` | `emery init` was run without naming a source | `emery init <adapter>` (and/or `--value <adapter>=<text>`) |
-| `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall via the installer script (the hint prints the literal command), then rerun |
+| `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
 | `not-initialized` | `emery specify` was run outside an initialised project | `/emery:init <adapter>` first |
 
 ### Project not initialized

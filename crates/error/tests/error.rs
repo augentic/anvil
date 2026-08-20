@@ -22,7 +22,7 @@ fn cli_too_old_display() {
     let msg = err.to_string();
     assert!(msg.contains("0.9.0") && msg.contains("1.0.0"), "both versions in display: {msg}");
     let hint = err.hint().expect("exit-3 errors carry a recovery hint");
-    assert!(hint.contains("install.sh"), "the hint names the install channel: {hint}");
+    assert!(hint.contains("brew upgrade emery"), "the hint names the install channel: {hint}");
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn adapter_too_old_display() {
     );
     let hint = err.hint().expect("exit-3 errors carry a recovery hint");
     assert!(
-        hint.contains("install.sh") && hint.contains("emery adapter upgrade"),
+        hint.contains("brew upgrade emery") && hint.contains("emery adapter upgrade"),
         "the hint names the install channel and the adapter-upgrade fallback: {hint}"
     );
 }

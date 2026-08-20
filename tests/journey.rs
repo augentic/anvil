@@ -205,8 +205,8 @@ fn cwd_is_the_project_root() {
     assert!(stderr.contains("not-initialized"), "{stderr}");
 }
 
-// Bare-name and pin dispatch beyond the statically registered
-// first-party set is parked with the dynamic resolver.
+// Bare-name and pin dispatch beyond guests declared in the runtime
+// invocation is parked with the dynamic resolver.
 
 fn component() -> PathBuf {
     let built = target_dir().join("wasm32-wasip2/release/examples/source.wasm");

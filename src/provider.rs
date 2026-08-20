@@ -1,15 +1,14 @@
-//! WIT-backed capabilities used by the routed operations; mappings
-//! live here so engine code remains wasm-free.
+//! WIT-backed capabilities used by the routed operations; the wire
+//! mapping lives in `emery_adapter::source::import`.
 
 use std::sync::LazyLock;
 
 use emery_adapter::seam;
+use emery_adapter::source::import;
 use emery_engine::handler::{Anchor, ExecutionPaths};
 use emery_engine::resolve::metadata::{Metadata, Request};
 use emery_engine::resolve::{AdapterSelector, Axis, ResolvedSource, Resolver};
 use emery_error::Error;
-
-use crate::bindings::emery::adapter::source;
 
 /// Engine capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -45,83 +44,16 @@ impl Resolver for Provider {
 
 impl emery_engine::extract::Extract for Provider {
     async fn extract(&self, id: &str, input: &seam::SourceInput) -> Result<seam::Evidence, Error> {
-        let wire = wire_input(input);
-        let evidence = source::extract(id.to_string(), wire).await.map_err(|err| Error::Diag {
-            code: "source-extract-failed",
-            detail: format!("source `{id}`: {err:?}"),
-        })?;
-        seam_evidence(id, evidence)
-    }
-}
-
-/// Project the seam input onto the WIT import's wire record.
-fn wire_input(input: &seam::SourceInput) -> source::Input {
-    source::Input {
-        key: input.key.clone(),
-        content: match &input.content {
-            seam::SourceContent::Workspace(view) => source::Content::Workspace(source::Workspace {
-                id: view.id.clone(),
-                root: view.root.clone(),
-            }),
-            seam::SourceContent::Value(value) => source::Content::Value(value.clone()),
-        },
-    }
-}
-
-/// Lift a wire evidence record back onto the seam DTOs, parsing each
-/// open extra's canonical JSON encoding fail-closed (A8): a value that
-/// does not parse is a typed error, never a dropped key.
-fn seam_evidence(id: &str, wire: source::Evidence) -> Result<seam::Evidence, Error> {
-    let mut claims = Vec::with_capacity(wire.claims.len());
-    for claim in wire.claims {
-        let mut extras = serde_json::Map::new();
-        for (key, encoded) in claim.extras {
-            let value = serde_json::from_str(&encoded).map_err(|err| Error::Diag {
+        import::extract(id, input).await.map_err(|err| match err {
+            import::Error::Seam(seam) => Error::Diag {
+                code: "source-extract-failed",
+                detail: format!("source `{id}`: {seam}"),
+            },
+            extras @ import::Error::Extras { .. } => Error::Diag {
                 code: "claim-extras-malformed",
-                detail: format!(
-                    "source `{id}` extra `{key}` is not canonical JSON ({err}): {encoded}"
-                ),
-            })?;
-            extras.insert(key, value);
-        }
-        claims.push(seam::Claim {
-            kind: seam_kind(claim.kind),
-            id: claim.id,
-            path: claim.path,
-            synopsis: claim.synopsis,
-            backing: claim.backing.map(|backing| match backing {
-                source::Backing::Payload(payload) => seam::Backing::Payload(payload),
-                source::Backing::Path(path) => seam::Backing::Path(path),
-            }),
-            extras,
-        });
-    }
-    Ok(seam::Evidence {
-        authority: match wire.authority {
-            source::Authority::Intent => seam::Authority::Intent,
-            source::Authority::Documentation => seam::Authority::Documentation,
-            source::Authority::Behaviour => seam::Authority::Behaviour,
-        },
-        claims,
-    })
-}
-
-const fn seam_kind(kind: source::ClaimKind) -> seam::ClaimKind {
-    match kind {
-        source::ClaimKind::Intent => seam::ClaimKind::Intent,
-        source::ClaimKind::Requirement => seam::ClaimKind::Requirement,
-        source::ClaimKind::Criterion => seam::ClaimKind::Criterion,
-        source::ClaimKind::Decision => seam::ClaimKind::Decision,
-        source::ClaimKind::Section => seam::ClaimKind::Section,
-        source::ClaimKind::Diagram => seam::ClaimKind::Diagram,
-        source::ClaimKind::Contract => seam::ClaimKind::Contract,
-        source::ClaimKind::Example => seam::ClaimKind::Example,
-        source::ClaimKind::Excerpt => seam::ClaimKind::Excerpt,
-        source::ClaimKind::Type => seam::ClaimKind::Type,
-        source::ClaimKind::Call => seam::ClaimKind::Call,
-        source::ClaimKind::Region => seam::ClaimKind::Region,
-        source::ClaimKind::Container => seam::ClaimKind::Container,
-        source::ClaimKind::Leaf => seam::ClaimKind::Leaf,
+                detail: format!("source `{id}` {extras}"),
+            },
+        })
     }
 }
 
@@ -137,7 +69,7 @@ const fn seam_kind(kind: source::ClaimKind) -> seam::ClaimKind {
 pub fn metadata(request: &Request<'_>) -> Result<Metadata, Error> {
     match request.axis {
         Axis::Source => {
-            let record = source::metadata(request.adapter_id);
+            let record = import::metadata(request.adapter_id);
             Ok(Metadata {
                 emery_floor: record.emery_floor,
             })

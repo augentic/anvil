@@ -1,8 +1,6 @@
-//! Builds the wasm32 engine with a child cargo build, embeds it at
-//! `$OUT_DIR/emery.cwasm` (AOT-serialized in release, raw in debug),
-//! and stages first-party components as static guests.
+//! Builds the wasm32 engine with a child cargo build and embeds it at
+//! `$OUT_DIR/emery.cwasm` (AOT-serialized in release, raw in debug).
 
-use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -14,15 +12,12 @@ const TARGET_HINT: &str = "the wasm32 engine could not be built; install the tar
                            target add wasm32-wasip2` and retry";
 
 fn main() {
-    println!("cargo::rustc-check-cfg=cfg(emery_first_party)");
     // The wasm32 build runs this script too (the engine guest cdylib
     // embeds nothing); returning here is the recursion guard for the
     // child build below.
     if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
         return;
     }
-
-    stage_first_party();
 
     let engine = build_engine();
 
@@ -40,69 +35,6 @@ fn main() {
             panic!("copying {} to {}: {err}", engine.display(), out.display())
         });
     }
-}
-
-/// Stage the pinned first-party components (`scripts/first-party.txt`)
-/// as static guests: generate `$OUT_DIR/first_party.rs` — one bytes
-/// constant and one pinned-id constant per adapter, consumed by
-/// `src/main.rs` — and set the `emery_first_party` cfg.
-///
-/// `EMERY_EMBED_DIR` unset builds the engine-only binary (kernel and
-/// wire suites need no adapters). Set, every pin must be staged as
-/// `<dir>/<name>.wasm` — a partial set fails the build rather than
-/// shipping a binary missing a documented adapter.
-fn stage_first_party() {
-    println!("cargo:rerun-if-env-changed=EMERY_EMBED_DIR");
-    println!("cargo:rerun-if-changed=scripts/first-party.txt");
-    let Some(dir) = std::env::var_os("EMERY_EMBED_DIR") else {
-        return;
-    };
-    let dir = PathBuf::from(dir);
-    let mut consts = String::new();
-    for (name, version) in first_party_pins() {
-        let path = dir.join(format!("{name}.wasm"));
-        assert!(
-            path.is_file(),
-            "EMERY_EMBED_DIR is set but `{name}` is not staged at {}; stage every pin in \
-             scripts/first-party.txt or unset EMERY_EMBED_DIR for an engine-only build",
-            path.display()
-        );
-        println!("cargo:rerun-if-changed={}", path.display());
-        let upper = name.to_uppercase().replace('-', "_");
-        #[expect(
-            clippy::unnecessary_debug_formatting,
-            reason = "Debug formatting emits the quoted, escaped path literal include_bytes! needs"
-        )]
-        write!(
-            consts,
-            "/// Staged `{name}` component bytes.\n\
-             pub const {upper}: &[u8] = include_bytes!({path:?});\n\
-             /// The pinned `{name}` routed id.\n\
-             pub const {upper}_PIN: &str = \"source:{name}@{version}\";\n"
-        )
-        .expect("write to a String");
-    }
-    let out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
-    std::fs::write(out.join("first_party.rs"), consts).expect("write the first-party constants");
-    println!("cargo:rustc-cfg=emery_first_party");
-}
-
-/// The `<name> <version>` pins in `scripts/first-party.txt`, comments
-/// and blank lines skipped.
-fn first_party_pins() -> Vec<(String, String)> {
-    let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
-    let pins = std::fs::read_to_string(manifest_dir.join("scripts/first-party.txt"))
-        .expect("read scripts/first-party.txt");
-    pins.lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .map(|line| {
-            let (name, version) = line
-                .split_once(' ')
-                .unwrap_or_else(|| panic!("malformed first-party pin `{line}`"));
-            (name.to_owned(), version.trim().to_owned())
-        })
-        .collect()
 }
 
 /// Ahead-of-time compile the raw engine component into the serialized

@@ -10,14 +10,15 @@ argument-hint: <adapter>
 
 ## Invocation
 
-1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling — the installer overwrites the existing binary. Install the latest prebuilt release via the installer script (no local compile; verifies the Release archive's `.sha256`); a project whose floor outruns the installed binary fails typed later (`emery-version-too-old`, exit 3) with the same reinstall command as its hint. The script installs to `~/.local/bin`, which is often absent from `PATH`, so put it on the session's `PATH` first — the subprocess cannot alter the parent shell:
+1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling. Install the latest prebuilt release via Homebrew, or from source; a project whose floor outruns the installed binary fails typed later (`emery-version-too-old`, exit 3) with the same reinstall command as its hint:
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- -y
+brew tap augentic/tap
+brew install emery
+# or: cargo install --git https://github.com/augentic/emery --locked
 ```
 
-Then run `emery --version --quiet` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.
+Then run `emery --version --quiet` and stop on failure.
 
 2. **Route re-entry** — when `.emery/project.yaml` already exists, `emery init` changes nothing: it exits 0 and prints the literal `emery init --upgrade` re-entry command. Confirm with the operator, then run `emery init --upgrade --quiet`.
 3. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`init-source-required`). Gather conversationally: the source adapters to bind (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive), and optionally `--name <name>` / `--description "<description>"`.

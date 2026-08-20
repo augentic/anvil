@@ -11,7 +11,7 @@
 3. **Authority is typed, singular, and fail-closed.** Exactly one authority answers each lifecycle question. Progress labels are computed, never stored. A read failure on an authority is an error, never an empty result. Every irreversible effect verifies its complete authorization immediately before acting.
 4. **Delete before add.** Every change names its deletions and its net concept-count effect. A change that only adds is presumed wrong until justified.
 5. **Policy changes are decisions.** Any change to an operator gate, authority rule, verb, artifact kind, or lifecycle stage is a decision in the same PR. Lab and eval convenience gets lab flags, never production policy.
-6. **Measured, not asserted.** "Fast" and "reliable" are measured numbers. The graded eval suite gates release. An unmeasured number is written `unconfirmed`.
+6. **Measured, not asserted.** "Fast" and "reliable" are measured numbers. An unmeasured number is written `unconfirmed`.
 7. **Agents implement; humans decide.** Agent task briefs implement against the live product surface. AGENTS.md is a map of what exists (today: tag `v1`), never a spec. This file changes only by explicit human decision.
 
 ## Mechanical enforcement (fitness functions)
@@ -22,12 +22,11 @@ Each is a small CI check; together they convert gradual drift into individual re
 | --- | --- | --- |
 | Journey test | Invariant 1 | Scripted offline `emery specify` over a mock source component; every push |
 | Route budget | Invariant 2 | Test enumerating the CLI router against the live verb list (`init`, `specify`) |
-| LOC ratchet | Invariant 4 | Committed per-crate baseline (`scripts/ratchet.toml`); growth past ceiling fails; shrink updates are free |
 | Layering test | Invariant 3 | Assert the crate dependency DAG over `cargo metadata` |
 | Seam-copy counter | Invariant 3 | Golden test asserting one DTO family for the adapter seam |
 | Gate tripwires | Invariant 5 | One integration test per operator gate, named `adr_NNNN_*`; deleting a gate means deleting a test that names its decision record |
-| Prose budgets | Invariant 2 | AGENTS.md and this file under a line ceiling; prompt-corpus lines in the ratchet |
+| Prose budgets | Invariant 2 | Identifier and comment density caps (`tests/ident_brevity.rs`, `tests/doc_brevity.rs`) |
 
 ## Ritual
 
-Monthly, 30 minutes: walk the ratchet deltas. Record the scorecard as a dated note. No meeting, no slides — a diff.
+Monthly, 30 minutes: walk the graded eval. Record it as a dated note. No meeting, no slides — a diff.

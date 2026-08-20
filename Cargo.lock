@@ -986,7 +986,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "wasip3",
- "wit-bindgen 0.60.0",
 ]
 
 [[package]]

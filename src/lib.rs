@@ -4,22 +4,6 @@
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        mod bindings {
-            #![allow(missing_docs)]
-
-            wit_bindgen::generate!({
-                world: "engine",
-                path: "wit",
-                inline: r#"
-                    package emery:engine;
-                    world engine {
-                        import emery:adapter/source@0.1.0;
-                    }
-                "#,
-                generate_all,
-            });
-        }
-
         mod provider;
 
         use omnia_guest::api::invoke::Invoker;
