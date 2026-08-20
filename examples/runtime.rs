@@ -24,10 +24,10 @@ cfg_if::cfg_if! {
                 },
                 {
                     id: "source:source",
-                    source: include_bytes!(concat!(
+                    source: concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/target/wasm32-wasip2/release/examples/source.wasm",
-                    )),
+                    ),
                     link: ["emery:adapter/source@0.1.0"],
                 },
             ],

@@ -1,13 +1,4 @@
 //! The shipped `emery` executable: one `omnia::runtime!` invocation.
-//! Every invocation runs in the guest; argv and the exit code pass
-//! through byte-for-byte except the peeled `--debug` / `--quiet`.
-//!
-//! Deployment policy is static and CWD-rooted: the invocation
-//! directory mounts as the guest's `.`, the CWD-relative
-//! `.emery-cache` backs the cache preopen, and the first-party
-//! adapters staged at build time (`scripts/first-party.txt` over
-//! `EMERY_EMBED_DIR`) are the only adapter guests. Dynamic adapter
-//! resolution is deferred; an unstaged build is engine-only.
 
 // Create the CWD-relative cache
 #[cfg(not(target_arch = "wasm32"))]

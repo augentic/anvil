@@ -22,6 +22,10 @@ cfg_if::cfg_if! {
 
         mod provider;
 
+        use omnia_guest::api::invoke::Invoker;
+        use emery_transport::{command, http};
+        use wasip3::cli::environment;
+
         struct CliGuest;
         wasip3::cli::command::export!(CliGuest);
 
@@ -29,14 +33,13 @@ cfg_if::cfg_if! {
             async fn run() -> Result<(), ()> {
                 use std::io::Write as _;
 
-                // Guest OpenTelemetry over the host's wasi-otel provider;
-                // the guard exports buffered telemetry on drop.
                 let telemetry = omnia_wasi_otel::init();
-                let invoker =
-                    omnia_guest::api::invoke::Invoker::new("emery", provider::Provider);
-                let router = emery_transport::command::router(invoker).map_err(|_e| ())?;
-                let argv = wasip3::cli::environment::get_arguments();
-                let response = emery_transport::command::execute(&router, argv).await;
+
+                let invoker = Invoker::new("emery", provider::Provider);
+
+                let router = command::router(invoker).map_err(|_e| ())?;
+                let argv = environment::get_arguments();
+                let response = command::execute(&router, argv).await;
                 if std::io::stdout().write_all(&response.stdout).is_err()
                     || std::io::stderr().write_all(&response.stderr).is_err()
                 {
@@ -58,7 +61,7 @@ cfg_if::cfg_if! {
             async fn handle(
                 request: wasip3::http::types::Request,
             ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-                omnia_wasi_http::serve(emery_transport::http::refusal(), request).await
+                omnia_wasi_http::serve(http::refusal(), request).await
             }
         }
     }
