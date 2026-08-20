@@ -2,6 +2,8 @@
 //! router's capability bounds so the grammar assembles and pre-dispatch
 //! refusals run; no test dispatches the model (the journey covers that).
 
+use std::future::Future;
+
 use omnia_guest::api::invoke::Invoker;
 
 /// The inert provider: unreachable capabilities.
@@ -9,11 +11,15 @@ use omnia_guest::api::invoke::Invoker;
 pub struct Inert;
 
 impl omnia_guest::Model for Inert {
-    async fn create(
+    fn create(
         &self, _request: omnia_guest::model::Request,
-    ) -> Result<omnia_guest::model::Reply, omnia_guest::model::Error> {
-        unreachable!("the wire suites never dispatch the model")
+    ) -> impl Future<Output = Result<omnia_guest::model::Reply, omnia_guest::model::Error>> {
+        std::future::ready(never_dispatched())
     }
+}
+
+fn never_dispatched() -> Result<omnia_guest::model::Reply, omnia_guest::model::Error> {
+    unreachable!("the wire suites never dispatch the model")
 }
 
 /// The command router over the inert provider.

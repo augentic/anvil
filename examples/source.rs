@@ -3,6 +3,8 @@
 //! adapter id (`docs` / `code` / `intent` / `fail-*`, else greeting).
 #![cfg(target_arch = "wasm32")]
 
+use std::future::Future;
+
 use emery_adapter::registry::Doc;
 use emery_adapter::seam::{
     Authority, Backing, Claim, ClaimKind, Context, Error, Evidence, SourceContent, SourceInput,
@@ -34,10 +36,10 @@ impl Source for Mock {
         DOCS
     }
 
-    async fn extract<P: Model>(
+    fn extract<P: Model>(
         _model: &P, ctx: &Context<'_>, input: &SourceInput,
-    ) -> Result<Evidence, Error> {
-        extract(ctx.adapter_id, input)
+    ) -> impl Future<Output = Result<Evidence, Error>> + Send {
+        std::future::ready(extract(ctx.adapter_id, input))
     }
 }
 
