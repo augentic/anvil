@@ -301,7 +301,6 @@ pub fn name_from_component(path: &Path) -> Result<String, Error> {
     let stem = stem
         .strip_prefix("emery_")
         .or_else(|| stem.strip_prefix("emery-"))
-        .or_else(|| stem.strip_prefix("specify_"))
         .unwrap_or(stem);
     Ok(stem.replace('_', "-"))
 }

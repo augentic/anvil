@@ -25,8 +25,8 @@ const DOCS: &[Doc] = &[Doc {
 
 impl Source for Mock {
     const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "mock",
-        version: "0.0.0",
+        name: "source",
+        version: "0.1.0",
     };
 
     fn metadata() -> SourceMetadata {

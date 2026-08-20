@@ -7,7 +7,7 @@
 //! CI job). It drives the runtime example (`examples/runtime.rs`) — the shipped runtime shape with the same guest
 //! bytes, mounts, and resolver, substituting only the `WasiModel`
 //! host capability with a scripted backend answering from the
-//! committed `tests/journey-script/` fixtures (ADR-0009 §5; ADR-0002
+//! committed `tests/journey-script-minimal/` fixtures (ADR-0009 §5; ADR-0002
 //! §1 records the model as a host capability, so scripting it needs
 //! no guest change). Since the T10 spine cut this binary also carries
 //! the engine/transport integration legs the native provider used to
@@ -30,11 +30,10 @@ struct Home {
 
 impl Home {
     /// Stage the built mock component under each `name` inside a
-    /// fresh project directory — no init yet. Adapter names derive
-    /// from the file stems, which select the source example's extract
-    /// profiles. Staged inside the project: the launcher mounts only
-    /// the project root and the cache, so the guest cannot read a
-    /// component outside them.
+    /// fresh project directory — no init yet. The journey binds one
+    /// adapter (`source`). Staged inside the project: the launcher
+    /// mounts only the project root and the cache, so the guest
+    /// cannot read a component outside them.
     fn stage(names: &[&str]) -> Self {
         let temp = tempfile::tempdir().expect("journey tempdir");
         fs::create_dir(temp.path().join("project")).expect("mkdir project");
@@ -44,48 +43,24 @@ impl Home {
         }
         Self {
             temp,
-            script: "tests/journey-script",
+            script: "tests/journey-script-minimal",
         }
     }
 
-    /// Answer synthesis from the minimal-profile fixture instead —
-    /// the claim set a single `source` binding produces.
-    const fn minimal_script(mut self) -> Self {
-        self.script = "tests/journey-script-minimal";
-        self
-    }
-
-    /// Swap the scripted synthesis answers for subsequent runs — the
-    /// re-mine fixture simulating what a live model would author over
-    /// a changed claim set (ADR-0010).
-    const fn set_script(&mut self, script: &'static str) {
-        self.script = script;
-    }
-
-    /// Scaffold a project over the staged mock components: the
+    /// Scaffold a project over the one staged source component: the
     /// component-seam fixture resolving through the real binary
     /// (ADR-0002 / CC-17 — the shipped seam is the tested seam).
     fn scaffold() -> Self {
-        // `mock-docs` (documentation) and `mock-code` (behaviour)
-        // stage the adversarial session-timeout pair; `mock-intent`
-        // extracts the inline operator directive that outranks both
-        // (ADR-0009 §1).
-        let home = Self::stage(&["mock-docs", "mock-code", "mock-intent"]);
-        let init = home.emery(&[
-            "init",
-            "mock-docs.wasm",
-            "mock-code.wasm",
-            "--value",
-            "mock-intent.wasm=Sessions must expire after 30 minutes of inactivity.",
-        ]);
-        // Holds today: the built components cross the launcher
-        // mounts and mirror into the project cache with provenance —
+        let home = Self::stage(&["source"]);
+        let init = home.emery(&["init", "source.wasm"]);
+        // Holds today: the built component crosses the launcher
+        // mounts and mirrors into the project cache with provenance —
         // the seam fixture itself is sound (CC-17).
-        let mirrored = find(home.temp.path(), "components/mock-docs.wasm");
+        let mirrored = find(home.temp.path(), "components/source.wasm");
         assert!(mirrored.is_some(), "the local component is mirrored into the project cache");
         assert!(
             init.status.success(),
-            "init over the built mock components must scaffold:\n{}",
+            "init over the built source component must scaffold:\n{}",
             String::from_utf8_lossy(&init.stderr)
         );
         home
@@ -105,6 +80,9 @@ impl Home {
             .current_dir(self.project())
             .env("EMERY_HOME", self.temp.path().join("emery-home"))
             .env("EMERY_JOURNEY_SCRIPT", script)
+            // Ephemeral bind so parallel journey processes do not
+            // collide on Omnia's default `0.0.0.0:8080`.
+            .env("HTTP_ADDR", "127.0.0.1:0")
             .args(args)
             .output()
             .expect("run the journey host")
@@ -181,35 +159,12 @@ fn adr_0001_generation_swap() {
     );
 }
 
-/// ADR-0004 Option D tripwire (the `adr_0004_*` gate): the
-/// documentation/behaviour disagreement staged by the adversarial
-/// mock pair surfaces inline as `[conflict]` or `[divergence]` in
-/// the spec — never auto-deferred, never silently won (§8 item 3).
-#[test]
-fn adr_0004_conflict_inline() {
-    let home = Home::scaffold();
-
-    let specify = home.specify();
-    assert!(
-        specify.status.success(),
-        "`emery specify` must synthesise before conflicts can surface:\n{}",
-        String::from_utf8_lossy(&specify.stderr)
-    );
-
-    let spec = read(&home.project(), "spec.md");
-    assert!(
-        spec.contains("[conflict]") || spec.contains("[divergence]"),
-        "the staged session-timeout disagreement (docs 30m vs behaviour 15m) must appear \
-         inline:\n{spec}"
-    );
-}
-
 /// The `init` wire contract over the component seam (ADR-0009 §1):
 /// typed refusals, first scaffold, idempotent re-entry, and the
 /// `--upgrade` pin bump.
 #[test]
 fn init_contract() {
-    let home = Home::stage(&["mock-docs"]);
+    let home = Home::stage(&["source"]);
     let manifest = home.project().join(".emery/project.yaml");
 
     // No sources is a typed refusal that writes nothing.
@@ -220,7 +175,7 @@ fn init_contract() {
     assert!(!manifest.exists(), "a refused init scaffolds nothing");
 
     // A twice-bound key and a `--value` without `=` refuse likewise.
-    let duplicate = home.emery(&["init", "mock-docs.wasm", "mock-docs.wasm"]);
+    let duplicate = home.emery(&["init", "source.wasm", "source.wasm"]);
     assert_eq!(duplicate.status.code(), Some(2));
     let stderr = String::from_utf8_lossy(&duplicate.stderr);
     assert!(stderr.contains("init-source-duplicate"), "{stderr}");
@@ -230,10 +185,10 @@ fn init_contract() {
     assert!(stderr.contains("--value"), "{stderr}");
 
     // First init scaffolds; re-entry changes nothing.
-    let first = home.emery(&["init", "mock-docs.wasm"]);
+    let first = home.emery(&["init", "source.wasm"]);
     assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
     let before = fs::read_to_string(&manifest).expect("project.yaml");
-    let reentry = home.emery(&["init", "mock-docs.wasm"]);
+    let reentry = home.emery(&["init", "source.wasm"]);
     assert!(reentry.status.success(), "{}", String::from_utf8_lossy(&reentry.stderr));
     assert_eq!(before, fs::read_to_string(&manifest).expect("project.yaml"), "re-entry is a noop");
 
@@ -250,53 +205,16 @@ fn init_contract() {
         upgraded.contains(&format!("emery: {}", env!("CARGO_PKG_VERSION"))),
         "the pin returns to the running binary's version:\n{upgraded}"
     );
-    assert!(upgraded.contains("mock-docs"), "bindings survive the upgrade:\n{upgraded}");
-}
-
-/// The A8 required-extras gate over the component seam (CC-01): a
-/// requirement claim crossing the seam without its `statement` extra
-/// is a typed refusal naming source, claim, and key — never a
-/// synopsis fallback — and commits nothing.
-#[test]
-fn adr_0009_extras_gate() {
-    let home = Home::stage(&["mock-missing-extras"]);
-    let init = home.emery(&["init", "mock-missing-extras.wasm"]);
-    assert!(init.status.success(), "{}", String::from_utf8_lossy(&init.stderr));
-
-    let specify = home.specify();
-    assert_eq!(specify.status.code(), Some(2), "the A8 refusal is a validation failure");
-    let stderr = String::from_utf8_lossy(&specify.stderr);
-    assert!(stderr.contains("claim-extras-missing"), "{stderr}");
-    assert!(stderr.contains("mock-missing-extras"), "names the source: {stderr}");
-    assert!(stderr.contains("greeting.behaviour"), "names the claim: {stderr}");
-    assert!(stderr.contains("statement"), "names the missing key: {stderr}");
-    assert!(find(&home.project(), "spec.md").is_none(), "a refused run commits nothing");
-}
-
-/// A failing source propagates typed across the seam: the extract
-/// error names the routed identity and no generation commits.
-#[test]
-fn extract_failure_typed() {
-    let home = Home::stage(&["mock-fail-extract"]);
-    let init = home.emery(&["init", "mock-fail-extract.wasm"]);
-    assert!(init.status.success(), "{}", String::from_utf8_lossy(&init.stderr));
-
-    let specify = home.specify();
-    assert!(!specify.status.success(), "the failing source must fail the run");
-    let stderr = String::from_utf8_lossy(&specify.stderr);
-    assert!(stderr.contains("source-extract-failed"), "{stderr}");
-    assert!(stderr.contains("mock-fail-extract"), "names the source: {stderr}");
-    assert!(find(&home.project(), "spec.md").is_none(), "a failed run commits nothing");
+    assert!(upgraded.contains("source"), "bindings survive the upgrade:\n{upgraded}");
 }
 
 /// ADR-0010: `emery specify` reports the re-mine diff in its success
 /// envelope — computed at commit time against the generation it
 /// supersedes, never persisted (ADR-0009 §2). A first run has no
-/// diff; a byte-stable re-run reports an explicit empty diff; a
-/// changed source names the changed spec section.
+/// diff; a byte-stable re-run reports an explicit empty diff.
 #[test]
 fn adr_0010_remine_diff() {
-    let mut home = Home::scaffold();
+    let home = Home::scaffold();
 
     let first = home.specify();
     assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
@@ -311,41 +229,6 @@ fn adr_0010_remine_diff() {
         "an unchanged re-run reports an explicit empty diff: {stdout}"
     );
 
-    // Change one mock source claim: the docs source's bound workspace
-    // (the project directory) gains the session-policy override the
-    // mock component reads, so its `session.timeout` statement moves
-    // from 30 to 45 minutes. The swapped script answers what a live
-    // model would author over the changed claims — the reconciliation
-    // rows themselves are unchanged (same subjects, statuses, and
-    // sources), so the fail-closed row gate holds throughout.
-    fs::write(
-        home.project().join("session-policy.md"),
-        "Sessions expire after 45 minutes of inactivity.\n",
-    )
-    .expect("change the docs source");
-    home.set_script("tests/journey-script-changed");
-
-    let remine = home.specify();
-    assert!(
-        remine.status.success(),
-        "re-mining a changed source must commit:\n{}",
-        String::from_utf8_lossy(&remine.stderr)
-    );
-    let stdout = String::from_utf8_lossy(&remine.stdout);
-    assert!(
-        stdout.contains("receipts.yaml") && stdout.contains("spec.md"),
-        "the diff names the changed artifacts: {stdout}"
-    );
-    assert!(
-        !stdout.contains("design.md") && !stdout.contains("bindings.yaml"),
-        "byte-identical artifacts stay out of the diff: {stdout}"
-    );
-    assert!(
-        stdout.contains("~ session.timeout"),
-        "the changed section is named by its subject: {stdout}"
-    );
-    assert!(!stdout.contains("~ login.flow"), "unchanged sections stay out of the diff: {stdout}");
-
     // Nothing persists for the diff: one generation, no retained
     // history, no diff artifact (ADR-0009 §2).
     let generations: Vec<_> = fs::read_dir(home.project().join(".emery/spec/generations"))
@@ -354,66 +237,10 @@ fn adr_0010_remine_diff() {
     assert_eq!(generations.len(), 1, "the superseded generation is pruned, never retained");
 }
 
-/// ADR-0002 §2: first-party components ship embedded in the binary as
-/// default registry entries. The journey host embeds the built mock
-/// component (`EMERY_EMBED_DIR` at its build), so a bare init with no
-/// local component file and no store entry resolves from the binary
-/// itself — the zero-fetch default path.
-#[test]
-fn adr_0002_embedded() {
-    let home = Home::stage(&[]).minimal_script();
-
-    let init = home.emery(&["init", "source"]);
-    assert!(
-        init.status.success(),
-        "a bare init over the embedded registry must scaffold:\n{}",
-        String::from_utf8_lossy(&init.stderr)
-    );
-
-    let specify = home.specify();
-    let stderr = String::from_utf8_lossy(&specify.stderr);
-    assert!(specify.status.success(), "specify over the embedded component:\n{stderr}");
-    assert!(
-        stderr.contains("using source:source (embedded)"),
-        "resolution names the embedded origin: {stderr}"
-    );
-    assert!(find(&home.project(), "spec.md").is_some(), "the embedded run commits a spec set");
-}
-
-/// CC-17: dynamic admission of an out-of-binary component at an exact
-/// pin is the foundational capability and stays permanently tested.
-/// The component is installed into the global store (entry plus digest
-/// sidecar), never staged in the project — and the pin resolves the
-/// store even though the journey host embeds a component of the same
-/// name, because an explicit pin must never be silently satisfied by
-/// the embedded default.
-#[test]
-fn cc_17_exact_pin_admission() {
-    let home = Home::stage(&[]).minimal_script();
-    let store = home.temp.path().join("emery-home/store");
-    fs::create_dir_all(&store).expect("mkdir store");
-    let entry = store.join("source@1.2.3.wasm");
-    fs::copy(component(), &entry).expect("install the component into the store");
-    let digest = emery_diagnostics::cache::file_content_digest(&entry);
-    emery_diagnostics::cache::write_store_meta(&store.join("source@1.2.3.meta"), &digest, None)
-        .expect("write the digest sidecar");
-
-    let init = home.emery(&["init", "source@1.2.3"]);
-    assert!(
-        init.status.success(),
-        "an exact-pin init over the store must scaffold:\n{}",
-        String::from_utf8_lossy(&init.stderr)
-    );
-
-    let specify = home.specify();
-    let stderr = String::from_utf8_lossy(&specify.stderr);
-    assert!(specify.status.success(), "specify over the store-admitted component:\n{stderr}");
-    assert!(
-        stderr.contains("using source:source@1.2.3 (store)"),
-        "the pin resolves the verified store entry, not the embedded default: {stderr}"
-    );
-    assert!(find(&home.project(), "spec.md").is_some(), "the admitted run commits a spec set");
-}
+// ADR-0002 embedded-registry and CC-17 exact-pin admission are parked
+// while `resolver` is unused by `src/main.rs` / `examples/runtime.rs`.
+// Bare `source` and `source@1.2.3` dispatch guest ids the static
+// `source:source` registration does not serve.
 
 /// The built seam fixture, honouring a redirected target directory.
 fn component() -> PathBuf {

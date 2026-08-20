@@ -22,7 +22,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-The `source` example (`examples/source/guest.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor exported as the journey's seam fixture in the same file. Behaviour keys off the routed adapter id. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
+The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor exported as the journey's seam fixture. The journey binds that one adapter. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
 
 ## Deployment: the Wasm provider
 
