@@ -13,17 +13,23 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 Deterministic operations bind `P: Provider` only unless their kernel issues model judgments, in which case they additionally bind `Model` — the one capability the provider still carries. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
 
 ```rust
-// GOOD — default shape
+// GOOD — deterministic kernel. Model-using operations stay `async fn call`.
 impl<P: Provider> Operation<P> for Frob {
     type Error = crate::handler::Error;
     type Input = FrobInput;
     type Output = FrobBody;
 
-    async fn call(input: Self::Input, _context: CallContext<'_, P>) -> Result<Self::Output, Self::Error> {
-        let request = RequestContext::load()?;
-        let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
-        Ok(FrobBody::from(&outcome))
+    fn call(
+        input: Self::Input, _context: CallContext<'_, P>,
+    ) -> impl Future<Output = Result<Self::Output, Self::Error>> {
+        std::future::ready(frob(input).map_err(Into::into))
     }
+}
+
+fn frob(input: FrobInput) -> Result<FrobBody, emery_error::Error> {
+    let request = RequestContext::load()?;
+    let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
+    Ok(FrobBody::from(&outcome))
 }
 ```
 
