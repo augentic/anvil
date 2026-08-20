@@ -14,8 +14,6 @@ cfg_if::cfg_if! {
 
         omnia::runtime!({
             mode: command,
-            program: "emery",
-            command_guest: "emery",
             guests: [
                 {
                     id: "emery",
@@ -27,18 +25,14 @@ cfg_if::cfg_if! {
                         env!("CARGO_MANIFEST_DIR"),
                         "/target/wasm32-wasip2/release/examples/source.wasm",
                     ),
-                    link: ["emery:adapter/source@0.1.0"],
+                    routes: {http: ["/mcp/source/source"]},
                 },
             ],
             mounts: [
                 { name: ".", path: ".", writable: true },
                 { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
             ],
-            routes: {
-                http: [
-                    { prefix: "/mcp/source/source", guest: "source:source" },
-                ],
-            },
+            dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
