@@ -75,10 +75,10 @@ jobs:
         with:
           tool: wkg
 
-      # First-party source components ship embedded in the binary as
-      # default registry entries (ADR-0002 §2): pull each published
+      # First-party source components ship compiled into the binary as
+      # static adapter guests (ADR-0002 §2): pull each published
       # component at its exact pin from scripts/first-party.txt and
-      # stage the directory for the launcher's build-time embed.
+      # stage the directory for the root build script's embed.
       - name: Stage first-party components
         shell: bash
         run: |

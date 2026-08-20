@@ -1,4 +1,7 @@
-//! The journey host
+//! The journey host (ADR-0009 §5): the shipped runtime shape with the
+//! mock source component as the one adapter guest and `WasiModel`
+//! answering from a script directory instead of the Cursor backend.
+//! Never shipped.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -13,10 +16,11 @@ cfg_if::cfg_if! {
         omnia::runtime!({
             mode: command,
             program: "emery",
+            command_guest: "emery",
             guests: [
                 {
-                id: "emery",
-                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
+                    id: "emery",
+                    source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
                 },
                 {
                     id: "source:source",
@@ -29,23 +33,24 @@ cfg_if::cfg_if! {
             ],
             mounts: [
                 { name: ".", path: ".", writable: true },
-                { name: "/emery-cache", path: "/tmp/emery-cache/", writable: true },
+                { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
             ],
             routes: {
                 http: [
                     { prefix: "/mcp/source/source", guest: "source:source" },
                 ],
             },
-            // link: ["emery:adapter/source@0.1.0"],
-            // resolver: launcher::resolver(),
-            // http_paths: launcher::mcp_route,
-            // http_listener: launcher::http_listener(),
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
             }
         });
+
+        fn cache_dir() -> &'static str {
+            drop(std::fs::create_dir_all(".emery-cache"));
+            ".emery-cache"
+        }
 
         // script directory: each file is one model answer.
         const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";

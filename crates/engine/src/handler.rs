@@ -12,7 +12,7 @@ mod paths;
 pub use anchor::Anchor;
 pub use context::RequestContext;
 pub use error::{Error, FailureBody};
-pub use locations::{CachePlacement, GUEST_CACHE_MOUNT, Locations, PROJECT_ROOT_ENV};
+pub use locations::{CachePlacement, GUEST_CACHE_MOUNT, Locations};
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
 

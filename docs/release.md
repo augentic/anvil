@@ -16,7 +16,7 @@ The engine guest imports `emery:adapter/source`; it has no separate WIT package.
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
-The host embeds no adapter-version recommendation and — since the Phase 3 spine cut (ADR-0002) — no download path: adapter resolution is local-only (project cache seed, the embedded first-party registry, the verified global store). The embedded first-party registry is populated at release-build time: the Publish Release workflow pulls each component pinned in [`scripts/first-party.txt`](../scripts/first-party.txt) from GHCR into `EMERY_EMBED_DIR` before building the binary. Bumping a pin is a release act — the adapter train publishes first, then the pin file moves in the release PR.
+The host embeds no adapter-version recommendation and — since the Phase 3 spine cut (ADR-0002) — no download path: until dynamic loading returns, the first-party components are the release binary's only adapter guests, compiled in as static guests at release-build time. The Publish Release workflow pulls each component pinned in [`scripts/first-party.txt`](../scripts/first-party.txt) from GHCR into `EMERY_EMBED_DIR` before building the binary; a staged-but-incomplete set fails the build. Bumping a pin is a release act — the adapter train publishes first, then the pin file moves in the release PR.
 
 ## Release lines
 
@@ -54,7 +54,7 @@ Keep the table short — it is a statement of what was tested together, not a ve
 Publish composes five jobs (plus the release-branch skip gate):
 
 1. **`ci`.** Shared `augentic/.github` CI over the release branch, alongside the **`scorecard`** preflight (`scripts/scorecard-gate.sh` over the committed record in `scorecards/`).
-2. **`binaries`.** Local matrix job in `publish.yaml`: each leg pulls the first-party components pinned in `scripts/first-party.txt` from GHCR into `EMERY_EMBED_DIR` (the root build script's embedded registry), then builds and packages its archive, uploading it as a workflow artifact (`archive-<target>`).
+2. **`binaries`.** Local matrix job in `publish.yaml`: each leg pulls the first-party components pinned in `scripts/first-party.txt` from GHCR into `EMERY_EMBED_DIR` (the root build script stages them as static guests), then builds and packages its archive, uploading it as a workflow artifact (`archive-<target>`).
 3. **`publish`.** Shared `augentic/.github` publish: date `RELEASES.md`, push `vX.Y.Z`, create the GitHub Release with notes and the `archive-*` workflow artifacts attached.
 4. **`crates`.** Shared `augentic/.github` `crates.yaml`: `cargo publish --workspace --locked` over the publishable `emery-*` packages (needs the org `CARGO_REGISTRY_TOKEN`). Until the omnia stack the workspace patches is itself on crates.io, this job fails on dependency resolution — expected, and no other artifact depends on it.
 
@@ -67,7 +67,7 @@ Each leg runs native `cargo build --release --locked --target <triple> --bin eme
 
 Each leg produces `emery-v${VERSION}-${TARGET}.tar.gz` (unix) or `.zip` (Windows) plus a companion `.sha256`; the shared publish workflow attaches both when it creates the GitHub Release. Root `Cargo.toml` carries `[package.metadata.binstall]` pointing at those archive names.
 
-The shipped surface is the `emery` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/main.rs`) embedding the engine guest as static component bytes, with mounts and the adapters-only guest resolver contributed by the root package's `launcher` module — so there is no second binary or component to package.
+The shipped surface is the `emery` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/main.rs`) embedding the engine guest as static component bytes alongside the staged first-party adapter guests, with the CWD-rooted mounts inline — so there is no second binary or component to package.
 
 ## Publishing the wasm-pkg packages
 
@@ -85,7 +85,7 @@ wkg publish target/wasm32-wasip2/release/emery.wasm \
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `cargo make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. The `emery` binary resolves a pin (`emery:<name>@<version>`) from the local global store only — there is no pull-on-miss (ADR-0002). The release binaries carry the first-party components embedded as default registry entries: the `binaries` job pulls each pin in [`scripts/first-party.txt`](../scripts/first-party.txt) from GHCR and stages it as `EMERY_EMBED_DIR` before building.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `cargo make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. There is no pull-on-miss (ADR-0002). The release binaries carry the first-party components compiled in as static guests under their bare and pinned ids: the `binaries` job pulls each pin in [`scripts/first-party.txt`](../scripts/first-party.txt) from GHCR and stages it as `EMERY_EMBED_DIR` before building.
 
 ## Installing a release
 

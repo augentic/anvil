@@ -1,11 +1,9 @@
 //! The emery guest (wasm32) — the deployment's only `wasi:cli/run`
-//! exporter — or, on native, the `launcher` deployment-policy module
-//! the binary and the journey host share (ADR-0011).
+//! exporter. Native deployment policy lives inline in `src/main.rs`;
+//! this library carries nothing on native targets.
 
 cfg_if::cfg_if! {
-    if #[cfg(not(target_arch = "wasm32"))] {
-        pub mod launcher;
-    } else {
+    if #[cfg(target_arch = "wasm32")] {
         mod bindings {
             #![allow(missing_docs)]
 
@@ -60,8 +58,6 @@ cfg_if::cfg_if! {
             async fn handle(
                 request: wasip3::http::types::Request,
             ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-                // C3: every path answers the typed refusal until an
-                // authenticated operator ingress is designed.
                 omnia_wasi_http::serve(emery_transport::http::refusal(), request).await
             }
         }

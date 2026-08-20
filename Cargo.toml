@@ -20,16 +20,15 @@ name = "emery"
 path = "src/main.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# `anyhow` is required by the `omnia::runtime!` expansion.
 anyhow.workspace = true
 cfg-if.workspace = true
 emery-engine.workspace = true
-emery-error.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
-semver.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 cfg-if.workspace = true

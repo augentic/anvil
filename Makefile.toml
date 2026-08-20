@@ -84,18 +84,13 @@ command = "cargo"
 args = ["build", "--locked", "--example", "source", "--target", "wasm32-wasip2", "--release"]
 
 # The dev-only journey host (ADR-0009 §5): the shipped runtime shape
-# with a scripted `WasiModel` backend, embedding the engine guest
-# built from the same sources. `EMERY_EMBED_DIR` stages the built mock
-# component into the embedded first-party registry (ADR-0002 §2) so
-# the journey exercises embedded resolution as a permanent rung.
+# with a scripted `WasiModel` backend and the built mock component as
+# its one static adapter guest, embedding the engine guest built from
+# the same sources.
 [tasks.runtime]
 workspace = false
-script_runner = "bash"
-script = '''
-mkdir -p /tmp/emery-cache
-export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
-cargo build --locked --example runtime
-'''
+command = "cargo"
+args = ["build", "--locked", "--example", "runtime"]
 
 # The walking-skeleton journey test (target-architecture §8) over the
 # built seam fixture and the journey host — the Phase 3 exit
@@ -106,8 +101,6 @@ workspace = false
 dependencies = ["source", "runtime"]
 script_runner = "bash"
 script = '''
-mkdir -p /tmp/emery-cache
-export EMERY_EMBED_DIR="${CARGO_TARGET_DIR:-$PWD/target}/wasm32-wasip2/release/examples"
 export RUSTFLAGS="-Dwarnings"
 cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter
 '''

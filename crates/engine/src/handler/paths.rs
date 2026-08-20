@@ -6,8 +6,6 @@
 use std::path::{Path, PathBuf};
 
 use super::locations::Locations;
-#[cfg(not(target_arch = "wasm32"))]
-use super::locations::PROJECT_ROOT_ENV;
 
 /// The project root plus the carried artifact locations.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,26 +23,6 @@ impl ExecutionPaths {
             project_root: project_root.into(),
             locations,
         }
-    }
-
-    /// Operator paths: anchored at `project_root`, capturing
-    /// [`Locations::from_env`] once. Composition-root only.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[must_use]
-    pub fn operator(project_root: impl Into<PathBuf>) -> Self {
-        Self::new(project_root, Locations::from_env())
-    }
-
-    /// Host-backend paths: the launcher-exported [`PROJECT_ROOT_ENV`]
-    /// (cwd if unset) plus [`Locations::from_env`]. Composition-root only.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[must_use]
-    pub fn host() -> Self {
-        let root = std::env::var_os(PROJECT_ROOT_ENV)
-            .map(PathBuf::from)
-            .filter(|path| path.is_absolute())
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-        Self::new(root, Locations::from_env())
     }
 
     /// The engine guest's paths: `.` is the mount preopen.

@@ -68,7 +68,7 @@ The composition-root failure mode is the essay that restates architecture and hi
 
 // …inside the macro body:
 // Declined path / definitive miss → 404; fault on a claimed shelf → 500.
-http_paths: launcher::mcp_route,
+routes: { http: [{ prefix: "/mcp/source/intent", guest: "source:intent" }] },
 ```
 
 Doc comments describe what this is today. Version-history tables, dated bumps, commit hashes, and migration notes belong in git log — not in `///` blocks. Longer prose belongs in the standards docs.

@@ -158,9 +158,8 @@ impl ComponentMeta {
     /// parseable. The recorded `source` is the canonical `file://`
     /// URI of the component the mirror was seeded from — the value
     /// init persists on the source binding for a component selector,
-    /// so a guest that cannot see the operator's host path (the
-    /// launcher mirrored it before the runtime started) still records
-    /// the host-canonical binding.
+    /// so a guest that cannot see the operator's host path still
+    /// records the host-canonical binding.
     #[must_use]
     pub fn load(paths: &ExecutionPaths, name: &str) -> Option<Self> {
         let raw = fs::read_to_string(Self::path(paths, name)).ok()?;

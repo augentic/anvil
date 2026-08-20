@@ -7,9 +7,9 @@
 # (integration tests are uncapped). Every workspace crate must carry
 # an entry; a deleted crate's entry is removed in the same change.
 [rust]
-# Root deployment unit (guest + runtime + launcher; ADR-0011,
-# ADR-0012, ADR-0013).
-"src" = 379
+# Root deployment unit (guest + static CWD-rooted runtime; ADR-0012,
+# ADR-0013).
+"src" = 278
 "crates/adapter" = 912
 # Post-T10 (ADR-0009 §4): the fail-closed spec AST, evidence, and the
 # atomic writer; the lenient v1 parsers fell at the spine cut.
