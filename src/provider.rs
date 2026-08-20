@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 
 use emery_adapter::seam;
 use emery_adapter::source::import;
+use emery_engine::extract::Extract;
 use emery_engine::handler::{Anchor, ExecutionPaths};
 use emery_engine::resolve::metadata::{Metadata, Request};
 use emery_engine::resolve::{AdapterSelector, Axis, ResolvedSource, Resolver};
@@ -42,7 +43,7 @@ impl Resolver for Provider {
     }
 }
 
-impl emery_engine::extract::Extract for Provider {
+impl Extract for Provider {
     async fn extract(&self, id: &str, input: &seam::SourceInput) -> Result<seam::Evidence, Error> {
         import::extract(id, input).await.map_err(|err| match err {
             import::Error::Seam(seam) => Error::Diag {
