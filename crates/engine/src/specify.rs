@@ -4,7 +4,7 @@
 
 use std::io::Write;
 
-use emery_adapter::SourceDispatch;
+use emery_adapter::Source;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
@@ -65,7 +65,7 @@ impl Render for SpecifyBody {
 #[derive(Clone, Copy, Debug)]
 pub struct Specify;
 
-impl<P: Provider + Model + SourceDispatch> Operation<P> for Specify {
+impl<P: Provider + Model + Source> Operation<P> for Specify {
     type Error = crate::handler::Error;
     type Input = SpecifyInput;
     type Output = SpecifyBody;

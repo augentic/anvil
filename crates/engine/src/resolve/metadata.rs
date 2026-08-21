@@ -37,13 +37,13 @@ pub trait Runner: Fn(&Request<'_>) -> Result<Metadata, Error> {}
 impl<F: Fn(&Request<'_>) -> Result<Metadata, Error>> Runner for F {}
 
 /// The metadata runner over the provider's source-seam capability
-/// ([`emery_adapter::SourceDispatch`]).
+/// ([`emery_adapter::Source`]).
 ///
 /// The returned closure answers the source axis through the provider;
 /// the target axis is deleted from the deployment (ADR-0008), so a
 /// target-axis request fails typed (`adapter-axis-removed`) instead of
 /// dispatching.
-pub fn runner<P: emery_adapter::SourceDispatch>(provider: &P) -> impl Runner + '_ {
+pub fn runner<P: emery_adapter::Source>(provider: &P) -> impl Runner + '_ {
     move |request: &Request<'_>| match request.axis {
         Axis::Source => {
             let record = provider.metadata(request.adapter_id);

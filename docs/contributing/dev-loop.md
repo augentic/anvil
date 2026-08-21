@@ -12,9 +12,7 @@ Runs `cargo nextest --workspace` over the workspace crates. The suites prove the
 
 Nothing on this rung compiles Wasmtime. An ordinary change should never need to leave it.
 
-`cargo make check` is the pre-commit gate: formatting, the three lint legs (stock clippy under `-D warnings`, the house Dylint lints from [augentic/lints](https://github.com/augentic/lints), the wasm32 guest deny-list), this rung, doctests, and docs. `cargo make ci` adds the links gate plus vet/deny. The wasm lint leg checks the guest crates on every run, so a WIT revision and its seam break in the same push.
-
-Optional IDE integration: rust-analyzer can run the house lints on save via `"rust-analyzer.check.overrideCommand": ["cargo", "dylint", "--all", "--workspace", "--", "--all-targets", "--message-format=json"]`. It is slower than stock clippy-on-save and entirely opt-in — `cargo make lint` in CI remains the gate.
+`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings` (guest deny-list in `crates/clippy.toml`), this rung, doctests, and docs. `cargo make ci` adds the links gate plus vet/deny.
 
 ## What CI runs
 

@@ -27,17 +27,6 @@ fn main() {
         return;
     }
 
-    // Dylint checks the workspace on its own pinned toolchain, which
-    // carries no wasm32 stdlib; the lint pass only needs the embedded
-    // file to exist, so skip the child build and embed a placeholder.
-    if std::env::var_os("DYLINT_LIBS").is_some() {
-        let out =
-            PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.cwasm");
-        std::fs::write(&out, b"dylint placeholder, never executed")
-            .unwrap_or_else(|err| panic!("writing {}: {err}", out.display()));
-        return;
-    }
-
     let engine = build_engine();
 
     let len = std::fs::metadata(&engine).map(|meta| meta.len()).unwrap_or_default();

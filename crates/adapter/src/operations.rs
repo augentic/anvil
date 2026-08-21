@@ -1,7 +1,7 @@
-//! The source operations trait — what an adapter implements.
+//! The source-adapter operations trait — what an adapter implements.
 //!
-//! Distinct from the engine's `project::seam` capability traits, which
-//! mirror the same WIT interface. Deliberately not object-safe.
+//! Distinct from [`crate::Source`], the engine provider's import-side
+//! capability over the same WIT interface. Deliberately not object-safe.
 
 use std::future::Future;
 
@@ -14,7 +14,7 @@ use crate::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
 ///
 /// Generic over [`Model`] so native tests bind scripted doubles and the
 /// wasm shim binds `WasiModel`.
-pub trait Source {
+pub trait SourceAdapter {
     /// Compile-time `name@version` identity.
     const IDENTITY: &str;
 

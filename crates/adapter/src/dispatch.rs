@@ -26,7 +26,11 @@ pub enum DispatchError {
 }
 
 /// Guest-to-guest dispatch over the `emery:adapter/source` seam.
-pub trait SourceDispatch: Send + Sync {
+///
+/// The engine provider's import-side capability, shaped like
+/// [`omnia_guest::Model`]. Distinct from [`crate::SourceAdapter`],
+/// which adapters implement on the export side of the same WIT world.
+pub trait Source: Send + Sync {
     /// Dispatch `extract` on the source component routed by `id`.
     #[cfg(not(target_arch = "wasm32"))]
     fn extract(

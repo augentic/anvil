@@ -3,7 +3,7 @@
 //! receipt per source.
 
 use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
-use emery_adapter::{DispatchError, SourceDispatch};
+use emery_adapter::{DispatchError, Source};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
 use serde::Serialize;
@@ -15,7 +15,7 @@ use crate::resolve::{AdapterSelector, Axis, RoutedId, metadata, resolver};
 // Dispatch one `extract` over the provider's source-seam capability
 // (on wasm32, Omnia's host-mediated link routes to the exporting
 // guest by the routed `id`), mapping seam failures onto operator codes.
-async fn dispatch<P: SourceDispatch>(
+async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
 ) -> Result<seam::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
@@ -92,7 +92,7 @@ impl Receipt {
 ///
 /// Resolution failures, seam failures, and the typed validation
 /// refusals from [`validate_set`].
-pub async fn extract_all<P: SourceDispatch>(
+pub async fn extract_all<P: Source>(
     provider: &P, project: &Project, paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
     let component = resolver::Component::new(metadata::runner(provider));

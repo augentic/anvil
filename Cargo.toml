@@ -38,7 +38,6 @@ emery-transport.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 omnia-wasi-http.workspace = true
-omnia-wasi-otel.workspace = true
 wasip3.workspace = true
 
 [build-dependencies]
@@ -76,25 +75,18 @@ pkg-fmt = "tgz"
 [workspace]
 members = ["crates/*"]
 
-# House lints (style prose budgets + omnia provider analysis), run by
-# `cargo dylint` inside `cargo make lint`. Tracks `main` until the lints
-# work is declared ready; local co-dev uses
-# `cargo dylint --path ../lints --pattern 'crates/*'`.
-[workspace.metadata.dylint]
-libraries = [{ git = "https://github.com/augentic/lints", pattern = "crates/*" }]
-
 [workspace.package]
 authors = ["Augentic"]
 edition = "2024"
 homepage = "https://augentic.io"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/augentic/emery"
-rust-version = "1.97"
+rust-version = "1.98"
 version = "0.38.0"
 
 [workspace.lints.rust]
 elided_lifetimes_in_paths = "warn"
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(dylint_lib, values(any()))"] }
+unexpected_cfgs = "warn"
 explicit_outlives_requirements = "warn"
 let_underscore_drop = "warn"
 macro_use_extern_crate = "warn"
@@ -179,6 +171,7 @@ base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 clap_complete = "4.6.9"
+futures = "0.3.33"
 jiff = { version = "0.2.35", default-features = false, features = ["serde", "std"] }
 proptest = "1.11.0"
 schemars = "1.2.2"
@@ -198,7 +191,6 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 wasip2 = "1.0.4"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow", "component-model-bytes"] }
-futures = "0.3.33"
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
 emery-adapter = { path = "crates/adapter" }

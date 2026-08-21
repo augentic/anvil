@@ -6,7 +6,7 @@ use std::future::Future;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use emery_adapter::SourceDispatch;
+use emery_adapter::Source;
 use emery_error::Error;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
@@ -43,7 +43,7 @@ pub struct InitInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
 
-impl<P: Provider + SourceDispatch> Operation<P> for Init {
+impl<P: Provider + Source> Operation<P> for Init {
     type Error = crate::handler::Error;
     type Input = InitInput;
     type Output = InitBody;
@@ -55,7 +55,7 @@ impl<P: Provider + SourceDispatch> Operation<P> for Init {
     }
 }
 
-fn apply<P: SourceDispatch>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
+fn apply<P: Source>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
     let InitInput {
         adapters,
         values,
@@ -110,7 +110,7 @@ fn apply<P: SourceDispatch>(input: InitInput, provider: &P) -> Result<InitBody, 
 
 // The `--upgrade` re-entry: re-ensure every recorded binding and bump
 // the `emery` pin, preserving everything else.
-fn run_upgrade<P: SourceDispatch>(
+fn run_upgrade<P: Source>(
     project_dir: &Path, paths: &ExecutionPaths, provider: &P,
 ) -> Result<InitBody, Error> {
     let mut project = Project::load(project_dir)?;
@@ -126,7 +126,7 @@ fn run_upgrade<P: SourceDispatch>(
 // Ensure one adapter on the source axis and shape its binding: the
 // key is the resolved adapter name; a local component persists its
 // canonical `file://` form so the selector value outlives the CWD.
-fn bind<P: SourceDispatch>(
+fn bind<P: Source>(
     value: &str, paths: &ExecutionPaths, content: BindingContent, provider: &P,
 ) -> Result<SourceBinding, Error> {
     let selector = AdapterSelector::parse(value)?;

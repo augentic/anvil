@@ -3,7 +3,7 @@
 //! gone from the grammar — no hidden routes, no aliases.
 
 use clap::Args;
-use emery_adapter::SourceDispatch;
+use emery_adapter::Source;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
@@ -54,7 +54,7 @@ impl TryFrom<SpecifyArgs> for emery_engine::specify::SpecifyInput {
 /// Returns a deterministic route or argument conflict.
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Model + SourceDispatch,
+    P: Provider + Model + Source,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)

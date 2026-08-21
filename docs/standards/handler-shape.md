@@ -78,9 +78,9 @@ The four-slot CLI exit-code table is fixed:
 
 ## Dispatch contract (`command.rs`)
 
-The reusable command route table lives in `crates/transport/src/command.rs`. The WASI shim (and any test harness) passes a provider to `command::execute`, which assembles the router, runs it under the `emery.command` span, and returns the buffered response. Wire-contract suites still call `command::router` directly to inspect inventory without the span wrapper.
+The reusable command route table lives in `crates/transport/src/command.rs`. `command::router` binds a provider-carrying `Invoker` into the static grammar and returns the executable `Router`; `Router::execute` runs one argv under the framework's `command` span (selected route path plus exit code) and returns the buffered response. Wire-contract suites and the native journey rung call the same `command::router` and assert on the buffered channels.
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run through `emery_transport::command::execute` — the shared wrapper that binds the provider into the static grammar, emits the `emery.command` span (bounded verb label plus exit code), and uses the same command `EmeryProjector`.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, assembles that router over its provider, and hands it to `omnia_guest::api::command::execute_wasi` — the WASI last mile that reads argv, initializes and flushes guest telemetry, writes both channels, and exits with the exact status. Every path runs the same grammar and command `EmeryProjector`.
 
 Target discipline per leaf arm:
 
