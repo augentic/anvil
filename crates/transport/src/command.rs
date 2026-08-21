@@ -98,6 +98,10 @@ fn operation_response(
 ///
 /// Binds `provider` into the static grammar. The span carries only the
 /// bounded verb label and the response exit code — never the full argv.
+///
+/// # Panics
+///
+/// If the static command grammar fails to assemble.
 pub async fn execute<P>(provider: P, argv: Vec<String>) -> CommandResponse
 where
     P: Provider + Model + SourceDispatch,
