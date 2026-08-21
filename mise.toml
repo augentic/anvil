@@ -1,6 +1,20 @@
 # Install: https://mise.jdx.dev
 # Run: `mise run <task>` (the root Makefile forwards `make <task>` here)
 
+# # `mise install` and `mise run` install anything missing
+# [tools]
+# cargo-binstall = "latest"
+# mdbook = "latest"
+# "cargo:cargo-nextest" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-deny" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-vet" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-audit" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-outdated" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-dylint" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:dylint-link" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-llvm-cov" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:mdbook-linkcheck2" = { version = "latest", depends = ["cargo-binstall"] }
+
 [task_config]
 includes = ["mise-rust.toml"]
 # includes = ["git::https://github.com/augentic/.github.git//mise/rust.toml?ref=v0.1.0"]
@@ -10,7 +24,7 @@ includes = ["mise-rust.toml"]
 # -------------------------------------
 
 [tasks.lint]
-depends = [ "lint-custom"]
+depends = ["lint-custom"]
 run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 
 [tasks.lint-custom]

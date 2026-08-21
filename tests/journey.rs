@@ -226,6 +226,10 @@ fn harness() -> PathBuf {
     built
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "host journey driver; CARGO_TARGET_DIR is the cargo layout the test must follow"
+)]
 fn target_dir() -> PathBuf {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     std::env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), PathBuf::from)
