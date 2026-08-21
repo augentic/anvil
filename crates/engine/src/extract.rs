@@ -3,6 +3,7 @@
 //! receipt per source.
 
 use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
+use emery_adapter::{DispatchError, SourceDispatch};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
 use serde::Serialize;
@@ -11,36 +12,21 @@ use crate::handler::ExecutionPaths;
 use crate::project::{BindingContent, Project, SourceBinding};
 use crate::resolve::{AdapterSelector, Axis, RoutedId, metadata, resolver};
 
-// Dispatch one `extract` over the `emery:adapter/source` WIT import —
-// Omnia's host-mediated link routes the call to the exporting guest by
-// the routed `id`, mapping the seam failures onto operator codes.
-#[cfg(target_arch = "wasm32")]
-async fn dispatch(id: &str, input: &SourceInput) -> Result<seam::Evidence, Error> {
-    use emery_adapter::source::import;
-    import::extract(id, input).await.map_err(|err| match err {
-        import::Error::Seam(seam) => Error::Diag {
+// Dispatch one `extract` over the provider's source-seam capability
+// (on wasm32, Omnia's host-mediated link routes to the exporting
+// guest by the routed `id`), mapping seam failures onto operator codes.
+async fn dispatch<P: SourceDispatch>(
+    provider: &P, id: &str, input: &SourceInput,
+) -> Result<seam::Evidence, Error> {
+    provider.extract(id, input).await.map_err(|err| match err {
+        DispatchError::Seam(seam) => Error::Diag {
             code: "source-extract-failed",
             detail: format!("source `{id}`: {seam}"),
         },
-        extras @ import::Error::Extras { .. } => Error::Diag {
+        extras @ DispatchError::Extras { .. } => Error::Diag {
             code: "claim-extras-malformed",
             detail: format!("source `{id}` {extras}"),
         },
-    })
-}
-
-// Native builds have no source seam; dispatch refuses typed.
-#[cfg(not(target_arch = "wasm32"))]
-#[expect(
-    clippy::unused_async,
-    reason = "signature parity with the wasm32 dispatch the call site awaits"
-)]
-async fn dispatch(id: &str, _input: &SourceInput) -> Result<seam::Evidence, Error> {
-    Err(Error::Diag {
-        code: "source-extract-unsupported",
-        detail: format!(
-            "source `{id}`: extract dispatches over the component seam; the native path is deleted (ADR-0002)"
-        ),
     })
 }
 
@@ -99,16 +85,17 @@ impl Receipt {
 }
 
 /// Extract every authored binding: resolve on the source axis,
-/// dispatch over the seam, and validate fail-closed.
+/// dispatch over the provider's seam capability, and validate
+/// fail-closed.
 ///
 /// # Errors
 ///
 /// Resolution failures, seam failures, and the typed validation
 /// refusals from [`validate_set`].
-pub async fn extract_all(
-    project: &Project, paths: &ExecutionPaths,
+pub async fn extract_all<P: SourceDispatch>(
+    provider: &P, project: &Project, paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
-    let component = resolver::Component::new(metadata::deployed);
+    let component = resolver::Component::new(metadata::runner(provider));
     let mut sets = Vec::with_capacity(project.sources.len());
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
@@ -120,7 +107,7 @@ pub async fn extract_all(
         )
         .to_string();
         let input = input_for(binding, paths);
-        let evidence = dispatch(&id, &input).await?;
+        let evidence = dispatch(provider, &id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
             adapter: id,

@@ -52,7 +52,11 @@ async fn adr_0008_route_budget() {
         router.inventory().iter().map(|route| route.selector().path().to_vec()).collect();
     assert_eq!(
         inventory,
-        [vec!["completions".to_string()], vec!["init".to_string()], vec!["specify".to_string()]]
+        [
+            Vec::from(["completions"].map(str::to_string)),
+            Vec::from(["init"].map(str::to_string)),
+            Vec::from(["specify"].map(str::to_string)),
+        ]
     );
 
     for removed in [

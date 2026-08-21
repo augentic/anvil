@@ -985,6 +985,7 @@ dependencies = [
  "omnia-wasi-otel",
  "serde_json",
  "tempfile",
+ "tokio",
  "wasip3",
 ]
 

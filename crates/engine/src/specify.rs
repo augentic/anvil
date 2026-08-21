@@ -4,6 +4,7 @@
 
 use std::io::Write;
 
+use emery_adapter::SourceDispatch;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
@@ -64,7 +65,7 @@ impl Render for SpecifyBody {
 #[derive(Clone, Copy, Debug)]
 pub struct Specify;
 
-impl<P: Provider + Model> Operation<P> for Specify {
+impl<P: Provider + Model + SourceDispatch> Operation<P> for Specify {
     type Error = crate::handler::Error;
     type Input = SpecifyInput;
     type Output = SpecifyBody;
@@ -78,7 +79,7 @@ impl<P: Provider + Model> Operation<P> for Specify {
         let project_dir = paths.project_root();
         let project = request.project();
 
-        let sets = extract_all(project, paths).await?;
+        let sets = extract_all(context.provider, project, paths).await?;
         let rows = reconcile(&sets);
         let documents = synthesise(context.provider, &sets, &rows).await?;
 

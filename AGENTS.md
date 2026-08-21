@@ -30,8 +30,8 @@ Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `us
 error        # leaf — thiserror + serde-saphyr only
 diagnostics  # neutral Diagnostic substrate + emery_diagnostics::digest (SHA-256)
 artifacts    # artifact types + parsers (evidence, atomic writer, validate registry); no engine deps
-adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, the engine guest's source::import seam wrappers, seam DTOs, embedded prose registry
-engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate) over the WIT source imports, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::deployed) and emery_engine::handler (RequestContext, preopen-relative ExecutionPaths/Locations, Render, Error)
+adapter      # the adapter SDK — the Source operations trait (extract + metadata), the WIT package + source! export macro, the SourceDispatch capability (wasm32 defaults over the engine guest's source::import seam wrappers; bare natively so tests script the seam), seam DTOs, embedded prose registry
+engine       # the spec generator — project model + source bindings, init + specify operations, extract leg (required-extras gate) over the provider's SourceDispatch capability, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (RequestContext, preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: init + specify + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts as `.`, the CWD-relative .emery-cache backs the cache preopen; adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
@@ -65,8 +65,7 @@ Emery strictly enforces an **aggressive integration-first posture**:
 
 - Design against the public surface: if a behavior is reachable through a CLI input or `pub` fn and observable at a public boundary (stdout JSON, exit code, filesystem), write the integration test in `crates/<name>/tests/`; the unit test is redundant. Wire-contract coverage lives in `crates/transport/tests/`.
 - Default to deletion; do not widen public APIs to test private kernels. `CRATE=<crate> cargo make cov` is the brake.
-- One fast rung: native kernel and wire-contract suites (`cargo make test`, per push) — pure engine kernels over scripted models, transport grammar/parity over an inert provider. The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg, which subsumes the old compile check); the v1 eval and wasm-example rungs are archived at `v1`.
-- One seam rung: the walking-skeleton journey (`cargo make journey`, [`tests/journey.rs`](tests/journey.rs)) drives the journey host (the shipped runtime shape with a scripted model, ADR-0009 §5) over the built mock components — the one integration rung since the T10 spine cut (ADR-0002 §2) and the Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Do not weaken its assertions.
+- One fast rung: native kernel and wire-contract suites (`cargo make test`, per push) — pure engine kernels over scripted models, transport grammar/parity over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over scripted `Model` + `SourceDispatch`. The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg, which subsumes the old compile check); the v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 
@@ -81,8 +80,8 @@ cargo make links  # Developer Guide link integrity (mdbook build docs, mdbook-li
 cargo make test   # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 cargo make lint   # three legs: stock clippy, house Dylint lints (augentic/lints), wasm32 guest deny-list
 cargo make fmt    # nightly cargo fmt --all
-cargo make journey        # walking-skeleton rung over the component seam (required CI job)
-cargo make source         # build the journey's mock source component (wasm32-wasip2, release)
+cargo make source         # build the mock source example (wasm32-wasip2, release)
+cargo make runtime        # build the scripted-model runtime example
 ```
 
 Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/emery` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
@@ -93,7 +92,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.
-- Brevity caps are mechanically enforced by the `style` Dylint lints (part of `cargo make lint`; caps in the root `dylint.toml`), alongside the crate-DAG gate (`tests/layering.rs`). WIT doc/comment caps are review-only.
+- Brevity caps are mechanically enforced by the `style` Dylint lints (part of `cargo make lint`; caps in the root `dylint.toml`). WIT doc/comment caps are review-only.
 
 ## Related coding standards
 

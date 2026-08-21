@@ -6,6 +6,7 @@ use std::future::Future;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use emery_adapter::SourceDispatch;
 use emery_error::Error;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
@@ -42,19 +43,19 @@ pub struct InitInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
 
-impl<P: Provider> Operation<P> for Init {
+impl<P: Provider + SourceDispatch> Operation<P> for Init {
     type Error = crate::handler::Error;
     type Input = InitInput;
     type Output = InitBody;
 
     fn call(
-        input: Self::Input, _context: CallContext<'_, P>,
+        input: Self::Input, context: CallContext<'_, P>,
     ) -> impl Future<Output = Result<Self::Output, Self::Error>> {
-        std::future::ready(apply(input).map_err(Into::into))
+        std::future::ready(apply(input, context.provider).map_err(Into::into))
     }
 }
 
-fn apply(input: InitInput) -> Result<InitBody, Error> {
+fn apply<P: SourceDispatch>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
     let InitInput {
         adapters,
         values,
@@ -66,7 +67,7 @@ fn apply(input: InitInput) -> Result<InitBody, Error> {
     let project_dir = paths.project_root();
 
     if upgrade {
-        return run_upgrade(project_dir, &paths);
+        return run_upgrade(project_dir, &paths, provider);
     }
 
     // Re-entry: an already-initialized project is a no-op that
@@ -87,12 +88,12 @@ fn apply(input: InitInput) -> Result<InitBody, Error> {
 
     let mut sources = Vec::new();
     for value in &adapters {
-        let bound = bind(value, &paths, BindingContent::Workspace(".".to_string()))?;
+        let bound = bind(value, &paths, BindingContent::Workspace(".".to_string()), provider)?;
         push_unique(&mut sources, bound)?;
     }
     for entry in &values {
         let (adapter, text) = split_value(entry)?;
-        let bound = bind(adapter, &paths, BindingContent::Value(text.to_string()))?;
+        let bound = bind(adapter, &paths, BindingContent::Value(text.to_string()), provider)?;
         push_unique(&mut sources, bound)?;
     }
 
@@ -109,11 +110,13 @@ fn apply(input: InitInput) -> Result<InitBody, Error> {
 
 // The `--upgrade` re-entry: re-ensure every recorded binding and bump
 // the `emery` pin, preserving everything else.
-fn run_upgrade(project_dir: &Path, paths: &ExecutionPaths) -> Result<InitBody, Error> {
+fn run_upgrade<P: SourceDispatch>(
+    project_dir: &Path, paths: &ExecutionPaths, provider: &P,
+) -> Result<InitBody, Error> {
     let mut project = Project::load(project_dir)?;
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        ensure::source(metadata::deployed, &selector, paths, jiff::Timestamp::now())?;
+        ensure::source(metadata::runner(provider), &selector, paths, jiff::Timestamp::now())?;
     }
     project.emery_version = Some(env!("CARGO_PKG_VERSION").to_string());
     project.store(project_dir)?;
@@ -123,11 +126,12 @@ fn run_upgrade(project_dir: &Path, paths: &ExecutionPaths) -> Result<InitBody, E
 // Ensure one adapter on the source axis and shape its binding: the
 // key is the resolved adapter name; a local component persists its
 // canonical `file://` form so the selector value outlives the CWD.
-fn bind(
-    value: &str, paths: &ExecutionPaths, content: BindingContent,
+fn bind<P: SourceDispatch>(
+    value: &str, paths: &ExecutionPaths, content: BindingContent, provider: &P,
 ) -> Result<SourceBinding, Error> {
     let selector = AdapterSelector::parse(value)?;
-    let resolved = ensure::source(metadata::deployed, &selector, paths, jiff::Timestamp::now())?;
+    let resolved =
+        ensure::source(metadata::runner(provider), &selector, paths, jiff::Timestamp::now())?;
     let key = resolved.manifest.name;
     let adapter = match &selector {
         AdapterSelector::Component { .. } => ComponentMeta::load(paths, &key)

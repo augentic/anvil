@@ -14,19 +14,15 @@ use support::Inert;
 const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
 
 // Builtin routes outside the operation inventory.
-const BUILTIN_PATHS: &[&[&str]] = &[&["completions"]];
+const BUILTIN_PATHS: &[[&str; 1]] = &[["completions"]];
 
 // The ultrathin wrapper contract: each skill invokes exactly one CLI
 // verb, so a flag mentioned on a slash command validates against that
 // verb's grammar.
-const SKILL_VERBS: &[(&str, &[&str])] = &[("init", &["init"])];
+const SKILL_VERBS: &[(&str, [&str; 1])] = &[("init", ["init"])];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")
-}
-
-fn router() -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
-    support::router()
 }
 
 // Every full route path plus every namespace prefix, kebab-joined.
@@ -43,7 +39,7 @@ fn known_paths(
         full.insert(path);
     }
     for builtin in BUILTIN_PATHS {
-        full.insert(builtin.iter().map(ToString::to_string).collect());
+        full.insert(builtin.map(str::to_string).into());
     }
     (full, prefixes)
 }
@@ -177,10 +173,10 @@ async fn assert_flags(
             "flag `{flag}` mentioned with no verb to validate against (in `{text}`)"
         );
         if help.is_none() {
-            let mut argv = vec!["emery".to_string()];
-            argv.extend(path.iter().cloned());
-            argv.push("--help".to_string());
-            let response = router.execute(argv.iter().map(String::as_str)).await;
+            let mut argv = vec!["emery"];
+            argv.extend(path.iter().map(String::as_str));
+            argv.push("--help");
+            let response = router.execute(argv).await;
             assert_eq!(response.exit, 0, "`emery {} --help` must succeed", path.join(" "));
             help = Some(String::from_utf8_lossy(&response.stdout).into_owned());
         }
@@ -200,7 +196,7 @@ async fn rule_matches_router() {
     let rule = plugin_dir().join("rules/emery.mdc");
     let doc = std::fs::read_to_string(&rule)
         .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
-    let router = router();
+    let router = support::router();
     let (full, prefixes) = known_paths(&router);
 
     let mentions = mentions(&doc);
@@ -252,7 +248,7 @@ async fn rule_matches_router() {
                     .unwrap_or_else(|| {
                         panic!("skill `{name}` has no CLI verb mapping in this test — add it")
                     });
-                let path: Vec<String> = verb.iter().map(ToString::to_string).collect();
+                let path: Vec<String> = verb.map(str::to_string).into();
                 assert_flags(&router, &path, &rest).await;
             }
         }

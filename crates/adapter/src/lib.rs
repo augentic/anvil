@@ -5,6 +5,7 @@
 
 pub mod answers;
 mod call;
+pub mod dispatch;
 mod identity;
 mod operations;
 pub mod references;
@@ -15,6 +16,7 @@ pub mod seam;
 pub mod source;
 
 pub use call::{MAX_REPAIRS, judgment, repaired};
+pub use dispatch::{DispatchError, SourceDispatch};
 pub use identity::{AdapterIdentity, IdentityError};
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]

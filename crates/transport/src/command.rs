@@ -1,9 +1,12 @@
 //! Typed command grammar, conversions, and Emery projection policy.
 
 use clap::Args;
+use emery_adapter::SourceDispatch;
 use emery_engine::handler::Render;
+use omnia_guest::Model;
 use omnia_guest::api::Provider;
-use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
+use omnia_guest::api::command::{CommandResponse, Outcome, Projector};
+use omnia_guest::api::invoke::Invoker;
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -93,14 +96,17 @@ fn operation_response(
 /// Run one routed invocation (`argv[0]` is the binary name) under the
 /// `emery.command` span.
 ///
-/// The span carries only the bounded verb label and the response exit
-/// code — never the full argv, which may embed operator prose. Both
-/// deployments route through here: the native host's command entry and
-/// the engine guest's `wasi:cli/run` exporter.
-pub async fn execute<P>(router: &Router<P, Globals>, argv: Vec<String>) -> CommandResponse
+/// Binds `provider` into the static grammar. The span carries only the
+/// bounded verb label and the response exit code — never the full argv.
+///
+/// # Panics
+///
+/// If the static command grammar fails to assemble.
+pub async fn execute<P>(provider: P, argv: Vec<String>) -> CommandResponse
 where
-    P: Provider,
+    P: Provider + Model + SourceDispatch,
 {
+    let router = router(Invoker::new("emery", provider)).expect("command grammar");
     let span = tracing::info_span!(
         "emery.command",
         command = %label(&argv),

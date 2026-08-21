@@ -1,6 +1,6 @@
 //! The synthesis leg at the crate's public surface: deterministic
 //! reconciliation, scripted model dispatch, and the fail-closed
-//! AST + row gate. Seam dispatch is covered by `tests/journey.rs`.
+//! AST + row gate.
 
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
 use emery_artifacts::spec::ast::{Status, Tag};
@@ -149,8 +149,7 @@ async fn gated_answers_persist() {
     let sets = journey_sets();
     let rows = reconcile(&sets);
 
-    let model =
-        Harness::answering(vec![spec_answer(&rows), "# Design\n\nThe shape.\n".to_string()]);
+    let model = Harness::answering([spec_answer(&rows), "# Design\n\nThe shape.\n".to_string()]);
     let documents = synthesise(&model, &sets, &rows).await.expect("gated answers pass");
     assert!(documents.spec.contains("[unknown]"), "the gap row surfaces inline");
     assert!(documents.spec.contains("[divergence]"));
@@ -162,7 +161,7 @@ async fn unparseable_answer_fails() {
     let sets = journey_sets();
     let rows = reconcile(&sets);
 
-    let model = Harness::answering(vec!["Not a spec at all.".to_string()]);
+    let model = Harness::answering(["Not a spec at all."]);
     let err = synthesise(&model, &sets, &rows)
         .await
         .expect_err("an answer outside the AST is refused (A17)");
@@ -181,10 +180,10 @@ async fn hidden_row_fails() {
         row.status = Status::Agreed;
         row.tag = None;
         if row.sources.is_empty() {
-            row.sources = vec!["mock-docs".to_string()];
+            row.sources = ["mock-docs"].map(str::to_string).into();
         }
     }
-    let model = Harness::answering(vec![spec_answer(&dishonest)]);
+    let model = Harness::answering([spec_answer(&dishonest)]);
     let err = synthesise(&model, &sets, &rows)
         .await
         .expect_err("an answer hiding a conflict or gap is refused");
@@ -200,7 +199,7 @@ async fn renamed_heading_fails() {
     // that retitles a subject is refused, not diffed around.
     let mut retitled = rows.clone();
     retitled[0].subject = "login.journey".to_string();
-    let model = Harness::answering(vec![spec_answer(&retitled)]);
+    let model = Harness::answering([spec_answer(&retitled)]);
     let err = synthesise(&model, &sets, &rows)
         .await
         .expect_err("an answer rewriting a subject heading is refused");
