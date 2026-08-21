@@ -1,6 +1,7 @@
-//! `source-adapter` WIT bindings: the `source!` export macro plus the
-//! engine guest's [`import`] seam wrappers. One `wit_bindgen::generate!`
-//! here; leaf crates wire a [`crate::Source`] with `emery_adapter::source!(…)`.
+//! `source-adapter` WIT bindings: one `wit_bindgen::generate!`.
+//!
+//! The `source!` export macro plus the engine guest's [`import`] seam
+//! wrappers; leaf crates wire a [`crate::Source`] with `emery_adapter::source!(…)`.
 
 mod generated {
     #![allow(

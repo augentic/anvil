@@ -7,3 +7,16 @@ doc-valid-idents = [
   "WebAssembly",
   "YAML",
 ]
+
+disallowed-methods = [
+  { path = "std::env::var", reason = "guests receive configuration through the provider seam" },
+  { path = "std::env::vars", reason = "guests receive configuration through the provider seam" },
+  { path = "std::env::var_os", reason = "guests receive configuration through the provider seam" },
+  { path = "std::time::SystemTime::now", reason = "wall-clock time is a host capability" },
+  { path = "std::time::Instant::now", reason = "monotonic time is a host capability" },
+]
+
+disallowed-types = [
+  { path = "std::sync::OnceLock", reason = "global state does not survive the instance-per-request model" },
+  { path = "std::sync::LazyLock", reason = "global state does not survive the instance-per-request model" },
+]

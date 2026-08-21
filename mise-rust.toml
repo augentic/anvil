@@ -1,11 +1,18 @@
-# Shared Rust workspace tasks. Include format: task names are top-level
-# keys (no `[tasks.]` prefix). Local stand-in for the forthcoming
-# `augentic/.github` remote include — swap the path in `mise.toml` to
-# `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
-#
-# Intersection of emery `mise.toml` and omnia `Makefile.toml`. Repo-
-# specific composition (`check`, `ci`) and policy (emery's read-only
-# `vet`, omnia's ignored `outdated`) stay in the consuming `mise.toml`.
+# Shared Rust workspace tasks. 
+
+# `mise install` and `mise run` install anything missing
+[tools]
+cargo-binstall = "latest"
+mdbook = "latest"
+"cargo:cargo-nextest" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:cargo-deny" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:cargo-vet" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:cargo-audit" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:cargo-outdated" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:cargo-dylint" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:dylint-link" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:cargo-llvm-cov" = { version = "latest", depends = ["cargo-binstall"] }
+"cargo:mdbook-linkcheck2" = { version = "latest", depends = ["cargo-binstall"] }
 
 # -------------------------------------
 # CI Checks (emery composition)

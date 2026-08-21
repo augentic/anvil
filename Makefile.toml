@@ -46,9 +46,36 @@ install_crate = "cargo-udeps"
 script = "cargo +nightly fmt --all"
 
 [tasks.lint]
+dependencies = [ "lint-wasm"]
 command = "cargo"
 args = ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"]
 install_crate = { rustup_component_name = "clippy" }
+
+[tasks.lint-wasm]
+command = "cargo"
+args = ["dylint", "--all", "--workspace", "--", "--all-targets"]
+install_crate = { crate_name = "cargo-dylint", binary = "cargo-dylint", test_arg = "--version" }
+
+# # `--no-deps` keeps the deny-list off host-side units; `emery-prose` is
+# # a build-dependency crate that never reaches the guest.
+# [tasks.lint-wasm]
+# command = "cargo"
+# args = [
+#   "clippy",
+#   "--locked",
+#   "--no-deps",
+#   "--workspace",
+#   "--exclude",
+#   "emery-prose",
+#   "--lib",
+#   "--target",
+#   "wasm32-wasip2",
+#   "--",
+#   "-D",
+#   "warnings",
+# ]
+# env = { CLIPPY_CONF_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/clippy-wasm" }
+# install_crate = { rustup_component_name = "clippy" }
 
 [tasks.outdated]
 command = "cargo"

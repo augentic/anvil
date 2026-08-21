@@ -39,7 +39,7 @@ fn step(...) { ... }
 
 Comments answer "why does this look like this *today?*" — non-obvious intent, trade-offs, or constraints the code itself can't convey. Migration trails, old labels, and "this used to be X" rationale belong in commit messages — not in code or doc comments. Doc comments on items that surface in `--help` (clap `#[derive]` fields) must be operator-facing one-liners; rationale moves below the derive block where it doesn't leak into help output.
 
-Density caps, mechanically enforced by the `doc_brevity` root-crate test (`tests/doc_brevity.rs`, part of `cargo make test`, so `check` and `ci` inherit it). WIT contracts (`wit/`, `crates/*/wit/`) are covered too: WIT `///` docs carry the item cap, `//` the line cap:
+Density caps, mechanically enforced by the `augentic_style` Dylint lints (`module_doc`, `item_doc_overview`, `line_comment_run`, `historical_comment` from [augentic/lints](https://github.com/augentic/lints), part of `cargo make lint`, so `check` and `ci` inherit it; caps in the root `dylint.toml`). WIT contracts (`wit/`, `crates/*/wit/`) carry the same caps **by review only** — no rustc-based lint sees `.wit` files:
 
 - **Module `//!` docs** answer "what is this module today?" in **1–3 prose lines**. No deployment tours, no AGENTS.md restatements, no RFC archaeology — the crate graph and the workflow contract already own that prose; a module doc that repeats it goes stale and buries the one line the reader needed.
 - **Item `///` docs** keep the overview under **~8 lines** before any `#` section. `# Errors` / `# Panics` sections may list discriminants; keep each bullet one line.
@@ -79,7 +79,7 @@ Doc comments describe what this is today. Version-history tables, dated bumps, c
 
 Prefer short, idiomatic Rust names. Don't restate context the surrounding module, type, or function already supplies. Avoid `_local` / `_value` / `_helper` suffixes. New functions: 1–3 words. Predicates start with `is_` / `has_`. DTOs returned by handlers are `<Action>Body` / `<Action>Row`, never `<Action>Response` / `<Action>Json` (the type's role is `Body`; the format dispatch lives in `emit` — see [handler-shape.md](./handler-shape.md)).
 
-**Identifier length.** Declared item names (`fn` / `struct` / `enum` / `trait` / `type` / `const` / `static` / `mod`), named fields, and enum variants are **≤ 25 characters** (Unicode scalars on the bare identifier, not the module path). Mechanically enforced by the `ident_brevity` root-crate test (`tests/ident_brevity.rs`, part of `cargo make test`, so `check` and `ci` inherit it). Push narrative into docs, comments, or nested `mod` context — not into the identifier.
+**Identifier length.** Declared item names (`fn` / `struct` / `enum` / `trait` / `type` / `const` / `static` / `mod`), named fields, and enum variants are **≤ 25 characters** (Unicode scalars on the bare identifier, not the module path). Mechanically enforced by the `ident_length` Dylint lint (`augentic_style`, part of `cargo make lint`, so `check` and `ci` inherit it). Push narrative into docs, comments, or nested `mod` context — not into the identifier.
 
 A function defined in `mod <name>` (or `commands/<name>.rs`) MUST NOT carry `<name>` as a suffix or prefix on its own name — the module path already supplies that context. Clippy's `module_name_repetitions` (on by default through the `pedantic` group) catches this at lint time.
 
@@ -105,7 +105,7 @@ The codebase optimises for short reading over short writing. Concretely:
 - **Field prefixes**: a struct named `RegistryAmendmentArgs` does not carry `proposed_` on every field — the struct name already says "proposal".
 - **Comment redundancy**: don't paraphrase a `match` arm's variant in a `// …` comment when the variant's doc-comment already explains it. The same rule applies to `Exit::code()`'s inline comments mirroring variant docs.
 
-The `doc_brevity` root-crate test (see [Comments](#comments)) catches the mechanical density caps. The `ident_brevity` root-crate test (see [Naming](#naming)) catches the 25-character identifier cap on items, fields, and variants.
+The `augentic_style` doc lints (see [Comments](#comments)) catch the mechanical density caps. The `ident_length` lint (see [Naming](#naming)) catches the 25-character identifier cap on items, fields, and variants.
 
 ## Format dispatch
 

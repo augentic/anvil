@@ -1,9 +1,5 @@
 # Install: https://mise.jdx.dev
 # Run: `mise run <task>` (the root Makefile forwards `make <task>` here)
-#
-# Shared leaf tasks live in `mise/rust.toml` (local include). After that
-# file moves to `augentic/.github`, replace the path below with
-# `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
 
 [task_config]
 includes = ["mise-rust.toml"]
@@ -12,6 +8,13 @@ includes = ["mise-rust.toml"]
 # -------------------------------------
 # Emery overrides
 # -------------------------------------
+
+[tasks.lint]
+depends = [ "lint-wasm"]
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+
+[tasks.lint-wasm]
+run = "cargo dylint --all --workspace -- --all-targets"
 
 [tasks.links]
 description = "mdbook build docs (linkcheck)"
