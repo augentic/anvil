@@ -10,8 +10,6 @@
 # "cargo:cargo-vet" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:cargo-audit" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:cargo-outdated" = { version = "latest", depends = ["cargo-binstall"] }
-# "cargo:cargo-dylint" = { version = "latest", depends = ["cargo-binstall"] }
-# "cargo:dylint-link" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:cargo-llvm-cov" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:mdbook-linkcheck2" = { version = "latest", depends = ["cargo-binstall"] }
 
@@ -22,13 +20,6 @@ includes = ["mise-rust.toml"]
 # -------------------------------------
 # Emery overrides
 # -------------------------------------
-
-[tasks.lint]
-depends = ["lint-custom"]
-run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
-
-[tasks.lint-custom]
-run = "cargo dylint --all --workspace -- --all-targets"
 
 [tasks.links]
 description = "mdbook build docs (linkcheck)"

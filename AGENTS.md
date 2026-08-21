@@ -78,7 +78,7 @@ cargo make ci     # fmt + lint + test + test-docs + doc + links + vet + deny
 cargo make check  # the pre-commit subset (cargo make fmt fixes formatting)
 cargo make links  # Developer Guide link integrity (mdbook build docs, mdbook-linkcheck2)
 cargo make test   # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
-cargo make lint   # three legs: stock clippy, house Dylint lints (augentic/lints), wasm32 guest deny-list
+cargo make lint   # clippy --workspace --all-targets --all-features -- -D warnings
 cargo make fmt    # nightly cargo fmt --all
 cargo make source         # build the mock source example (wasm32-wasip2, release)
 cargo make runtime        # build the scripted-model runtime example
@@ -92,7 +92,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.
-- Brevity caps are mechanically enforced by the `style` Dylint lints (part of `cargo make lint`; caps in the root `dylint.toml`). WIT doc/comment caps are review-only.
+- Brevity caps (identifier ≤ 25, comment density) are review-only; see [coding-standards.md](docs/standards/coding-standards.md). WIT doc/comment caps are the same rule.
 
 ## Related coding standards
 

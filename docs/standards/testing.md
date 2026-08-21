@@ -94,7 +94,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the test body or a `//` comment above the `fn`, not the identifier.
 
-`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 25-char cap is mechanically enforced by the `ident_length` Dylint lint (`style`, part of `cargo make lint`).
+`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 25-char cap is review-only ([coding-standards.md §"Naming"](./coding-standards.md#naming)).
 
 ## Patterns to follow
 

@@ -4,10 +4,8 @@
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        use std::io::{self, Write as _};
-
         use emery_transport::{command, http};
-        use wasip3::cli::environment;
+        use omnia_guest::api::invoke::Invoker;
 
         // Bare provider over the WASI capability defaults
         struct Provider;
@@ -19,18 +17,8 @@ cfg_if::cfg_if! {
 
         impl wasip3::exports::cli::run::Guest for Cli {
             async fn run() -> Result<(), ()> {
-                let telemetry = omnia_wasi_otel::init();
-                let resp = command::execute(Provider, environment::get_arguments()).await;
-
-                io::stdout().write_all(&resp.stdout).map_err(drop)?;
-                io::stderr().write_all(&resp.stderr).map_err(drop)?;
-
-                if resp.exit != 0 {
-                    drop(telemetry);
-                    wasip3::cli::exit::exit_with_code(resp.exit);
-                }
-
-                Ok(())
+                let router = command::router(Invoker::new("emery", Provider)).map_err(drop)?;
+                omnia_guest::api::command::execute_wasi(&router).await
             }
         }
 

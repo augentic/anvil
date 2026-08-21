@@ -15,6 +15,7 @@ use emery_adapter::{DispatchError, SourceDispatch};
 use emery_transport::command;
 use omnia_guest::Model;
 use omnia_guest::api::command::CommandResponse;
+use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Error, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted};
 use serde_json::{Map, Value};
@@ -54,9 +55,8 @@ async fn gen_spec() {
 }
 
 async fn cli_exec(provider: &Provider, argv: &[&str]) -> CommandResponse {
-    let resp =
-        command::execute(provider.clone(), argv.iter().copied().map(str::to_string).collect())
-            .await;
+    let router = command::router(Invoker::new("emery", provider.clone())).expect("command grammar");
+    let resp = router.execute(argv.iter().copied()).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
     resp
 }
