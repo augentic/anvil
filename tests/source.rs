@@ -5,6 +5,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use std::fs;
+use std::future::Future;
 use std::path::Path;
 
 use emery_adapter::seam::{
@@ -53,8 +54,9 @@ async fn gen_spec() {
 }
 
 async fn cli_exec(provider: &Provider, argv: &[&str]) -> CommandResponse {
-    let args = argv.iter().copied().map(str::to_string).collect();
-    let resp = command::execute(provider.clone(), args).await;
+    let resp =
+        command::execute(provider.clone(), argv.iter().copied().map(str::to_string).collect())
+            .await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
     resp
 }
@@ -71,12 +73,14 @@ impl Model for Provider {
 }
 
 impl SourceDispatch for Provider {
-    async fn extract(&self, _id: &str, _input: &SourceInput) -> Result<Evidence, DispatchError> {
+    fn extract(
+        &self, _id: &str, _input: &SourceInput,
+    ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
         let statement = "GET /greeting returns the static string 'hello'.";
         let mut extras = Map::new();
         extras.insert("statement".to_string(), Value::String(statement.to_string()));
 
-        Ok(Evidence {
+        std::future::ready(Ok(Evidence {
             authority: Authority::Documentation,
             claims: vec![Claim {
                 kind: ClaimKind::Requirement,
@@ -86,7 +90,7 @@ impl SourceDispatch for Provider {
                 backing: Some(Backing::Payload(statement.to_string())),
                 extras,
             }],
-        })
+        }))
     }
 
     fn metadata(&self, _id: &str) -> SourceMetadata {
