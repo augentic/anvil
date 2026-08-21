@@ -1,6 +1,8 @@
 # House lint configuration (augentic/lints). These are the defaults,
 # stated explicitly so the caps are visible where they are enforced.
-[augentic_style]
+# `omnia` is silent here: no `Handler` impls, no provider-bounded
+# helpers.
+[style]
 ident-length = 25
 module-doc = 3
 item-doc-overview = 8

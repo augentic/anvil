@@ -93,7 +93,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 - Never hand-edit `project.yaml` or the component cache; never `mkdir -p .emery/...`. Route through the CLI.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means re-init.
-- Brevity caps are mechanically enforced by the `augentic_style` Dylint lints (part of `cargo make lint`; caps in the root `dylint.toml`), alongside the crate-DAG gate (`tests/layering.rs`). WIT doc/comment caps are review-only.
+- Brevity caps are mechanically enforced by the `style` Dylint lints (part of `cargo make lint`; caps in the root `dylint.toml`), alongside the crate-DAG gate (`tests/layering.rs`). WIT doc/comment caps are review-only.
 
 ## Related coding standards
 

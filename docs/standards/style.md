@@ -70,7 +70,7 @@ enum Kind { /* ... */ }
 
 ## No archaeology in code
 
-Comments — doc comments and `//` line comments alike — describe what the code *does today*, in ≤ 3 lines. Historical framing — "Phase 1 …", "old contract renamed …", "previously lived in …", "former tests collapse here", "to avoid the X → Y cycle" — is deleted, not relocated; git history is the record. The density caps (module `//!` 1–3 prose lines, `///` overview under ~8, `//` runs ≤ 3) are mechanically enforced by the `augentic_style` Dylint lints via `cargo make lint` — see [coding-standards.md § Comments](./coding-standards.md#comments).
+Comments — doc comments and `//` line comments alike — describe what the code *does today*, in ≤ 3 lines. Historical framing — "Phase 1 …", "old contract renamed …", "previously lived in …", "former tests collapse here", "to avoid the X → Y cycle" — is deleted, not relocated; git history is the record. The density caps (module `//!` 1–3 prose lines, `///` overview under ~8, `//` runs ≤ 3) are mechanically enforced by the `style` Dylint lints via `cargo make lint` — see [coding-standards.md § Comments](./coding-standards.md#comments).
 
 ```rust
 // BAD

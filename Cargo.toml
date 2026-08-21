@@ -78,9 +78,9 @@ members = ["crates/*"]
 # House lints (style prose budgets + omnia provider analysis), run by
 # `cargo dylint` inside `cargo make lint`. Tracks `main` until the lints
 # work is declared ready; local co-dev uses
-# `cargo dylint --path ../lints --pattern 'augentic_*'`.
+# `cargo dylint --path ../lints --pattern 'crates/*'`.
 [workspace.metadata.dylint]
-libraries = [{ git = "https://github.com/augentic/lints", branch = "main", pattern = "augentic_*" }]
+libraries = [{ git = "https://github.com/augentic/lints", branch = "main", pattern = "crates/*" }]
 
 [workspace.package]
 authors = ["Augentic"]

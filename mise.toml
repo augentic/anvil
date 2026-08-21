@@ -10,10 +10,10 @@ includes = ["mise-rust.toml"]
 # -------------------------------------
 
 [tasks.lint]
-depends = [ "lint-wasm"]
+depends = [ "lint-custom"]
 run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 
-[tasks.lint-wasm]
+[tasks.lint-custom]
 run = "cargo dylint --all --workspace -- --all-targets"
 
 [tasks.links]
