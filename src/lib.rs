@@ -22,11 +22,8 @@ cfg_if::cfg_if! {
                 let telemetry = omnia_wasi_otel::init();
                 let resp = command::execute(Provider, environment::get_arguments()).await;
 
-                if io::stdout().write_all(&resp.stdout).is_err()
-                    || io::stderr().write_all(&resp.stderr).is_err()
-                {
-                    return Err(());
-                }
+                io::stdout().write_all(&resp.stdout).map_err(drop)?;
+                io::stderr().write_all(&resp.stderr).map_err(drop)?;
 
                 if resp.exit != 0 {
                     drop(telemetry);
