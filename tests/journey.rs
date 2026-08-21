@@ -5,65 +5,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Output;
 
-struct Home {
-    temp: tempfile::TempDir,
-    script: &'static str,
-}
-
-impl Home {
-    fn stage(names: &[&str]) -> Self {
-        let temp = tempfile::tempdir().expect("journey tempdir");
-        fs::create_dir(temp.path().join("project")).expect("mkdir project");
-        for name in names {
-            let staged = temp.path().join(format!("project/{name}.wasm"));
-            fs::copy(component(), &staged).expect("stage component");
-        }
-        Self {
-            temp,
-            script: "tests/journey-script-minimal",
-        }
-    }
-
-    fn scaffold() -> Self {
-        let home = Self::stage(&["source"]);
-        let init = home.emery(&["init", "source.wasm"]);
-        assert!(
-            home.project().join(".emery-cache/components/source.wasm").is_file(),
-            "the local component is mirrored into the CWD-relative project cache"
-        );
-        assert!(
-            init.status.success(),
-            "init over the built source component must scaffold:\n{}",
-            String::from_utf8_lossy(&init.stderr)
-        );
-        home
-    }
-
-    fn project(&self) -> PathBuf {
-        self.temp.path().join("project")
-    }
-
-    fn emery(&self, args: &[&str]) -> Output {
-        self.emery_in(&self.project(), args)
-    }
-
-    fn emery_in(&self, dir: &Path, args: &[&str]) -> Output {
-        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join(self.script);
-        std::process::Command::new(harness())
-            .current_dir(dir)
-            .env("EMERY_JOURNEY_SCRIPT", script)
-            // Ephemeral bind so parallel runs do not share :8080.
-            .env("HTTP_ADDR", "127.0.0.1:0")
-            .args(args)
-            .output()
-            .expect("run the journey host")
-    }
-
-    fn specify(&self) -> Output {
-        self.emery(&["specify"])
-    }
-}
-
 #[test]
 fn journey() {
     let home = Home::scaffold();
@@ -204,9 +145,67 @@ fn cwd_is_the_project_root() {
     assert!(stderr.contains("not-initialized"), "{stderr}");
 }
 
+struct Home {
+    temp: tempfile::TempDir,
+    script: &'static str,
+}
+
+impl Home {
+    fn stage(names: &[&str]) -> Self {
+        let temp = tempfile::tempdir().expect("journey tempdir");
+        fs::create_dir(temp.path().join("project")).expect("mkdir project");
+        for name in names {
+            let staged = temp.path().join(format!("project/{name}.wasm"));
+            fs::copy(component(), &staged).expect("stage component");
+        }
+        Self {
+            temp,
+            script: "tests/journey-script-minimal",
+        }
+    }
+
+    fn scaffold() -> Self {
+        let home = Self::stage(&["source"]);
+        let init = home.emery(&["init", "source.wasm"]);
+        assert!(
+            home.project().join(".emery-cache/components/source.wasm").is_file(),
+            "the local component is mirrored into the CWD-relative project cache"
+        );
+        assert!(
+            init.status.success(),
+            "init over the built source component must scaffold:\n{}",
+            String::from_utf8_lossy(&init.stderr)
+        );
+        home
+    }
+
+    fn project(&self) -> PathBuf {
+        self.temp.path().join("project")
+    }
+
+    fn emery(&self, args: &[&str]) -> Output {
+        self.emery_in(&self.project(), args)
+    }
+
+    fn emery_in(&self, dir: &Path, args: &[&str]) -> Output {
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join(self.script);
+        std::process::Command::new(harness())
+            .current_dir(dir)
+            .env("EMERY_JOURNEY_SCRIPT", script)
+            // Ephemeral bind so parallel runs do not share :8080.
+            .env("HTTP_ADDR", "127.0.0.1:0")
+            .args(args)
+            .output()
+            .expect("run the journey host")
+    }
+
+    fn specify(&self) -> Output {
+        self.emery(&["specify"])
+    }
+}
+
 // Bare-name and pin dispatch beyond guests declared in the runtime
 // invocation is parked with the dynamic resolver.
-
 fn component() -> PathBuf {
     let built = target_dir().join("wasm32-wasip2/release/examples/source.wasm");
     assert!(
@@ -227,6 +226,10 @@ fn harness() -> PathBuf {
     built
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "host journey driver; CARGO_TARGET_DIR is the cargo layout the test must follow"
+)]
 fn target_dir() -> PathBuf {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     std::env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), PathBuf::from)

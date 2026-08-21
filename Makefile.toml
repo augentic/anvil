@@ -46,9 +46,15 @@ install_crate = "cargo-udeps"
 script = "cargo +nightly fmt --all"
 
 [tasks.lint]
+dependencies = ["lint-custom"]
 command = "cargo"
 args = ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"]
 install_crate = { rustup_component_name = "clippy" }
+
+[tasks.lint-custom]
+command = "cargo"
+args = ["dylint", "--all", "--workspace", "--", "--all-targets"]
+install_crate = { crate_name = "cargo-dylint", binary = "cargo-dylint", test_arg = "--version" }
 
 [tasks.outdated]
 command = "cargo"

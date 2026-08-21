@@ -94,6 +94,11 @@ impl<'a> Context<'a> {
 
 /// Adapter references URL: `MCP_URL_BASE` or `HTTP_ADDR`, else `None`.
 #[must_use]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the seam derives its shelf URL from the runtime-injected listener env; \
+              this is engine infrastructure, not app configuration"
+)]
 pub fn mcp_url(adapter_id: &str) -> Option<String> {
     if let Ok(base) = std::env::var("MCP_URL_BASE") {
         return mcp_url_with_base(&base, adapter_id);

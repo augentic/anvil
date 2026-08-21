@@ -1,9 +1,19 @@
 # Install: https://mise.jdx.dev
 # Run: `mise run <task>` (the root Makefile forwards `make <task>` here)
-#
-# Shared leaf tasks live in `mise/rust.toml` (local include). After that
-# file moves to `augentic/.github`, replace the path below with
-# `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
+
+# # `mise install` and `mise run` install anything missing
+# [tools]
+# cargo-binstall = "latest"
+# mdbook = "latest"
+# "cargo:cargo-nextest" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-deny" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-vet" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-audit" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-outdated" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-dylint" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:dylint-link" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-llvm-cov" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:mdbook-linkcheck2" = { version = "latest", depends = ["cargo-binstall"] }
 
 [task_config]
 includes = ["mise-rust.toml"]
@@ -12,6 +22,13 @@ includes = ["mise-rust.toml"]
 # -------------------------------------
 # Emery overrides
 # -------------------------------------
+
+[tasks.lint]
+depends = ["lint-custom"]
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+
+[tasks.lint-custom]
+run = "cargo dylint --all --workspace -- --all-targets"
 
 [tasks.links]
 description = "mdbook build docs (linkcheck)"

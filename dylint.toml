@@ -1,0 +1,17 @@
+# House lint configuration (augentic/lints). These are the defaults,
+# stated explicitly so the caps are visible where they are enforced.
+# `omnia` is silent here: no `Handler` impls, no provider-bounded
+# helpers.
+[style]
+ident-length = 25
+module-doc = 3
+item-doc-overview = 8
+line-comment-run = 3
+historical-phrases = [
+  "Phase ",
+  "formerly",
+  "previously lived",
+  "old contract",
+  "former tests",
+  "to avoid the",
+]

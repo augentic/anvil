@@ -1,6 +1,14 @@
 //! Builds the wasm32 engine with a child cargo build and embeds it at
 //! `$OUT_DIR/emery.cwasm` (AOT-serialized in release, raw in debug).
 
+// Build scripts run on the host: the wasm-leg deny-list (clippy-wasm/)
+// does not apply, and cargo's build protocol *is* env vars.
+#![allow(
+    clippy::disallowed_methods,
+    clippy::disallowed_types,
+    reason = "host-side build script; the wasm32 guest deny-list does not apply"
+)]
+
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -16,6 +24,17 @@ fn main() {
     // embeds nothing); returning here is the recursion guard for the
     // child build below.
     if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
+        return;
+    }
+
+    // Dylint checks the workspace on its own pinned toolchain, which
+    // carries no wasm32 stdlib; the lint pass only needs the embedded
+    // file to exist, so skip the child build and embed a placeholder.
+    if std::env::var_os("DYLINT_LIBS").is_some() {
+        let out =
+            PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.cwasm");
+        std::fs::write(&out, b"dylint placeholder, never executed")
+            .unwrap_or_else(|err| panic!("writing {}: {err}", out.display()));
         return;
     }
 

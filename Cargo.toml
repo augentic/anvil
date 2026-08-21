@@ -75,6 +75,13 @@ pkg-fmt = "tgz"
 [workspace]
 members = ["crates/*"]
 
+# House lints (style prose budgets + omnia provider analysis), run by
+# `cargo dylint` inside `cargo make lint`. Tracks `main` until the lints
+# work is declared ready; local co-dev uses
+# `cargo dylint --path ../lints --pattern 'crates/*'`.
+[workspace.metadata.dylint]
+libraries = [{ git = "https://github.com/augentic/lints", branch = "main", pattern = "crates/*" }]
+
 [workspace.package]
 authors = ["Augentic"]
 edition = "2024"
@@ -86,6 +93,8 @@ version = "0.38.0"
 
 [workspace.lints.rust]
 elided_lifetimes_in_paths = "warn"
+# `dylint_lib` is set only under `cargo dylint`; suppressions gate on it.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(dylint_lib, values(any()))"] }
 explicit_outlives_requirements = "warn"
 let_underscore_drop = "warn"
 macro_use_extern_crate = "warn"

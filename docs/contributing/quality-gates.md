@@ -10,7 +10,7 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## The WASM seam
 
-The automated WASM gate is the walking-skeleton journey (`cargo make journey`, its own required CI job): the dev-only journey host over the built mock components — the one integration rung since the spine cut deleted the native provider (ADR-0002). The model-free fast signal is the guest compile check: `cargo check --lib -p emery --target wasm32-wasip2`. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam.
+The automated WASM gate is the walking-skeleton journey (`cargo make journey`, its own required CI job): the dev-only journey host over the built mock components — the one integration rung since the spine cut deleted the native provider (ADR-0002). The model-free fast signal is the guest lint leg: `cargo make lint` runs clippy over `--target wasm32-wasip2` with the guest deny-list (`clippy-wasm/clippy.toml`), subsuming the old compile check. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam.
 
 ## Placement decision
 

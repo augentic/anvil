@@ -170,6 +170,11 @@ pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<
 // ANSI red for the `error:` line. `NO_COLOR` (any non-empty value),
 // a missing `TERM`, and `TERM=dumb` opt out; under wasm32 there is no
 // terminal probe, so the env guards alone decide.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the guest is the CLI (wasi:cli/run); NO_COLOR/TERM are the terminal \
+              colour convention, not app configuration"
+)]
 fn error_style() -> (&'static str, &'static str) {
     let opted_out = std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
         || !std::env::var_os("TERM").is_some_and(|term| !term.is_empty() && term != "dumb");

@@ -1,11 +1,4 @@
-# Shared Rust workspace tasks. Include format: task names are top-level
-# keys (no `[tasks.]` prefix). Local stand-in for the forthcoming
-# `augentic/.github` remote include — swap the path in `mise.toml` to
-# `git::https://github.com/augentic/.github.git//mise/rust.toml?ref=<tag>`.
-#
-# Intersection of emery `mise.toml` and omnia `Makefile.toml`. Repo-
-# specific composition (`check`, `ci`) and policy (emery's read-only
-# `vet`, omnia's ignored `outdated`) stay in the consuming `mise.toml`.
+# Shared Rust workspace tasks. 
 
 # -------------------------------------
 # CI Checks (emery composition)

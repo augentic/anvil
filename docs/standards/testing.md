@@ -14,7 +14,7 @@ Emery is tested as a self-contained engine against its own WIT contract. No rung
 
 The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted model doubles, and the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
 
-The seam rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo make journey`): the runtime example (`examples/runtime.rs` — the shipped runtime shape with a scripted `WasiModel` backend, ADR-0009 §5) over the built mock source component (`cargo make source`), asserting the target-architecture §8 journey across the production component seam. Since the T10 spine cut deleted the native provider (ADR-0002), this is the **one integration rung**: `init`/`specify` end-to-end behavior, seam dispatch, and adapter admission are asserted here and nowhere else. The Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Extend the scaffold, never weaken the assertions. The wasm32 guest is additionally compile-checked (`cargo check --lib -p emery --target wasm32-wasip2`).
+The seam rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo make journey`): the runtime example (`examples/runtime.rs` — the shipped runtime shape with a scripted `WasiModel` backend, ADR-0009 §5) over the built mock source component (`cargo make source`), asserting the target-architecture §8 journey across the production component seam. Since the T10 spine cut deleted the native provider (ADR-0002), this is the **one integration rung**: `init`/`specify` end-to-end behavior, seam dispatch, and adapter admission are asserted here and nowhere else. The Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Extend the scaffold, never weaken the assertions. The wasm32 guest is additionally linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check.
 
 ### The mock source example
 
@@ -94,7 +94,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the test body or a `//` comment above the `fn`, not the identifier.
 
-`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 25-char cap is mechanically enforced by the `ident_brevity` root-crate test (`tests/ident_brevity.rs`, part of `cargo make test`).
+`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 25-char cap is mechanically enforced by the `ident_length` Dylint lint (`style`, part of `cargo make lint`).
 
 ## Patterns to follow
 

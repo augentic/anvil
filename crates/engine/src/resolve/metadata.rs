@@ -60,8 +60,7 @@ pub fn deployed(request: &Request<'_>) -> Result<Metadata, Error> {
     }
 }
 
-/// Native builds have no adapter seam: the compiled catalog was
-/// deleted at the Phase 3 spine cut (ADR-0002), so dispatch refuses
+/// Native builds have no adapter seam (ADR-0002): dispatch refuses
 /// typed.
 ///
 /// # Errors

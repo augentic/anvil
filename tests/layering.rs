@@ -53,6 +53,10 @@ fn dag() {
 
 // Workspace-internal normal/build dependency edges from
 // `cargo metadata`, resolved against the committed lockfile.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "host layering gate; CARGO is the cargo that invoked the test"
+)]
 fn edges() -> BTreeSet<(String, String)> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
