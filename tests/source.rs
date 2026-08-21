@@ -13,6 +13,7 @@ use emery_adapter::seam::{
 use emery_adapter::{DispatchError, SourceDispatch};
 use emery_transport::command;
 use omnia_guest::Model;
+use omnia_guest::api::command::CommandResponse;
 use omnia_guest::model::{Error, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted};
 use serde_json::{Map, Value};
@@ -22,47 +23,40 @@ const DESIGN_ANSWER: &str = include_str!("source/2-design.md");
 
 #[tokio::test]
 async fn gen_spec() {
-    // create a tempdir for the project
-    let home = tempfile::tempdir().expect("tempdir");
-    std::env::set_current_dir(home.path()).expect("should change directory");
-    fs::write("source.wasm", b"\0asm-stub").expect("should fake source.wasm");
+    let project = tempfile::tempdir().expect("tempdir");
+    std::env::set_current_dir(project.path()).expect("chdir into the scratch project root");
+    fs::write("source.wasm", b"\0asm-stub").expect("stub wasm");
 
     let provider = Provider {
-        model: Harness::answering(std::iter::repeat_n([SPEC_ANSWER, DESIGN_ANSWER], 2).flatten()),
+        model: Harness::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]),
     };
 
     // 1. init the project
-    let argv = ["emery", "init", "source.wasm"].map(str::to_string).into();
-    let init = command::execute(provider.clone(), argv).await;
-
-    assert_eq!(init.exit, 0, "{}", String::from_utf8_lossy(&init.stderr));
+    cli_exec(&provider, &["emery", "init", "source.wasm"]).await;
     assert!(Path::new(".emery/project.yaml").is_file());
     assert!(Path::new(".emery-cache/components/source.wasm").is_file());
 
     // 2. generate specification
-    let resp =
-        command::execute(provider.clone(), ["emery", "specify"].map(str::to_string).into()).await;
-    assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
-
-    // 3. check the spec was generated
-    let gen_dir = format!(
-        ".emery/spec/generations/{}",
-        fs::read_to_string(".emery/spec/current").expect("current").trim()
-    );
-    let spec = fs::read_to_string(format!("{gen_dir}/spec.md")).expect("spec.md");
+    cli_exec(&provider, &["emery", "specify"]).await;
+    let pointer = fs::read_to_string(".emery/spec/current").expect("current");
+    let generation = Path::new(".emery/spec/generations").join(pointer.trim());
+    let spec = fs::read_to_string(generation.join("spec.md")).expect("spec.md");
     assert!(spec.contains("[unknown]"));
-    assert!(!fs::read_to_string(format!("{gen_dir}/design.md")).expect("design.md").is_empty());
+    assert!(!fs::read_to_string(generation.join("design.md")).expect("design.md").is_empty());
 
-    // 4. rerun generation
-    let resp =
-        command::execute(provider.clone(), ["emery", "specify"].map(str::to_string).into()).await;
-    assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
-
-    // 5. check the spec was not changed
+    // 3. rerun generation
+    let resp = cli_exec(&provider, &["emery", "specify"]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("none (byte-stable)"), "{stdout}");
 
     provider.model.assert_exhausted();
+}
+
+async fn cli_exec(provider: &Provider, argv: &[&str]) -> CommandResponse {
+    let args = argv.iter().copied().map(str::to_string).collect();
+    let resp = command::execute(provider.clone(), args).await;
+    assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
+    resp
 }
 
 #[derive(Clone, Debug)]
