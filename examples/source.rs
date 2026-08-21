@@ -1,4 +1,4 @@
-//! The mock source adapter as a Wasm component: the journey fixture.
+//! The mock source adapter as a Wasm component.
 //! One export serves every identity; extract keys off the routed
 //! adapter id (`docs` / `code` / `intent` / `fail-*`, else greeting).
 #![cfg(target_arch = "wasm32")]

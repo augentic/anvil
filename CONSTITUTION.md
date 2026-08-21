@@ -22,7 +22,6 @@ Each is a small CI check; together they convert gradual drift into individual re
 | --- | --- | --- |
 | Journey test | Invariant 1 | Scripted offline `emery specify` over a mock source component; every push |
 | Route budget | Invariant 2 | Test enumerating the CLI router against the live verb list (`init`, `specify`) |
-| Layering test | Invariant 3 | Assert the crate dependency DAG over `cargo metadata` |
 | Seam-copy counter | Invariant 3 | Golden test asserting one DTO family for the adapter seam |
 | Gate tripwires | Invariant 5 | One integration test per operator gate, named `adr_NNNN_*`; deleting a gate means deleting a test that names its decision record |
 | Prose budgets | Invariant 2 | Identifier and comment density caps (`style` Dylint lints, `cargo make lint`) |

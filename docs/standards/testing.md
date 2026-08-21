@@ -12,15 +12,15 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted model doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over a provider that scripts both capabilities (`Model`, `SourceDispatch`) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`.
+The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted model doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over a provider that scripts both capabilities (`Model`, `SourceDispatch`) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
 
-The seam rung is the **walking-skeleton journey** (`tests/journey.rs`, `cargo make journey`): the runtime example (`examples/runtime.rs` — the shipped runtime shape with a scripted `WasiModel` backend, ADR-0009 §5) over the built mock source component (`cargo make source`), asserting the target-architecture §8 journey across the production component seam. Since the T10 spine cut deleted the native provider (ADR-0002), this is the **one component-seam rung**: WIT seam dispatch, host-mediated routing, and adapter admission are asserted here and nowhere else. The Phase 3 exit criterion, green and required in CI in its own job; excluded from `cargo make test` by the nextest `default-filter`. Extend the scaffold, never weaken the assertions. The wasm32 guest is additionally linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check.
+The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check. The `source` and `runtime` examples remain the in-tree component-shape fixture; they are not a test rung.
 
 ### The mock source example
 
-The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor exported as the journey's seam fixture. The journey binds that one adapter (`source`); extract dispatches `source:source`, the journey host's one static adapter guest. Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
+The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests (`source:source`). Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
 
-Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the engine suites script directly); the journey host wraps `Scripted` as its `WasiModel` backend. Emery owns only scenario content and assertions.
+Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the engine suites script directly). Emery owns only scenario content and assertions.
 
 ## Integration-first policy
 
@@ -83,7 +83,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 ## Assertion ownership
 
 - A behavior reducible to a crate API, CLI result, filesystem predicate, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its seam.
-- Pure kernel behavior belongs to the native suites; everything crossing the adapter seam or the CLI end-to-end belongs to the journey rung. Name the seam an assertion owns before writing it.
+- Pure kernel behavior belongs to the native suites; `init` / `specify` orchestration belongs to `tests/native.rs`. Name the seam an assertion owns before writing it.
 
 ## Test naming
 
@@ -98,7 +98,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir`; seam scenarios go through `tests/journey.rs`'s `Home` helper (staged components plus the journey host).
+- Spin up a real scaffold in a `tempfile::TempDir` (`tests/native.rs`).
 - Compare structured output against checked-in goldens (the committed answer schemas under `crates/adapter/schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.

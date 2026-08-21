@@ -48,10 +48,3 @@ run = "cargo build --example source --target wasm32-wasip2 --release"
 description = "Build the scripted-model runtime"
 depends = ["source"]
 run = "cargo build --example runtime"
-
-# Walking-skeleton test
-[tasks.journey]
-description = "Walking-skeleton rung over the component seam"
-depends = ["runtime"]
-env = { RUSTFLAGS = "-Dwarnings" }
-run = "cargo nextest run -p emery -E 'binary(=journey)' --ignore-default-filter"

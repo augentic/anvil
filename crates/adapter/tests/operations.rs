@@ -40,22 +40,19 @@ impl Source for Probe {
     }
 }
 
-fn ctx() -> Context<'static> {
-    Context {
-        adapter_id: "source:probe",
-        project_root: std::path::Path::new("."),
-        mcp_url: None,
-        lend: Some(".".to_string()),
-    }
-}
-
 #[tokio::test]
 async fn source_dispatch() {
     let model = Harness::answering([
         r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim"}]}"#,
     ]);
+    let ctx = Context {
+        adapter_id: "source:probe",
+        project_root: std::path::Path::new("."),
+        mcp_url: None,
+        lend: Some(".".to_string()),
+    };
 
-    let evidence = Probe::extract(&model, &ctx(), &SourceInput::value("main", ""))
+    let evidence = Probe::extract(&model, &ctx, &SourceInput::value("main", ""))
         .await
         .expect("scripted extract succeeds");
     assert_eq!(evidence.claims.len(), 1);

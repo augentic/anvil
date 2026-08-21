@@ -20,7 +20,6 @@ name = "emery"
 path = "src/main.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# `anyhow` is required by the `omnia::runtime!` expansion.
 anyhow.workspace = true
 cfg-if.workspace = true
 emery-engine.workspace = true
@@ -52,15 +51,10 @@ omnia-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
-# The native capability rung (`tests/native.rs`); kept off the wasm32
-# dev graph so the journey's example fixture builds clean.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 emery-transport.workspace = true
 omnia-guest.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
-
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-emery-adapter.workspace = true
 
 [[example]]
 name = "source"
@@ -87,7 +81,7 @@ members = ["crates/*"]
 # work is declared ready; local co-dev uses
 # `cargo dylint --path ../lints --pattern 'crates/*'`.
 [workspace.metadata.dylint]
-libraries = [{ git = "https://github.com/augentic/lints", branch = "main", pattern = "crates/*" }]
+libraries = [{ git = "https://github.com/augentic/lints", pattern = "crates/*" }]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -100,7 +94,6 @@ version = "0.38.0"
 
 [workspace.lints.rust]
 elided_lifetimes_in_paths = "warn"
-# `dylint_lib` is set only under `cargo dylint`; suppressions gate on it.
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(dylint_lib, values(any()))"] }
 explicit_outlives_requirements = "warn"
 let_underscore_drop = "warn"

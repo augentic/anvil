@@ -4,43 +4,33 @@
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        use omnia_guest::api::invoke::Invoker;
+        use std::io::{self, Write as _};
+
         use emery_transport::{command, http};
         use wasip3::cli::environment;
 
-        // Bare provider over the WASI capability defaults: paths are
-        // preopen-relative constants and adapter dispatch rides the
-        // WIT imports, so no domain capabilities are needed.
-        #[derive(Clone, Copy, Debug)]
-        struct Engine;
+        // Bare provider over the WASI capability defaults
+        struct Provider;
+        impl omnia_guest::Model for Provider {}
+        impl emery_adapter::SourceDispatch for Provider {}
 
-        impl omnia_guest::Model for Engine {}
+        struct Cli;
+        wasip3::cli::command::export!(Cli);
 
-        impl emery_adapter::SourceDispatch for Engine {}
-
-        struct CliGuest;
-        wasip3::cli::command::export!(CliGuest);
-
-        impl wasip3::exports::cli::run::Guest for CliGuest {
+        impl wasip3::exports::cli::run::Guest for Cli {
             async fn run() -> Result<(), ()> {
-                use std::io::Write as _;
-
                 let telemetry = omnia_wasi_otel::init();
+                let resp = command::execute(Provider, environment::get_arguments()).await;
 
-                let invoker = Invoker::new("emery", Engine);
-                let router = command::router(invoker).map_err(|_e| ())?;
-                let argv = environment::get_arguments();
-                let response = command::execute(&router, argv).await;
-
-                if std::io::stdout().write_all(&response.stdout).is_err()
-                    || std::io::stderr().write_all(&response.stderr).is_err()
+                if io::stdout().write_all(&resp.stdout).is_err()
+                    || io::stderr().write_all(&resp.stderr).is_err()
                 {
                     return Err(());
                 }
 
-                if response.exit != 0 {
+                if resp.exit != 0 {
                     drop(telemetry);
-                    wasip3::cli::exit::exit_with_code(response.exit);
+                    wasip3::cli::exit::exit_with_code(resp.exit);
                 }
 
                 Ok(())

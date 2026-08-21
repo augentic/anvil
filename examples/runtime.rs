@@ -49,10 +49,6 @@ cfg_if::cfg_if! {
         // script directory: each file is one model answer.
         const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";
 
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "host journey runtime; the script directory is injected by the test driver"
-        )]
         fn connect() -> anyhow::Result<ScriptedModel> {
             let dir = std::env::var(SCRIPT_ENV)
                 .with_context(|| format!("{SCRIPT_ENV} must name the model script directory"))?;

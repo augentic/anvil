@@ -78,9 +78,9 @@ The four-slot CLI exit-code table is fixed:
 
 ## Dispatch contract (`command.rs`)
 
-The reusable command route table lives in `crates/transport/src/command.rs`. The WASI shim (and any test harness) constructs an `Invoker`, assembles the router, executes it, and adapts the buffered response to its process boundary.
+The reusable command route table lives in `crates/transport/src/command.rs`. The WASI shim (and any test harness) passes a provider to `command::execute`, which assembles the router, runs it under the `emery.command` span, and returns the buffered response. Wire-contract suites still call `command::router` directly to inspect inventory without the span wrapper.
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run the router through `emery_transport::command::execute` — the shared wrapper that emits the `emery.command` span (bounded verb label plus exit code) — with the same assembly and the same command `EmeryProjector`.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run through `emery_transport::command::execute` — the shared wrapper that binds the provider into the static grammar, emits the `emery.command` span (bounded verb label plus exit code), and uses the same command `EmeryProjector`.
 
 Target discipline per leaf arm:
 

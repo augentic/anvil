@@ -1,6 +1,6 @@
 //! Shared inert provider for the wire-contract suites: satisfies the
 //! router's capability bounds so the grammar assembles and pre-dispatch
-//! refusals run; no test dispatches the model (the journey covers that).
+//! refusals run; no test dispatches the model (`tests/native.rs` covers that).
 
 use std::future::Future;
 
