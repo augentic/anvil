@@ -1,6 +1,6 @@
 //! Deployment-neutral source-adapter resolution: operations call
-//! [`resolver::Component`] over the deployed metadata dispatch,
-//! keyed on the typed [`AdapterSelector`].
+//! [`resolver::Component`] over the provider's metadata dispatch
+//! ([`metadata::runner`]), keyed on the typed [`AdapterSelector`].
 
 mod core;
 pub mod ensure;

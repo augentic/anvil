@@ -16,6 +16,8 @@ cfg_if::cfg_if! {
 
         impl omnia_guest::Model for Engine {}
 
+        impl emery_adapter::SourceDispatch for Engine {}
+
         struct CliGuest;
         wasip3::cli::command::export!(CliGuest);
 

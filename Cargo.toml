@@ -52,6 +52,13 @@ omnia-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
+# The native capability rung (`tests/native.rs`); kept off the wasm32
+# dev graph so the journey's example fixture builds clean.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+emery-transport.workspace = true
+omnia-guest.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
+
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 emery-adapter.workspace = true
 

@@ -166,26 +166,8 @@ impl From<crate::seam::Error> for Error {
 /// source component through these wrappers, staying seam-typed.
 pub mod import {
     use super::generated::emery::adapter::source as wire;
+    use crate::dispatch::DispatchError;
     use crate::seam;
-
-    /// Import dispatch failure: the operation's seam error, or an
-    /// evidence extra whose wire value is not canonical JSON.
-    #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
-    pub enum Error {
-        /// The dispatched operation failed across the seam.
-        #[error(transparent)]
-        Seam(#[from] seam::Error),
-        /// An open extra failed the canonical JSON parse (A8).
-        #[error("extra `{key}` is not canonical JSON ({detail}): {encoded}")]
-        Extras {
-            /// The extra's key.
-            key: String,
-            /// The parse failure.
-            detail: String,
-            /// The value as it crossed the wire.
-            encoded: String,
-        },
-    }
 
     /// Resolve-time metadata of the source component routed by `id`.
     #[must_use]
@@ -205,10 +187,12 @@ pub mod import {
     /// # Errors
     ///
     /// The seam failure, or the A8 extras refusal.
-    pub async fn extract(id: &str, input: &seam::SourceInput) -> Result<seam::Evidence, Error> {
+    pub async fn extract(
+        id: &str, input: &seam::SourceInput,
+    ) -> Result<seam::Evidence, DispatchError> {
         let answer = wire::extract(id.to_string(), input.clone().into())
             .await
-            .map_err(|err| Error::Seam(err.into()))?;
+            .map_err(|err| DispatchError::Seam(err.into()))?;
         answer.try_into()
     }
 
@@ -290,15 +274,15 @@ pub mod import {
     }
 
     impl TryFrom<wire::Claim> for seam::Claim {
-        type Error = Error;
+        type Error = DispatchError;
 
-        fn try_from(claim: wire::Claim) -> Result<Self, Error> {
+        fn try_from(claim: wire::Claim) -> Result<Self, DispatchError> {
             let mut extras = serde_json::Map::new();
             for (key, encoded) in claim.extras {
                 let value = match serde_json::from_str(&encoded) {
                     Ok(value) => value,
                     Err(err) => {
-                        return Err(Error::Extras {
+                        return Err(DispatchError::Extras {
                             key,
                             detail: err.to_string(),
                             encoded,
@@ -319,9 +303,9 @@ pub mod import {
     }
 
     impl TryFrom<wire::Evidence> for seam::Evidence {
-        type Error = Error;
+        type Error = DispatchError;
 
-        fn try_from(evidence: wire::Evidence) -> Result<Self, Error> {
+        fn try_from(evidence: wire::Evidence) -> Result<Self, DispatchError> {
             Ok(Self {
                 authority: evidence.authority.into(),
                 claims: evidence

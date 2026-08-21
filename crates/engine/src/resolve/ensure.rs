@@ -23,7 +23,7 @@ use crate::handler::ExecutionPaths;
 /// Provisioning failures (`adapter-component-missing`,
 /// `adapter-canonicalize-failed`) ahead of resolve failures.
 pub fn source(
-    runner: metadata::Runner, selector: &AdapterSelector, paths: &ExecutionPaths,
+    runner: impl metadata::Runner, selector: &AdapterSelector, paths: &ExecutionPaths,
     now: jiff::Timestamp,
 ) -> Result<ResolvedSource, Error> {
     provision(selector, paths, now)?;

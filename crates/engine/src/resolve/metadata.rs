@@ -32,20 +32,21 @@ pub struct Request<'a> {
 }
 
 /// Deployment-supplied metadata dispatcher.
-pub type Runner = fn(&Request<'_>) -> Result<Metadata, Error>;
+pub trait Runner: Fn(&Request<'_>) -> Result<Metadata, Error> {}
 
-/// The deployed metadata dispatcher: the `emery:adapter/source` WIT
-/// import, routed to the exporting guest by the request's adapter id.
+impl<F: Fn(&Request<'_>) -> Result<Metadata, Error>> Runner for F {}
+
+/// The metadata runner over the provider's source-seam capability
+/// ([`emery_adapter::SourceDispatch`]).
 ///
-/// # Errors
-///
-/// The target axis is deleted from the deployment (ADR-0008): a
-/// target-axis metadata request fails typed instead of dispatching.
-#[cfg(target_arch = "wasm32")]
-pub fn deployed(request: &Request<'_>) -> Result<Metadata, Error> {
-    match request.axis {
+/// The returned closure answers the source axis through the provider;
+/// the target axis is deleted from the deployment (ADR-0008), so a
+/// target-axis request fails typed (`adapter-axis-removed`) instead of
+/// dispatching.
+pub fn runner<P: emery_adapter::SourceDispatch>(provider: &P) -> impl Runner + '_ {
+    move |request: &Request<'_>| match request.axis {
         Axis::Source => {
-            let record = emery_adapter::source::import::metadata(request.adapter_id);
+            let record = provider.metadata(request.adapter_id);
             Ok(Metadata {
                 emery_floor: record.emery_floor,
             })
@@ -58,24 +59,6 @@ pub fn deployed(request: &Request<'_>) -> Result<Metadata, Error> {
             ),
         }),
     }
-}
-
-/// Native builds have no adapter seam (ADR-0002): dispatch refuses
-/// typed.
-///
-/// # Errors
-///
-/// Always `adapter-metadata-unsupported`.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn deployed(request: &Request<'_>) -> Result<Metadata, Error> {
-    Err(Error::Diag {
-        code: "adapter-metadata-unsupported",
-        detail: format!(
-            "adapter `{}`: metadata dispatches over the component seam; the native path is \
-             deleted (ADR-0002)",
-            request.adapter_id
-        ),
-    })
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -100,7 +83,7 @@ pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
 /// in during this dispatch, so a cold store resolves without a
 /// guest-visible entry. No file means no digest key, so no cache applies.
 pub(super) fn dispatch(
-    runner: Runner, axis: Axis, name: &str, version: Option<&semver::Version>,
+    runner: &impl Runner, axis: Axis, name: &str, version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {
     let adapter_id = RoutedId::new(axis, name, version.cloned()).to_string();
     runner(&Request {
@@ -115,7 +98,7 @@ pub(super) fn dispatch(
 /// (`<axis>:<name>`) for the cache-backed resolves this leg serves
 /// (package pins dispatch through [`dispatch`] instead).
 pub(super) fn load(
-    runner: Runner, location: &AdapterLocation, axis: Axis, name: &str,
+    runner: &impl Runner, location: &AdapterLocation, axis: Axis, name: &str,
     version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {
     let component = location.path();

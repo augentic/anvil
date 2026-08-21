@@ -15,15 +15,20 @@ use crate::handler::ExecutionPaths;
 /// Component-backed resolver: read-only re-resolution of an
 /// already-provisioned selector over an injected metadata dispatch
 /// ([`super::ensure::source`] owns the provisioning leg).
-#[derive(Clone, Copy, Debug)]
-pub struct Component {
-    metadata: metadata::Runner,
+pub struct Component<R: metadata::Runner> {
+    metadata: R,
 }
 
-impl Component {
+impl<R: metadata::Runner> std::fmt::Debug for Component<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Component").finish_non_exhaustive()
+    }
+}
+
+impl<R: metadata::Runner> Component<R> {
     /// Bind component resolution to the deployment's metadata dispatch.
     #[must_use]
-    pub const fn new(metadata: metadata::Runner) -> Self {
+    pub const fn new(metadata: R) -> Self {
         Self { metadata }
     }
 
@@ -37,7 +42,7 @@ impl Component {
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
         if let AdapterSelector::Package { version, .. } = selector {
-            let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, Some(version))?;
+            let metadata = metadata::dispatch(&self.metadata, Axis::Source, &name, Some(version))?;
             return source(
                 &name,
                 Some(version.clone()),
@@ -46,12 +51,12 @@ impl Component {
             );
         }
         if dispatch_first(selector, &name, paths) {
-            let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, None)?;
+            let metadata = metadata::dispatch(&self.metadata, Axis::Source, &name, None)?;
             return source(&name, None, metadata, bare_origin(Axis::Source, &name));
         }
         let location = locate(Axis::Source, &name, selector.version(), paths)?;
         let metadata =
-            metadata::load(self.metadata, &location, Axis::Source, &name, selector.version())?;
+            metadata::load(&self.metadata, &location, Axis::Source, &name, selector.version())?;
         source(&name, selector.version().cloned(), metadata, location.origin())
     }
 }
