@@ -10,7 +10,7 @@ use emery_adapter::seam::{
     Authority, Backing, Claim, ClaimKind, Context, Error, Evidence, SourceContent, SourceInput,
     SourceMetadata,
 };
-use emery_adapter::{Model, Source};
+use emery_adapter::{Model, SourceAdapter};
 
 // Unpublished mock identity: a development placeholder version,
 // never a pin-matchable release.
@@ -25,7 +25,7 @@ const DOCS: &[Doc] = &[Doc {
            the source interface.\n",
 }];
 
-impl Source for Mock {
+impl SourceAdapter for Mock {
     const IDENTITY: &str = "source@0.1.0";
 
     fn metadata() -> SourceMetadata {

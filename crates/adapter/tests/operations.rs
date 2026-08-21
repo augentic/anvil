@@ -3,7 +3,7 @@
 use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
 use emery_adapter::registry::Doc;
 use emery_adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{Model, Source, references, repaired};
+use emery_adapter::{Model, SourceAdapter, references, repaired};
 use omnia_testkit::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
@@ -13,7 +13,7 @@ const DOCS: &[Doc] = &[Doc {
 
 struct Probe;
 
-impl Source for Probe {
+impl SourceAdapter for Probe {
     const IDENTITY: &str = "probe@0.0.0";
 
     fn metadata() -> SourceMetadata {
@@ -58,15 +58,15 @@ async fn source_dispatch() {
     assert_eq!(evidence.claims.len(), 1);
     assert_eq!(evidence.claims[0].id.as_deref(), Some("one.claim"));
 
-    assert_eq!(<Probe as Source>::IDENTITY, "probe@0.0.0");
-    assert_eq!(<Probe as Source>::metadata(), SourceMetadata { emery_floor: None });
-    assert_eq!(<Probe as Source>::docs()[0].path, "prompts/extract.md");
+    assert_eq!(<Probe as SourceAdapter>::IDENTITY, "probe@0.0.0");
+    assert_eq!(<Probe as SourceAdapter>::metadata(), SourceMetadata { emery_floor: None });
+    assert_eq!(<Probe as SourceAdapter>::docs()[0].path, "prompts/extract.md");
 }
 
 #[test]
 fn fn_pointer_coercion() {
-    let metadata: fn() -> SourceMetadata = <Probe as Source>::metadata;
-    let docs: fn() -> &'static [Doc] = <Probe as Source>::docs;
+    let metadata: fn() -> SourceMetadata = <Probe as SourceAdapter>::metadata;
+    let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
     assert_eq!(metadata(), SourceMetadata { emery_floor: None });
     assert_eq!(docs().len(), 1);
 }

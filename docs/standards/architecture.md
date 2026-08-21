@@ -22,7 +22,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
+The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
 
 ## Deployment: the Wasm guest
 
@@ -32,7 +32,7 @@ The root `emery` package carries the Omnia deployment unit under `src/`: the gue
 
 ## Domain modules of note
 
-- **`crates/engine/src/resolve/`** — source-adapter resolution over the typed `AdapterSelector`: the `resolver::Component` kernel (read-only re-resolution) and the `ensure` kernels (the provisioning leg, one component, no manifest). Operations call them over the provider's metadata dispatch (`metadata::runner` closes over the `SourceDispatch` capability — the WIT `metadata` import on wasm32, a scripted mock natively), injecting `jiff::Timestamp::now()` at the operation boundary. `Component` keeps its injected `Runner`, the native kernel-test seam. Non-identity metadata is cached against the component digest.
+- **`crates/engine/src/resolve/`** — source-adapter resolution over the typed `AdapterSelector`: the `resolver::Component` kernel (read-only re-resolution) and the `ensure` kernels (the provisioning leg, one component, no manifest). Operations call them over the provider's metadata dispatch (`metadata::runner` closes over the `Source` capability — the WIT `metadata` import on wasm32, a scripted mock natively), injecting `jiff::Timestamp::now()` at the operation boundary. `Component` keeps its injected `Runner`, the native kernel-test seam. Non-identity metadata is cached against the component digest.
 - **`crates/artifacts/src/evidence.rs`** — the typed Evidence `Document` / `Claim` wire shapes (mirroring the WIT `evidence` / `claim` records) and their deterministic validation (`Document::validate`: kebab grammars, the per-kind claim id requirement). The typed serde parse is the load gate for every on-disk artifact; validators return the payload-free `Error::Validation { code, detail }` so the CLI exits with code 2 (`Exit::ValidationFailed`) with the specific discriminant as the wire `error`.
 
 The lenient v1 module trees in `artifacts` (spec parsers, provenance, the task/decision/leads validators) were deleted at the Phase 3 spine cut and are documented at tag `v1`.

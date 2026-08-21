@@ -1,5 +1,5 @@
 //! Native capability rung: the in-process `init` → `specify` journey
-//! over scripted `Model` + `SourceDispatch` capabilities — no built
+//! over scripted `Model` + `Source` capabilities — no built
 //! component.
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -11,7 +11,7 @@ use std::path::Path;
 use emery_adapter::seam::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
-use emery_adapter::{DispatchError, SourceDispatch};
+use emery_adapter::{DispatchError, Source};
 use emery_transport::command;
 use omnia_guest::Model;
 use omnia_guest::api::command::CommandResponse;
@@ -72,7 +72,7 @@ impl Model for Provider {
     }
 }
 
-impl SourceDispatch for Provider {
+impl Source for Provider {
     fn extract(
         &self, _id: &str, _input: &SourceInput,
     ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {

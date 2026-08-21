@@ -5,7 +5,7 @@
 use std::future::Future;
 
 use emery_adapter::seam::{Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{DispatchError, SourceDispatch};
+use emery_adapter::{DispatchError, Source};
 use omnia_guest::api::invoke::Invoker;
 
 /// The inert provider: unreachable capabilities.
@@ -20,7 +20,7 @@ impl omnia_guest::Model for Inert {
     }
 }
 
-impl SourceDispatch for Inert {
+impl Source for Inert {
     fn extract(
         &self, _id: &str, _input: &SourceInput,
     ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {

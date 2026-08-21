@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
         // Bare provider over the WASI capability defaults
         struct Provider;
         impl omnia_guest::Model for Provider {}
-        impl emery_adapter::SourceDispatch for Provider {}
+        impl emery_adapter::Source for Provider {}
 
         struct Cli;
         wasip3::cli::command::export!(Cli);

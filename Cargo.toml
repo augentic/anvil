@@ -81,7 +81,7 @@ edition = "2024"
 homepage = "https://augentic.io"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/augentic/emery"
-rust-version = "1.97"
+rust-version = "1.98"
 version = "0.38.0"
 
 [workspace.lints.rust]
@@ -171,6 +171,7 @@ base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 clap_complete = "4.6.9"
+futures = "0.3.33"
 jiff = { version = "0.2.35", default-features = false, features = ["serde", "std"] }
 proptest = "1.11.0"
 schemars = "1.2.2"
@@ -190,7 +191,6 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 wasip2 = "1.0.4"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow", "component-model-bytes"] }
-futures = "0.3.33"
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
 emery-adapter = { path = "crates/adapter" }

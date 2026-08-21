@@ -1,7 +1,7 @@
 //! `source-adapter` WIT bindings: one `wit_bindgen::generate!`.
 //!
 //! The `source!` export macro plus the engine guest's [`import`] seam
-//! wrappers; leaf crates wire a [`crate::Source`] with `emery_adapter::source!(…)`.
+//! wrappers; leaf crates wire a [`crate::SourceAdapter`] with `emery_adapter::source!(…)`.
 
 mod generated {
     #![allow(
@@ -318,16 +318,16 @@ pub mod import {
     }
 }
 
-/// Map [`crate::Source::metadata`] onto the WIT record.
+/// Map [`crate::SourceAdapter::metadata`] onto the WIT record.
 #[must_use]
-pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
+pub fn dispatch_metadata<A: crate::SourceAdapter>() -> AdapterMetadata {
     A::metadata().into()
 }
 
 /// # Errors
 ///
-/// As the implementor's [`extract`](crate::Source::extract).
-pub async fn dispatch_extract<A: crate::Source>(
+/// As the implementor's [`extract`](crate::SourceAdapter::extract).
+pub async fn dispatch_extract<A: crate::SourceAdapter>(
     id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {
     let input = crate::seam::SourceInput::from(input);
@@ -344,7 +344,7 @@ fn source_ctx<'a>(id: &'a str, input: &'a crate::seam::SourceInput) -> crate::se
     }
 }
 
-/// Wire a [`crate::Source`] implementor into the component exports.
+/// Wire a [`crate::SourceAdapter`] implementor into the component exports.
 ///
 /// ```ignore
 /// emery_adapter::source!(crate::Captures);
@@ -380,13 +380,13 @@ macro_rules! source {
                 $crate::wasip3::http::types::Response,
                 $crate::wasip3::http::types::ErrorCode,
             > {
-                let (name, version) = <$adapter as $crate::Source>::IDENTITY
+                let (name, version) = <$adapter as $crate::SourceAdapter>::IDENTITY
                     .split_once('@')
                     .expect("IDENTITY is name@version");
                 $crate::references::serve(
                     name,
                     version,
-                    <$adapter as $crate::Source>::docs(),
+                    <$adapter as $crate::SourceAdapter>::docs(),
                     request,
                 )
                 .await

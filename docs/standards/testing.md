@@ -12,13 +12,13 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted model doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over a provider that scripts both capabilities (`Model`, `SourceDispatch`) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
+The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted model doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over a provider that scripts both capabilities (`Model`, `Source`) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
 
 The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check. The `source` and `runtime` examples remain the in-tree component-shape fixture; they are not a test rung.
 
 ### The mock source example
 
-The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::Source` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests (`source:source`). Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
+The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests (`source:source`). Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
 
 Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the engine suites script directly). Emery owns only scenario content and assertions.
 
