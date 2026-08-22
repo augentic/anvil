@@ -21,21 +21,16 @@ const GENERATIONS_DIR: &str = "generations";
 
 // Every document of one complete generation, in the fixed on-disk
 // order the generation digest folds them.
-const FILES: [&str; 4] = ["bindings.yaml", "receipts.yaml", "spec.md", "design.md"];
+const FILES: [&str; 2] = ["spec.md", "design.md"];
 
 /// One complete spec set, assembled in memory before any write.
 ///
-/// The resolved-bindings snapshot, the extract receipts, and the two
-/// reviewable documents commit as a unit or not at all. Because the
-/// generation id is the digest of the set's bytes, an identical
-/// re-run converges on the same directory and the home stays
-/// byte-stable. No document carries a timestamp or log line.
+/// The two reviewable documents commit as a unit or not at all.
+/// Because the generation id is the digest of the set's bytes, an
+/// identical re-run converges on the same directory and the home
+/// stays byte-stable. No document carries a timestamp or log line.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpecSet {
-    /// Canonical YAML of the bindings this run resolved.
-    pub bindings: String,
-    /// Canonical YAML of the per-source extract receipts.
-    pub receipts: String,
     /// The behavioural specification document.
     pub spec: String,
     /// The rebuild design document.
@@ -46,13 +41,8 @@ impl SpecSet {
     /// The set's documents as `(file name, body)` pairs, in `FILES`
     /// order.
     #[must_use]
-    pub fn files(&self) -> [(&'static str, &str); 4] {
-        [
-            (FILES[0], &self.bindings),
-            (FILES[1], &self.receipts),
-            (FILES[2], &self.spec),
-            (FILES[3], &self.design),
-        ]
+    pub fn files(&self) -> [(&'static str, &str); 2] {
+        [(FILES[0], &self.spec), (FILES[1], &self.design)]
     }
 
     /// The content-addressed generation id: the SHA-256 digest over
@@ -257,10 +247,8 @@ impl Home {
         let committed = self.current().ok().flatten()?;
         let read = |name: &str| fs::read_to_string(committed.dir.join(name)).ok();
         let set = SpecSet {
-            bindings: read(FILES[0])?,
-            receipts: read(FILES[1])?,
-            spec: read(FILES[2])?,
-            design: read(FILES[3])?,
+            spec: read(FILES[0])?,
+            design: read(FILES[1])?,
         };
         Some((committed.id, set))
     }

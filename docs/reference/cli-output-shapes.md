@@ -54,7 +54,7 @@ The success body names the committed generation and its reviewable set:
   "sources": 3,
   "diff": {
     "from": "1a2b3c4d…",
-    "artifacts": ["receipts.yaml", "spec.md"],
+    "artifacts": ["spec.md"],
     "added": [],
     "removed": [],
     "changed": ["session.timeout"]

@@ -11,7 +11,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::extract::{Receipt, extract_all};
+use crate::extract::extract_all;
 use crate::handler::{Render, RequestContext};
 use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
@@ -83,10 +83,7 @@ impl<P: Provider + Model + Source> Operation<P> for Specify {
         let rows = reconcile(&sets);
         let documents = synthesise(context.provider, &sets, &rows).await?;
 
-        let receipts: Vec<Receipt> = sets.iter().map(Receipt::of).collect();
         let set = SpecSet {
-            bindings: emery_artifacts::atomic::serialise_yaml(&project.sources)?,
-            receipts: emery_artifacts::atomic::serialise_yaml(&receipts)?,
             spec: documents.spec,
             design: documents.design,
         };

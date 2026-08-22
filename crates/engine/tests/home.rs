@@ -9,8 +9,6 @@ use emery_engine::home::{Diff, Home, SpecSet};
 
 fn set(spec: &str) -> SpecSet {
     SpecSet {
-        bindings: "sources: []\n".to_string(),
-        receipts: "receipts: []\n".to_string(),
         spec: spec.to_string(),
         design: "# Design\n".to_string(),
     }
@@ -133,11 +131,11 @@ fn remine_diff_sections() {
         block(3, "session.timeout", "Sessions expire after 45 minutes of inactivity."),
     );
     let outgoing = SpecSet {
-        receipts: "receipts: [old]\n".to_string(),
+        design: "# Design v1\n".to_string(),
         ..set(&old_spec)
     };
     let incoming = SpecSet {
-        receipts: "receipts: [new]\n".to_string(),
+        design: "# Design v2\n".to_string(),
         ..set(&new_spec)
     };
 
@@ -145,7 +143,7 @@ fn remine_diff_sections() {
 
     assert!(!diff.is_empty());
     assert_eq!(diff.from, "cafe");
-    assert_eq!(diff.artifacts, ["receipts.yaml", "spec.md"], "changed artifacts in set order");
+    assert_eq!(diff.artifacts, ["spec.md", "design.md"], "changed artifacts in set order");
     assert_eq!(diff.added, ["access.audit"]);
     assert_eq!(diff.removed, ["legacy.export"]);
     assert_eq!(

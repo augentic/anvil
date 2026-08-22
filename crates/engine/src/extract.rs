@@ -1,12 +1,10 @@
 //! The extract leg: dispatch each authored binding over the source
-//! seam, fail closed on the required-extras table, and record one
-//! receipt per source.
+//! seam and fail closed on the required-extras table.
 
 use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
 use emery_adapter::{DispatchError, Source};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
-use serde::Serialize;
 
 use crate::handler::ExecutionPaths;
 use crate::project::{BindingContent, Project, SourceBinding};
@@ -31,8 +29,7 @@ async fn dispatch<P: Source>(
 }
 
 /// One extracted source: the binding key, the routed adapter identity
-/// it dispatched by, and the validated claim set in the persisted
-/// Evidence dialect.
+/// it dispatched by, and the validated claim set in the Evidence dialect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceSet {
     /// The authored binding key.
@@ -43,45 +40,6 @@ pub struct SourceSet {
     pub authority: AuthorityClass,
     /// The validated claims.
     pub claims: Vec<Claim>,
-}
-
-/// One extract receipt persisted into the generation: source identity
-/// plus the claim-set digest. No timestamps.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct Receipt {
-    /// The authored binding key.
-    pub key: String,
-    /// The routed adapter identity the extract dispatched by.
-    pub adapter: String,
-    /// Document-level authority class.
-    pub authority: AuthorityClass,
-    /// Number of claims extracted.
-    pub claims: usize,
-    /// `sha256:<hex>` over the claim set's canonical JSON.
-    pub digest: String,
-}
-
-impl Receipt {
-    /// The receipt of one extracted source.
-    #[must_use]
-    pub fn of(set: &SourceSet) -> Self {
-        let body = serde_json::json!({
-            "authority": set.authority,
-            "claims": set.claims,
-        });
-        let canonical = emery_diagnostics::fingerprint::canonical_json(&body);
-        Self {
-            key: set.key.clone(),
-            adapter: set.adapter.clone(),
-            authority: set.authority,
-            claims: set.claims.len(),
-            digest: format!(
-                "sha256:{}",
-                emery_diagnostics::digest::sha256_hex(canonical.as_bytes())
-            ),
-        }
-    }
 }
 
 /// Extract every authored binding: resolve on the source axis,
