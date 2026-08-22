@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 use std::future::{Future, ready};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use omnia_guest::{BlobStore, CasError, ContainerMetadata, ObjectMetadata, StateStore};
 
@@ -73,6 +73,158 @@ impl Memory {
 
 fn unscripted<T: Send>(operation: &str) -> impl Future<Output = anyhow::Result<T>> + Send + use<T> {
     ready(Err(anyhow::anyhow!("{operation} is not scripted")))
+}
+
+/// A project-scoped view over one shared [`Memory`]: every key and container
+/// is prefixed with a project id, modelling a project-id-keyed host binding.
+#[derive(Debug)]
+pub struct Namespaced {
+    prefix: String,
+    inner: Arc<Memory>,
+}
+
+impl Namespaced {
+    /// Scopes `inner` under `prefix`.
+    pub fn new(prefix: &str, inner: Arc<Memory>) -> Self {
+        Self {
+            prefix: prefix.to_string(),
+            inner,
+        }
+    }
+
+    fn scoped(&self, name: &str) -> String {
+        format!("{}/{name}", self.prefix)
+    }
+}
+
+impl StateStore for Namespaced {
+    fn get(&self, key: &str) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
+        ready(Ok(self.inner.state(&self.scoped(key))))
+    }
+
+    fn set(
+        &self, key: &str, value: &[u8], ttl_secs: Option<u64>,
+    ) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
+        assert!(ttl_secs.is_none(), "the engine never sets a TTL");
+        let previous =
+            self.inner.state.lock().expect("state lock").insert(self.scoped(key), value.to_vec());
+        ready(Ok(previous))
+    }
+
+    fn delete(&self, key: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
+        drop(self.inner.state.lock().expect("state lock").remove(&self.scoped(key)));
+        ready(Ok(()))
+    }
+
+    fn cas(
+        &self, key: &str, expected: Option<&[u8]>, value: &[u8],
+    ) -> impl Future<Output = Result<(), CasError>> + Send {
+        let key = self.scoped(key);
+        let mut state = self.inner.state.lock().expect("state lock");
+        let observed = state.get(&key).cloned();
+        let swapped = if observed.as_deref() == expected {
+            drop(state.insert(key, value.to_vec()));
+            Ok(())
+        } else {
+            Err(CasError::Conflict(observed))
+        };
+        drop(state);
+        ready(swapped)
+    }
+
+    fn increment(
+        &self, _key: &str, _delta: i64,
+    ) -> impl Future<Output = anyhow::Result<i64>> + Send {
+        unscripted("increment")
+    }
+}
+
+impl BlobStore for Namespaced {
+    fn get(
+        &self, container: &str, name: &str,
+    ) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
+        ready(Ok(self.inner.object(&self.scoped(container), name)))
+    }
+
+    fn put(
+        &self, container: &str, name: &str, data: &[u8],
+    ) -> impl Future<Output = anyhow::Result<()>> + Send {
+        self.inner.insert_object(&self.scoped(container), name, data);
+        ready(Ok(()))
+    }
+
+    fn delete(
+        &self, container: &str, name: &str,
+    ) -> impl Future<Output = anyhow::Result<()>> + Send {
+        if let Some(objects) =
+            self.inner.blobs.lock().expect("blob lock").get_mut(&self.scoped(container))
+        {
+            drop(objects.remove(name));
+        }
+        ready(Ok(()))
+    }
+
+    fn has(
+        &self, container: &str, name: &str,
+    ) -> impl Future<Output = anyhow::Result<bool>> + Send {
+        ready(Ok(self.inner.object(&self.scoped(container), name).is_some()))
+    }
+
+    fn list(&self, container: &str) -> impl Future<Output = anyhow::Result<Vec<String>>> + Send {
+        ready(Ok(self.inner.objects(&self.scoped(container))))
+    }
+
+    fn get_range(
+        &self, _container: &str, _name: &str, _start: u64, _end: u64,
+    ) -> impl Future<Output = anyhow::Result<Vec<u8>>> + Send {
+        unscripted("get_range")
+    }
+
+    fn object_info(
+        &self, _container: &str, _name: &str,
+    ) -> impl Future<Output = anyhow::Result<ObjectMetadata>> + Send {
+        unscripted("object_info")
+    }
+
+    fn delete_objects(
+        &self, _container: &str, _names: &[String],
+    ) -> impl Future<Output = anyhow::Result<()>> + Send {
+        unscripted("delete_objects")
+    }
+
+    fn clear(&self, _container: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
+        unscripted("clear")
+    }
+
+    fn create_container(&self, _name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
+        unscripted("create_container")
+    }
+
+    fn delete_container(&self, _name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
+        unscripted("delete_container")
+    }
+
+    fn container_exists(&self, _name: &str) -> impl Future<Output = anyhow::Result<bool>> + Send {
+        unscripted("container_exists")
+    }
+
+    fn container_info(
+        &self, _container: &str,
+    ) -> impl Future<Output = anyhow::Result<ContainerMetadata>> + Send {
+        unscripted("container_info")
+    }
+
+    fn copy_object(
+        &self, _src_container: &str, _src_name: &str, _dest_container: &str, _dest_name: &str,
+    ) -> impl Future<Output = anyhow::Result<()>> + Send {
+        unscripted("copy_object")
+    }
+
+    fn move_object(
+        &self, _src_container: &str, _src_name: &str, _dest_container: &str, _dest_name: &str,
+    ) -> impl Future<Output = anyhow::Result<()>> + Send {
+        unscripted("move_object")
+    }
 }
 
 impl StateStore for Memory {

@@ -1,12 +1,12 @@
 # Portable storage and the human seam
 
-Status: **Draft** — working design, executed as the discrete steps in [§7](#7-execution-steps); the generation-set shrink prerequisite, the omnia prerequisite, and steps 1–7 (step 4 landed before step 3) have landed. Each step lands independently with the journey test green.
+Status: **Landed** — executed as the discrete steps in [§7](#7-execution-steps); the generation-set shrink prerequisite, the omnia prerequisite, and steps 1–8 (step 4 landed before step 3) have landed. Each step landed independently with the journey test green. Remote-binding performance (risk 4) was deliberately descoped from step 8 and stays unconfirmed.
 
 ## 1. Motivation
 
 The engine's persistence today is the host filesystem, wired through a static, CWD-rooted deployment policy in `src/main.rs`: the invocation directory mounts writable as `.`, and a CWD-relative `.emery-cache` backs the cache preopen. That policy hard-codes three constraints we want to remove:
 
-- **One project per deployment.** `crates/engine/src/handler/locations.rs` notes explicitly that no project-id keying is needed *because* the cache is CWD-relative. Multi-project, multi-tenant, and serverless deployments are impossible without re-keying storage.
+- **One project per deployment.** `crates/engine/src/handler/locations.rs` noted explicitly (pre-port) that no project-id keying was needed *because* the cache was CWD-relative. Multi-project, multi-tenant, and serverless deployments were impossible without re-keying storage.
 - **A writable `.` mount.** The guest holds write authority over the operator's entire project tree in order to maintain one subtree (`.emery/`). Least-authority (the C3 posture) wants the guest holding exactly the capabilities it uses.
 - **Hand-rolled durability.** `crates/artifacts/src/atomic.rs` (temp file, `sync_all`, atomic rename) and the crash-litter pruning in `Home::prune` exist only because the filesystem offers no better primitive.
 
@@ -248,12 +248,12 @@ step 1 (seam) ───────┴→ step 2 (host bindings) → step 4 (cac
 
 **Step 7 — read-only MCP resource.** Serve the current generation and id on the existing listener (layer 2), beside the adapter shelves. The C3 refusal contract is untouched — a wire-contract test asserts mutating routes still refuse. The plugin skill may consume it.
 
-**Step 8 — deployment profiles.** Document and exercise one non-filesystem binding end-to-end (project-id-keyed, multi-project host) to prove the freedom is real, and measure remote-binding performance here — the numbers in risk 4 stay `unconfirmed` until this step. Layer 3 (git projection) is scoped as its own design if wanted.
+**Step 8 — deployment profiles.** Document and exercise one non-filesystem binding end-to-end (project-id-keyed, multi-project host) to prove the freedom is real. Landed as three pieces: the isolation proof in the journey suite (`tests/source.rs`, `multi_project_isolation` — two project-scoped views over one shared scripted store commit and `show` independent generations, no engine change), the host-side wrapper as the `profile` example (`examples/profile.rs`, `cargo make profile` — the shipped runtime shape with storage scoped under `EMERY_PROJECT_ID` over the omnia in-memory defaults), and the Developer Guide page (`docs/reference/deployment-profiles.md`). Remote-binding performance was **descoped by decision**: the exercised binding is in-memory, not networked, so the numbers in risk 4 stay `unconfirmed` until a real remote binding is deployed. Layer 3 (git projection) is scoped as its own design if wanted.
 
 ## 8. Risks and open questions
 
 1. **WIT instability** (§3.4): upstream `wasi-keyvalue` / `wasi-blobstore` churn lands on us as seam maintenance. Mitigated: omnia already vendors and pins its fork of both WITs and owns the host implementations, so churn is absorbed there as a versioned seam change, as with the adapter WIT.
 2. **Test surface shift**: the filesystem stops being a public observable boundary for engine state; the scripted storage provider and the envelope become the boundary. Handled in step 1.
 3. **Multi-operator ownership of a specification** ([§5.3](#53-the-gating-question)): sharing the binding list between operators — beyond one operator generating and teammates reviewing `emery show` output — is out of scope. If co-owned specifications become a feature, that is its own design; do not back into it via binding persistence (engine storage, implicit `sources.toml` discovery), each of which reintroduces a `project.yaml`-shaped residue.
-4. **Performance of remote bindings**: unconfirmed; measure in step 8 before claiming anything.
+4. **Performance of remote bindings**: unconfirmed — and deliberately left so at step 8, which exercised the in-memory binding rather than deploying a networked backing. Measure when a remote binding is first deployed, before claiming anything.
 5. **Omnia prerequisite latency** ([§3.5](#35-omnia-work-this-design-requires)): emery step 2 waits on the filesystem keyvalue backend and the `StateStore` atomics; step 1 does not. Do not substitute an in-memory `KeyValueDefault` or a blobstore-keyed pointer to skip the wait — that drops restart durability or forks `current` off keyvalue.

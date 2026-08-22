@@ -20,7 +20,7 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Error, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted};
 use serde_json::{Map, Value};
-use storage::Memory;
+use storage::{Memory, Namespaced};
 
 const SPEC_ANSWER: &str = include_str!("source/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("source/2-design.md");
@@ -76,6 +76,63 @@ async fn gen_spec() {
     provider.model.assert_exhausted();
 }
 
+#[tokio::test]
+async fn multi_project_isolation() {
+    // One shared store, two project-scoped views: the deployment-profile
+    // claim (portable-storage step 8) that multi-project isolation is host
+    // policy over the engine's flat keys, with no engine change.
+    let workspace = tempfile::tempdir().expect("tempdir");
+    let component = workspace.path().join("source.wasm");
+    fs::write(&component, b"\0asm-stub").expect("stub wasm");
+    let component = component.to_str().expect("utf-8 path");
+
+    let shared = Arc::new(Memory::default());
+    let alpha = Provider {
+        model: Harness::answering([SPEC_ANSWER, DESIGN_ANSWER]),
+        storage: Arc::new(Namespaced::new("alpha", Arc::clone(&shared))),
+    };
+    let beta_spec = SPEC_ANSWER.replace("hello", "howdy");
+    let beta_design = DESIGN_ANSWER.replace("hello", "howdy");
+    let beta = Provider {
+        model: Harness::answering([beta_spec, beta_design]),
+        storage: Arc::new(Namespaced::new("beta", Arc::clone(&shared))),
+    };
+
+    cli_exec(&alpha, &["emery", "specify", component]).await;
+    cli_exec(&beta, &["emery", "specify", component]).await;
+
+    // Every write landed under its project prefix; nothing landed flat.
+    assert!(shared.state("spec/current").is_none(), "no unprefixed pointer exists");
+    assert!(shared.objects("spec").is_empty(), "no unprefixed generation exists");
+    assert!(shared.object("alpha/adapters", "source.wasm").is_some());
+    assert!(shared.object("beta/adapters", "source.wasm").is_some());
+
+    let id_alpha = pointer(&shared, "alpha");
+    let id_beta = pointer(&shared, "beta");
+    assert_ne!(id_alpha, id_beta, "distinct documents commit distinct generations");
+
+    // Each project's `show` renders its own committed bytes alone.
+    let spec_alpha =
+        shared.object("alpha/spec", &format!("generations/{id_alpha}/spec.md")).expect("spec.md");
+    let spec_beta =
+        shared.object("beta/spec", &format!("generations/{id_beta}/spec.md")).expect("spec.md");
+    let shown = cli_exec(&alpha, &["emery", "show", "spec"]).await;
+    assert_eq!(shown.stdout, spec_alpha, "alpha shows its own generation");
+    let shown = cli_exec(&beta, &["emery", "show", "spec"]).await;
+    assert_eq!(shown.stdout, spec_beta, "beta shows its own generation");
+    assert!(String::from_utf8_lossy(&spec_beta).contains("howdy"));
+    assert!(!String::from_utf8_lossy(&spec_alpha).contains("howdy"));
+
+    alpha.model.assert_exhausted();
+    beta.model.assert_exhausted();
+}
+
+// Reads a project's current-generation id from the shared store.
+fn pointer(shared: &Memory, project: &str) -> String {
+    let pointer = shared.state(&format!("{project}/spec/current")).expect("current");
+    String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string()
+}
+
 // Reads one shelf resource over the guest HTTP router, layer-2 style.
 async fn mcp_read(provider: &Provider, uri: &str) -> String {
     use tower::ServiceExt as _;
@@ -101,28 +158,42 @@ async fn mcp_read(provider: &Provider, uri: &str) -> String {
     reply["result"]["contents"][0]["text"].as_str().unwrap_or_else(|| panic!("{reply}")).to_string()
 }
 
-async fn cli_exec(provider: &Provider, argv: &[&str]) -> CommandResponse {
+async fn cli_exec<S>(provider: &Provider<S>, argv: &[&str]) -> CommandResponse
+where
+    S: Send + Sync + 'static,
+    Provider<S>: omnia_guest::StateStore + omnia_guest::BlobStore,
+{
     let router = command::router(Invoker::new("emery", provider.clone())).expect("command grammar");
     let resp = router.execute(argv.iter().copied()).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
     resp
 }
 
-#[derive(Clone, Debug)]
-struct Provider {
+#[derive(Debug)]
+struct Provider<S = Memory> {
     model: Harness<Scripted>,
-    storage: Arc<Memory>,
+    storage: Arc<S>,
 }
 
-crate::scripted_storage!(Provider, storage);
+impl<S> Clone for Provider<S> {
+    fn clone(&self) -> Self {
+        Self {
+            model: self.model.clone(),
+            storage: Arc::clone(&self.storage),
+        }
+    }
+}
 
-impl Model for Provider {
+crate::scripted_storage!(Provider<Memory>, storage);
+crate::scripted_storage!(Provider<Namespaced>, storage);
+
+impl<S: Send + Sync + 'static> Model for Provider<S> {
     async fn create(&self, request: Request) -> Result<Reply, Error> {
         self.model.create(request).await
     }
 }
 
-impl Source for Provider {
+impl<S: Send + Sync + 'static> Source for Provider<S> {
     fn extract(
         &self, _id: &str, _input: &SourceInput,
     ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
