@@ -1,13 +1,10 @@
 //! Resolver integration tests.
 
-#[path = "support/storage.rs"]
-mod storage;
-
 use emery_diagnostics::cache::content_digest;
 use emery_engine::handler::ExecutionPaths;
 use emery_engine::resolve::Axis;
 use emery_engine::resolve::resolver::locate;
-use storage::Memory;
+use emery_testkit::Memory;
 
 const COMPONENT: &[u8] = b"\0asm-demo";
 

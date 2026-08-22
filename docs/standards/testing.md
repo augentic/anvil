@@ -14,7 +14,7 @@ Emery is tested as a self-contained engine against its own WIT contract. No rung
 
 The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted doubles, the CLI wire contract (grammar, exit codes, the MCP spec shelf, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `specify` → `show` journey (`tests/source.rs`) over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage seam) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
 
-Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage seam (design/portable-storage.md steps 1–2), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities — the `wasi:keyvalue`/`wasi:blobstore` imports in deployment, bound host-side to the durable `omnia-filesystem` store — and the native suites script them with the shared in-memory store (`crates/engine/tests/support/storage.rs`, `#[path]`-included per suite). No suite changes the process working directory, and no suite asserts an on-disk layout — the backing is host policy, exercised on the live rung, not in tests. Operator-supplied inputs (a local `.wasm` component) stay real files in a `tempfile::TempDir`.
+Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage seam (design/portable-storage.md steps 1–2), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities — the `wasi:keyvalue`/`wasi:blobstore` imports in deployment, bound host-side to the durable `omnia-filesystem` store — and the native suites script them with `emery_testkit` (`Memory`, `Namespaced`). No suite changes the process working directory, and no suite asserts an on-disk layout — the backing is host policy, exercised on the live rung, not in tests. Operator-supplied inputs (a local `.wasm` component) stay real files in a `tempfile::TempDir`.
 
 The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check. The `source` and `runtime` examples remain the in-tree component-shape fixture; they are not a test rung.
 
@@ -22,7 +22,7 @@ The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm l
 
 The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests (`source:source`). Do not add another mock adapter, mock model, or mock-adapter copy — extend the example.
 
-Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the engine suites script directly). Emery owns only scenario content and assertions.
+Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the engine suites script directly). Storage doubles live in `emery-testkit` until that seam moves upstream. Suites own only scenario content and assertions.
 
 ## Integration-first policy
 
@@ -100,7 +100,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Script engine state with the shared in-memory storage provider and assert on its contents plus the envelope (`tests/source.rs`); reserve `tempfile::TempDir` for operator-supplied inputs.
+- Script engine state with `emery_testkit::Memory` (or `Namespaced`) and assert on its contents plus the envelope (`tests/source.rs`); reserve `tempfile::TempDir` for operator-supplied inputs.
 - Compare structured output against checked-in goldens (the committed answer schemas under `crates/adapter/schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.

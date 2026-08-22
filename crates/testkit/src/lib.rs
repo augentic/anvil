@@ -1,6 +1,9 @@
-//! Scripted in-memory storage for native integration tests.
+//! Scripted in-memory `StateStore` / `BlobStore` doubles for native tests.
 
-#![expect(dead_code, reason = "shared scripted storage; each consuming binary uses a subset")]
+#![allow(
+    clippy::missing_panics_doc,
+    reason = "Mutex poison is a harness bug; every lock site is expect"
+)]
 
 use std::collections::BTreeMap;
 use std::future::{Future, ready};
@@ -354,7 +357,7 @@ impl BlobStore for Memory {
     }
 }
 
-/// Implements both storage capabilities by forwarding to a [`Memory`] field.
+/// Implements both storage capabilities by forwarding to a storage field.
 #[macro_export]
 macro_rules! scripted_storage {
     ($provider:ty, $field:ident) => {

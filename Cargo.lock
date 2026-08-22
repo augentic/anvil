@@ -936,6 +936,7 @@ dependencies = [
  "emery-adapter",
  "emery-diagnostics",
  "emery-error",
+ "emery-testkit",
  "emery-transport",
  "omnia",
  "omnia-cursor",
@@ -1007,6 +1008,7 @@ dependencies = [
  "emery-diagnostics",
  "emery-error",
  "emery-prose",
+ "emery-testkit",
  "omnia-guest",
  "omnia-testkit",
  "semver",
@@ -1035,6 +1037,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "emery-testkit"
+version = "0.38.0"
+dependencies = [
+ "anyhow",
+ "omnia-guest",
+]
+
+[[package]]
 name = "emery-transport"
 version = "0.38.0"
 dependencies = [
@@ -1045,6 +1055,7 @@ dependencies = [
  "emery-diagnostics",
  "emery-engine",
  "emery-error",
+ "emery-testkit",
  "omnia-guest",
  "serde",
  "serde_json",

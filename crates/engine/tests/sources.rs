@@ -193,6 +193,37 @@ fn relative_paths_normalise() {
 }
 
 #[test]
+fn absolute_sources_under_cwd_stay_preopen_relative() {
+    let cwd = std::env::current_dir().expect("cwd");
+    let dir = tempfile::TempDir::new_in(&cwd).expect("tempdir under cwd");
+    let path = dir.path().join("sources.toml");
+    std::fs::write(
+        &path,
+        "[sources.docs]\nadapter = \"./adapters/docs.wasm\"\npath = \"nested/docs\"\n",
+    )
+    .expect("write sources.toml");
+    let bound =
+        bindings(&[], &[], Some(path.to_str().expect("utf-8 path"))).expect("bindings load");
+
+    let BindingContent::Workspace(root) = &bound[0].content else {
+        panic!("workspace binding");
+    };
+    assert!(
+        !std::path::Path::new(root).is_absolute(),
+        "workspace root must be `.`-relative so the guest preopen can open it: {root}"
+    );
+    assert!(
+        root.ends_with("nested/docs") || root.ends_with("nested\\docs"),
+        "file-relative `path` still anchors at the file: {root}"
+    );
+    assert!(
+        !std::path::Path::new(&bound[0].adapter).is_absolute(),
+        "a local component must stay `.`-relative: {}",
+        bound[0].adapter
+    );
+}
+
+#[test]
 fn malformed_toml_refused() {
     let err = from_file("not toml [").expect_err("parse failures are typed");
     assert!(err.to_string().contains("sources-toml-malformed"), "{err}");

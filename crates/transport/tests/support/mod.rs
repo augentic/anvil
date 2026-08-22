@@ -1,22 +1,20 @@
 //! Inert provider and storage for wire-contract tests.
 
-#[path = "../../../engine/tests/support/storage.rs"]
-pub mod storage;
-
 use std::future::Future;
 use std::sync::Arc;
 
 use emery_adapter::seam::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
+use emery_testkit::Memory;
 use omnia_guest::api::invoke::Invoker;
 
 // Provider capabilities are unreachable in these tests.
 #[derive(Clone, Debug, Default)]
 pub struct Inert {
-    pub storage: Arc<storage::Memory>,
+    pub storage: Arc<Memory>,
 }
 
-crate::scripted_storage!(Inert, storage);
+emery_testkit::scripted_storage!(Inert, storage);
 
 impl omnia_guest::Model for Inert {
     fn create(

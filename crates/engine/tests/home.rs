@@ -1,10 +1,7 @@
 //! Output-home integration tests.
 
-#[path = "support/storage.rs"]
-mod storage;
-
 use emery_engine::home::{Diff, Home, SpecSet};
-use storage::Memory;
+use emery_testkit::Memory;
 
 fn set(spec: &str) -> SpecSet {
     SpecSet {

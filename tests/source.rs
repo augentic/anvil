@@ -2,9 +2,6 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-#[path = "../crates/engine/tests/support/storage.rs"]
-mod storage;
-
 use std::fs;
 use std::future::Future;
 use std::sync::Arc;
@@ -13,6 +10,7 @@ use emery_adapter::seam::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
 use emery_adapter::{DispatchError, Source};
+use emery_testkit::{Memory, Namespaced};
 use emery_transport::command;
 use omnia_guest::Model;
 use omnia_guest::api::command::CommandResponse;
@@ -20,7 +18,6 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Error, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted};
 use serde_json::{Map, Value};
-use storage::{Memory, Namespaced};
 
 const SPEC_ANSWER: &str = include_str!("source/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("source/2-design.md");
@@ -184,8 +181,8 @@ impl<S> Clone for Provider<S> {
     }
 }
 
-crate::scripted_storage!(Provider<Memory>, storage);
-crate::scripted_storage!(Provider<Namespaced>, storage);
+emery_testkit::scripted_storage!(Provider<Memory>, storage);
+emery_testkit::scripted_storage!(Provider<Namespaced>, storage);
 
 impl<S: Send + Sync + 'static> Model for Provider<S> {
     async fn create(&self, request: Request) -> Result<Reply, Error> {

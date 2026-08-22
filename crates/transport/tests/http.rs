@@ -1,17 +1,14 @@
 //! Wire coverage for the guest HTTP surface: the spec shelf and the refusal.
 
-#[path = "../../engine/tests/support/storage.rs"]
-mod storage;
-
 use std::sync::Arc;
 
 use emery_engine::home::{CURRENT_KEY, SPEC_CONTAINER, SpecSet};
+use emery_testkit::Memory;
 use emery_transport::http::{DESIGN_URI, GENERATION_URI, SPEC_ROUTE, SPEC_URI};
 use omnia_guest::axum::Router;
 use omnia_guest::axum::body::{Body, to_bytes};
 use omnia_guest::http::{Method, Request, StatusCode, header};
 use serde_json::{Value, json};
-use storage::Memory;
 use tower::ServiceExt as _;
 
 const SPEC_BODY: &str = "# Spec\n\nOne requirement.\n";
@@ -23,7 +20,7 @@ struct Store {
     storage: Arc<Memory>,
 }
 
-crate::scripted_storage!(Store, storage);
+emery_testkit::scripted_storage!(Store, storage);
 
 // Seeds storage with one committed generation, exactly as `Home::commit` writes it.
 fn seeded() -> (Store, String) {

@@ -6,7 +6,7 @@ use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claim
 use emery_error::Error;
 use omnia_guest::{BlobStore, StateStore};
 
-use crate::handler::ExecutionPaths;
+use crate::handler::{ExecutionPaths, preopen_relative};
 use crate::resolve::{AdapterSelector, Axis, RoutedId, ensure, metadata};
 use crate::sources::{BindingContent, SourceBinding};
 
@@ -80,14 +80,14 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
 fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
-            let root = if relative == "." {
+            let joined = if relative == "." {
                 paths.project_root().to_path_buf()
             } else {
                 paths.project_root().join(relative)
             };
             SourceContent::Workspace(SourceWorkspace {
                 id: binding.key.clone(),
-                root: root.display().to_string(),
+                root: preopen_relative(&joined).display().to_string(),
             })
         }
         BindingContent::Value(value) => SourceContent::Value(value.clone()),

@@ -8,6 +8,7 @@ use std::path::{Component, Path, PathBuf};
 
 use emery_error::Error;
 
+use crate::handler::preopen_relative;
 use crate::resolve::AdapterSelector;
 
 /// A source binding for one run.
@@ -50,7 +51,7 @@ pub fn bindings(
                         .to_string(),
                 });
             }
-            from_file(Path::new(path))
+            from_file(&preopen_relative(Path::new(path)))
         }
         None => from_argv(adapters, values),
     }
@@ -104,7 +105,10 @@ fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
     if file.sources.is_empty() {
         return Err(source_required());
     }
-    let base = path.parent().unwrap_or_else(|| Path::new("."));
+    let base = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
     let mut bindings = Vec::new();
     for (key, entry) in &file.sources {
         bindings.push(binding(key, entry, base)?);
@@ -162,16 +166,17 @@ fn binding(key: &str, entry: &SourceEntry, base: &Path) -> Result<SourceBinding,
 // through unchanged.
 fn adapter_value(raw: &str, base: &Path) -> Result<String, Error> {
     match AdapterSelector::parse(raw)? {
-        AdapterSelector::Component { path } if !path.is_absolute() => {
-            Ok(resolved(base, &path).display().to_string())
+        AdapterSelector::Component { path } if path.is_absolute() => {
+            Ok(preopen_relative(&path).display().to_string())
         }
+        AdapterSelector::Component { path } => Ok(resolved(base, &path).display().to_string()),
         _ => Ok(raw.to_string()),
     }
 }
 
-// Anchor `relative` at the file's directory and normalise lexically —
-// the file works from any invocation directory (§5.2); a root the
-// deployment cannot read fails at read time, not here.
+// Anchor `relative` at the file's directory and normalise lexically,
+// then fold onto the `.` preopen when the result sits inside the
+// project. A root the deployment cannot read fails at read time.
 fn resolved(base: &Path, relative: &Path) -> PathBuf {
     let joined = base.join(relative);
     let mut parts: Vec<Component<'_>> = Vec::new();
@@ -187,7 +192,8 @@ fn resolved(base: &Path, relative: &Path) -> PathBuf {
             other => parts.push(other),
         }
     }
-    if parts.is_empty() { PathBuf::from(".") } else { parts.iter().collect() }
+    let normalised = if parts.is_empty() { PathBuf::from(".") } else { parts.iter().collect() };
+    preopen_relative(&normalised)
 }
 
 fn source_required() -> Error {

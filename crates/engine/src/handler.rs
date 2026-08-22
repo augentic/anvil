@@ -9,6 +9,7 @@ pub use error::{Error, FailureBody};
 pub use locations::{ADAPTERS_CONTAINER, Locations, STORE_CONTAINER};
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
+pub(crate) use paths::preopen_relative;
 
 /// Result type for command operations.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
