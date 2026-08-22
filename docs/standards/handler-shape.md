@@ -65,13 +65,13 @@ The four-slot CLI exit-code table is fixed:
 
 ## The transport crate (`crates/transport`)
 
-`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the HTTP refusal surface, the Emery command projector, and the fixed exit contract.
+`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the guest HTTP surface (the read-only MCP spec shelf plus the refusal), the Emery command projector, and the fixed exit contract.
 
 `crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`.
 
 ## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the deployment-routed adapter MCP shelves; every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
+`crates/transport/src/http.rs` owns the guest's HTTP surface: the read-only MCP spec shelf plus one typed refusal router (C3). `http::listener` serves the current generation and its id at `/mcp/emery/spec` — a stateless `McpServer` over a per-request storage snapshot (the same `Home::current_set` read `show` uses), exposing `spec://spec.md`, `spec://design.md`, and `spec://generation` as resources with mirroring read tools. Beside the deployment-routed adapter MCP shelves, every other path and method answers a typed 404 — reads are served, mutation is refused. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 

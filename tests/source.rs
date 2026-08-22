@@ -63,11 +63,42 @@ async fn gen_spec() {
     let shown = cli_exec(&provider, &["emery", "show", "design"]).await;
     assert_eq!(shown.stdout, design, "show renders the committed design.md alone");
 
+    // The MCP shelf projects the same committed bytes over the listener.
+    let read = mcp_read(&provider, emery_transport::http::SPEC_URI).await;
+    assert_eq!(read.as_bytes(), spec, "the shelf serves the committed spec.md");
+    let read = mcp_read(&provider, emery_transport::http::GENERATION_URI).await;
+    assert_eq!(read, id, "the shelf serves the current generation id");
+
     let resp = cli_exec(&provider, &["emery", "specify", component]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("none (byte-stable)"), "{stdout}");
 
     provider.model.assert_exhausted();
+}
+
+// Reads one shelf resource over the guest HTTP router, layer-2 style.
+async fn mcp_read(provider: &Provider, uri: &str) -> String {
+    use tower::ServiceExt as _;
+
+    let message = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1, "method": "resources/read",
+        "params": { "uri": uri }
+    });
+    let request = omnia_guest::http::Request::builder()
+        .method(omnia_guest::http::Method::POST)
+        .uri(emery_transport::http::SPEC_ROUTE)
+        .body(omnia_guest::axum::body::Body::from(message.to_string()))
+        .expect("build request");
+    let response = emery_transport::http::listener(provider.clone())
+        .oneshot(request)
+        .await
+        .expect("the listener serves the request");
+    assert_eq!(response.status(), omnia_guest::http::StatusCode::OK, "{uri}");
+    let bytes = omnia_guest::axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("collect body");
+    let reply: Value = serde_json::from_slice(&bytes).expect("JSON-RPC reply");
+    reply["result"]["contents"][0]["text"].as_str().unwrap_or_else(|| panic!("{reply}")).to_string()
 }
 
 async fn cli_exec(provider: &Provider, argv: &[&str]) -> CommandResponse {

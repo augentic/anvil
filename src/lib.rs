@@ -8,6 +8,7 @@ cfg_if::cfg_if! {
         // The bare provider uses imported model and source capabilities.
         // Host-bound key-value and blobstore capabilities provide durable
         // engine storage through the default trait bodies.
+        #[derive(Clone)]
         struct Provider;
         impl omnia_guest::Model for Provider {}
         impl emery_adapter::Source for Provider {}
@@ -31,7 +32,7 @@ cfg_if::cfg_if! {
             async fn handle(
                 request: wasip3::http::types::Request,
             ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-                omnia_wasi_http::serve(http::refusal(), request).await
+                omnia_wasi_http::serve(http::listener(Provider), request).await
             }
         }
     }

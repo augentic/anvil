@@ -14,7 +14,8 @@ async fn adr_0002_http_refusal() {
     use omnia_guest::http::{Method, Request, StatusCode};
     use tower::ServiceExt as _;
 
-    // Derivation from inventory prevents new verbs gaining HTTP twins.
+    // Derivation from inventory prevents new verbs gaining HTTP twins,
+    // the spec shelf route included.
     let command = command_router();
     for route in command.inventory() {
         let path = format!("/{}", route.selector().path().join("/"));
@@ -24,10 +25,10 @@ async fn adr_0002_http_refusal() {
                 .uri(&path)
                 .body(omnia_guest::axum::body::Body::empty())
                 .expect("build request");
-            let response = emery_transport::http::refusal()
+            let response = emery_transport::http::listener(support::Inert::default())
                 .oneshot(request)
                 .await
-                .expect("refusal serves the request");
+                .expect("the listener serves the request");
             assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {path} must refuse");
         }
     }

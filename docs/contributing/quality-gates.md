@@ -4,7 +4,7 @@ Emery proves engine correctness from this repository alone. The placement rules 
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and wire integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it prove the pure engine kernels (reconciliation, the extras gate, the output home) over scripted models and the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) over an inert provider.
+`cargo make ci` owns formatting, lints, schemas, crate and wire integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it prove the pure engine kernels (reconciliation, the extras gate, the output home) over scripted models and the CLI wire contract (grammar, exit codes, the MCP spec shelf, the C3 HTTP refusal) over an inert provider.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 

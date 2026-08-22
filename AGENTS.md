@@ -12,7 +12,7 @@ A Rust workspace at the repository root producing the `emery` runtime binary, pl
 - `emery show <spec|design>` — print a reviewable document of the current generation to stdout; text mode is the document body alone, and the generation id rides the JSON envelope.
 - `emery completions <shell>` — auto-derived from the clap surface.
 
-Deleted verbs are deleted from the grammar, not hidden — there are no compatibility aliases or deprecated stubs. The guest's mutating HTTP catch-all remains a typed refusal (C3, `crates/transport/src/http.rs`); the pre-bound listener serves adapter MCP shelves only.
+Deleted verbs are deleted from the grammar, not hidden — there are no compatibility aliases or deprecated stubs. The guest's mutating HTTP catch-all remains a typed refusal (C3, `crates/transport/src/http.rs`); the pre-bound listener serves MCP shelves only — the adapter reference shelves plus the engine's read-only spec shelf (`/mcp/emery/spec`, the current generation and its id for IDEs and agents).
 
 ## Vocabulary
 
@@ -32,15 +32,15 @@ diagnostics  # neutral Diagnostic substrate + emery_diagnostics::digest (SHA-256
 artifacts    # artifact types + parsers (evidence, validate registry); no engine deps
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import seam wrappers; bare natively so tests script the seam), seam DTOs, embedded prose registry
 engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
-transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP refusal (C3)
+transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP surface (read-only MCP spec shelf + C3 refusal)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind engine state (component cache and store included) to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
+emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, spec shelf + HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind engine state (component cache and store included) to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
 ```
 
 ### Repository map
 
 ```text
-src/               shipped binary (omnia::runtime!, static CWD-rooted deployment, filesystem-backed keyvalue/blobstore hosts) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run, HTTP refusal)
+src/               shipped binary (omnia::runtime!, static CWD-rooted deployment, filesystem-backed keyvalue/blobstore hosts) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run, spec shelf + HTTP refusal)
 crates/            the workspace crates above
 examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README
