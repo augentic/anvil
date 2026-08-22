@@ -1,12 +1,15 @@
 //! Native capability rung: the in-process `init` → `specify` journey
-//! over scripted `Model` + `Source` capabilities — no built
-//! component.
+//! over scripted `Model` + `Source` + storage capabilities — no built
+//! component, no filesystem engine state.
 
 #![cfg(not(target_arch = "wasm32"))]
 
+#[path = "../crates/engine/tests/support/storage.rs"]
+mod storage;
+
 use std::fs;
 use std::future::Future;
-use std::path::Path;
+use std::sync::Arc;
 
 use emery_adapter::seam::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
@@ -19,32 +22,45 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Error, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted};
 use serde_json::{Map, Value};
+use storage::Memory;
 
 const SPEC_ANSWER: &str = include_str!("source/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("source/2-design.md");
 
 #[tokio::test]
 async fn gen_spec() {
-    let project = tempfile::tempdir().expect("tempdir");
-    std::env::set_current_dir(project.path()).expect("chdir into the scratch project root");
-    fs::write("source.wasm", b"\0asm-stub").expect("stub wasm");
+    // The stub component is an operator-supplied workspace file — the
+    // one filesystem touchpoint left; engine state lives in the
+    // scripted store, so no chdir and no `.emery/` tree.
+    let workspace = tempfile::tempdir().expect("tempdir");
+    let component = workspace.path().join("source.wasm");
+    fs::write(&component, b"\0asm-stub").expect("stub wasm");
 
     let provider = Provider {
         model: Harness::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]),
+        storage: Arc::new(Memory::default()),
     };
 
     // 1. init the project
-    cli_exec(&provider, &["emery", "init", "source.wasm"]).await;
-    assert!(Path::new(".emery/project.yaml").is_file());
-    assert!(Path::new(".emery-cache/components/source.wasm").is_file());
+    cli_exec(&provider, &["emery", "init", component.to_str().expect("utf-8 path")]).await;
+    let record = provider.storage.state("project.yaml").expect("project record committed");
+    assert!(String::from_utf8_lossy(&record).contains("key: source"), "the binding is recorded");
+    assert_eq!(
+        provider.storage.object("components", "source.wasm").as_deref(),
+        Some(b"\0asm-stub".as_slice()),
+        "the component is mirrored into the cache container"
+    );
 
     // 2. generate specification
     cli_exec(&provider, &["emery", "specify"]).await;
-    let pointer = fs::read_to_string(".emery/spec/current").expect("current");
-    let generation = Path::new(".emery/spec/generations").join(pointer.trim());
-    let spec = fs::read_to_string(generation.join("spec.md")).expect("spec.md");
-    assert!(spec.contains("[unknown]"));
-    assert!(!fs::read_to_string(generation.join("design.md")).expect("design.md").is_empty());
+    let pointer = provider.storage.state("spec/current").expect("current");
+    let id = String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string();
+    let spec =
+        provider.storage.object("spec", &format!("generations/{id}/spec.md")).expect("spec.md");
+    assert!(String::from_utf8_lossy(&spec).contains("[unknown]"));
+    let design =
+        provider.storage.object("spec", &format!("generations/{id}/design.md")).expect("design.md");
+    assert!(!design.is_empty());
 
     // 3. rerun generation
     let resp = cli_exec(&provider, &["emery", "specify"]).await;
@@ -64,7 +80,10 @@ async fn cli_exec(provider: &Provider, argv: &[&str]) -> CommandResponse {
 #[derive(Clone, Debug)]
 struct Provider {
     model: Harness<Scripted>,
+    storage: Arc<Memory>,
 }
+
+crate::scripted_storage!(Provider, storage);
 
 impl Model for Provider {
     async fn create(&self, request: Request) -> Result<Reply, Error> {

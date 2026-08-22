@@ -8,7 +8,7 @@ cargo make test                              # native tests; model-free and no W
 
 ## `cargo make test` — the default edit loop
 
-Runs `cargo nextest --workspace` over the workspace crates. The suites prove the pure engine kernels (the output home, the extras gate, reconciliation and synthesis over scripted model doubles), the CLI wire contract (grammar, exit codes, the C3 HTTP refusal), and the in-process `init` → `specify` journey (`tests/native.rs`) — without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates. The suites prove the pure engine kernels (the output home, the extras gate, reconciliation and synthesis over scripted model doubles), the CLI wire contract (grammar, exit codes, the C3 HTTP refusal), and the in-process `init` → `specify` journey (`tests/source.rs`) — without a component, a model call, or filesystem engine state.
 
 Nothing on this rung compiles Wasmtime. An ordinary change should never need to leave it.
 

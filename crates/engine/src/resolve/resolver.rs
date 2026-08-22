@@ -4,13 +4,14 @@
 use std::path::PathBuf;
 
 use emery_error::Error;
+use omnia_guest::BlobStore;
 
 use super::core::{
     AdapterLocation, Axis, Origin, ResolvedSource, SourceAdapter, check_requires_emery, parse_floor,
 };
 use super::metadata::{self, Metadata};
 use super::selector::AdapterSelector;
-use crate::handler::ExecutionPaths;
+use crate::handler::{ADAPTERS_CONTAINER, ExecutionPaths, STORE_CONTAINER};
 
 /// Component-backed resolver: read-only re-resolution of an
 /// already-provisioned selector over an injected metadata dispatch
@@ -37,8 +38,8 @@ impl<R: metadata::Runner> Component<R> {
     /// # Errors
     ///
     /// Preserves location, metadata, and compatibility failures.
-    pub fn resolve_source(
-        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    pub async fn resolve_source<B: BlobStore>(
+        &self, selector: &AdapterSelector, blobs: &B, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
         if let AdapterSelector::Package { version, .. } = selector {
@@ -50,13 +51,20 @@ impl<R: metadata::Runner> Component<R> {
                 store_origin(&name, version, paths),
             );
         }
-        if dispatch_first(selector, &name, paths) {
+        if dispatch_first(selector, &name, blobs, paths).await {
             let metadata = metadata::dispatch(&self.metadata, Axis::Source, &name, None)?;
             return source(&name, None, metadata, bare_origin(Axis::Source, &name));
         }
-        let location = locate(Axis::Source, &name, selector.version(), paths)?;
-        let metadata =
-            metadata::load(&self.metadata, &location, Axis::Source, &name, selector.version())?;
+        let location = locate(Axis::Source, &name, selector.version(), blobs, paths).await?;
+        let metadata = metadata::load(
+            &self.metadata,
+            blobs,
+            &location,
+            Axis::Source,
+            &name,
+            selector.version(),
+        )
+        .await?;
         source(&name, selector.version().cloned(), metadata, location.origin())
     }
 }
@@ -64,9 +72,18 @@ impl<R: metadata::Runner> Component<R> {
 // Whether a bare selector must resolve dispatch-first: no seeded
 // project-cache entry exists, so deployment policy locates the
 // component. Resolved bare versions stay `None`.
-fn dispatch_first(selector: &AdapterSelector, name: &str, paths: &ExecutionPaths) -> bool {
-    matches!(selector, AdapterSelector::Bare { .. })
-        && !component_cache_entry(paths, name).is_file()
+async fn dispatch_first<B: BlobStore>(
+    selector: &AdapterSelector, name: &str, blobs: &B, paths: &ExecutionPaths,
+) -> bool {
+    matches!(selector, AdapterSelector::Bare { .. }) && !cached(blobs, name, paths).await
+}
+
+// Whether the project component cache carries a seeded entry for
+// `name`; a probe failure reads as absent, like the pre-seam
+// `is_file` probe.
+async fn cached<B: BlobStore>(blobs: &B, name: &str, paths: &ExecutionPaths) -> bool {
+    let object = paths.locations().component_object(name);
+    blobs.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false)
 }
 
 // The store identity a package pin maps to, built from the carried
@@ -128,13 +145,15 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 /// `adapter-not-found` when no probe hits; `adapter-sidecar-missing` /
 /// `adapter-digest-mismatch` / `adapter-store-unreadable` when a store
 /// entry fails verify-on-read.
-pub fn locate(
-    axis: Axis, name: &str, version: Option<&semver::Version>, paths: &ExecutionPaths,
+pub async fn locate<B: BlobStore>(
+    axis: Axis, name: &str, version: Option<&semver::Version>, blobs: &B, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
     if let Some(version) = version {
         let version = version.to_string();
-        let entry = paths.locations().store_entry(name, &version);
-        if !entry.is_file() {
+        let locations = paths.locations();
+        let entry = locations.store_entry(name, &version);
+        let object = locations.store_object(name, &version);
+        if !blobs.has(STORE_CONTAINER, &object).await.unwrap_or(false) {
             return Err(Error::Diag {
                 code: "adapter-not-found",
                 detail: format!(
@@ -146,40 +165,7 @@ pub fn locate(
                 ),
             });
         }
-        let meta = paths.locations().store_meta(name, &version);
-        match emery_diagnostics::cache::verify_store_entry(&entry, &meta) {
-            Ok(()) => {}
-            Err(emery_diagnostics::cache::StoreVerifyError::MissingSidecar) => {
-                return Err(Error::Diag {
-                    code: "adapter-sidecar-missing",
-                    detail: format!(
-                        "store entry {} has no digest sidecar; unverifiable components are \
-                         refused — remove the entry and install `emery:{name}@{version}` again",
-                        entry.display(),
-                    ),
-                });
-            }
-            Err(emery_diagnostics::cache::StoreVerifyError::Unreadable(io)) => {
-                return Err(Error::Diag {
-                    code: "adapter-store-unreadable",
-                    detail: format!(
-                        "adapter `{name}@{version}` (axis `{axis}`) store entry at {} cannot be \
-                         read for verification: {io}",
-                        entry.display(),
-                    ),
-                });
-            }
-            Err(emery_diagnostics::cache::StoreVerifyError::Mismatch(mismatch)) => {
-                return Err(digest_mismatch(
-                    &format!(
-                        "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
-                        entry.display()
-                    ),
-                    "verify-on-read",
-                    &mismatch,
-                ));
-            }
-        }
+        verify_store_entry(axis, name, &version, blobs, paths).await?;
         return Ok(AdapterLocation::Store(entry));
     }
 
@@ -187,7 +173,11 @@ pub fn locate(
     // project-cache probe; a local component resolves through its
     // mirror, so it survives removal of the operator's original file.
     let entry = component_cache_entry(paths, name);
-    if entry.is_file() {
+    if blobs
+        .has(ADAPTERS_CONTAINER, &paths.locations().component_object(name))
+        .await
+        .unwrap_or(false)
+    {
         return Ok(AdapterLocation::Cache(entry));
     }
     Err(Error::Diag {
@@ -199,6 +189,60 @@ pub fn locate(
             entry.display(),
         ),
     })
+}
+
+// Verify-on-read over the storage capability: fetch the sidecar and
+// the entry bytes, then compare digests in memory (the digest math
+// stays in `emery_diagnostics`). Fail-closed on every arm.
+async fn verify_store_entry<B: BlobStore>(
+    axis: Axis, name: &str, version: &str, blobs: &B, paths: &ExecutionPaths,
+) -> Result<(), Error> {
+    let locations = paths.locations();
+    let entry = locations.store_entry(name, version);
+    let sidecar = blobs
+        .get(STORE_CONTAINER, &locations.store_meta_object(name, version))
+        .await
+        .ok()
+        .flatten();
+    let recorded = sidecar.and_then(|bytes| {
+        emery_diagnostics::cache::recorded_digest(&String::from_utf8_lossy(&bytes))
+    });
+    let Some(recorded) = recorded else {
+        return Err(Error::Diag {
+            code: "adapter-sidecar-missing",
+            detail: format!(
+                "store entry {} has no digest sidecar; unverifiable components are refused — \
+                 remove the entry and install `emery:{name}@{version}` again",
+                entry.display(),
+            ),
+        });
+    };
+    let unreadable = |detail: String| Error::Diag {
+        code: "adapter-store-unreadable",
+        detail: format!(
+            "adapter `{name}@{version}` (axis `{axis}`) store entry at {} cannot be read for \
+             verification: {detail}",
+            entry.display(),
+        ),
+    };
+    let bytes = match blobs.get(STORE_CONTAINER, &locations.store_object(name, version)).await {
+        Ok(Some(bytes)) => bytes,
+        Ok(None) => return Err(unreadable("the entry vanished during verification".to_string())),
+        Err(err) => return Err(unreadable(format!("{err:#}"))),
+    };
+    let actual = emery_diagnostics::cache::content_digest(&bytes);
+    if actual == recorded {
+        Ok(())
+    } else {
+        Err(digest_mismatch(
+            &format!(
+                "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
+                entry.display()
+            ),
+            "verify-on-read",
+            &emery_diagnostics::cache::DigestMismatch { recorded, actual },
+        ))
+    }
 }
 
 /// The locked `adapter-digest-mismatch` envelope for a store entry

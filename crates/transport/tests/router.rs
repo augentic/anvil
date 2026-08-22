@@ -4,8 +4,6 @@
 
 mod support;
 
-use std::fs;
-
 // Grammar and parity coverage only: no test dispatches judgment or an
 // adapter seam, so the inert provider's capabilities are never reached.
 fn command_router()
@@ -98,14 +96,12 @@ async fn adr_0008_route_budget() {
 }
 
 // The live generator fails closed outside an initialised project — no
-// orchestration, no output-home scaffolding, no artifacts.
+// orchestration, no output-home writes, no artifacts.
 #[tokio::test]
 async fn specify_uninitialized() {
-    // Paths are CWD-relative constants; nextest gives this test its
-    // own process, so the chdir cannot leak into another test.
-    let home = tempfile::tempdir().expect("tempdir");
-    std::env::set_current_dir(home.path()).expect("chdir into the scratch project root");
-    let router = command_router();
+    let provider = support::Inert::default();
+    let storage = std::sync::Arc::clone(&provider.storage);
+    let router = support::router_over(provider);
 
     let response = router.execute(["emery", "specify"]).await;
     assert_eq!(response.exit, 1);
@@ -119,10 +115,7 @@ async fn specify_uninitialized() {
     assert_eq!(envelope["error"], "not-initialized");
     assert_eq!(envelope["exit-code"], 1);
 
-    assert!(
-        fs::read_dir(home.path()).expect("home").next().is_none(),
-        "a refused run writes nothing"
-    );
+    assert!(storage.is_empty(), "a refused run writes nothing");
 }
 
 #[tokio::test]
@@ -221,11 +214,9 @@ const fn cases() -> [Case; 5] {
 #[tokio::test]
 async fn native_response_contract() {
     for case in cases() {
-        // A bare uninitialized tempdir: `init` without an adapter must
-        // refuse rather than take the re-entry path. Paths are CWD-
-        // relative, so each case chdirs into its own scratch root.
-        let project = tempfile::tempdir().expect("tempdir");
-        std::env::set_current_dir(project.path()).expect("chdir into the scratch project root");
+        // Each case runs over a fresh, empty scripted store: `init`
+        // without an adapter must refuse rather than take the
+        // re-entry path, and `specify` must fail `not-initialized`.
         let response = command_router().execute(case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");

@@ -2,7 +2,6 @@
 //! axis, record the authored bindings on `project.yaml`, and scaffold
 //! `.emery/`.
 
-use std::future::Future;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -11,6 +10,7 @@ use emery_error::Error;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use omnia_guest::{BlobStore, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::handler::{ExecutionPaths, Render};
@@ -43,19 +43,21 @@ pub struct InitInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
 
-impl<P: Provider + Source> Operation<P> for Init {
+impl<P: Provider + Source + StateStore + BlobStore> Operation<P> for Init {
     type Error = crate::handler::Error;
     type Input = InitInput;
     type Output = InitBody;
 
-    fn call(
+    async fn call(
         input: Self::Input, context: CallContext<'_, P>,
-    ) -> impl Future<Output = Result<Self::Output, Self::Error>> {
-        std::future::ready(apply(input, context.provider).map_err(Into::into))
+    ) -> Result<Self::Output, Self::Error> {
+        apply(input, context.provider).await.map_err(Into::into)
     }
 }
 
-fn apply<P: Source>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
+async fn apply<P: Source + StateStore + BlobStore>(
+    input: InitInput, provider: &P,
+) -> Result<InitBody, Error> {
     let InitInput {
         adapters,
         values,
@@ -67,14 +69,17 @@ fn apply<P: Source>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
     let project_dir = paths.project_root();
 
     if upgrade {
-        return run_upgrade(project_dir, &paths, provider);
+        return run_upgrade(project_dir, &paths, provider).await;
     }
 
     // Re-entry: an already-initialized project is a no-op that
     // routes the operator to `--upgrade`.
-    if Project::path(project_dir).exists() {
-        let project = Project::load(project_dir)?;
-        return Ok(InitBody::from_project(InitMode::AlreadyInitialized, &project, project_dir));
+    match Project::load(provider).await {
+        Ok(project) => {
+            return Ok(InitBody::from_project(InitMode::AlreadyInitialized, &project, project_dir));
+        }
+        Err(Error::NotInitialized) => {}
+        Err(err) => return Err(err),
     }
 
     if adapters.is_empty() && values.is_empty() {
@@ -88,12 +93,14 @@ fn apply<P: Source>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
 
     let mut sources = Vec::new();
     for value in &adapters {
-        let bound = bind(value, &paths, BindingContent::Workspace(".".to_string()), provider)?;
+        let bound =
+            bind(value, &paths, BindingContent::Workspace(".".to_string()), provider).await?;
         push_unique(&mut sources, bound)?;
     }
     for entry in &values {
         let (adapter, text) = split_value(entry)?;
-        let bound = bind(adapter, &paths, BindingContent::Value(text.to_string()), provider)?;
+        let bound =
+            bind(adapter, &paths, BindingContent::Value(text.to_string()), provider).await?;
         push_unique(&mut sources, bound)?;
     }
 
@@ -103,39 +110,54 @@ fn apply<P: Source>(input: InitInput, provider: &P) -> Result<InitBody, Error> {
         emery_version: Some(env!("CARGO_PKG_VERSION").to_string()),
         sources,
     };
-    std::fs::create_dir_all(project_dir.join(".emery")).map_err(Error::Io)?;
-    project.store(project_dir)?;
+    project.store(provider).await?;
     Ok(InitBody::from_project(InitMode::Scaffolded, &project, project_dir))
 }
 
 // The `--upgrade` re-entry: re-ensure every recorded binding and bump
 // the `emery` pin, preserving everything else.
-fn run_upgrade<P: Source>(
+async fn run_upgrade<P: Source + StateStore + BlobStore>(
     project_dir: &Path, paths: &ExecutionPaths, provider: &P,
 ) -> Result<InitBody, Error> {
-    let mut project = Project::load(project_dir)?;
+    let mut project = Project::load(provider).await?;
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        ensure::source(metadata::runner(provider), &selector, paths, jiff::Timestamp::now())?;
+        ensure::source(
+            metadata::runner(provider),
+            &selector,
+            provider,
+            paths,
+            jiff::Timestamp::now(),
+        )
+        .await?;
     }
     project.emery_version = Some(env!("CARGO_PKG_VERSION").to_string());
-    project.store(project_dir)?;
+    project.store(provider).await?;
     Ok(InitBody::from_project(InitMode::Upgraded, &project, project_dir))
 }
 
 // Ensure one adapter on the source axis and shape its binding: the
 // key is the resolved adapter name; a local component persists its
 // canonical `file://` form so the selector value outlives the CWD.
-fn bind<P: Source>(
+async fn bind<P: Source + BlobStore>(
     value: &str, paths: &ExecutionPaths, content: BindingContent, provider: &P,
 ) -> Result<SourceBinding, Error> {
     let selector = AdapterSelector::parse(value)?;
-    let resolved =
-        ensure::source(metadata::runner(provider), &selector, paths, jiff::Timestamp::now())?;
+    let resolved = ensure::source(
+        metadata::runner(provider),
+        &selector,
+        provider,
+        paths,
+        jiff::Timestamp::now(),
+    )
+    .await?;
     let key = resolved.manifest.name;
     let adapter = match &selector {
-        AdapterSelector::Component { .. } => ComponentMeta::load(paths, &key)
-            .map_or_else(|| selector.persist_value(paths.project_root()), |meta| Ok(meta.source))?,
+        AdapterSelector::Component { .. } => match ComponentMeta::load(provider, paths, &key).await
+        {
+            Some(meta) => meta.source,
+            None => selector.persist_value(paths.project_root())?,
+        },
         _ => selector.persist_value(paths.project_root())?,
     };
     Ok(SourceBinding {
@@ -206,10 +228,9 @@ pub struct InitBody {
 
 impl InitBody {
     fn from_project(mode: InitMode, project: &Project, project_dir: &Path) -> Self {
-        let path = Project::path(project_dir);
         Self {
             mode,
-            config_path: std::fs::canonicalize(&path).unwrap_or(path),
+            config_path: Project::path(project_dir),
             sources: project.sources.iter().map(|binding| binding.key.clone()).collect(),
             emery_version: project.emery_version.clone().unwrap_or_default(),
         }

@@ -5,10 +5,10 @@
 use std::io::Write;
 
 use emery_adapter::Source;
-use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use omnia_guest::{BlobStore, Model, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
@@ -65,7 +65,7 @@ impl Render for SpecifyBody {
 #[derive(Clone, Copy, Debug)]
 pub struct Specify;
 
-impl<P: Provider + Model + Source> Operation<P> for Specify {
+impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Specify {
     type Error = crate::handler::Error;
     type Input = SpecifyInput;
     type Output = SpecifyBody;
@@ -74,9 +74,8 @@ impl<P: Provider + Model + Source> Operation<P> for Specify {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let SpecifyInput = input;
-        let request = RequestContext::load()?;
+        let request = RequestContext::load(context.provider).await?;
         let paths = request.paths();
-        let project_dir = paths.project_root();
         let project = request.project();
 
         let sets = extract_all(context.provider, project, paths).await?;
@@ -87,11 +86,11 @@ impl<P: Provider + Model + Source> Operation<P> for Specify {
             spec: documents.spec,
             design: documents.design,
         };
-        let home = Home::new(project_dir);
+        let home = Home::new(context.provider);
         // Read the outgoing set before the commit prunes it; the diff
         // is computed in memory and emitted only here.
-        let outgoing = home.outgoing();
-        let committed = home.commit(&set)?;
+        let outgoing = home.outgoing().await;
+        let committed = home.commit(&set).await?;
         let diff = outgoing.map(|(from, previous)| Diff::between(from, &previous, &set));
         Ok(SpecifyBody {
             generation: committed.id,

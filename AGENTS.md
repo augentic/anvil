@@ -65,7 +65,7 @@ Emery strictly enforces an **aggressive integration-first posture**:
 
 - Design against the public surface: if a behavior is reachable through a CLI input or `pub` fn and observable at a public boundary (stdout JSON, exit code, filesystem), write the integration test in `crates/<name>/tests/`; the unit test is redundant. Wire-contract coverage lives in `crates/transport/tests/`.
 - Default to deletion; do not widen public APIs to test private kernels. `CRATE=<crate> cargo make cov` is the brake.
-- One fast rung: native kernel and wire-contract suites (`cargo make test`, per push) — pure engine kernels over scripted models, transport grammar/parity over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over scripted `Model` + `Source`. The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg, which subsumes the old compile check); the v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
+- One fast rung: native kernel and wire-contract suites (`cargo make test`, per push) — pure engine kernels over scripted models, transport grammar/parity over an inert provider, and the in-process `init` → `specify` journey (`tests/source.rs`) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg, which subsumes the old compile check); the v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 

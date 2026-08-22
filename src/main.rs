@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
             ],
             mounts: [
                 { name: ".", path: ".", writable: true },
-                { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
+                { name: emery_engine::handler::CACHE_MOUNT, path: cache_dir(), writable: true },
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {

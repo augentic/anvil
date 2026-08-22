@@ -5,7 +5,14 @@
 use std::path::{Path, PathBuf};
 
 use emery_error::Error;
+use omnia_guest::StateStore;
 use serde::{Deserialize, Serialize};
+
+use crate::storage;
+
+/// The keyvalue entry carrying the project record. The filesystem
+/// backing resolves it to `.emery/project.yaml`, the pre-seam path.
+pub const PROJECT_KEY: &str = "project.yaml";
 
 /// In-memory representation of the spec generator's `project.yaml`.
 ///
@@ -65,24 +72,22 @@ impl Project {
         project_dir.join(".emery").join("project.yaml")
     }
 
-    /// Load and validate `project.yaml`, enforcing the `emery` pin.
+    /// Load and validate the project record from the state store,
+    /// enforcing the `emery` pin.
     ///
     /// # Errors
     ///
-    /// [`Error::NotInitialized`] when the file is absent; YAML errors
-    /// when it does not parse as this shape (a v1-shaped file
+    /// [`Error::NotInitialized`] when the entry is absent; YAML errors
+    /// when it does not parse as this shape (a v1-shaped record
     /// included); [`Error::CliTooOld`] when the pin outruns this
     /// binary.
-    pub fn load(project_dir: &Path) -> Result<Self, Error> {
-        let path = Self::path(project_dir);
-        let text = match std::fs::read_to_string(&path) {
-            Ok(text) => text,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                return Err(Error::NotInitialized);
-            }
-            Err(err) => return Err(Error::Io(err)),
-        };
-        let project: Self = serde_saphyr::from_str(&text)?;
+    pub async fn load<S: StateStore>(state: &S) -> Result<Self, Error> {
+        let bytes = state
+            .get(PROJECT_KEY)
+            .await
+            .map_err(|err| storage::failed("reading the project record", &err))?
+            .ok_or(Error::NotInitialized)?;
+        let project: Self = serde_saphyr::from_str(&String::from_utf8_lossy(&bytes))?;
         let current = env!("CARGO_PKG_VERSION");
         if let Some(required) = &project.emery_version
             && version_is_older(current, required)
@@ -95,16 +100,19 @@ impl Project {
         Ok(project)
     }
 
-    /// Atomically write this project to `.emery/project.yaml`,
-    /// returning the written path.
+    /// Write this project to the state store, as the same YAML bytes
+    /// the pre-seam file writer produced.
     ///
     /// # Errors
     ///
-    /// Propagates serialization and filesystem failures.
-    pub fn store(&self, project_dir: &Path) -> Result<PathBuf, Error> {
-        let path = Self::path(project_dir);
-        emery_artifacts::atomic::yaml_write(&path, self)?;
-        Ok(path)
+    /// Propagates serialization and storage failures.
+    pub async fn store<S: StateStore>(&self, state: &S) -> Result<(), Error> {
+        let body = emery_artifacts::atomic::serialise_yaml(self)?;
+        state
+            .set(PROJECT_KEY, body.as_bytes(), None)
+            .await
+            .map_err(|err| storage::failed("writing the project record", &err))?;
+        Ok(())
     }
 }
 

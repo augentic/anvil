@@ -3,13 +3,13 @@
 //! Dispatch runs through an explicitly supplied [`Runner`] — never
 //! process-global state; answers cache against the component SHA-256.
 
-use std::path::{Path, PathBuf};
-
 use emery_error::Error;
+use omnia_guest::BlobStore;
 use serde::{Deserialize, Serialize};
 
 use super::core::{AdapterLocation, Axis};
 use super::routed::RoutedId;
+use crate::handler::{ADAPTERS_CONTAINER, STORE_CONTAINER};
 
 /// A source adapter's metadata answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,9 +32,9 @@ pub struct Request<'a> {
 }
 
 /// Deployment-supplied metadata dispatcher.
-pub trait Runner: Fn(&Request<'_>) -> Result<Metadata, Error> {}
+pub trait Runner: Fn(&Request<'_>) -> Result<Metadata, Error> + Send + Sync {}
 
-impl<F: Fn(&Request<'_>) -> Result<Metadata, Error>> Runner for F {}
+impl<F: Fn(&Request<'_>) -> Result<Metadata, Error> + Send + Sync> Runner for F {}
 
 /// The metadata runner over the provider's source-seam capability
 /// ([`emery_adapter::Source`]).
@@ -67,12 +67,18 @@ struct MetadataCache {
     metadata: Metadata,
 }
 
-/// Sidecar path for a component file.
-#[must_use]
-pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
-    let mut file_name = component.file_name().map_or_else(Default::default, ToOwned::to_owned);
-    file_name.push(".metadata.json");
-    component.with_file_name(file_name)
+// The component's container and object name from its resolved
+// location: the sidecar cache lives beside the component it keys.
+fn slot(location: &AdapterLocation) -> (&'static str, String) {
+    let object = location
+        .path()
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    match location {
+        AdapterLocation::Store(_) => (STORE_CONTAINER, object),
+        AdapterLocation::Cache(_) => (ADAPTERS_CONTAINER, object),
+    }
 }
 
 /// Dispatch metadata by routed id, with no component file access and
@@ -97,14 +103,17 @@ pub(super) fn dispatch(
 /// The dispatch id is the identity the selector implies: unversioned
 /// (`<axis>:<name>`) for the cache-backed resolves this leg serves
 /// (package pins dispatch through [`dispatch`] instead).
-pub(super) fn load(
-    runner: &impl Runner, location: &AdapterLocation, axis: Axis, name: &str,
+pub(super) async fn load<B: BlobStore>(
+    runner: &impl Runner, blobs: &B, location: &AdapterLocation, axis: Axis, name: &str,
     version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {
-    let component = location.path();
-    let digest = emery_diagnostics::cache::file_content_digest(component);
-    let cache_path = metadata_cache_path(component);
-    if let Some(answer) = read_cache(&cache_path, &digest) {
+    let (container, component) = slot(location);
+    // An unreadable component digests as empty, matching the pre-seam
+    // file reader; the cache then simply never hits.
+    let bytes = blobs.get(container, &component).await.ok().flatten().unwrap_or_default();
+    let digest = emery_diagnostics::cache::content_digest(&bytes);
+    let cache_object = format!("{component}.metadata.json");
+    if let Some(answer) = read_cache(blobs, container, &cache_object, &digest).await {
         return Ok(answer);
     }
 
@@ -113,22 +122,28 @@ pub(super) fn load(
         axis,
         adapter_id: &adapter_id,
     })?;
-    write_cache(&cache_path, &digest, &answer);
+    write_cache(blobs, container, &cache_object, &digest, &answer).await;
     Ok(answer)
 }
 
-fn read_cache(cache_path: &Path, digest: &str) -> Option<Metadata> {
-    let raw = std::fs::read_to_string(cache_path).ok()?;
-    let cache: MetadataCache = serde_json::from_str(&raw).ok()?;
+async fn read_cache<B: BlobStore>(
+    blobs: &B, container: &str, object: &str, digest: &str,
+) -> Option<Metadata> {
+    let raw = blobs.get(container, object).await.ok().flatten()?;
+    let cache: MetadataCache = serde_json::from_slice(&raw).ok()?;
     (cache.digest == digest).then_some(cache.metadata)
 }
 
-fn write_cache(cache_path: &Path, digest: &str, answer: &Metadata) {
+// Best-effort, like the pre-seam sidecar writer: a failed cache write
+// (e.g. the read-only store) never fails the resolve.
+async fn write_cache<B: BlobStore>(
+    blobs: &B, container: &str, object: &str, digest: &str, answer: &Metadata,
+) {
     let cache = MetadataCache {
         digest: digest.to_string(),
         metadata: answer.clone(),
     };
     if let Ok(body) = serde_json::to_string_pretty(&cache) {
-        drop(std::fs::write(cache_path, body));
+        drop(blobs.put(container, object, body.as_bytes()).await);
     }
 }

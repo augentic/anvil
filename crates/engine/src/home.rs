@@ -1,33 +1,45 @@
 //! The output home — the one module owning every spec-set read/write:
-//! content-addressed generations behind one swapped `current` pointer;
-//! reads fail closed.
+//! content-addressed generations behind one swapped `current` pointer,
+//! over the deployment's storage capabilities; reads fail closed.
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 use emery_artifacts::spec::ast;
 use emery_error::Error;
+use omnia_guest::{BlobStore, StateStore};
 use serde::Serialize;
 
-// The output-home directory under `.emery/`.
-const SPEC_DIR: &str = "spec";
+use crate::storage;
 
-// The generation-pointer document at the output-home root.
-const CURRENT_FILE: &str = "current";
+/// The blobstore container carrying the output home: generation
+/// documents under `generations/<id>/`. The filesystem backing roots
+/// it at `.emery/spec/`, the same tree [`CURRENT_KEY`] resolves into.
+pub const SPEC_CONTAINER: &str = "spec";
 
-// The generation directories' parent under the output home.
+/// The keyvalue entry naming the current generation id.
+pub const CURRENT_KEY: &str = "spec/current";
+
+// The pointer's file name inside the spec tree: the filesystem
+// backing lists it beside the generations, and prune must keep it.
+const CURRENT_OBJECT: &str = "current";
+
+// The generation objects' parent inside the spec container.
 const GENERATIONS_DIR: &str = "generations";
 
-// Every document of one complete generation, in the fixed on-disk
-// order the generation digest folds them.
+// Every document of one complete generation, in the fixed order the
+// generation digest folds them.
 const FILES: [&str; 2] = ["spec.md", "design.md"];
+
+// The spec-container object name of one generation document.
+fn object(id: &str, name: &str) -> String {
+    format!("{GENERATIONS_DIR}/{id}/{name}")
+}
 
 /// One complete spec set, assembled in memory before any write.
 ///
 /// The two reviewable documents commit as a unit or not at all.
 /// Because the generation id is the digest of the set's bytes, an
-/// identical re-run converges on the same directory and the home
+/// identical re-run converges on the same objects and the home
 /// stays byte-stable. No document carries a timestamp or log line.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpecSet {
@@ -61,13 +73,11 @@ impl SpecSet {
     }
 }
 
-/// A committed generation: the pointer-named id and its directory.
+/// A committed generation: the pointer-named id.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Committed {
     /// The generation id the `current` pointer names.
     pub id: String,
-    /// The generation directory carrying the complete spec set.
-    pub dir: PathBuf,
 }
 
 /// One re-mine diff: how an incoming spec set differs from the
@@ -162,43 +172,43 @@ fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
         && old.body == new.body
 }
 
-/// The output home rooted at one project's `.emery/spec/`.
-#[derive(Clone, Debug)]
-pub struct Home {
-    root: PathBuf,
+/// The output home over one deployment's storage capabilities.
+#[derive(Clone, Copy, Debug)]
+pub struct Home<'p, S> {
+    store: &'p S,
 }
 
-impl Home {
-    /// The output home under `project_dir`'s `.emery/` tree.
+impl<'p, S: StateStore + BlobStore> Home<'p, S> {
+    /// The output home over `store`.
     #[must_use]
-    pub fn new(project_dir: &Path) -> Self {
-        Self {
-            root: project_dir.join(".emery").join(SPEC_DIR),
-        }
+    pub const fn new(store: &'p S) -> Self {
+        Self { store }
     }
 
     /// Commit `set` as the current generation: write the complete
-    /// generation directory, atomically swap the `current` pointer to
-    /// it, then prune everything the pointer no longer names (crash
-    /// litter from an interrupted earlier run included). A crash
-    /// before the swap leaves the previous set intact and current.
+    /// generation objects, swap the `current` pointer to them, then
+    /// prune everything the pointer no longer names (crash litter
+    /// from an interrupted earlier run included). A crash before the
+    /// swap leaves the previous set intact and current.
     ///
     /// # Errors
     ///
-    /// Propagates filesystem failures from the writes, the swap, or
-    /// the prune.
-    pub fn commit(&self, set: &SpecSet) -> Result<Committed, Error> {
+    /// Propagates storage failures from the writes, the swap, or the
+    /// prune.
+    pub async fn commit(&self, set: &SpecSet) -> Result<Committed, Error> {
         let id = set.id();
-        let dir = self.root.join(GENERATIONS_DIR).join(&id);
         for (name, body) in set.files() {
-            emery_artifacts::atomic::bytes_write(&dir.join(name), body.as_bytes())?;
+            self.store
+                .put(SPEC_CONTAINER, &object(&id, name), body.as_bytes())
+                .await
+                .map_err(|err| storage::failed("committing a generation document", &err))?;
         }
-        emery_artifacts::atomic::bytes_write(
-            &self.root.join(CURRENT_FILE),
-            format!("{id}\n").as_bytes(),
-        )?;
-        self.prune(&id)?;
-        Ok(Committed { id, dir })
+        self.store
+            .set(CURRENT_KEY, format!("{id}\n").as_bytes(), None)
+            .await
+            .map_err(|err| storage::failed("swapping the generation pointer", &err))?;
+        self.prune(&id).await?;
+        Ok(Committed { id })
     }
 
     /// The committed generation the `current` pointer names, or `None`
@@ -209,29 +219,31 @@ impl Home {
     /// Fails closed with `spec-home-corrupt` when the pointer exists
     /// but names a missing or incomplete generation, and propagates
     /// read failures. Corruption is never an empty result.
-    pub fn current(&self) -> Result<Option<Committed>, Error> {
-        let path = self.root.join(CURRENT_FILE);
-        let raw = match fs::read_to_string(&path) {
-            Ok(raw) => raw,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(err) => return Err(Error::Io(err)),
+    pub async fn current(&self) -> Result<Option<Committed>, Error> {
+        let raw = StateStore::get(self.store, CURRENT_KEY)
+            .await
+            .map_err(|err| storage::failed("reading the generation pointer", &err))?;
+        let Some(raw) = raw else {
+            return Ok(None);
         };
-        let id = raw.trim().to_string();
-        let dir = self.root.join(GENERATIONS_DIR).join(&id);
+        let id = String::from_utf8_lossy(&raw).trim().to_string();
         for name in FILES {
-            let document = dir.join(name);
-            if !document.is_file() {
+            let present = self
+                .store
+                .has(SPEC_CONTAINER, &object(&id, name))
+                .await
+                .map_err(|err| storage::failed("probing a generation document", &err))?;
+            if !present {
                 return Err(Error::Diag {
                     code: "spec-home-corrupt",
                     detail: format!(
-                        "the generation pointer names `{id}` but `{}` is missing; re-run `emery \
-                         specify` to commit a fresh generation",
-                        document.display()
+                        "the generation pointer names `{id}` but `{name}` is missing; re-run \
+                         `emery specify` to commit a fresh generation"
                     ),
                 });
             }
         }
-        Ok(Some(Committed { id, dir }))
+        Ok(Some(Committed { id }))
     }
 
     /// The outgoing spec set for a re-mine diff: the id the `current`
@@ -242,38 +254,39 @@ impl Home {
     /// and `specify` must stay the recovery path for a corrupt home —
     /// a missing, incomplete, or unreadable outgoing generation is
     /// `None`, not a failure. The commit itself remains the authority.
-    #[must_use]
-    pub fn outgoing(&self) -> Option<(String, SpecSet)> {
-        let committed = self.current().ok().flatten()?;
-        let read = |name: &str| fs::read_to_string(committed.dir.join(name)).ok();
-        let set = SpecSet {
-            spec: read(FILES[0])?,
-            design: read(FILES[1])?,
-        };
-        Some((committed.id, set))
+    pub async fn outgoing(&self) -> Option<(String, SpecSet)> {
+        let committed = self.current().await.ok().flatten()?;
+        let mut bodies = Vec::with_capacity(FILES.len());
+        for name in FILES {
+            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(&committed.id, name))
+                .await
+                .ok()
+                .flatten()?;
+            bodies.push(String::from_utf8(bytes).ok()?);
+        }
+        let design = bodies.pop()?;
+        let spec = bodies.pop()?;
+        Some((committed.id, SpecSet { spec, design }))
     }
 
     // Keep only the `current` pointer and the generation it names —
     // superseded generations and any temp-file or partial-directory
-    // litter a crash left behind are removed.
-    fn prune(&self, keep: &str) -> Result<(), Error> {
-        for entry in fs::read_dir(&self.root)? {
-            let path = entry?.path();
-            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
-            if path.is_dir() {
-                if name != GENERATIONS_DIR {
-                    fs::remove_dir_all(&path)?;
-                }
-            } else if name != CURRENT_FILE {
-                fs::remove_file(&path)?;
+    // litter a crash left behind are removed. The filesystem backing
+    // lists the pointer inside the same tree; it is never litter.
+    async fn prune(&self, keep: &str) -> Result<(), Error> {
+        let kept = format!("{GENERATIONS_DIR}/{keep}/");
+        let names = self
+            .store
+            .list(SPEC_CONTAINER)
+            .await
+            .map_err(|err| storage::failed("listing the output home", &err))?;
+        for name in names {
+            if name == CURRENT_OBJECT || name.starts_with(&kept) {
+                continue;
             }
-        }
-        for entry in fs::read_dir(self.root.join(GENERATIONS_DIR))? {
-            let path = entry?.path();
-            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
-            if name != keep {
-                if path.is_dir() { fs::remove_dir_all(&path)? } else { fs::remove_file(&path)? }
-            }
+            BlobStore::delete(self.store, SPEC_CONTAINER, &name)
+                .await
+                .map_err(|err| storage::failed("pruning a superseded generation", &err))?;
         }
         Ok(())
     }

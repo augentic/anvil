@@ -7,13 +7,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use emery_error::Error;
+use omnia_guest::BlobStore;
 use serde::{Deserialize, Serialize};
 
 use super::core::ResolvedSource;
 use super::resolver::{Component, component_cache_entry};
 use super::selector::canonicalize_component;
 use super::{AdapterSelector, metadata, selector};
-use crate::handler::ExecutionPaths;
+use crate::handler::{ADAPTERS_CONTAINER, ExecutionPaths};
+use crate::storage;
 
 /// Ensure a source selector for the component deployment: provision
 /// (mirror), then resolve through the component resolver.
@@ -22,12 +24,12 @@ use crate::handler::ExecutionPaths;
 ///
 /// Provisioning failures (`adapter-component-missing`,
 /// `adapter-canonicalize-failed`) ahead of resolve failures.
-pub fn source(
-    runner: impl metadata::Runner, selector: &AdapterSelector, paths: &ExecutionPaths,
+pub async fn source<B: BlobStore>(
+    runner: impl metadata::Runner, selector: &AdapterSelector, blobs: &B, paths: &ExecutionPaths,
     now: jiff::Timestamp,
 ) -> Result<ResolvedSource, Error> {
-    provision(selector, paths, now)?;
-    Component::new(runner).resolve_source(selector, paths)
+    provision(selector, blobs, paths, now).await?;
+    Component::new(runner).resolve_source(selector, blobs, paths).await
 }
 
 /// Make one selector resolvable on the guest side of the seam: mirror
@@ -37,28 +39,36 @@ pub fn source(
 /// # Errors
 ///
 /// `adapter-component-missing` or `adapter-canonicalize-failed`.
-pub fn provision(
-    selector: &AdapterSelector, paths: &ExecutionPaths, now: jiff::Timestamp,
+pub async fn provision<B: BlobStore>(
+    selector: &AdapterSelector, blobs: &B, paths: &ExecutionPaths, now: jiff::Timestamp,
 ) -> Result<(), Error> {
     match selector {
         AdapterSelector::Bare { .. } | AdapterSelector::Package { .. } => Ok(()),
-        AdapterSelector::Component { path } => mirror(path, paths, now),
+        AdapterSelector::Component { path } => mirror(path, blobs, paths, now).await,
     }
 }
 
 // Mirror an operator-supplied local component into the project cache,
 // stamping provenance: a component selector stays resolvable after the
 // original file is removed because the earlier mirror satisfies re-ensure.
-fn mirror(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<(), Error> {
+async fn mirror<B: BlobStore>(
+    path: &Path, blobs: &B, paths: &ExecutionPaths, now: jiff::Timestamp,
+) -> Result<(), Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
-    if !absolute.is_file()
-        && let Ok(name) = selector::name_from_component(path)
-        && component_cache_entry(paths, &name).is_file()
-    {
-        return Ok(());
+    if !absolute.is_file() {
+        let cached = match selector::name_from_component(path) {
+            Ok(name) => {
+                let object = paths.locations().component_object(&name);
+                blobs.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false)
+            }
+            Err(_) => false,
+        };
+        if cached {
+            return Ok(());
+        }
     }
-    seed(path, paths, now).map(drop)
+    seed(path, blobs, paths, now).await.map(drop)
 }
 
 /// The seeded identity one [`seed`] produced.
@@ -75,8 +85,8 @@ pub struct Seeded {
 /// Seed one operator-supplied `.wasm` component into the project
 /// component cache.
 ///
-/// Canonicalizes, derives the kebab name from the filename, copies to
-/// `<project-cache>/components/<name>.wasm`, and stamps provenance.
+/// Canonicalizes, derives the kebab name from the filename, mirrors
+/// the bytes into the components container, and stamps provenance.
 /// Re-seeding replaces the entry; a wrong-world component fails at the
 /// dispatch gate, not during seeding. Strict: a missing path fails
 /// even when the derived name is already cached (no typo masking).
@@ -85,29 +95,37 @@ pub struct Seeded {
 ///
 /// `adapter-component-missing` when `path` is not a `.wasm` file,
 /// `adapter-canonicalize-failed` when it cannot be canonicalized, and
-/// I/O failures from the copy or provenance write.
-pub fn seed(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<Seeded, Error> {
+/// read or storage failures from the mirror or provenance write.
+pub async fn seed<B: BlobStore>(
+    path: &Path, blobs: &B, paths: &ExecutionPaths, now: jiff::Timestamp,
+) -> Result<Seeded, Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
     ensure_component_file(&absolute, &path.display().to_string())?;
     let canonical = canonicalize_component(path, paths.project_root())?;
     let name = selector::name_from_component(&canonical)?;
+    let locations = paths.locations();
 
-    let entry = component_cache_entry(paths, &name);
-    if let Some(parent) = entry.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::copy(&canonical, &entry)?;
+    // Reading the operator-supplied component is a workspace read;
+    // the mirror itself goes through the storage capability.
+    let bytes = fs::read(&canonical)?;
+    blobs
+        .put(ADAPTERS_CONTAINER, &locations.component_object(&name), &bytes)
+        .await
+        .map_err(|err| storage::failed("mirroring the component into the cache", &err))?;
 
     let meta = ComponentMeta {
         source: format!("file://{}", canonical.display()),
         fetched_at: now.strftime("%Y-%m-%dT%H:%M:%SZ").to_string(),
     };
     let serialised = serde_saphyr::to_string(&meta)?;
-    fs::write(ComponentMeta::path(paths, &name), serialised)?;
+    blobs
+        .put(ADAPTERS_CONTAINER, &locations.component_meta_object(&name), serialised.as_bytes())
+        .await
+        .map_err(|err| storage::failed("stamping the component provenance", &err))?;
     Ok(Seeded {
+        entry: component_cache_entry(paths, &name),
         name,
-        entry,
         source: canonical,
     })
 }
@@ -142,23 +160,15 @@ pub struct ComponentMeta {
 }
 
 impl ComponentMeta {
-    /// Absolute path to the `<name>.meta.yaml` provenance sidecar
-    /// beside the mirrored `<name>.wasm` entry inside the out-of-tree
-    /// `<project-cache>/components/` tenant.
-    #[must_use]
-    pub fn path(paths: &ExecutionPaths, name: &str) -> PathBuf {
-        paths.cache_dir().join("components").join(format!("{name}.meta.yaml"))
-    }
-
     /// Load the provenance sidecar for `name`, when present and
     /// parseable. The recorded `source` is the canonical `file://`
     /// URI of the component the mirror was seeded from — the value
     /// init persists on the source binding for a component selector,
     /// so a guest that cannot see the operator's host path still
     /// records the host-canonical binding.
-    #[must_use]
-    pub fn load(paths: &ExecutionPaths, name: &str) -> Option<Self> {
-        let raw = fs::read_to_string(Self::path(paths, name)).ok()?;
-        serde_saphyr::from_str(&raw).ok()
+    pub async fn load<B: BlobStore>(blobs: &B, paths: &ExecutionPaths, name: &str) -> Option<Self> {
+        let object = paths.locations().component_meta_object(name);
+        let bytes = blobs.get(ADAPTERS_CONTAINER, &object).await.ok().flatten()?;
+        serde_saphyr::from_str(&String::from_utf8_lossy(&bytes)).ok()
     }
 }

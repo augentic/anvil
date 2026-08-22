@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 /// identically against the wasm32 preopen table and the native
 /// invocation directory; one project per deployment, so no project-id
 /// keying is needed.
-pub const GUEST_CACHE_MOUNT: &str = ".emery-cache";
+pub const CACHE_MOUNT: &str = ".emery-cache";
 
 /// Nominal store root inside the engine guest's layout.
 ///
@@ -21,7 +21,14 @@ pub const GUEST_CACHE_MOUNT: &str = ".emery-cache";
 /// opens a store file. The constant survives as the guest's nominal
 /// [`Locations::store_root`] — pure path math feeding origin display,
 /// never I/O.
-pub const GUEST_STORE_MOUNT: &str = "/emery-store";
+pub const STORE_MOUNT: &str = "/emery-store";
+
+/// Blobstore container of the project component cache
+/// (`<project-cache>/adapters/` under the filesystem backing).
+pub const ADAPTERS_CONTAINER: &str = "adapters";
+
+/// Blobstore container of the global adapter store.
+pub const STORE_CONTAINER: &str = "store";
 
 /// Well-known on-disk locations for resolvable artifacts.
 ///
@@ -36,7 +43,7 @@ impl Locations {
     /// origin display in-guest.
     #[must_use]
     pub fn store_root(&self) -> &Path {
-        Path::new(GUEST_STORE_MOUNT)
+        Path::new(STORE_MOUNT)
     }
 
     /// Global store entry for an immutable `(name, version)` identity —
@@ -64,7 +71,7 @@ impl Locations {
     /// The per-project derived cache root: the cache preopen.
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
-        PathBuf::from(GUEST_CACHE_MOUNT)
+        PathBuf::from(CACHE_MOUNT)
     }
 
     /// Project component cache entry for `name` under
@@ -72,5 +79,33 @@ impl Locations {
     #[must_use]
     pub fn component(&self, name: &str) -> PathBuf {
         self.cache_dir().join("components").join(format!("{name}.wasm"))
+    }
+
+    /// Object name of the mirrored component inside
+    /// [`ADAPTERS_CONTAINER`].
+    #[must_use]
+    pub fn component_object(&self, name: &str) -> String {
+        format!("{name}.wasm")
+    }
+
+    /// Object name of the provenance sidecar beside the mirrored
+    /// component inside [`ADAPTERS_CONTAINER`].
+    #[must_use]
+    pub fn component_meta_object(&self, name: &str) -> String {
+        format!("{name}.meta.yaml")
+    }
+
+    /// Object name of an immutable `(name, version)` store entry
+    /// inside [`STORE_CONTAINER`].
+    #[must_use]
+    pub fn store_object(&self, name: &str, version: &str) -> String {
+        format!("{name}@{version}.wasm")
+    }
+
+    /// Object name of the verify-on-read digest sidecar sibling of
+    /// [`Self::store_object`] inside [`STORE_CONTAINER`].
+    #[must_use]
+    pub fn store_meta_object(&self, name: &str, version: &str) -> String {
+        format!("{name}@{version}.meta")
     }
 }

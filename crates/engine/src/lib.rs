@@ -8,6 +8,7 @@ pub mod init;
 pub mod project;
 pub mod resolve;
 pub mod specify;
+pub mod storage;
 pub mod synthesise;
 
 // The embedded synthesis-prose registry under `prose/`, walked and

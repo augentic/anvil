@@ -4,10 +4,10 @@
 
 use clap::Args;
 use emery_adapter::Source;
-use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
 use omnia_guest::api::invoke::Invoker;
+use omnia_guest::{BlobStore, Model, StateStore};
 
 use super::{EmeryProjector, Globals};
 
@@ -54,7 +54,7 @@ impl TryFrom<SpecifyArgs> for emery_engine::specify::SpecifyInput {
 /// Returns a deterministic route or argument conflict.
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Model + Source,
+    P: Provider + Model + Source + StateStore + BlobStore,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)

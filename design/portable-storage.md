@@ -35,15 +35,15 @@ Non-goals:
 
 ### 3.1 Storage inventory and destination
 
-| Surface | Today | Destination |
-| --- | --- | --- |
-| Generation documents (`spec.md`, `design.md`) | `.emery/spec/generations/<digest>/` | blobstore container, objects keyed by generation digest |
-| `current` pointer | `.emery/spec/current` file | keyvalue entry; swap is CAS, conflict fails closed ([§3.2](#32-authority-model)) |
-| Component cache | `.emery-cache/components/<name>.wasm` + `.meta.yaml` sidecar | blobstore container keyed by adapter name; `ComponentMeta` is **deleted**, not ported — write-only provenance whose one reader (`init`'s `bind`) dies in step 5 |
-| Global adapter store + `.meta` sidecars | host-side `<store>/<name>@<version>.wasm` + sidecar | blobstore (immutable entries) + keyvalue (verify-on-read digest + OCI provenance) |
-| Locks / PID stamps | file stamps via `bytes_write` | keyvalue atomics (`StateStore::cas` / `increment`). No lock stamps on the live surface; the capability is there if they return |
-| `project.yaml` | `.emery/project.yaml` | **deleted** — the file is a sticky copy of `init`'s argv, not engine state ([§5](#5-deleting-projectyaml)) |
-| Workspace lend | read-only view of the source tree | **stays on disk** (non-goal) |
+| Surface                                       | Today                                                        | Destination                                                                                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Generation documents (`spec.md`, `design.md`) | `.emery/spec/generations/<digest>/`                          | blobstore container, objects keyed by generation digest                                                                                                         |
+| `current` pointer                             | `.emery/spec/current` file                                   | keyvalue entry; swap is CAS, conflict fails closed ([§3.2](#32-authority-model))                                                                                |
+| Component cache                               | `.emery-cache/components/<name>.wasm` + `.meta.yaml` sidecar | blobstore container keyed by adapter name; `ComponentMeta` is **deleted**, not ported — write-only provenance whose one reader (`init`'s `bind`) dies in step 5 |
+| Global adapter store + `.meta` sidecars       | host-side `<store>/<name>@<version>.wasm` + sidecar          | blobstore (immutable entries) + keyvalue (verify-on-read digest + OCI provenance)                                                                               |
+| Locks / PID stamps                            | file stamps via `bytes_write`                                | keyvalue atomics (`StateStore::cas` / `increment`). No lock stamps on the live surface; the capability is there if they return                                  |
+| `project.yaml`                                | `.emery/project.yaml`                                        | **deleted** — the file is a sticky copy of `init`'s argv, not engine state ([§5](#5-deleting-projectyaml))                                                      |
+| Workspace lend                                | read-only view of the source tree                            | **stays on disk** (non-goal)                                                                                                                                    |
 
 ### 3.2 Authority model
 
@@ -130,13 +130,13 @@ It is not a twin of the generation store. The store is output (`spec.md`, `desig
 
 ### 5.1 Jobs to re-home or drop
 
-| Outcome | Today | After deletion |
-| --- | --- | --- |
-| Which adapters to extract, and workspace vs `--value` | `sources:` | Re-homed — this is `specify`'s input ([§5.2](#52-the-replacement-authority)). |
-| "Has init run?" | file exists → else `not-initialized` | Follows the chosen authority; dies if `specify` no longer needs a prior step |
-| Project version floor | `emery:` pin → exit 3 | **Dropped.** Adapter `emery-floor` already refuses a too-old binary (`AdapterCliTooOld`). A second pin is how the file justified itself as a compatibility document. |
-| `init --upgrade` re-ensures without rewriting bindings | reload file, bump pin | Follows wherever bindings live; dies with `init` |
-| `name` / `description` | written, never read by extract / reconcile / synthesise | **Dropped.** Unused. |
+| Outcome                                                | Today                                                   | After deletion                                                                                                                                                       |
+| ------------------------------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which adapters to extract, and workspace vs `--value`  | `sources:`                                              | Re-homed — this is `specify`'s input ([§5.2](#52-the-replacement-authority)).                                                                                        |
+| "Has init run?"                                        | file exists → else `not-initialized`                    | Follows the chosen authority; dies if `specify` no longer needs a prior step                                                                                         |
+| Project version floor                                  | `emery:` pin → exit 3                                   | **Dropped.** Adapter `emery-floor` already refuses a too-old binary (`AdapterCliTooOld`). A second pin is how the file justified itself as a compatibility document. |
+| `init --upgrade` re-ensures without rewriting bindings | reload file, bump pin                                   | Follows wherever bindings live; dies with `init`                                                                                                                     |
+| `name` / `description`                                 | written, never read by extract / reconcile / synthesise | **Dropped.** Unused.                                                                                                                                                 |
 
 ### 5.2 The replacement authority
 
@@ -216,7 +216,7 @@ With `project.yaml` gone, the binding list is an input owned by whoever runs `sp
 
 - `crates/artifacts/src/atomic.rs` — blobstore writes are complete-on-finalize; the pointer swap is `StateStore::cas`. No working-tree write remains, so the module and its test suite go outright. Its live call sites are exactly two: `home.rs` (gone in step 3) and `project.yaml`'s writer (gone in step 5); `copy_write` is already test-only.
 - The crash-litter half of `Home::prune` — no temp files exist to leak. Superseded-generation prune on pointer swap stays (today's semantics).
-- `cache_dir()` and its `create_dir_all` in `src/main.rs`; the cache mount and `GUEST_CACHE_MOUNT`.
+- `cache_dir()` and its `create_dir_all` in `src/main.rs`; the cache mount and `CACHE_MOUNT`.
 - The writable `.` mount — drops to read-only unconditionally (step 6); with no working-tree write, `specify` needs no write route at all.
 - Path-math surface of `Locations` (`store_entry`, `store_meta`, `component`, `cache_dir`) replaced by key formulas.
 - `ComponentMeta` and the cache's `<name>.meta.yaml` sidecar — write-only provenance. Its one reader is `init`'s `bind` (persisting the canonical `file://` source onto the project record), and both die in step 5. Deleted in step 4, never ported to keyvalue; `bind` falls back to `persist_value` for the single step until `init` goes. The store's verify-on-read `.meta` is **not** in this bullet: it is the fail-closed gate before executing adapter bytes and moves to keyvalue intact.
@@ -238,7 +238,7 @@ step 1 (seam) ───────┴→ step 2 (host bindings) → step 4 (cac
 
 **Step 2 — omnia host bindings.** Wire the `WasiKeyValue` / `WasiBlobstore` host entries into `src/main.rs` over the §3.5 backends (`omnia-filesystem` + the new filesystem keyvalue), both roots at the invocation directory, and route the step-1 traits over the omnia guest capabilities (`StateStore` / `BlobStore`, including `cas`). The engine guest stops opening engine-state paths; the mounts table does not shrink yet (steps 4 and 6). Exit criterion: `init` → `specify` → process restart → `specify` still reports the re-mine diff (store durability, §4 scope 1).
 
-**Step 4 — component cache and store move (lands before step 3).** Cache and global store entries become blobstore objects. The store's verify-on-read `.meta` sidecar moves to keyvalue, digests unchanged; the cache's `ComponentMeta` sidecar is deleted here, not ported ([§6](#6-deletions)) — its one reader is `init`'s `bind`, which falls back to `persist_value` for the single step until `init` dies in step 5. Local-`.wasm` mirroring (today `init`'s `ensure`; after step 5, `specify`'s) writes through the capability — incidentally fixing that `ensure::seed` copies with plain non-atomic `fs::copy` / `fs::write` today. Delete the cache mount, `cache_dir()` and its mkdir in `main.rs`, `GUEST_CACHE_MOUNT`, and the path-math methods of `Locations` this obsoletes.
+**Step 4 — component cache and store move (lands before step 3).** Cache and global store entries become blobstore objects. The store's verify-on-read `.meta` sidecar moves to keyvalue, digests unchanged; the cache's `ComponentMeta` sidecar is deleted here, not ported ([§6](#6-deletions)) — its one reader is `init`'s `bind`, which falls back to `persist_value` for the single step until `init` dies in step 5. Local-`.wasm` mirroring (today `init`'s `ensure`; after step 5, `specify`'s) writes through the capability — incidentally fixing that `ensure::seed` copies with plain non-atomic `fs::copy` / `fs::write` today. Delete the cache mount, `cache_dir()` and its mkdir in `main.rs`, `CACHE_MOUNT`, and the path-math methods of `Locations` this obsoletes.
 
 **Step 3 — pointer and generations (lands after step 4, with step 5 immediately behind).** `current` becomes a keyvalue entry; generation sets become blobs keyed by digest; commit order is blobs-then-`cas` on the pointer ([§3.2](#32-authority-model)). The CAS conflict is a new operator-visible typed failure — two concurrent `specify` runs no longer last-write-wins — mapping to exit 1: environmental contention, not operator input. Delete the litter half of `prune`; superseded-generation prune on pointer swap stays. The `.emery/spec/` tree stops being written. Container/key naming is reviewed against layer 3 (git projection) here so nothing precludes it.
 

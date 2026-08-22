@@ -4,6 +4,7 @@
 //! the loaded project, and the version floor are derived exactly once.
 
 use emery_error::Error;
+use omnia_guest::StateStore;
 
 use super::paths::ExecutionPaths;
 use crate::project::Project;
@@ -22,16 +23,16 @@ pub struct RequestContext {
 
 impl RequestContext {
     /// Assemble the context over the deployed layout: fix the
-    /// preopen-relative paths and load `project.yaml` fail-closed (the
-    /// version floor included).
+    /// preopen-relative paths and load the project record fail-closed
+    /// (the version floor included).
     ///
     /// # Errors
     ///
     /// [`Error::NotInitialized`] when the project is absent, plus the
     /// load and floor failures of [`Project::load`].
-    pub fn load() -> Result<Self, Error> {
+    pub async fn load<S: StateStore>(state: &S) -> Result<Self, Error> {
         let paths = ExecutionPaths::deployed();
-        let project = Project::load(paths.project_root())?;
+        let project = Project::load(state).await?;
         Ok(Self { paths, project })
     }
 

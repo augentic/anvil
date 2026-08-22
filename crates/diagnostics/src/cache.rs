@@ -33,11 +33,14 @@ pub fn project_id(project_dir: &Path) -> String {
 /// reports an unreadable one as [`StoreVerifyError::Unreadable`].
 #[must_use]
 pub fn file_content_digest(file: &Path) -> String {
-    bytes_digest(&std::fs::read(file).unwrap_or_default())
+    content_digest(&std::fs::read(file).unwrap_or_default())
 }
 
-// The `sha256:<hex>` digest of a byte slice.
-fn bytes_digest(bytes: &[u8]) -> String {
+/// The `sha256:<hex>` content digest of an in-memory payload — the
+/// bytes-in variant for callers that fetch entries through a storage
+/// capability rather than reading files here.
+#[must_use]
+pub fn content_digest(bytes: &[u8]) -> String {
     let mut hasher = Hasher::new();
     hasher.update(bytes);
     format!("sha256:{}", hasher.finalize_hex())
@@ -144,7 +147,16 @@ pub fn write_store_meta(
 #[must_use]
 pub fn read_store_meta(meta_path: &Path) -> Option<String> {
     let raw = std::fs::read_to_string(meta_path).ok()?;
-    let meta: StoreMeta = serde_saphyr::from_str(&raw).ok()?;
+    recorded_digest(&raw)
+}
+
+/// Parse the recorded tree digest out of sidecar text — the bytes-in
+/// variant of [`read_store_meta`] for callers that fetch the sidecar
+/// through a storage capability. `None` when the text is not a
+/// sidecar.
+#[must_use]
+pub fn recorded_digest(sidecar: &str) -> Option<String> {
+    let meta: StoreMeta = serde_saphyr::from_str(sidecar).ok()?;
     Some(meta.tree_digest)
 }
 
@@ -177,7 +189,7 @@ pub fn verify_store_entry(entry: &Path, meta_path: &Path) -> Result<(), StoreVer
     };
     let bytes =
         std::fs::read(entry).map_err(|err| StoreVerifyError::Unreadable(err.to_string()))?;
-    let actual = bytes_digest(&bytes);
+    let actual = content_digest(&bytes);
     if actual == recorded {
         Ok(())
     } else {

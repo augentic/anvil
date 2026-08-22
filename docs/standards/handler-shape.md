@@ -27,8 +27,7 @@ impl<P: Provider> Operation<P> for Frob {
 }
 
 fn frob(input: FrobInput) -> Result<FrobBody, emery_error::Error> {
-    let request = RequestContext::load()?;
-    let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
+    let outcome = some_crate::do_work(&input)?;
     Ok(FrobBody::from(&outcome))
 }
 ```
@@ -37,7 +36,7 @@ Operations live in each domain module's `handlers` submodule beside its kernels.
 
 ## RequestContext and the deployed layout (C5)
 
-Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load()`: paths are constants relative to the named preopens (`.` is the project-root mount — the invocation directory natively — and `GUEST_CACHE_MOUNT` the cache preopen), and the project loads fail-closed (version floor included) exactly once. Operations never derive paths any other way — no environment reads, no ancestor walks; native tests that need a scratch root chdir into a tempdir (one nextest process per test).
+Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load(context.provider).await`: paths are constants relative to the named preopens (`.` is the project-root mount — the invocation directory natively — and `CACHE_MOUNT` the cache preopen), and the project record loads fail-closed (version floor included) exactly once through the provider's `StateStore` capability. Operations never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage seam in memory instead of chdir-ing into a tempdir.
 
 `emery init` is the one operation that runs before a project exists: it anchors at the raw `ExecutionPaths::deployed()` root instead of loading `RequestContext`.
 
@@ -57,12 +56,12 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 The four-slot CLI exit-code table is fixed:
 
-| Code | Name | When |
-|---|---|---|
-| 0 | `EXIT_SUCCESS` | Command succeeded |
-| 1 | `EXIT_GENERIC_FAILURE` | Default `Error` → exit 1 |
-| 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
-| 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`emery-version-too-old` in JSON) |
+| Code | Name                     | When                                                                      |
+| ---- | ------------------------ | ------------------------------------------------------------------------- |
+| 0    | `EXIT_SUCCESS`           | Command succeeded                                                         |
+| 1    | `EXIT_GENERIC_FAILURE`   | Default `Error` → exit 1                                                  |
+| 2    | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
+| 3    | `EXIT_VERSION_TOO_OLD`   | `Error::CliTooOld` (`emery-version-too-old` in JSON)                      |
 
 `Exit::from(&Error)` in [`crates/transport/src/command/output.rs`](../../crates/transport/src/command/output.rs) is the single source of truth. `EmeryProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes.
 

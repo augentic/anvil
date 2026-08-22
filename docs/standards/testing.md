@@ -12,7 +12,9 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted model doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/native.rs`) over a provider that scripts both capabilities (`Model`, `Source`) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
+The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/source.rs`) over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage seam) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
+
+Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage seam (design/portable-storage.md step 1), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities, and the native suites script them with the shared in-memory store (`crates/engine/tests/support/storage.rs`, `#[path]`-included per suite). No suite changes the process working directory. The one filesystem rung left is the `Disk` layout test in `crates/engine/tests/home.rs`, which pins the byte-for-byte on-disk tree the filesystem backing must preserve; operator-supplied inputs (a local `.wasm` component) stay real files in a `tempfile::TempDir`.
 
 The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check. The `source` and `runtime` examples remain the in-tree component-shape fixture; they are not a test rung.
 
@@ -24,7 +26,7 @@ Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` scrip
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/engine/tests/synthesise.rs`, `crates/transport/tests/router.rs`, and so on. Crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Developer Guide link integrity is `mdbook-linkcheck2`'s job (`cargo make links`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, scripted storage contents. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/engine/tests/synthesise.rs`, `crates/transport/tests/router.rs`, and so on. Crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Developer Guide link integrity is `mdbook-linkcheck2`'s job (`cargo make links`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -83,7 +85,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 ## Assertion ownership
 
 - A behavior reducible to a crate API, CLI result, filesystem predicate, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its seam.
-- Pure kernel behavior belongs to the native suites; `init` / `specify` orchestration belongs to `tests/native.rs`. Name the seam an assertion owns before writing it.
+- Pure kernel behavior belongs to the native suites; `init` / `specify` orchestration belongs to `tests/source.rs`. Name the seam an assertion owns before writing it.
 
 ## Test naming
 
@@ -98,7 +100,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir` (`tests/native.rs`).
+- Script engine state with the shared in-memory storage provider and assert on its contents plus the envelope (`tests/source.rs`); reserve `tempfile::TempDir` for operator-supplied inputs and the `Disk` layout test.
 - Compare structured output against checked-in goldens (the committed answer schemas under `crates/adapter/schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.

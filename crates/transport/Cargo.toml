@@ -23,7 +23,7 @@ serde_json.workspace = true
 strum.workspace = true
 
 [dev-dependencies]
-tempfile.workspace = true
+anyhow.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 tower.workspace = true
 

@@ -5,6 +5,7 @@ use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
 use emery_adapter::{DispatchError, Source};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
+use omnia_guest::BlobStore;
 
 use crate::handler::ExecutionPaths;
 use crate::project::{BindingContent, Project, SourceBinding};
@@ -50,14 +51,14 @@ pub struct SourceSet {
 ///
 /// Resolution failures, seam failures, and the typed validation
 /// refusals from [`validate_set`].
-pub async fn extract_all<P: Source>(
+pub async fn extract_all<P: Source + BlobStore>(
     provider: &P, project: &Project, paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
     let component = resolver::Component::new(metadata::runner(provider));
     let mut sets = Vec::with_capacity(project.sources.len());
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let resolved = component.resolve_source(&selector, paths)?;
+        let resolved = component.resolve_source(&selector, provider, paths).await?;
         let id = RoutedId::new(
             Axis::Source,
             resolved.manifest.name.clone(),
