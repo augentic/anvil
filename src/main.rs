@@ -4,6 +4,7 @@ cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         fn main() {}
     } else {
+        use std::future::Future;
         use std::sync::Arc;
 
         use omnia::FutureResult;
@@ -44,9 +45,10 @@ cfg_if::cfg_if! {
 
         /// The default local binding of the engine's storage
         /// capabilities: a durable filesystem store rooted at
-        /// [`STORE_ROOT`], with the engine's blob containers created at
-        /// connect so the guest's `get-container` opens never race a
-        /// first write. Alternative bindings are deployment profiles,
+        /// [`STORE_ROOT`] rather than the stock `FILESYSTEM_ROOT`
+        /// environment contract — the one policy this newtype pins.
+        /// Containers need no bootstrap: the backend's `get-container`
+        /// is an ensure. Alternative bindings are deployment profiles,
         /// not engine changes.
         #[derive(Clone, Debug)]
         struct ProjectStore(Filesystem);
@@ -54,16 +56,10 @@ cfg_if::cfg_if! {
         impl omnia::Backend for ProjectStore {
             type ConnectOptions = omnia::NoOptions;
 
-            async fn connect_with(_options: omnia::NoOptions) -> anyhow::Result<Self> {
-                let client = Filesystem::open(STORE_ROOT)?;
-                for container in [
-                    emery_engine::home::SPEC_CONTAINER,
-                    emery_engine::handler::ADAPTERS_CONTAINER,
-                    emery_engine::handler::STORE_CONTAINER,
-                ] {
-                    drop(client.create_container(container.to_string()).await?);
-                }
-                Ok(Self(client))
+            fn connect_with(
+                _options: omnia::NoOptions,
+            ) -> impl Future<Output = anyhow::Result<Self>> {
+                std::future::ready(Filesystem::open(STORE_ROOT).map(Self))
             }
         }
 

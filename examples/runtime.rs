@@ -47,8 +47,7 @@ cfg_if::cfg_if! {
 
         // The shipped binary's storage binding, reproduced for the
         // journey host: a durable filesystem store rooted at `.emery`
-        // under the invocation directory, engine blob containers
-        // created at connect (see `src/main.rs`).
+        // under the invocation directory (see `src/main.rs`).
         const STORE_ROOT: &str = ".emery";
 
         #[derive(Clone, Debug)]
@@ -57,16 +56,10 @@ cfg_if::cfg_if! {
         impl omnia::Backend for ProjectStore {
             type ConnectOptions = omnia::NoOptions;
 
-            async fn connect_with(_options: omnia::NoOptions) -> anyhow::Result<Self> {
-                let client = Filesystem::open(STORE_ROOT)?;
-                for container in [
-                    emery_engine::home::SPEC_CONTAINER,
-                    emery_engine::handler::ADAPTERS_CONTAINER,
-                    emery_engine::handler::STORE_CONTAINER,
-                ] {
-                    drop(client.create_container(container.to_string()).await?);
-                }
-                Ok(Self(client))
+            fn connect_with(
+                _options: omnia::NoOptions,
+            ) -> impl Future<Output = anyhow::Result<Self>> {
+                std::future::ready(Filesystem::open(STORE_ROOT).map(Self))
             }
         }
 
