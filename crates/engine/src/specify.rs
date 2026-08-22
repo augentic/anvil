@@ -1,6 +1,4 @@
-//! `emery specify` — the one loop: extract every bound source,
-//! reconcile and synthesise under authority precedence, and commit the
-//! gated spec set behind the generation pointer.
+//! The `emery specify` operation.
 
 use std::io::Write;
 
@@ -16,22 +14,21 @@ use crate::handler::{Render, RequestContext};
 use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
 
-/// Wire input for `emery specify` (no flags).
+/// Input for `emery specify`.
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct SpecifyInput;
 
-/// Success body: the committed generation and its reviewable set.
+/// Successful `emery specify` result.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SpecifyBody {
-    /// The committed generation id the pointer names.
+    /// Committed generation id.
     pub generation: String,
-    /// Requirement blocks in the committed `spec.md`.
+    /// Number of committed requirements.
     pub requirements: usize,
-    /// Sources extracted this run.
+    /// Number of extracted sources.
     pub sources: usize,
-    /// The re-mine diff against the superseded generation; absent on
-    /// a first run, empty on a byte-stable re-run.
+    /// Diff from the predecessor; absent on the first run.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
 }
@@ -61,7 +58,7 @@ impl Render for SpecifyBody {
     }
 }
 
-/// The live `specify` route over the model seam.
+/// The `specify` operation route.
 #[derive(Clone, Copy, Debug)]
 pub struct Specify;
 

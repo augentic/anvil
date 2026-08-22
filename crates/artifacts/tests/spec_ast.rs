@@ -1,5 +1,4 @@
-//! The fail-closed spec AST at its public surface: the reviewable
-//! set parses; everything else is a typed error.
+//! Fail-closed spec AST coverage.
 
 use emery_artifacts::spec::ast::{Status, Tag, parse};
 
@@ -56,7 +55,6 @@ fn reviewable_set_parses() {
 
 #[test]
 fn violations_fail_typed() {
-    // (document, expected finding fragment)
     let cases: &[(&str, &str)] = &[
         ("# Title only, no blocks\n", "no `### Requirement:` block"),
         ("### Requirement: No id\n\nSources: [a]\nStatus: agreed\n\nBody.\n", "no `ID:` line"),

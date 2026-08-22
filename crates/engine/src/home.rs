@@ -1,10 +1,4 @@
-//! The output home — the one module owning every spec-set read/write:
-//! content-addressed generations behind one swapped `current` pointer,
-//! over the deployment's storage capabilities; reads fail closed.
-//!
-//! The naming shape — immutable objects under `generations/<digest>/`
-//! behind one small pointer key — is the ref-over-objects idiom a
-//! git-backed blobstore binding (layer 3) can adopt unchanged.
+//! Content-addressed spec generations behind a swapped `current` pointer.
 
 use std::collections::BTreeMap;
 
@@ -15,31 +9,24 @@ use serde::Serialize;
 
 use crate::storage;
 
-/// The blobstore container carrying the output home: generation
-/// documents under `generations/<id>/`.
+/// Blobstore container for spec generations.
 pub const SPEC_CONTAINER: &str = "spec";
 
-/// The keyvalue entry naming the current generation id.
+/// Keyvalue entry naming the current generation.
 pub const CURRENT_KEY: &str = "spec/current";
 
-// The generation objects' parent inside the spec container.
 const GENERATIONS_DIR: &str = "generations";
 
-// Every document of one complete generation, in the fixed order the
-// generation digest folds them.
+// Digest order is part of the generation identity.
 const FILES: [&str; 2] = ["spec.md", "design.md"];
 
-// The spec-container object name of one generation document.
 fn object(id: &str, name: &str) -> String {
     format!("{GENERATIONS_DIR}/{id}/{name}")
 }
 
-/// One complete spec set, assembled in memory before any write.
+/// A complete, atomically committed spec set.
 ///
-/// The two reviewable documents commit as a unit or not at all.
-/// Because the generation id is the digest of the set's bytes, an
-/// identical re-run converges on the same objects and the home
-/// stays byte-stable. No document carries a timestamp or log line.
+/// Its content-derived id makes identical runs byte-stable.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpecSet {
     /// The behavioural specification document.
@@ -49,16 +36,13 @@ pub struct SpecSet {
 }
 
 impl SpecSet {
-    /// The set's documents as `(file name, body)` pairs, in `FILES`
-    /// order.
+    /// Returns documents in generation-digest order.
     #[must_use]
     pub fn files(&self) -> [(&'static str, &str); 2] {
         [(FILES[0], &self.spec), (FILES[1], &self.design)]
     }
 
-    /// The content-addressed generation id: the SHA-256 digest over
-    /// every document name and body, length-prefixed so the encoding
-    /// is unambiguous.
+    /// Returns the SHA-256 generation id over length-prefixed names and bodies.
     #[must_use]
     pub fn id(&self) -> String {
         let mut hasher = emery_diagnostics::digest::Hasher::new();
@@ -72,78 +56,53 @@ impl SpecSet {
     }
 }
 
-/// A committed generation: the pointer-named id.
+/// A generation named by the current pointer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Committed {
-    /// The generation id the `current` pointer names.
+    /// Current generation id.
     pub id: String,
 }
 
-/// The pointer state one run observed before committing.
+/// Pointer state observed before a compare-and-swap commit.
 ///
-/// The raw pointer bytes are the CAS expected value ([§3.2 of the
-/// portable-storage design]: absent → first id, or the outgoing id
-/// this run observed → incoming), so the commit never overwrites a
-/// pointer it did not see. The outgoing set is advisory input for the
-/// re-mine diff; one observation feeds both, so the diff and the swap
-/// always agree on the generation being superseded.
-///
-/// [§3.2 of the portable-storage design]: https://github.com/augentic/emery/blob/main/design/portable-storage.md
+/// One observation drives both the CAS and advisory diff.
 #[derive(Clone, Debug)]
 pub struct Observation {
-    // The raw `current` bytes, `None` when the pointer is absent (or
-    // unreadable — then the CAS fails closed rather than clobbering).
+    // Unreadable pointers appear absent so the subsequent CAS fails closed.
     pointer: Option<Vec<u8>>,
-    // The outgoing generation id and its complete set, for the
-    // re-mine diff; `None` when there is nothing readable to diff
-    // against.
+    // Advisory diff input; absent when no complete set is readable.
     outgoing: Option<(String, SpecSet)>,
 }
 
 impl Observation {
-    /// The observed outgoing generation id and its complete set, for
-    /// the re-mine diff; `None` when there is nothing readable to
-    /// diff against.
+    /// Returns the complete outgoing generation when readable.
     #[must_use]
     pub fn into_outgoing(self) -> Option<(String, SpecSet)> {
         self.outgoing
     }
 }
 
-/// One re-mine diff: how an incoming spec set differs from the
-/// outgoing generation it supersedes.
-///
-/// Computed at commit time — the outgoing set is pruned immediately
-/// after the swap — and emitted in the `specify` success envelope
-/// only; nothing persists. An identical re-run yields
-/// an [`empty`](Self::is_empty) diff, making "nothing changed" an
-/// explicit, reviewable statement.
+/// An ephemeral re-mine diff against the superseded generation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Diff {
     /// The outgoing generation id this run superseded.
     pub from: String,
-    /// Spec-set file names whose bytes changed, in `FILES` order.
+    /// Changed file names in generation-digest order.
     pub artifacts: Vec<String>,
     /// Requirement subjects present only in the incoming `spec.md`.
     pub added: Vec<String>,
     /// Requirement subjects present only in the outgoing `spec.md`.
     pub removed: Vec<String>,
-    /// Requirement subjects whose block changed (status, tag,
-    /// sources, or body).
+    /// Requirement subjects whose blocks changed.
     pub changed: Vec<String>,
 }
 
 impl Diff {
-    /// Diff `incoming` against the `outgoing` set committed as `from`.
+    /// Diffs `incoming` against `outgoing`, identified by `from`.
     ///
-    /// Section lists compare `spec.md` requirement blocks keyed by
-    /// heading subject — the reconciliation join key — ignoring the
-    /// positional `REQ-NNN` ids, which shift when rows are inserted
-    /// or removed. The outgoing spec parsing fails only across a
-    /// binary upgrade (pre-1.0: re-init); the diff is advisory, so
-    /// that leaves the artifact list standing and the section lists
-    /// empty rather than failing the commit.
+    /// Sections use heading subjects, not positional ids. Because the
+    /// diff is advisory, an unparseable old spec leaves section lists empty.
     #[must_use]
     pub fn between(from: String, outgoing: &SpecSet, incoming: &SpecSet) -> Self {
         let artifacts = outgoing
@@ -179,7 +138,7 @@ impl Diff {
         }
     }
 
-    /// No artifact or section differs — the byte-stable re-run.
+    /// Returns whether no artifact or section differs.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.artifacts.is_empty()
@@ -189,12 +148,11 @@ impl Diff {
     }
 }
 
-// Requirement blocks keyed by heading subject, in subject order.
 fn subjects(spec: &ast::Spec) -> BTreeMap<&str, &ast::Requirement> {
     spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
 }
 
-// Block equality minus the positional `REQ-NNN` id.
+// Positional ids do not define requirement identity.
 fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
     old.status == new.status
         && old.tag == new.tag
@@ -202,31 +160,25 @@ fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
         && old.body == new.body
 }
 
-/// The output home over one deployment's storage capabilities.
+/// Spec generations over a deployment's storage capabilities.
 #[derive(Clone, Copy, Debug)]
 pub struct Home<'p, S> {
     store: &'p S,
 }
 
 impl<'p, S: StateStore + BlobStore> Home<'p, S> {
-    /// The output home over `store`.
+    /// Creates an output home over `store`.
     #[must_use]
     pub const fn new(store: &'p S) -> Self {
         Self { store }
     }
 
-    /// Commit `set` as the current generation: write the complete
-    /// generation objects, swap the `current` pointer to them by CAS
-    /// against the pointer bytes `observed`, then prune the
-    /// superseded generation the swap replaced. A crash before the
-    /// swap leaves the previous set intact and current.
+    /// Commits `set` by writing its generation, swapping the pointer, and pruning its predecessor.
     ///
     /// # Errors
     ///
-    /// Fails typed with `spec-pointer-conflict` when the pointer no
-    /// longer holds the observed value — a concurrent `specify` swapped
-    /// first; this run never last-write-wins over it. Propagates
-    /// storage failures from the writes, the swap, or the prune.
+    /// Returns `spec-pointer-conflict` if the observation is stale.
+    /// Propagates write, swap, and prune failures.
     pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
         let id = set.id();
         for (name, body) in set.files() {
@@ -258,14 +210,12 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Ok(Committed { id })
     }
 
-    /// The committed generation the `current` pointer names, or `None`
-    /// when no generation has ever been committed (no pointer exists).
+    /// Returns the current generation, or `None` before the first commit.
     ///
     /// # Errors
     ///
-    /// Fails closed with `spec-home-corrupt` when the pointer exists
-    /// but names a missing or incomplete generation, and propagates
-    /// read failures. Corruption is never an empty result.
+    /// Returns `spec-home-corrupt` for a dangling or incomplete generation.
+    /// Propagates read failures.
     pub async fn current(&self) -> Result<Option<Committed>, Error> {
         let raw = StateStore::get(self.store, CURRENT_KEY)
             .await
@@ -293,16 +243,10 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Ok(Some(Committed { id }))
     }
 
-    /// One observation of the pointer, taken before a commit: the raw
-    /// bytes the CAS will expect and the outgoing set for the re-mine
-    /// diff, read before the commit prunes it.
+    /// Observes CAS input and the outgoing set without failing.
     ///
-    /// Total by design: the diff is advisory reporting, never a gate,
-    /// and `specify` must stay the recovery path for a corrupt home —
-    /// a missing, incomplete, or unreadable outgoing generation is
-    /// `None`, not a failure. An unreadable pointer observes as
-    /// absent, so the following CAS fails closed instead of
-    /// clobbering. The commit itself remains the authority.
+    /// Corrupt or unreadable state suppresses only the advisory diff;
+    /// the following CAS remains authoritative and fail-closed.
     pub async fn observe(&self) -> Observation {
         let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
         let outgoing = match &pointer {
@@ -312,8 +256,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Observation { pointer, outgoing }
     }
 
-    // Advisory read of one complete generation; any missing or
-    // unreadable document is `None`, never a failure.
+    // Advisory reads collapse incomplete or unreadable generations to `None`.
     async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
         let mut bodies = Vec::with_capacity(FILES.len());
         for name in FILES {
@@ -328,11 +271,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Some((id.to_string(), SpecSet { spec, design }))
     }
 
-    // Prune the superseded generation the swap replaced — exactly the
-    // objects of the id the observed pointer named. Blobstore writes
-    // are complete-on-finalize, so there is no crash litter to sweep;
-    // objects a crashed or conflicting run left behind are inert. The
-    // pointer itself is a keyvalue entry, never an object here.
+    // Only the observed predecessor is pruned; other orphaned objects are inert.
     async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
         let Some(raw) = &observed.pointer else {
             return Ok(());

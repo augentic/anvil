@@ -1,9 +1,4 @@
-//! Shared inert provider for the wire-contract suites: satisfies the
-//! router's capability bounds so the grammar assembles and pre-dispatch
-//! refusals run; no test dispatches the model (`tests/source.rs` covers
-//! that). Storage is the shared scripted in-memory store — empty, so
-//! project-scoped verbs refuse `not-initialized`, and inspectable, so
-//! suites can assert a refused run wrote nothing.
+//! Inert provider and storage for wire-contract tests.
 
 #[path = "../../../engine/tests/support/storage.rs"]
 pub mod storage;
@@ -15,11 +10,9 @@ use emery_adapter::seam::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
 use omnia_guest::api::invoke::Invoker;
 
-/// The inert provider: unreachable model and seam capabilities over an
-/// inspectable, initially empty scripted store.
+// Provider capabilities are unreachable in these tests.
 #[derive(Clone, Debug, Default)]
 pub struct Inert {
-    /// The scripted storage backing the provider.
     pub storage: Arc<storage::Memory>,
 }
 
@@ -53,13 +46,11 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
     unreachable!("the wire suites never dispatch the source seam")
 }
 
-/// The command router over a fresh inert provider.
 pub fn router() -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
     router_over(Inert::default())
 }
 
-/// The command router over `provider`, kept by the caller for
-/// post-run storage inspection.
+// Accept a retained provider for post-run storage inspection.
 pub fn router_over(
     provider: Inert,
 ) -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {

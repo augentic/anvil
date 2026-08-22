@@ -1,4 +1,4 @@
-//! Seam vocabulary mirroring the `emery:adapter` WIT records.
+//! DTOs mirroring the `emery:adapter` WIT records.
 //!
 //! Only answer-deserialized types carry serde derives.
 
@@ -13,16 +13,16 @@ pub use source::{
     SourceWorkspace,
 };
 
-/// Operation error — mirrors the WIT `types.error` variant.
+/// Adapter operation error.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
-    /// The request itself is malformed.
+    /// Malformed request.
     #[error("invalid request: {0}")]
     InvalidRequest(String),
-    /// A filesystem operation failed.
+    /// Filesystem failure.
     #[error("io: {0}")]
     Io(String),
-    /// A judgment call or answer-handling step failed.
+    /// Judgment or answer-handling failure.
     #[error("internal: {0}")]
     Internal(String),
 }
@@ -36,21 +36,21 @@ impl From<omnia_guest::model::Error> for Error {
     }
 }
 
-/// Call-scoped environment the shim resolves and hands to every operation.
+/// Call-scoped adapter environment.
 #[derive(Clone, Debug)]
 pub struct Context<'a> {
-    /// Adapter identity this call was routed by, e.g. `target:contracts`.
+    /// Routed adapter identity.
     pub adapter_id: &'a str,
-    /// The guest's `"."` preopen root (the shared project mount).
+    /// Guest `"."` preopen root.
     pub project_root: &'a Path,
-    /// Adapter MCP references endpoint, when the runtime injected one.
+    /// Runtime-injected MCP references endpoint.
     pub mcp_url: Option<String>,
-    /// Judgment-leg workspace lend; `None` for an inline value.
+    /// Workspace lend, absent for inline values.
     pub lend: Option<String>,
 }
 
 impl<'a> Context<'a> {
-    /// Guest context at `"."`, granting [`mcp_url`] when injected.
+    /// Creates `"."` guest context with an injected references URL.
     #[must_use]
     pub fn guest(adapter_id: &'a str) -> Self {
         Self {
@@ -61,21 +61,21 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Lend `path` to judgment legs instead of the `"."` project mount.
+    /// Replaces the judgment workspace lend with `path`.
     #[must_use]
     pub fn lending(mut self, path: impl Into<String>) -> Self {
         self.lend = Some(path.into());
         self
     }
 
-    /// Issue the judgment call with no workspace lend (inline `value`).
+    /// Removes the workspace lend for an inline value.
     #[must_use]
     pub fn without_lend(mut self) -> Self {
         self.lend = None;
         self
     }
 
-    /// Adapter references grant, named from the axis- and version-stripped id.
+    /// Returns the references grant, named without axis or version.
     #[must_use]
     pub fn grants(&self) -> Vec<McpGrant> {
         let name = self.adapter_id.rsplit(':').next().unwrap_or(self.adapter_id);
@@ -92,7 +92,7 @@ impl<'a> Context<'a> {
     }
 }
 
-/// Adapter references URL: `MCP_URL_BASE` or `HTTP_ADDR`, else `None`.
+/// Derives the references URL from `MCP_URL_BASE`, then `HTTP_ADDR`.
 #[must_use]
 #[expect(
     clippy::disallowed_methods,
@@ -106,7 +106,7 @@ pub fn mcp_url(adapter_id: &str) -> Option<String> {
     mcp_url_for(std::env::var("HTTP_ADDR").ok().as_deref(), adapter_id)
 }
 
-/// [`mcp_url`] over an injected base (`:` → `/`; the version pin stays).
+/// Builds from `base`, replacing the axis separator and preserving the pin.
 #[must_use]
 pub fn mcp_url_with_base(base: &str, adapter_id: &str) -> Option<String> {
     let base = base.trim_end_matches('/');
@@ -116,7 +116,7 @@ pub fn mcp_url_with_base(base: &str, adapter_id: &str) -> Option<String> {
     Some(format!("{base}/mcp/{}", adapter_id.replacen(':', "/", 1)))
 }
 
-/// [`mcp_url`] over `HTTP_ADDR`; host is `127.0.0.1`, never `localhost`.
+/// Builds a loopback references URL from an `HTTP_ADDR`.
 #[must_use]
 pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
     let port = addr?.rsplit_once(':')?.1.parse::<u16>().ok()?;

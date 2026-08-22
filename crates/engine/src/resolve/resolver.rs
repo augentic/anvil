@@ -1,5 +1,4 @@
-//! Deployment-neutral source-adapter resolution and the component
-//! resolver the routed operations call directly.
+//! Deployment-neutral source-adapter resolution.
 
 use emery_error::Error;
 use omnia_guest::{BlobStore, StateStore};
@@ -11,9 +10,7 @@ use super::metadata::{self, Metadata};
 use super::selector::AdapterSelector;
 use crate::handler::{ADAPTERS_CONTAINER, ExecutionPaths, STORE_CONTAINER};
 
-/// Component-backed resolver: read-only re-resolution of an
-/// already-provisioned selector over an injected metadata dispatch
-/// ([`super::ensure::source`] owns the provisioning leg).
+/// Read-only component resolver over injected metadata dispatch.
 pub struct Component<R: metadata::Runner> {
     metadata: R,
 }
@@ -25,17 +22,17 @@ impl<R: metadata::Runner> std::fmt::Debug for Component<R> {
 }
 
 impl<R: metadata::Runner> Component<R> {
-    /// Bind component resolution to the deployment's metadata dispatch.
+    /// Creates a resolver using `metadata`.
     #[must_use]
     pub const fn new(metadata: R) -> Self {
         Self { metadata }
     }
 
-    /// Resolve one source adapter selector.
+    /// Resolves a source adapter selector.
     ///
     /// # Errors
     ///
-    /// Preserves location, metadata, and compatibility failures.
+    /// Propagates location, metadata, and compatibility failures.
     pub async fn resolve_source<S: StateStore + BlobStore>(
         &self, selector: &AdapterSelector, store: &S, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
@@ -67,26 +64,20 @@ impl<R: metadata::Runner> Component<R> {
     }
 }
 
-// Whether a bare selector must resolve dispatch-first: no seeded
-// project-cache entry exists, so deployment policy locates the
-// component. Resolved bare versions stay `None`.
+// An unseeded bare selector delegates component location to deployment policy.
 async fn dispatch_first<B: BlobStore>(
     selector: &AdapterSelector, name: &str, blobs: &B, paths: &ExecutionPaths,
 ) -> bool {
     matches!(selector, AdapterSelector::Bare { .. }) && !cached(blobs, name, paths).await
 }
 
-// Whether the project component cache carries a seeded entry for
-// `name`; a probe failure reads as absent, like the pre-seam
-// `is_file` probe.
+// Probe failures read as absent.
 async fn cached<B: BlobStore>(blobs: &B, name: &str, paths: &ExecutionPaths) -> bool {
     let object = paths.locations().component_object(name);
     blobs.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false)
 }
 
-// The store identity a package pin maps to, built from the carried
-// layout rather than a probed entry: the origin names where the
-// deployment keeps the pin, not bytes the caller read.
+// Package origins describe deployment layout, not guest-visible bytes.
 fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -> Origin {
     Origin {
         label: "store".to_string(),
@@ -94,9 +85,7 @@ fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -
     }
 }
 
-// The origin of a bare dispatch-first resolve: the caller never sees
-// component bytes (the store is host-owned), so the origin carries
-// the routed identity, not a storage location.
+// Dispatch-first origins carry routed identity because storage is host-owned.
 fn bare_origin(axis: Axis, name: &str) -> Origin {
     Origin {
         label: "store".to_string(),
@@ -104,16 +93,15 @@ fn bare_origin(axis: Axis, name: &str) -> Origin {
     }
 }
 
-// `<container>/<object>` display form of a store entry.
 fn store_reference(object: &str) -> String {
     format!("{STORE_CONTAINER}/{object}")
 }
 
-/// Build a resolved source from provider metadata, enforcing its CLI floor.
+/// Builds a resolved source and enforces its Emery CLI floor.
 ///
 /// # Errors
 ///
-/// Returns metadata, version-floor, or resolution errors.
+/// Returns metadata or compatibility errors.
 pub fn source(
     name: &str, version: Option<semver::Version>, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedSource, Error> {
@@ -130,18 +118,13 @@ pub fn source(
     })
 }
 
-/// Locate the single component object for one adapter identity
-/// without dispatching metadata.
+/// Locates an adapter component without dispatching metadata.
 ///
-/// Probes the verified global store entry for a version pin, else the
-/// project component cache. Resolution is project-contained — no
-/// sibling-checkout or build-tree probe.
+/// Pinned entries are verified on read; unpinned entries use the project cache.
 ///
 /// # Errors
 ///
-/// `adapter-not-found` when no probe hits; `adapter-sidecar-missing` /
-/// `adapter-digest-mismatch` / `adapter-store-unreadable` when a store
-/// entry fails verify-on-read.
+/// Returns typed not-found or verify-on-read errors.
 pub async fn locate<S: StateStore + BlobStore>(
     axis: Axis, name: &str, version: Option<&semver::Version>, store: &S, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
@@ -164,9 +147,7 @@ pub async fn locate<S: StateStore + BlobStore>(
         return Ok(AdapterLocation::Store(object));
     }
 
-    // Bare shorthand and persisted local components share the seeded
-    // project-cache probe; a local component resolves through its
-    // mirror, so it survives removal of the operator's original file.
+    // Persisted components resolve through their mirror, surviving source removal.
     let object = paths.locations().component_object(name);
     if store.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false) {
         return Ok(AdapterLocation::Cache(object));
@@ -181,9 +162,7 @@ pub async fn locate<S: StateStore + BlobStore>(
     })
 }
 
-// Verify-on-read over the storage capabilities: fetch the keyvalue
-// sidecar and the entry bytes, then compare digests in memory (the
-// digest math stays in `emery_diagnostics`). Fail-closed on every arm.
+// Store entries fail closed unless bytes match their digest sidecar.
 async fn verify_store_entry<S: StateStore + BlobStore>(
     axis: Axis, name: &str, version: &str, store: &S, paths: &ExecutionPaths,
 ) -> Result<(), Error> {
@@ -229,13 +208,9 @@ async fn verify_store_entry<S: StateStore + BlobStore>(
     }
 }
 
-/// The locked `adapter-digest-mismatch` envelope for a store entry
-/// whose recomputed content digest no longer matches its sidecar.
+/// Builds the stable `adapter-digest-mismatch` error.
 ///
-/// `subject` names what the caller was resolving; `phase` is the
-/// verification leg (`verify-on-read` / `verify-after-write`). One
-/// constructor keeps the wording identical across every verification
-/// caller.
+/// Shared construction keeps verification wording stable.
 #[must_use]
 pub fn digest_mismatch(
     subject: &str, phase: &str, mismatch: &emery_diagnostics::cache::DigestMismatch,

@@ -1,5 +1,4 @@
-//! Behavioural coverage for the crash-safe atomic writers
-//! (`emery_artifacts::atomic`).
+//! Crash-safe writer coverage.
 
 use std::collections::BTreeMap;
 

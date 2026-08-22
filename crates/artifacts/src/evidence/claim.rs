@@ -1,4 +1,4 @@
-//! The typed Evidence claim shared by the seam and the judgment answer schema.
+//! Typed Evidence claims.
 //!
 //! [`Claim`] mirrors the WIT `claim` record; open per-kind body fields
 //! survive round-trips through the flattened [`Claim::extras`] map.
@@ -11,7 +11,7 @@ use serde_json::Value as JsonValue;
 
 use super::authority::ClaimKind;
 
-/// Backing data of a claim, mirroring the WIT `backing` variant.
+/// Claim backing matching the WIT `backing` variant.
 ///
 /// On the wire the variant flattens onto the claim object: an inline
 /// payload serialises as `payload`, a filesystem pointer as
@@ -24,7 +24,7 @@ pub enum Backing {
     Path(String),
 }
 
-/// One extracted Evidence claim, mirroring the WIT `claim` record.
+/// One extracted Evidence claim.
 ///
 /// The shape stays open (`extras` flattens unmodeled keys) because
 /// per-kind body fields are deliberately unconstrained — a closed
@@ -34,17 +34,14 @@ pub enum Backing {
 pub struct Claim {
     /// The claim's kind from the closed taxonomy.
     pub kind: ClaimKind,
-    /// Stable claim identifier (dotted kebab slug, e.g.
-    /// `password-reset.expiry`). Required when `kind` is
-    /// `requirement`, `criterion`, or `example`; optional on other
-    /// kinds — enforced deterministically by [`validate_claims`].
+    /// Dotted-kebab id, required for requirement, criterion, and example claims.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     /// Per-claim source anchor: `<path>`, `<path>#L<n>`, or
     /// `<path>#L<start>-L<end>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
-    /// Headline summarizing the semantic meaning of this claim.
+    /// Semantic synopsis.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub synopsis: Option<String>,
     /// Inline backing payload ([`Backing::Payload`] on the wire).
@@ -73,8 +70,7 @@ impl Claim {
         }
     }
 
-    /// The claim's backing as the WIT-shaped variant. A claim carrying
-    /// both keys resolves to the payload (the inline form wins).
+    /// Return WIT-shaped backing; inline payload wins if both forms exist.
     #[must_use]
     pub fn backing(&self) -> Option<Backing> {
         if let Some(payload) = &self.payload {
@@ -102,11 +98,7 @@ pub fn is_dotted_kebab(value: &str) -> bool {
     !value.is_empty() && value.split('.').all(super::is_kebab)
 }
 
-/// Deterministically re-check a claim set.
-///
-/// Ids must match the dotted-kebab grammar, and `requirement` /
-/// `criterion` / `example` claims must carry one. Returns one
-/// findings-style line per violation; empty means the set is valid.
+/// Return id-grammar and required-id findings for a claim set.
 #[must_use]
 pub fn validate_claims(claims: &[Claim]) -> Vec<String> {
     let mut findings = Vec::new();

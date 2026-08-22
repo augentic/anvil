@@ -1,6 +1,4 @@
-//! The exhaustive route inventory: `init`, the live `specify`
-//! generator, and the auto-derived `completions`. Deleted verbs are
-//! gone from the grammar — no hidden routes, no aliases.
+//! Complete command-route inventory.
 
 use clap::Args;
 use emery_adapter::Source;
@@ -11,16 +9,14 @@ use omnia_guest::{BlobStore, Model, StateStore};
 
 use super::{EmeryProjector, Globals};
 
-// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
-/// Flags for `emery init`.
+/// Arguments for `emery init`.
 #[derive(Debug, Args)]
 pub(super) struct InitArgs {
-    /// Source adapter identifiers or local component paths, each bound
-    /// as a workspace-backed source.
+    /// Workspace-backed source adapters or local component paths.
     pub(super) adapters: Vec<String>,
-    /// Inline value-backed source binding (`<adapter>=<text>`; repeatable).
+    /// Bind an inline source as `<adapter>=<text>`; repeatable.
     #[arg(long = "value")]
     values: Vec<String>,
     /// Project name.
@@ -29,12 +25,12 @@ pub(super) struct InitArgs {
     /// Project description.
     #[arg(long)]
     description: Option<String>,
-    /// Re-enter initialization to bump the Emery version pin.
+    /// Upgrade the Emery version pin.
     #[arg(long, conflicts_with_all = ["adapters", "values", "name", "description"])]
     pub(super) upgrade: bool,
 }
 
-/// Flags for `emery specify` (none, deliberately).
+/// Arguments for `emery specify`.
 #[derive(Debug, Args)]
 pub(super) struct SpecifyArgs;
 
@@ -47,11 +43,11 @@ impl TryFrom<SpecifyArgs> for emery_engine::specify::SpecifyInput {
     }
 }
 
-/// Assemble the complete Emery command router.
+/// Builds the Emery command router.
 ///
 /// # Errors
 ///
-/// Returns a deterministic route or argument conflict.
+/// Returns route or argument conflicts.
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
     P: Provider + Model + Source + StateStore + BlobStore,
@@ -94,8 +90,7 @@ where
 }
 
 macro_rules! convert {
-    // The destructuring pattern is exhaustive on purpose: a new clap
-    // flag missing from the field list is a compile error.
+    // Exhaustive destructuring makes an unmapped clap field fail compilation.
     ($args:path => $input:path { $($field:ident),* $(,)? }) => {
         impl TryFrom<$args> for $input {
             type Error = emery_error::Error;

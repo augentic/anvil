@@ -1,6 +1,4 @@
-//! `emery init`: resolve each requested source adapter on the source
-//! axis, record the authored bindings on `project.yaml`, and scaffold
-//! `.emery/`.
+//! The `emery init` operation.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -17,7 +15,7 @@ use crate::handler::{ExecutionPaths, Render};
 use crate::project::{BindingContent, Project, SourceBinding};
 use crate::resolve::{AdapterSelector, ensure, metadata};
 
-/// Wire input for `emery init` — the full argument surface.
+/// Input for `emery init`.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct InitInput {
@@ -33,13 +31,12 @@ pub struct InitInput {
     /// Project description.
     #[serde(default)]
     pub description: Option<String>,
-    /// Run the re-entry upgrade path over an existing project.
+    /// Whether to upgrade an existing project.
     #[serde(default)]
     pub upgrade: bool,
 }
 
-/// `emery init` against the deployed root (`"."` on both sides: the
-/// guest's mount preopen, the native process CWD).
+/// The `init` operation route.
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
 
@@ -72,8 +69,7 @@ async fn apply<P: Source + StateStore + BlobStore>(
         return run_upgrade(project_dir, &paths, provider).await;
     }
 
-    // Re-entry: an already-initialized project is a no-op that
-    // routes the operator to `--upgrade`.
+    // Re-entry is intentionally a no-op unless `--upgrade` was requested.
     match Project::load(provider).await {
         Ok(project) => {
             return Ok(InitBody::from_project(InitMode::AlreadyInitialized, &project, project_dir));
@@ -114,8 +110,7 @@ async fn apply<P: Source + StateStore + BlobStore>(
     Ok(InitBody::from_project(InitMode::Scaffolded, &project, project_dir))
 }
 
-// The `--upgrade` re-entry: re-ensure every recorded binding and bump
-// the `emery` pin, preserving everything else.
+// Upgrade preserves authored data while re-ensuring bindings and bumping the pin.
 async fn run_upgrade<P: Source + StateStore + BlobStore>(
     project_dir: &Path, paths: &ExecutionPaths, provider: &P,
 ) -> Result<InitBody, Error> {
@@ -129,9 +124,7 @@ async fn run_upgrade<P: Source + StateStore + BlobStore>(
     Ok(InitBody::from_project(InitMode::Upgraded, &project, project_dir))
 }
 
-// Ensure one adapter on the source axis and shape its binding: the
-// key is the resolved adapter name; a local component persists its
-// canonical `file://` form so the selector value outlives the CWD.
+// Canonical component selectors must outlive the init working directory.
 async fn bind<P: Source + StateStore + BlobStore>(
     value: &str, paths: &ExecutionPaths, content: BindingContent, provider: &P,
 ) -> Result<SourceBinding, Error> {
@@ -146,7 +139,6 @@ async fn bind<P: Source + StateStore + BlobStore>(
     })
 }
 
-// Append `binding` unless its key is already bound.
 fn push_unique(sources: &mut Vec<SourceBinding>, binding: SourceBinding) -> Result<(), Error> {
     if sources.iter().any(|existing| existing.key == binding.key) {
         return Err(Error::validation_failed(
@@ -159,7 +151,6 @@ fn push_unique(sources: &mut Vec<SourceBinding>, binding: SourceBinding) -> Resu
     Ok(())
 }
 
-// Split one `--value <adapter>=<text>` entry at the first `=`.
 fn split_value(entry: &str) -> Result<(&str, &str), Error> {
     entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
         Error::Argument {
@@ -179,29 +170,29 @@ fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {
         .map_or_else(|| "project".to_string(), str::to_string)
 }
 
-/// Closed outcome discriminant on [`InitBody::mode`].
+/// Outcome of `emery init`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InitMode {
-    /// A fresh scaffold ran.
+    /// A project was scaffolded.
     Scaffolded,
-    /// The project was already initialized; nothing changed.
+    /// The project already existed.
     AlreadyInitialized,
-    /// The `--upgrade` re-entry path ran.
+    /// The project was upgraded.
     Upgraded,
 }
 
-/// Success envelope for `emery init`.
+/// Successful `emery init` result.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct InitBody {
-    /// What this run did.
+    /// Operation outcome.
     pub mode: InitMode,
-    /// Canonical path of the written `project.yaml`.
+    /// Path to `project.yaml`.
     pub config_path: PathBuf,
-    /// The bound source keys, in binding order.
+    /// Bound source keys in binding order.
     pub sources: Vec<String>,
-    /// The `emery` version pinned on `project.yaml`.
+    /// Pinned Emery version.
     pub emery_version: String,
 }
 

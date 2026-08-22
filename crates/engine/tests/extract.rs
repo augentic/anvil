@@ -1,4 +1,4 @@
-//! The extract kernel at the crate's public surface.
+//! Extraction integration tests.
 
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
 use emery_engine::extract::{SourceSet, validate_set};

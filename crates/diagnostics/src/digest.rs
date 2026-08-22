@@ -1,24 +1,13 @@
-//! SHA-256 digest helpers shared across cache, fingerprint, and tool paths.
-//!
-//! One digest implementation, so consumers never depend on `sha2` directly.
+//! Shared SHA-256 helpers.
 
 use std::io::{self, Read};
 use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-// Stream buffer for [`Hasher::update_reader`]: large enough to keep
-// syscall count down, small enough for the stack.
 const STREAM_CHUNK: usize = 16 * 1024;
 
 /// Lowercase hex encoding of a SHA-256 digest over `bytes`.
-///
-/// ```
-/// use emery_diagnostics::digest::sha256_hex;
-///
-/// assert_eq!(sha256_hex(b"").len(), 64);
-/// assert!(sha256_hex(b"emery").starts_with(|c: char| c.is_ascii_hexdigit()));
-/// ```
 #[must_use]
 pub fn sha256_hex(bytes: &[u8]) -> String {
     sha256_output_hex(Sha256::digest(bytes))
@@ -30,18 +19,7 @@ fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
 
 /// Incremental SHA-256 hasher for streamed input.
 ///
-/// Wraps [`sha2::Sha256`] so callers that hash chunk-by-chunk (download
-/// streams, large file reads) do not depend on `sha2` directly — this
-/// module is the single home for the digest dependency.
-///
-/// ```
-/// use emery_diagnostics::digest::{Hasher, sha256_hex};
-///
-/// let mut hasher = Hasher::new();
-/// hasher.update(b"em");
-/// hasher.update(b"ery");
-/// assert_eq!(hasher.finalize_hex(), sha256_hex(b"emery"));
-/// ```
+/// Keeps consumers independent of the underlying digest crate.
 #[derive(Default)]
 pub struct Hasher(Sha256);
 
@@ -67,8 +45,7 @@ impl Hasher {
     ///
     /// # Errors
     ///
-    /// Returns the reader's I/O error. Bytes consumed before the
-    /// failure remain in the hasher.
+    /// Returns the reader's I/O error; consumed bytes remain hashed.
     pub fn update_reader(&mut self, reader: &mut impl Read) -> io::Result<()> {
         let mut buf = [0_u8; STREAM_CHUNK];
         loop {
@@ -89,15 +66,6 @@ impl Hasher {
 
 /// SHA-256 of every byte from `reader`, streamed.
 ///
-/// ```
-/// use std::io::Cursor;
-///
-/// use emery_diagnostics::digest::{sha256_hex, sha256_reader};
-///
-/// let mut cursor = Cursor::new(b"emery");
-/// assert_eq!(sha256_reader(&mut cursor).unwrap(), sha256_hex(b"emery"));
-/// ```
-///
 /// # Errors
 ///
 /// Returns the reader's I/O error.
@@ -107,8 +75,7 @@ pub fn sha256_reader(reader: &mut impl Read) -> io::Result<String> {
     Ok(hasher.finalize_hex())
 }
 
-/// SHA-256 of the file at `path`, streamed so the contents need not
-/// fit in memory.
+/// Stream the file at `path` into SHA-256.
 ///
 /// # Errors
 ///

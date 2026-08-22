@@ -1,6 +1,4 @@
-//! Resolver integration: the verify-on-read gate and the cache probe
-//! at the crate's public surface, over the scripted in-memory store —
-//! entry bytes in the blobstore, the digest sidecar in keyvalue.
+//! Resolver integration tests.
 
 #[path = "support/storage.rs"]
 mod storage;
@@ -17,7 +15,6 @@ const fn version() -> semver::Version {
     semver::Version::new(1, 2, 0)
 }
 
-// Seed a store entry for `demo@1.2.0`, its sidecar recording `digest`.
 fn seeded_store(digest: &str) -> Memory {
     let store = Memory::default();
     store.insert_object("store", "demo@1.2.0.wasm", COMPONENT);

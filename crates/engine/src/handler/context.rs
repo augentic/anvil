@@ -1,7 +1,4 @@
-//! [`RequestContext`] — the one typed per-request context (C5).
-//!
-//! Assembled once where a project-scoped operation enters, so paths,
-//! the loaded project, and the version floor are derived exactly once.
+//! Project-scoped request context.
 
 use emery_error::Error;
 use omnia_guest::StateStore;
@@ -9,12 +6,7 @@ use omnia_guest::StateStore;
 use super::paths::ExecutionPaths;
 use crate::project::Project;
 
-/// One request's resolved context: the deployed paths plus the loaded,
-/// floor-checked project.
-///
-/// Operations read this value instead of re-deriving paths or
-/// re-loading `project.yaml`; `emery init` is the one pre-project verb
-/// and never constructs it.
+/// Deployed paths and a floor-checked project.
 #[derive(Debug)]
 pub struct RequestContext {
     paths: ExecutionPaths,
@@ -22,14 +14,11 @@ pub struct RequestContext {
 }
 
 impl RequestContext {
-    /// Assemble the context over the deployed layout: fix the
-    /// preopen-relative paths and load the project record fail-closed
-    /// (the version floor included).
+    /// Loads the request context from deployed storage.
     ///
     /// # Errors
     ///
-    /// [`Error::NotInitialized`] when the project is absent, plus the
-    /// load and floor failures of [`Project::load`].
+    /// Propagates [`Project::load`] failures.
     pub async fn load<S: StateStore>(state: &S) -> Result<Self, Error> {
         let paths = ExecutionPaths::deployed();
         let project = Project::load(state).await?;

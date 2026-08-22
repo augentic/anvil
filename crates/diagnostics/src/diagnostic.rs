@@ -1,4 +1,4 @@
-//! The neutral [`Diagnostic`] currency and its closed attribute enums.
+//! Neutral diagnostics and their closed attributes.
 //!
 //! [`DiagnosticSource`] (*who produced it*) and [`DiagnosticKind`] (*what it
 //! asks*) are orthogonal; only `violation` diagnostics are default-blocking.
@@ -9,15 +9,7 @@ mod report;
 
 pub use report::{DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary};
 
-/// Closed severity enum. Variants are declared in the documented sort
-/// order — the derived [`Ord`] therefore yields `Critical < Important
-/// < Suggestion < Optional`.
-///
-/// ```
-/// use emery_diagnostics::Severity;
-///
-/// assert!(Severity::Critical < Severity::Suggestion);
-/// ```
+/// Severity in ascending derived sort order: critical to optional.
 #[derive(
     Debug,
     Clone,
@@ -51,7 +43,7 @@ pub enum DiagnosticSource {
     Deterministic,
     /// Output of an SLM/LLM scorer.
     ModelAssisted,
-    /// Mix of deterministic + model-assisted signals.
+    /// Mix of deterministic and model-assisted signals.
     Hybrid,
     /// Recorded by a human reviewer.
     Human,
@@ -59,22 +51,18 @@ pub enum DiagnosticSource {
     Tool,
 }
 
-/// Orthogonal nature axis for a [`Diagnostic`].
+/// Defect versus request-for-judgment axis.
 ///
-/// Distinguishes a deterministic defect from a deterministically
-/// raised request for judgment. Defaults to [`Self::Violation`] so a
-/// diagnostic that omits the wire field deserialises as a defect and
-/// stays subject to the [`is_blocking`] predicate.
+/// Missing wire values default to [`Self::Violation`].
 #[derive(
     Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 pub enum DiagnosticKind {
-    /// A defect: something is wrong and should be fixed. Default.
+    /// A defect; the default.
     #[default]
     Violation,
-    /// A request for agent or human judgment raised deterministically
-    /// (e.g. a deferred semantic check the producer cannot decide).
+    /// A request for agent or human judgment.
     Review,
 }
 
@@ -92,8 +80,7 @@ pub enum Artifact {
     Specs,
     /// Design notes (`design.md`).
     Design,
-    /// Decision Records (`.emery/change/slices/<slice>/decisions/<slug>.md`,
-    /// promoted to `.emery/decisions/DEC-NNNN-<slug>.md`).
+    /// Decision records.
     Decisions,
     /// Task list (`tasks.md`).
     Tasks,
@@ -121,15 +108,13 @@ pub enum Confidence {
     Low,
 }
 
-/// File path plus optional line/column range carried by a
-/// [`Diagnostic`] or by a `digest`/`structured` evidence variant.
+/// File path and optional line/column range.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct FindingLocation {
     /// Project-relative file path.
     pub path: String,
-    /// Anchor line (0-indexed; producers commonly emit 1-indexed and
-    /// the schema accepts either with `minimum: 0`).
+    /// Anchor line; schema minimum is zero.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line: Option<u32>,
     /// Anchor column.
@@ -143,11 +128,9 @@ pub struct FindingLocation {
     pub end_column: Option<u32>,
 }
 
-/// Closed evidence union for a [`Diagnostic`].
+/// Closed, `kind`-tagged diagnostic evidence.
 ///
-/// Internally tagged on `kind` (`deny_unknown_fields` closes each
-/// branch). Producers should keep inline payloads small — reference
-/// large evidence by digest rather than embedding it.
+/// Keep inline payloads small; reference large evidence by digest.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum FindingEvidence {
@@ -166,13 +149,11 @@ pub enum FindingEvidence {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         locations: Option<Vec<FindingLocation>>,
     },
-    /// Domain-structured evidence (e.g. contract compatibility data).
+    /// Domain-structured evidence.
     Structured {
         /// Short human summary of `data`.
         summary: String,
-        /// Free-form JSON payload. Producers MUST keep `data` bounded
-        /// and secret-free; the validator enforces the 16 `KiB` cap on
-        /// the full evidence object.
+        /// Secret-free JSON; the full evidence object is capped at 16 `KiB`.
         data: serde_json::Value,
         /// Optional contributing locations referenced by the payload.
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -180,8 +161,7 @@ pub enum FindingEvidence {
     },
 }
 
-/// Structured diagnostic — the neutral currency shared by the validate
-/// and review surfaces.
+/// Structured diagnostic shared by validation and review.
 ///
 /// Producer-local `id` (e.g. `FIND-0001`) is distinct from the codex
 /// `rule_id` (e.g. `UNI-014`): `id` is a stable per-run handle and
@@ -189,10 +169,9 @@ pub enum FindingEvidence {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Diagnostic {
-    /// Producer-local stable id for this run (e.g. `FIND-0001`).
+    /// Producer-local stable id for this run.
     pub id: String,
-    /// Rule id (e.g. `UNI-014`); absent for diagnostics that do not
-    /// cite codex policy.
+    /// Cited rule id, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rule_id: Option<String>,
     /// Additional codex ids that informed the diagnostic.
@@ -204,9 +183,7 @@ pub struct Diagnostic {
     pub severity: Severity,
     /// Producer attribution.
     pub source: DiagnosticSource,
-    /// Nature axis: defect (`violation`) vs request-for-judgment
-    /// (`review`). Defaults to `violation` when the wire field is
-    /// omitted.
+    /// Defect or review request; defaults to `violation`.
     #[serde(default)]
     pub kind: DiagnosticKind,
     /// Target-adapter name when the diagnostic is adapter-specific.
@@ -232,9 +209,7 @@ pub struct Diagnostic {
     pub impact: String,
     /// Concrete action to clear the diagnostic.
     pub remediation: String,
-    /// Producer self-rated confidence. Required for
-    /// `source: model-assisted`; the conditional rule is enforced by
-    /// the validator, not here.
+    /// Producer confidence; required for model-assisted sources by validation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub confidence: Option<Confidence>,
     /// Stable hash over `(rule-id, location, evidence-payload)`.
@@ -243,14 +218,10 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    /// Build a workflow/validate finding with a computed fingerprint.
+    /// Build a finding with a computed fingerprint.
     ///
-    /// `rule_id` is the dot- or kebab-namespaced invariant id (e.g.
-    /// `spec.requirement-id-missing`). `detail` becomes both the snippet
-    /// evidence payload and the operator-facing `impact`; `title` doubles
-    /// as the `remediation` (it states the invariant the producer expects
-    /// to hold). The `id` is a placeholder until [`renumber`] assigns
-    /// sequential ids at report-assembly time.
+    /// `detail` supplies evidence and impact; `title` supplies remediation.
+    /// [`renumber`] replaces the placeholder id.
     #[expect(
         clippy::too_many_arguments,
         reason = "eight independent finding facets with no natural grouping; \
@@ -293,22 +264,7 @@ impl Diagnostic {
         diagnostic
     }
 
-    /// Deterministic, `important`, [`DiagnosticKind::Violation`] finding —
-    /// the default shape for a structural workflow invariant breach.
-    ///
-    /// ```
-    /// use emery_diagnostics::{Artifact, Diagnostic, Severity};
-    ///
-    /// let finding = Diagnostic::violation(
-    ///     "spec.requirement-id-missing",
-    ///     "Every requirement carries an `ID:` line",
-    ///     "`### Requirement: Login` has no `ID:` line",
-    ///     Artifact::Specs,
-    ///     None,
-    /// );
-    /// assert_eq!(finding.severity, Severity::Important);
-    /// assert!(finding.fingerprint.starts_with("sha256:"));
-    /// ```
+    /// Build a deterministic, important violation.
     #[must_use]
     pub fn violation(
         rule_id: impl Into<String>, title: impl Into<String>, detail: impl Into<String>,
@@ -326,9 +282,7 @@ impl Diagnostic {
         )
     }
 
-    /// Model-assisted, `suggestion`, [`DiagnosticKind::Review`] finding —
-    /// a deterministically-raised request for agent/human judgment (e.g.
-    /// a deferred semantic check). Never default-blocking.
+    /// Build a model-assisted, non-blocking review suggestion.
     #[must_use]
     pub fn review(
         rule_id: impl Into<String>, title: impl Into<String>, detail: impl Into<String>,
@@ -347,31 +301,21 @@ impl Diagnostic {
     }
 }
 
-// Substitute `fallback` when `value` is blank so schema `minLength: 1`
-// fields (`title`, `impact`, `remediation`, snippet `value`) never go
-// empty.
+// Preserve schema `minLength: 1` fields.
 fn non_empty(value: String, fallback: &str) -> String {
     if value.trim().is_empty() { fallback.to_string() } else { value }
 }
 
-/// Assign sequential `DIAG-NNNN` ids to `findings` in place.
+/// Assign sequential `DIAG-NNNN` ids in final order.
 ///
-/// Producers build findings with a placeholder `id`; the handler that
-/// assembles the [`DiagnosticReport`] calls this once the final,
-/// deduplicated order is known so the rendered ids are stable and
-/// unique. The `id` is excluded from the fingerprint, so renumbering
-/// never perturbs dedup identity.
+/// Ids are excluded from fingerprints, so renumbering preserves identity.
 pub fn renumber(findings: &mut [Diagnostic]) {
     for (index, finding) in findings.iter_mut().enumerate() {
         finding.id = format!("DIAG-{:04}", index + 1);
     }
 }
 
-/// Whether a diagnostic blocks at exit time.
-///
-/// A diagnostic blocks only when it is a [`DiagnosticKind::Violation`]
-/// (a `review` request never gates) and its severity is the blocking
-/// tier (`critical` or `important`).
+/// Whether a critical or important violation blocks exit.
 #[must_use]
 pub const fn is_blocking(diagnostic: &Diagnostic) -> bool {
     matches!(diagnostic.kind, DiagnosticKind::Violation)

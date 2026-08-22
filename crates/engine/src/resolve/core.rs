@@ -1,16 +1,11 @@
-//! Adapter identity model and post-resolve coherence gates.
-//!
-//! Identity lives in the package reference, axis in the exported world;
-//! there is no on-disk manifest. Only the source axis is live.
+//! Adapter identity and post-resolution compatibility gates.
 
 use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
-/// Axis discriminator for an adapter component.
+/// Adapter component axis.
 ///
-/// Only [`Axis::Source`] is live; `Target` survives in the routed-id
-/// grammar so recorded target ids parse to a typed refusal rather than
-/// a grammar error (the target axis returns with the build programme).
+/// `Target` remains parseable for typed refusals but is not live.
 #[derive(
     Debug,
     Clone,
@@ -26,14 +21,14 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Axis {
-    /// Source adapter — `extract` + `metadata`.
+    /// Source adapter.
     Source,
-    /// Target adapter — deferred with the build programme.
+    /// Deferred target adapter.
     Target,
 }
 
 impl Axis {
-    /// Axis segment used by deployment guest ids and prose trees.
+    /// Returns the deployment and prose directory segment.
     #[must_use]
     pub const fn dir_segment(self) -> &'static str {
         match self {
@@ -42,8 +37,7 @@ impl Axis {
         }
     }
 
-    /// Axis prefix of a routed adapter id — the `<axis>` in
-    /// `<axis>:<name>`, the id the engine names on every seam call.
+    /// Returns the routed-id prefix.
     #[must_use]
     pub const fn prefix(self) -> &'static str {
         match self {
@@ -53,26 +47,17 @@ impl Axis {
     }
 }
 
-/// Where an adapter component was located in engine storage. The
-/// carried name is the single component object inside the variant's
-/// blobstore container.
+/// Engine storage location of an adapter component.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterLocation {
-    /// Resolved from the global content-addressed adapter store — the
-    /// immutable `<name>@<version>.wasm` object inside
-    /// [`crate::handler::STORE_CONTAINER`]. Probed whenever the
-    /// selector carries a pinned version.
+    /// Immutable object in the global adapter store.
     Store(String),
-    /// Resolved from the project component cache — the seeded
-    /// `<name>.wasm` mirror inside
-    /// [`crate::handler::ADAPTERS_CONTAINER`] a local-component init
-    /// populated. Probed for bare-name (unpinned) references and
-    /// persisted component selectors.
+    /// Seeded object in the project component cache.
     Cache(String),
 }
 
 impl AdapterLocation {
-    /// Kebab-case label for JSON envelopes (`"store"` / `"cache"`).
+    /// Returns the location label.
     #[must_use]
     pub(crate) const fn label(&self) -> &'static str {
         match self {
@@ -81,7 +66,7 @@ impl AdapterLocation {
         }
     }
 
-    /// The component object name inside the location's container.
+    /// Returns the component object name.
     #[must_use]
     pub fn object(&self) -> &str {
         match self {
@@ -89,7 +74,7 @@ impl AdapterLocation {
         }
     }
 
-    // The location's blobstore container.
+    /// Returns the location's blobstore container.
     pub(super) const fn container(&self) -> &'static str {
         match self {
             Self::Store(_) => crate::handler::STORE_CONTAINER,
@@ -97,6 +82,7 @@ impl AdapterLocation {
         }
     }
 
+    /// Returns a deployment-neutral origin.
     pub(super) fn origin(&self) -> Origin {
         Origin {
             label: self.label().to_string(),
@@ -105,33 +91,27 @@ impl AdapterLocation {
     }
 }
 
-/// Deployment-neutral description of where an adapter resolved.
+/// Deployment-neutral adapter origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Origin {
-    /// Resolver-defined mechanism label (`store`, `cache`, `native`, …).
+    /// Resolver mechanism label.
     pub label: String,
     /// Human-readable reference to the resolved implementation.
     pub reference: String,
 }
 
-/// In-memory identity + metadata of a resolved source adapter.
+/// Identity and metadata of a resolved source adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceAdapter {
-    /// Kebab-case adapter name from the resolved identity.
+    /// Kebab-case adapter name.
     pub name: String,
-    /// Semver adapter version: the pin for store-resolved (and
-    /// native-catalog) identities; `None` for an unpinned cache
-    /// resolve — a seeded component carries no package identity.
+    /// Package version, absent for unpinned cache resolutions.
     pub version: Option<semver::Version>,
-    /// Optional host-CLI compatibility floor from the metadata
-    /// answer's `emery-floor`. The resolver compares it against the
-    /// running binary (`check_requires_emery`) and aborts with
-    /// `adapter-cli-too-old` (exit 3) when the binary is older.
+    /// Optional Emery CLI compatibility floor.
     pub requires_emery: Option<semver::Version>,
 }
 
-/// A resolved [`SourceAdapter`] paired with its deployment-neutral
-/// origin.
+/// A resolved source adapter and its origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSource {
     /// Resolved identity and metadata.
@@ -140,13 +120,11 @@ pub struct ResolvedSource {
     pub origin: Origin,
 }
 
-/// Parse a metadata answer's `emery-floor` string into a typed
-/// semver, naming the identity and resolved origin on failure.
+/// Parses an adapter's Emery compatibility floor.
 ///
 /// # Errors
 ///
-/// Returns [`Error::Validation`] with the kebab discriminant
-/// `adapter-floor-malformed` when the floor is not exact semver.
+/// Returns `adapter-floor-malformed` for non-exact SemVer.
 pub(super) fn parse_floor(
     floor: Option<&str>, name: &str, origin: &Origin,
 ) -> Result<Option<semver::Version>, Error> {
@@ -165,18 +143,13 @@ pub(super) fn parse_floor(
     })
 }
 
-/// Enforce an adapter's host-CLI compatibility floor.
+/// Enforces an adapter's Emery CLI compatibility floor.
 ///
-/// When the running binary is older than the adapter's declared
-/// `emery` floor, resolution aborts with [`Error::AdapterCliTooOld`]
-/// on the exit-3 `EXIT_VERSION_TOO_OLD` path. `current` is parsed
-/// permissively — an unparseable running version is treated as "not
-/// older" rather than bricking resolution; an absent floor passes.
+/// An unparseable running version is permissive to preserve recovery.
 ///
 /// # Errors
 ///
-/// Returns [`Error::AdapterCliTooOld`] when `current` parses below
-/// `floor`.
+/// Returns [`Error::AdapterCliTooOld`] when `current` is below `floor`.
 pub(super) fn check_requires_emery(
     floor: Option<&semver::Version>, current: &str, name: &str, origin: &Origin,
 ) -> Result<(), Error> {

@@ -1,5 +1,4 @@
-//! Digest math and the verify-on-read sidecar format for the engine's
-//! adapter store.
+//! Adapter-store digests and verify-on-read sidecars.
 //!
 //! Only value-in/value-out helpers live here — callers fetch entry
 //! bytes and sidecar text through their storage capabilities; nothing
@@ -9,9 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::digest::Hasher;
 
-/// The `sha256:<hex>` content digest of an in-memory payload. A store
-/// entry is a single component, so the entry digest is its byte
-/// digest.
+/// Return an in-memory payload's `sha256:<hex>` digest.
 #[must_use]
 pub fn content_digest(bytes: &[u8]) -> String {
     let mut hasher = Hasher::new();
@@ -19,18 +16,15 @@ pub fn content_digest(bytes: &[u8]) -> String {
     format!("sha256:{}", hasher.finalize_hex())
 }
 
-// Verify-on-read sidecar contents. Registry-internal YAML;
-// deliberately *not* an embedded JSON Schema artifact.
+// Registry-internal YAML, not an embedded schema artifact.
 #[derive(Debug, Serialize, Deserialize)]
 struct StoreMeta {
-    // Deterministic [`content_digest`] of the installed component.
     tree_digest: String,
-    // Registry provenance recorded at install time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     oci: Option<OciProvenance>,
 }
 
-/// The OCI registry provenance recorded on every installed store entry.
+/// OCI provenance for an installed store entry.
 ///
 /// The durable link between the local bytes and what the registry
 /// served — the prerequisite for later tag-drift detection and
@@ -47,12 +41,7 @@ pub struct OciProvenance {
     pub layer_digest: String,
 }
 
-/// The recorded vs recomputed entry digests when verify-on-read fails.
-///
-/// Carried when a store entry's current content digest no longer
-/// matches the digest recorded at install time — the signal that an
-/// immutable artifact has drifted (a moved tag, a corrupted store
-/// entry).
+/// Recorded and recomputed digests for verify-on-read failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DigestMismatch {
     /// Digest recorded in the sidecar at install time.
@@ -61,17 +50,14 @@ pub struct DigestMismatch {
     pub actual: String,
 }
 
-/// Parse the recorded tree digest out of sidecar text, fetched by the
-/// caller through its storage capability. `None` when the text is not
-/// a sidecar.
+/// Parse a sidecar's tree digest, or `None` for invalid text.
 #[must_use]
 pub fn recorded_digest(sidecar: &str) -> Option<String> {
     let meta: StoreMeta = serde_saphyr::from_str(sidecar).ok()?;
     Some(meta.tree_digest)
 }
 
-/// Parse the recorded OCI provenance out of sidecar text, when
-/// present.
+/// Parse a sidecar's optional OCI provenance.
 #[must_use]
 pub fn recorded_provenance(sidecar: &str) -> Option<OciProvenance> {
     let meta: StoreMeta = serde_saphyr::from_str(sidecar).ok()?;

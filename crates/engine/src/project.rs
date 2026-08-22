@@ -1,6 +1,4 @@
-//! `Project` — the spec generator's `.emery/project.yaml` model:
-//! identity, the `emery` pin, and the authored source bindings.
-//! Written by `emery init`; read fail-closed by `specify`.
+//! The `.emery/project.yaml` model.
 
 use std::path::{Path, PathBuf};
 
@@ -10,27 +8,23 @@ use serde::{Deserialize, Serialize};
 
 use crate::storage;
 
-/// The keyvalue entry carrying the project record.
+/// Keyvalue entry carrying the project record.
 pub const PROJECT_KEY: &str = "project.yaml";
 
-/// In-memory representation of the spec generator's `project.yaml`.
+/// A project's identity, Emery pin, and source bindings.
 ///
-/// `deny_unknown_fields`: the file is machine-written; unknown keys
-/// fail the load rather than being silently ignored — pre-1.0 a
-/// shape change means re-init.
+/// Unknown fields fail closed because the record is machine-written.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Project {
-    /// Project name (defaults to the project directory name at init).
+    /// Project name.
     pub name: String,
 
     /// Free-text project description.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 
-    /// Minimum `emery` CLI version required to operate on this
-    /// project, written by `emery init` as the running binary's
-    /// version and enforced by [`Project::load`].
+    /// Minimum Emery CLI version, enforced by [`Project::load`].
     #[serde(rename = "emery", default, skip_serializing_if = "Option::is_none")]
     pub emery_version: Option<String>,
 
@@ -38,27 +32,24 @@ pub struct Project {
     pub sources: Vec<SourceBinding>,
 }
 
-/// One authored source binding: a key, the adapter that extracts it,
-/// and its content.
+/// An authored source binding.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SourceBinding {
-    /// Stable binding key (the resolved adapter name at init time).
+    /// Stable binding key.
     pub key: String,
-    /// The persisted adapter selector (a bare name stays bare; a local
-    /// component records its canonical `file://` form).
+    /// Persisted adapter selector.
     pub adapter: String,
     /// What the adapter extracts.
     #[serde(flatten)]
     pub content: BindingContent,
 }
 
-/// A binding's content: a read-only workspace view or an inline value.
+/// Workspace or inline source content.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BindingContent {
-    /// Project-relative root of a read-only source view (`.` binds
-    /// the project directory itself).
+    /// Project-relative read-only root; `.` binds the project.
     Workspace(String),
     /// Inline value; no filesystem view.
     Value(String),
@@ -71,15 +62,12 @@ impl Project {
         project_dir.join(".emery").join("project.yaml")
     }
 
-    /// Load and validate the project record from the state store,
-    /// enforcing the `emery` pin.
+    /// Loads the project and enforces its Emery version floor.
     ///
     /// # Errors
     ///
-    /// [`Error::NotInitialized`] when the entry is absent; YAML errors
-    /// when it does not parse as this shape (a v1-shaped record
-    /// included); [`Error::CliTooOld`] when the pin outruns this
-    /// binary.
+    /// Returns [`Error::NotInitialized`], YAML errors, or
+    /// [`Error::CliTooOld`] as applicable.
     pub async fn load<S: StateStore>(state: &S) -> Result<Self, Error> {
         let bytes = state
             .get(PROJECT_KEY)
@@ -99,8 +87,7 @@ impl Project {
         Ok(project)
     }
 
-    /// Write this project to the state store, as the same YAML bytes
-    /// the pre-seam file writer produced.
+    /// Writes the project record as YAML.
     ///
     /// # Errors
     ///
@@ -115,9 +102,7 @@ impl Project {
     }
 }
 
-// Returns `true` when `current < required` under semver ordering.
-// Unparseable versions are treated as "not older" — a typo in the pin
-// must not brick the project.
+// Unparseable versions are permissive so a malformed pin cannot brick recovery.
 fn version_is_older(current: &str, required: &str) -> bool {
     let (Ok(cur), Ok(req)) = (semver::Version::parse(current), semver::Version::parse(required))
     else {

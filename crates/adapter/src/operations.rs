@@ -1,7 +1,4 @@
-//! The source-adapter operations trait — what an adapter implements.
-//!
-//! Distinct from [`crate::Source`], the engine provider's import-side
-//! capability over the same WIT interface. Deliberately not object-safe.
+//! Export-side source adapter contract.
 
 use std::future::Future;
 
@@ -10,10 +7,10 @@ use omnia_guest::Model;
 use crate::registry::Doc;
 use crate::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
 
-/// Source adapter contract: `metadata`, prose registry, `extract`.
+/// Contract implemented by source adapters.
 ///
-/// Generic over [`Model`] so native tests bind scripted doubles and the
-/// wasm shim binds `WasiModel`.
+/// Generic over [`Model`] for native test doubles and the wasm host model;
+/// deliberately not object-safe.
 pub trait SourceAdapter {
     /// Compile-time `name@version` identity.
     const IDENTITY: &str;

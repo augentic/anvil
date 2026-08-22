@@ -1,19 +1,10 @@
-//! [`AdapterSelector`] — the typed, kind-preserving adapter reference.
-//!
-//! Parsing is purely syntactic — existence, canonicalization, and
-//! component validation are ensure concerns; GitHub URLs are refused.
+//! Kind-preserving adapter references and parsing.
 
 use std::path::{Path, PathBuf};
 
 use emery_error::Error;
 
-/// The operator-supplied adapter reference, preserving its input kind.
-///
-/// [`Self::Bare`] defers resolution to the deployment;
-/// [`Self::Package`] is an immutable registry locator with a mandatory
-/// exact-SemVer pin; [`Self::Component`] retains its kind so a native
-/// host can refuse it instead of silently narrowing to a same-named
-/// compiled adapter.
+/// An operator-supplied adapter reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterSelector {
     /// Bare unpinned shorthand (`omnia`).
@@ -33,29 +24,20 @@ pub enum AdapterSelector {
     },
     /// Local component file path (recorded as `file://…`).
     Component {
-        /// The path as supplied (relative paths are anchored at the
-        /// project directory by ensure).
+        /// Supplied path, anchored at the project directory when relative.
         path: PathBuf,
     },
 }
 
-/// The wasm-pkg namespace first-party adapters publish under
-/// (`emery:<name>@<semver>` via `wkg publish` in the adapters repo;
-/// emery: naming cut — `augentic:` is reserved, not routed).
+/// Package namespace for first-party adapters.
 pub const FIRST_PARTY_NAMESPACE: &str = "emery";
 
 impl AdapterSelector {
-    /// Parse an `<adapter>` argument or recorded adapter value.
-    ///
-    /// Syntactic only — never touches the filesystem.
+    /// Parses an adapter argument without filesystem access.
     ///
     /// # Errors
     ///
-    /// - `adapter-arg-malformed` for an empty or untrimmed value.
-    /// - `adapter-github-uri-unsupported` for GitHub URLs.
-    /// - `adapter-package-ref-version-required` /
-    ///   `adapter-package-ref-malformed` for a package-reference shape
-    ///   without an exact SemVer pin or name.
+    /// Returns typed errors for malformed values, GitHub URLs, or invalid pins.
     pub fn parse(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
             return Err(Error::Diag {
@@ -96,12 +78,11 @@ impl AdapterSelector {
         })
     }
 
-    /// The kebab-case adapter name this selector refers to.
+    /// Returns the kebab-case adapter name.
     ///
     /// # Errors
     ///
-    /// `adapter-dir-name-unresolved` when a component path carries no
-    /// usable filename stem.
+    /// Returns `adapter-dir-name-unresolved` for an unusable component stem.
     pub fn name(&self) -> Result<String, Error> {
         match self {
             Self::Bare { name } | Self::Package { name, .. } => Ok(name.clone()),
@@ -109,11 +90,7 @@ impl AdapterSelector {
         }
     }
 
-    /// Best-effort adapter name from a recorded adapter value
-    /// (`omnia@1.0.0` → `omnia`, `emery:omnia@1.0.0` → `omnia`,
-    /// `file://…/emery_omnia.wasm` → `omnia`). Never fails over a
-    /// malformed historical value — it echoes the raw value instead,
-    /// so orchestration routing and display stay total.
+    /// Derives a name from a recorded value, echoing malformed values.
     #[must_use]
     pub fn recorded_name(value: &str) -> String {
         Self::parse(value)
@@ -122,7 +99,7 @@ impl AdapterSelector {
             .unwrap_or_else(|| value.to_string())
     }
 
-    /// The exact SemVer pin, present only on a package reference.
+    /// Returns the exact package pin, if present.
     #[must_use]
     pub const fn version(&self) -> Option<&semver::Version> {
         match self {
@@ -131,9 +108,7 @@ impl AdapterSelector {
         }
     }
 
-    /// The canonical wire form: the bare name, the
-    /// `<namespace>:<name>@<version>` package reference, or the
-    /// `file://<path>` component URI.
+    /// Returns the canonical wire form.
     #[must_use]
     pub fn wire_value(&self) -> String {
         match self {
@@ -147,15 +122,11 @@ impl AdapterSelector {
         }
     }
 
-    /// The value init records on a `project.yaml` source binding: the
-    /// wire form, with a component path canonicalized (anchored at
-    /// `project_dir` when relative) so the recorded selector outlives
-    /// the operator's working directory. The kind is never rewritten.
+    /// Returns the persistent wire form, canonicalizing component paths.
     ///
     /// # Errors
     ///
-    /// `adapter-canonicalize-failed` when the component path cannot be
-    /// canonicalized (ensure has normally validated it already).
+    /// Returns `adapter-canonicalize-failed` for an unavailable component path.
     pub fn persist_value(&self, project_dir: &Path) -> Result<String, Error> {
         match self {
             Self::Bare { .. } | Self::Package { .. } => Ok(self.wire_value()),
@@ -173,18 +144,14 @@ impl std::fmt::Display for AdapterSelector {
     }
 }
 
-/// Anchor a component path at `project_dir` when relative, then
-/// canonicalize it.
+/// Anchors and canonicalizes a component path.
 ///
-/// Inside the engine guest's WASI sandbox `realpath` cannot walk
-/// ancestor directories outside the preopens, so a component that
-/// exists but fails to canonicalize keeps its anchored path
-/// unresolved rather than failing the seed.
+/// WASI may forbid `realpath` outside preopens; an existing anchored
+/// path is therefore accepted when canonicalization fails.
 ///
 /// # Errors
 ///
-/// `adapter-canonicalize-failed` when the path cannot be canonicalized
-/// and the file does not exist.
+/// Returns `adapter-canonicalize-failed` when the path does not exist.
 pub fn canonicalize_component(path: &Path, project_dir: &Path) -> Result<PathBuf, Error> {
     let absolute = if path.is_absolute() { path.to_path_buf() } else { project_dir.join(path) };
     match std::fs::canonicalize(&absolute) {
@@ -205,14 +172,10 @@ fn is_github_url(value: &str) -> bool {
     value.starts_with("https://github.com/")
 }
 
-// Recognise an adapter package reference `<namespace>:<name>@<semver>`:
-// `None` when the shape is not a package ref (other branches handle it);
-// `Some(Err(_))` when it is but the pin is missing or not exact SemVer.
+// `None` means another selector grammar may handle the value.
 fn recognize_package(value: &str) -> Option<Result<AdapterSelector, Error>> {
     let (namespace, rest) = value.split_once(':')?;
-    // `//` after the colon is a URL authority (`https://`, `file://`);
-    // a non-kebab namespace (e.g. the `C` of `C:\`) is a drive path.
-    // Neither is a package reference.
+    // URL authorities and Windows drive paths are not package references.
     if rest.starts_with('/') || !is_first_party_name(namespace) {
         return None;
     }
@@ -249,9 +212,7 @@ fn parse_validated_package(
     })
 }
 
-// Recognise a first-party shorthand as `(name, version)`: a bare
-// `name` resolves the seeded cache entry; `name@<semver>` is sugar
-// for `emery:<name>@<semver>`. `None` flows to the component branch.
+// `None` lets the component-path grammar handle the value.
 fn parse_shorthand(value: &str) -> Option<(&str, Option<semver::Version>)> {
     if value.contains('/') || value.contains(':') {
         return None;
@@ -266,7 +227,7 @@ fn parse_shorthand(value: &str) -> Option<(&str, Option<semver::Version>)> {
     }
 }
 
-// `^[a-z][a-z0-9-]*$` — a kebab-case first-party adapter name.
+// Equivalent to `^[a-z][a-z0-9-]*$`.
 fn is_first_party_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
@@ -276,14 +237,11 @@ fn is_first_party_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
-/// Derive the kebab-case adapter name from a component filename:
-/// `emery_intent.wasm` → `intent`, `my-adapter.wasm` → `my-adapter`
-/// (the cargo `emery_` artifact prefix is stripped and underscores
-/// fold to kebab dashes).
+/// Derives a kebab-case adapter name from a component filename.
 ///
 /// # Errors
 ///
-/// `adapter-dir-name-unresolved` when the path carries no usable stem.
+/// Returns `adapter-dir-name-unresolved` for an unusable stem.
 pub fn name_from_component(path: &Path) -> Result<String, Error> {
     let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| Error::Diag {
         code: "adapter-dir-name-unresolved",

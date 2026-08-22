@@ -1,15 +1,11 @@
-//! Crash-safe writers shared by every `.emery/*.yaml` writer: write
-//! to a temp file in the same parent, `sync_all`, then `persist`
-//! (atomic rename) so readers never observe a partial write.
+//! Crash-safe same-directory temp writes: write, sync, then rename.
 
 use std::path::Path;
 
 use emery_error::Error;
 use serde::Serialize;
 
-/// Serialise `value` as YAML (with a guaranteed trailing newline) and
-/// atomically persist it at `path`. See module-level docs for the
-/// atomicity envelope.
+/// Atomically write `value` as YAML with a trailing newline.
 ///
 /// # Errors
 ///
@@ -18,8 +14,7 @@ pub fn yaml_write<T: Serialize>(path: &Path, value: &T) -> Result<(), Error> {
     bytes_write(path, serialise_yaml(value)?.as_bytes())
 }
 
-/// Serialise `value` as a YAML document with a guaranteed single
-/// trailing newline, returning the string rather than writing it.
+/// Serialise `value` as YAML with a trailing newline.
 ///
 /// # Errors
 ///
@@ -32,9 +27,7 @@ pub fn serialise_yaml<T: Serialize>(value: &T) -> Result<String, Error> {
     Ok(content)
 }
 
-/// Atomically write `bytes` to `path`. Used for non-YAML writers (e.g.
-/// the PID stamp in `.emery/plan.lock`) where the caller has already
-/// produced the exact on-disk bytes.
+/// Atomically write exact `bytes` to `path`.
 ///
 /// # Errors
 ///
@@ -49,8 +42,7 @@ pub fn bytes_write(path: &Path, bytes: &[u8]) -> Result<(), Error> {
     Ok(())
 }
 
-/// Atomically copy `src` to `path`, streaming so the payload need not
-/// fit in memory. Same crash-safety envelope as [`bytes_write`].
+/// Atomically stream-copy `src` to `path`.
 ///
 /// # Errors
 ///

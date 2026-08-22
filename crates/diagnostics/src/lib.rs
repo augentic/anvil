@@ -1,7 +1,4 @@
-//! Emery neutral diagnostic substrate, plus the [`digest`] SHA-256
-//! helpers and the digest-keyed [`cache`] path plumbing.
-//!
-//! The [`Diagnostic`] currency is shared by every check surface.
+//! Neutral diagnostics, hashing, and cache metadata.
 
 pub mod cache;
 pub mod diagnostic;

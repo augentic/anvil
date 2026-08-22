@@ -1,6 +1,4 @@
-//! Native capability rung: the in-process `init` → `specify` journey
-//! over scripted `Model` + `Source` + storage capabilities — no built
-//! component, no filesystem engine state.
+//! In-process `init` → `specify` journey over scripted capabilities.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -29,9 +27,8 @@ const DESIGN_ANSWER: &str = include_str!("source/2-design.md");
 
 #[tokio::test]
 async fn gen_spec() {
-    // The stub component is an operator-supplied workspace file — the
-    // one filesystem touchpoint left; engine state lives in the
-    // scripted store, so no chdir and no `.emery/` tree.
+    // Only the operator-supplied component touches the filesystem; engine state
+    // stays in scripted storage, avoiding chdir and a `.emery/` tree.
     let workspace = tempfile::tempdir().expect("tempdir");
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
@@ -41,7 +38,6 @@ async fn gen_spec() {
         storage: Arc::new(Memory::default()),
     };
 
-    // 1. init the project
     cli_exec(&provider, &["emery", "init", component.to_str().expect("utf-8 path")]).await;
     let record = provider.storage.state("project.yaml").expect("project record committed");
     assert!(String::from_utf8_lossy(&record).contains("key: source"), "the binding is recorded");
@@ -51,7 +47,6 @@ async fn gen_spec() {
         "the component is mirrored into the cache container"
     );
 
-    // 2. generate specification
     cli_exec(&provider, &["emery", "specify"]).await;
     let pointer = provider.storage.state("spec/current").expect("current");
     let id = String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string();
@@ -62,7 +57,6 @@ async fn gen_spec() {
         provider.storage.object("spec", &format!("generations/{id}/design.md")).expect("design.md");
     assert!(!design.is_empty());
 
-    // 3. rerun generation
     let resp = cli_exec(&provider, &["emery", "specify"]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("none (byte-stable)"), "{stdout}");

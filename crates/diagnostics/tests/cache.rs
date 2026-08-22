@@ -1,5 +1,4 @@
-//! The verify-on-read sidecar format: digest math and sidecar-text
-//! parsing over the public bytes-in surface.
+//! Verify-on-read sidecar coverage.
 
 use emery_diagnostics::cache::{
     OciProvenance, content_digest, recorded_digest, recorded_provenance,

@@ -1,9 +1,7 @@
-//! Shared guest support for Emery adapter components.
+//! SDK for Emery source adapter components.
 //!
-//! Per-adapter crates implement [`SourceAdapter`] on a unit type; the
-//! wasm export macro consumes that trait. The engine provider
-//! implements [`Source`] — the import-side capability, like
-//! [`omnia_guest::Model`].
+//! Adapters implement [`SourceAdapter`]; engine providers implement the
+//! import-side [`Source`] capability.
 
 pub mod answers;
 mod call;
@@ -27,6 +25,6 @@ pub use omnia_guest::model::{
     Error, Format, McpGrant, Message, Reply, Request, Role, SchemaFormat, Tool,
 };
 pub use operations::SourceAdapter;
-/// Re-exported for the `source!` / `target!` macro expansions.
+/// Runtime bindings used by [`source!`].
 #[cfg(target_arch = "wasm32")]
 pub use wasip3;

@@ -2,12 +2,12 @@
 
 use std::str::FromStr;
 
-/// Catalog identity: kebab `name` plus exact SemVer `version`.
+/// Adapter catalog identity.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AdapterIdentity {
     /// Kebab-case adapter name.
     pub name: String,
-    /// Exact SemVer version string.
+    /// Exact SemVer version.
     pub version: String,
 }
 

@@ -1,7 +1,6 @@
-//! `source-adapter` WIT bindings: one `wit_bindgen::generate!`.
+//! `source-adapter` WIT bindings and export macro.
 //!
-//! The `source!` export macro plus the engine guest's [`import`] seam
-//! wrappers; leaf crates wire a [`crate::SourceAdapter`] with `emery_adapter::source!(…)`.
+//! [`crate::source!`] wires a [`crate::SourceAdapter`] to the component exports.
 
 mod generated {
     #![allow(
@@ -15,7 +14,7 @@ mod generated {
     wit_bindgen::generate!({
         world: "source-adapter",
         path: "../../wit",
-        // Judgment ops are async; `metadata` is sync.
+        // Only judgment operations are async.
         generate_all,
         pub_export_macro: true,
     });
@@ -162,14 +161,13 @@ impl From<crate::seam::Error> for Error {
     }
 }
 
-/// Import-side seam surface: the engine guest dispatches the linked
-/// source component through these wrappers, staying seam-typed.
+/// Seam-typed wrappers for source WIT imports.
 pub mod import {
     use super::generated::emery::adapter::source as wire;
     use crate::dispatch::DispatchError;
     use crate::seam;
 
-    /// Resolve-time metadata of the source component routed by `id`.
+    /// Returns resolve-time metadata for `id`.
     #[must_use]
     pub fn metadata(id: &str) -> seam::SourceMetadata {
         let record = wire::metadata(id);
@@ -178,15 +176,14 @@ pub mod import {
         }
     }
 
-    /// Dispatch `extract` on the source component routed by `id`.
+    /// Dispatches `extract` to `id`.
     ///
-    /// The answer lifts onto the seam DTOs, parsing each open extra's
-    /// canonical JSON encoding fail-closed (A8): a value that does not
-    /// parse is a typed error, never a dropped key.
+    /// Open extras parse from canonical JSON fail-closed (A8); invalid
+    /// values return a typed error rather than dropping the key.
     ///
     /// # Errors
     ///
-    /// The seam failure, or the A8 extras refusal.
+    /// Returns the seam failure or A8 extras refusal.
     pub async fn extract(
         id: &str, input: &seam::SourceInput,
     ) -> Result<seam::Evidence, DispatchError> {
@@ -318,15 +315,17 @@ pub mod import {
     }
 }
 
-/// Map [`crate::SourceAdapter::metadata`] onto the WIT record.
+/// Maps adapter metadata to its WIT record.
 #[must_use]
 pub fn dispatch_metadata<A: crate::SourceAdapter>() -> AdapterMetadata {
     A::metadata().into()
 }
 
+/// Dispatches extract through adapter `A`.
+///
 /// # Errors
 ///
-/// As the implementor's [`extract`](crate::SourceAdapter::extract).
+/// Returns the adapter's extract error.
 pub async fn dispatch_extract<A: crate::SourceAdapter>(
     id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {
@@ -344,7 +343,7 @@ fn source_ctx<'a>(id: &'a str, input: &'a crate::seam::SourceInput) -> crate::se
     }
 }
 
-/// Wire a [`crate::SourceAdapter`] implementor into the component exports.
+/// Wires a [`crate::SourceAdapter`] into component exports.
 ///
 /// ```ignore
 /// emery_adapter::source!(crate::Captures);

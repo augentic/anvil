@@ -1,4 +1,4 @@
-//! `name@version` parse for [`AdapterIdentity`].
+//! Adapter identity tests.
 
 use std::str::FromStr;
 

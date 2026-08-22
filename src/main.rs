@@ -38,25 +38,10 @@ cfg_if::cfg_if! {
             }
         });
 
-        // The engine-state root under the invocation directory: the
-        // filesystem backend serves `wasi:keyvalue` and `wasi:blobstore`
-        // from disjoint subtrees (`keyvalue/`, `blobstore/`) beneath it.
-        const STORE_ROOT: &str = ".emery";
-
-        /// The default local binding of the engine's storage
-        /// capabilities: a durable filesystem store rooted at
-        /// [`STORE_ROOT`] rather than the stock `FILESYSTEM_ROOT`
-        /// environment contract — the one policy this newtype pins.
-        /// Containers need no bootstrap: the backend's `get-container`
-        /// is an ensure. Alternative bindings are deployment profiles,
-        /// not engine changes.
+        // Durable engine state lives under the invocation directory.
+        // This replaces the normal FILESYSTEM_ROOT env var.
         #[derive(Clone, Debug)]
         struct ProjectStore(Filesystem);
-
-        // let options = omnia_filesystem::ConnectOptions{
-        //     root: STORE_ROOT.to_string(),
-        // };
-        // let client= omnia_filesystem::Client::connect_with(options).await?;
 
         impl omnia::Backend for ProjectStore {
             type ConnectOptions = omnia::NoOptions;
@@ -64,7 +49,7 @@ cfg_if::cfg_if! {
             fn connect_with(
                 _options: omnia::NoOptions,
             ) -> impl Future<Output = anyhow::Result<Self>> {
-                std::future::ready(Filesystem::open(STORE_ROOT).map(Self))
+                std::future::ready(Filesystem::open(".emery").map(Self))
             }
         }
 

@@ -1,6 +1,4 @@
-//! The mock source adapter as a Wasm component.
-//! One export serves every identity; extract keys off the routed
-//! adapter id (`docs` / `code` / `intent` / `fail-*`, else greeting).
+//! Mock source component with behavior selected by routed adapter ID.
 #![cfg(target_arch = "wasm32")]
 
 use std::future::Future;
@@ -12,8 +10,7 @@ use emery_adapter::seam::{
 };
 use emery_adapter::{Model, SourceAdapter};
 
-// Unpublished mock identity: a development placeholder version,
-// never a pin-matchable release.
+// This development-only identity must never match a release pin.
 #[derive(Clone, Copy, Debug)]
 struct Mock;
 
@@ -43,14 +40,11 @@ impl SourceAdapter for Mock {
     }
 }
 
-// Extract the controlled Evidence for the source selected by `id`;
-// `Internal` when the id selects the `fail-extract` profile.
 fn extract(id: &str, input: &SourceInput) -> Result<Evidence, Error> {
     if id.contains("fail-extract") {
         return Err(Error::Internal(format!("mock extract failure for `{id}`")));
     }
-    // The A8 violation profile: a requirement claim without its
-    // required `statement` extra, for the engine's fail-closed gate.
+    // Deliberately violates A8 to exercise the engine's fail-closed extras gate.
     if id.contains("missing-extras") {
         return Ok(Evidence {
             authority: Authority::Documentation,
@@ -84,8 +78,7 @@ fn evidence_for(profile: Profile, input: &SourceInput) -> Evidence {
                 requirement("session.timeout", "Documented session expiry", &session_policy(input)),
             ],
         },
-        // The authority disagreement: behaviour observes 15 minutes
-        // where documentation states 30 — docs outrank behaviour.
+        // Deliberate conflict: documentation's 30 minutes outranks behavior's 15.
         Profile::Code => Evidence {
             authority: Authority::Behaviour,
             claims: vec![
@@ -101,9 +94,7 @@ fn evidence_for(profile: Profile, input: &SourceInput) -> Evidence {
                 ),
             ],
         },
-        // The operator directive: intent outranks both halves of
-        // the adversarial pair, resolving the session-timeout
-        // disagreement by authority precedence.
+        // Intent resolves the adversarial timeout pair by outranking both sources.
         Profile::Intent => Evidence {
             authority: Authority::Intent,
             claims: vec![requirement(
@@ -123,33 +114,24 @@ fn evidence_for(profile: Profile, input: &SourceInput) -> Evidence {
     }
 }
 
-// The Docs profile's `session.timeout` statement: fixed, unless the
-// bound workspace carries a `session-policy.md` override — the
-// journey's "change one source claim between runs" lever.
+// The workspace override lets the journey change one claim between runs.
 fn session_policy(input: &SourceInput) -> String {
     const DEFAULT: &str = "Sessions expire after 30 minutes of inactivity.";
     const OVERRIDE: &str = "session-policy.md";
     let SourceContent::Workspace(workspace) = &input.content else {
         return DEFAULT.to_string();
     };
-    // Native hosts resolve the workspace root directly; the wasm
-    // guest falls back to its `.` preopen — equivalent because
-    // the journey binds the project directory itself.
+    // Wasm falls back to `.` because the journey binds the project as its preopen.
     std::fs::read_to_string(std::path::Path::new(&workspace.root).join(OVERRIDE))
         .or_else(|_| std::fs::read_to_string(OVERRIDE))
         .map_or_else(|_| DEFAULT.to_string(), |text| text.trim().to_string())
 }
 
-// The behaviour profile a routed adapter id selects.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Profile {
-    // Documentation half of the adversarial pair.
     Docs,
-    // Behaviour (code) half of the adversarial pair.
     Code,
-    // The inline operator-intent source.
     Intent,
-    // The single-claim `greeting` profile.
     Minimal,
 }
 
@@ -165,8 +147,7 @@ fn profile(id: &str) -> Profile {
     }
 }
 
-// Open per-kind body extras, mirroring the fields first-party
-// extract prompts emit (A8 — the seam must conserve them).
+// Mirror first-party per-kind extras so the seam's A8 conservation is covered.
 fn extras(key: &str, value: &str) -> serde_json::Map<String, serde_json::Value> {
     let mut extras = serde_json::Map::new();
     extras.insert(key.to_string(), serde_json::Value::String(value.to_string()));

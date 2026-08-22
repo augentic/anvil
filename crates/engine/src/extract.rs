@@ -1,5 +1,4 @@
-//! The extract leg: dispatch each authored binding over the source
-//! seam and fail closed on the required-extras table.
+//! Source extraction and fail-closed claim validation.
 
 use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
 use emery_adapter::{DispatchError, Source};
@@ -11,9 +10,7 @@ use crate::handler::ExecutionPaths;
 use crate::project::{BindingContent, Project, SourceBinding};
 use crate::resolve::{AdapterSelector, Axis, RoutedId, metadata, resolver};
 
-// Dispatch one `extract` over the provider's source-seam capability
-// (on wasm32, Omnia's host-mediated link routes to the exporting
-// guest by the routed `id`), mapping seam failures onto operator codes.
+// On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
 ) -> Result<seam::Evidence, Error> {
@@ -29,28 +26,24 @@ async fn dispatch<P: Source>(
     })
 }
 
-/// One extracted source: the binding key, the routed adapter identity
-/// it dispatched by, and the validated claim set in the Evidence dialect.
+/// A validated claim set extracted from one source.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
     /// The routed adapter identity (`source:<name>[@<version>]`).
     pub adapter: String,
-    /// Document-level authority class of the claim set.
+    /// Claim-set authority class.
     pub authority: AuthorityClass,
     /// The validated claims.
     pub claims: Vec<Claim>,
 }
 
-/// Extract every authored binding: resolve on the source axis,
-/// dispatch over the provider's seam capability, and validate
-/// fail-closed.
+/// Resolves, extracts, and validates every source binding.
 ///
 /// # Errors
 ///
-/// Resolution failures, seam failures, and the typed validation
-/// refusals from [`validate_set`].
+/// Propagates resolution, seam, and [`validate_set`] failures.
 pub async fn extract_all<P: Source + StateStore + BlobStore>(
     provider: &P, project: &Project, paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
@@ -79,9 +72,8 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
     Ok(sets)
 }
 
-// The typed seam input for one binding. A `.`-rooted view spans the
-// project preopen, `.emery/` included — the per-guest output-home
-// exclusion is a deferred capability profile.
+// `.` spans the project preopen, including `.emery/`, until guest
+// capability profiles can exclude the output home.
 fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
@@ -103,8 +95,9 @@ fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
     }
 }
 
-/// The closed required-extras table per claim kind. Widening it is a
-/// contract change gated by the decision log.
+/// Returns the required extras for a claim kind.
+///
+/// Widening this closed table is a contract change.
 #[must_use]
 pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
     match kind {
@@ -115,16 +108,11 @@ pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
     }
 }
 
-/// Fail-closed claim-set validation.
-///
-/// Id grammar and presence per the persisted dialect, plus the
-/// required-extras table: a violating claim is a typed error naming
-/// source, claim, and missing key — never a synopsis fallback.
+/// Validates claim grammar and required extras fail-closed.
 ///
 /// # Errors
 ///
-/// `claim-invalid` for id violations; `claim-extras-missing` for an
-/// absent required extra.
+/// Returns `claim-invalid` or `claim-extras-missing`.
 pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
     let findings = validate_claims(&set.claims);
     if !findings.is_empty() {
@@ -149,7 +137,6 @@ pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
     Ok(())
 }
 
-// Map the seam authority onto the persisted dialect.
 const fn authority(seam: seam::Authority) -> AuthorityClass {
     match seam {
         seam::Authority::Intent => AuthorityClass::Intent,
@@ -158,8 +145,7 @@ const fn authority(seam: seam::Authority) -> AuthorityClass {
     }
 }
 
-// Map one seam claim onto the persisted dialect, conserving extras
-// verbatim.
+// Extras cross the seam verbatim.
 fn claim(seam: seam::Claim) -> Claim {
     let mut mapped = Claim::new(kind(seam.kind));
     mapped.id = seam.id;
@@ -173,7 +159,6 @@ fn claim(seam: seam::Claim) -> Claim {
     mapped
 }
 
-// Map the seam claim kind onto the persisted dialect.
 const fn kind(seam: seam::ClaimKind) -> ClaimKind {
     match seam {
         seam::ClaimKind::Intent => ClaimKind::Intent,

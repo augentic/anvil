@@ -1,7 +1,4 @@
-//! Scripted in-memory storage for the native suites: tests observe
-//! engine state through this provider — mutex-held maps with
-//! inspection helpers — instead of the filesystem. Shared across the
-//! journey, home, and wire-contract suites via `#[path]` inclusion.
+//! Scripted in-memory storage for native integration tests.
 
 #![expect(dead_code, reason = "shared scripted storage; each consuming binary uses a subset")]
 
@@ -14,7 +11,7 @@ use omnia_guest::{BlobStore, CasError, ContainerMetadata, ObjectMetadata, StateS
 type State = BTreeMap<String, Vec<u8>>;
 type Blobs = BTreeMap<String, BTreeMap<String, Vec<u8>>>;
 
-/// In-memory keyvalue + blobstore scripting the storage seam.
+/// In-memory state and blob storage.
 #[derive(Debug, Default)]
 pub struct Memory {
     state: Mutex<State>,
@@ -22,17 +19,17 @@ pub struct Memory {
 }
 
 impl Memory {
-    /// The stored keyvalue entry at `key`.
+    /// Returns the state value at `key`.
     pub fn state(&self, key: &str) -> Option<Vec<u8>> {
         self.state.lock().expect("state lock").get(key).cloned()
     }
 
-    /// The stored object bytes at `container`/`name`.
+    /// Returns stored object bytes.
     pub fn object(&self, container: &str, name: &str) -> Option<Vec<u8>> {
         self.blobs.lock().expect("blob lock").get(container)?.get(name).cloned()
     }
 
-    /// Every object name in `container`, sorted.
+    /// Returns sorted object names in `container`.
     pub fn objects(&self, container: &str) -> Vec<String> {
         self.blobs
             .lock()
@@ -42,12 +39,12 @@ impl Memory {
             .unwrap_or_default()
     }
 
-    /// Seed a keyvalue entry without going through the seam.
+    /// Seeds a state entry.
     pub fn insert_state(&self, key: &str, bytes: &[u8]) {
         drop(self.state.lock().expect("state lock").insert(key.to_string(), bytes.to_vec()));
     }
 
-    /// Seed an object without going through the seam.
+    /// Seeds an object.
     pub fn insert_object(&self, container: &str, name: &str, bytes: &[u8]) {
         drop(
             self.blobs
@@ -59,13 +56,13 @@ impl Memory {
         );
     }
 
-    /// True when nothing has ever been stored.
+    /// Returns whether storage is empty.
     pub fn is_empty(&self) -> bool {
         self.state.lock().expect("state lock").is_empty()
             && self.blobs.lock().expect("blob lock").values().all(BTreeMap::is_empty)
     }
 
-    /// The full store contents, for byte-stability comparisons.
+    /// Returns a snapshot for byte-stability comparisons.
     pub fn snapshot(&self) -> (State, Blobs) {
         (
             self.state.lock().expect("state lock").clone(),
@@ -205,8 +202,7 @@ impl BlobStore for Memory {
     }
 }
 
-/// Implement both storage capabilities on a provider by forwarding to
-/// its shared [`Memory`] field.
+/// Implements both storage capabilities by forwarding to a [`Memory`] field.
 #[macro_export]
 macro_rules! scripted_storage {
     ($provider:ty, $field:ident) => {

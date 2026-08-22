@@ -1,6 +1,4 @@
-//! The journey host: the shipped runtime shape with the mock source
-//! component as the one adapter guest and `WasiModel` answering from
-//! a script directory instead of the Cursor backend.
+//! Journey host using the mock source component and scripted model answers.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -45,9 +43,7 @@ cfg_if::cfg_if! {
             }
         });
 
-        // The shipped binary's storage binding, reproduced for the
-        // journey host: a durable filesystem store rooted at `.emery`
-        // under the invocation directory (see `src/main.rs`).
+        // Match the shipped binary's durable, invocation-relative storage.
         const STORE_ROOT: &str = ".emery";
 
         #[derive(Clone, Debug)]
@@ -87,7 +83,6 @@ cfg_if::cfg_if! {
             }
         }
 
-        // script directory: each file is one model answer.
         const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";
 
         fn connect() -> anyhow::Result<ScriptedModel> {
@@ -110,7 +105,6 @@ cfg_if::cfg_if! {
             Ok(ScriptedModel(Scripted::answers(answers)))
         }
 
-        // The scripted `wasi:model` backend behind the unchanged seam.
         #[derive(Clone, Debug)]
         struct ScriptedModel(Scripted);
 

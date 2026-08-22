@@ -1,5 +1,4 @@
-//! The judgment-answer deserializer: schema pin, envelope shape, and
-//! the extract validation tail.
+//! Evidence answer tests.
 
 use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, parse_evidence, validate_evidence};
 use emery_adapter::seam::{Authority, Backing, ClaimKind, Error};
@@ -14,8 +13,6 @@ fn schema_pin() {
     assert_eq!(EVIDENCE_ANSWER_SCHEMA, on_disk, "pin matches evidence.schema.json");
 }
 
-// Covers both backing variants and tolerated open per-kind body fields
-// (`replay-digest`, `input`, …).
 #[test]
 fn evidence_deserializes() {
     let evidence = parse_evidence(
@@ -45,7 +42,7 @@ fn evidence_deserializes() {
     assert_eq!(example.id.as_deref(), Some("password-reset.expiry"));
     assert_eq!(example.path.as_deref(), Some("captures/reset.json#L3-L9"));
     assert_eq!(example.backing, Some(Backing::Path("captures/reset.json".to_string())));
-    // Open per-kind body fields are conserved, not dropped (A8).
+    // Open per-kind fields are preserved (A8).
     assert_eq!(
         example.extras.get("replay-digest").and_then(serde_json::Value::as_str),
         Some(concat!(
@@ -66,8 +63,7 @@ fn evidence_deserializes() {
     assert!(claim.extras.is_empty(), "no unmodeled keys, no extras");
 }
 
-// The answer schema does not pin the shape of `synopsis` / `backing`, so
-// an unexpected shape drops the field instead of failing the extract.
+// Unpinned `synopsis` and `backing` shapes become absent, not fatal.
 #[test]
 fn open_body_fields_lenient() {
     let evidence = parse_evidence(

@@ -1,6 +1,4 @@
-//! The plugin rule (`plugins/emery/rules/emery.mdc`) must never name
-//! a verb, flag, or skill the shipped surface does not have: every
-//! mention is validated against the live router and skill tree.
+//! Validates plugin-rule mentions against the shipped surface.
 
 mod support;
 
@@ -9,23 +7,18 @@ use std::path::{Path, PathBuf};
 
 use support::Inert;
 
-// Global flags peeled or handled ahead of the verb grammar — they
-// never appear in a route's own `--help`.
+// Global flags do not appear in route-specific help.
 const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
 
-// Builtin routes outside the operation inventory.
 const BUILTIN_PATHS: &[[&str; 1]] = &[["completions"]];
 
-// The ultrathin wrapper contract: each skill invokes exactly one CLI
-// verb, so a flag mentioned on a slash command validates against that
-// verb's grammar.
+// Each skill's flags validate against its single wrapped verb.
 const SKILL_VERBS: &[(&str, [&str; 1])] = &[("init", ["init"])];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")
 }
 
-// Every full route path plus every namespace prefix, kebab-joined.
 fn known_paths(
     router: &omnia_guest::api::command::Router<Inert, emery_transport::command::Globals>,
 ) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
@@ -44,16 +37,13 @@ fn known_paths(
     (full, prefixes)
 }
 
-// One `emery …` or `/emery:<skill>` mention lifted from the rule.
 #[derive(Debug)]
 enum Mention {
     Cli(String),
     Skill { name: String, rest: String },
 }
 
-// Lift every mention from one inline code span or fenced line.
-// `.emery/` and `emery-adapters` never match: `emery` must stand
-// alone at a word boundary followed by whitespace or the span end.
+// Require a standalone `emery`, excluding `.emery/` and `emery-adapters`.
 fn mentions_in(text: &str, out: &mut Vec<Mention>) {
     let bytes = text.as_bytes();
     let mut i = 0;
@@ -64,7 +54,6 @@ fn mentions_in(text: &str, out: &mut Vec<Mention>) {
         let after = bytes.get(end).map(|b| *b as char);
         i = end;
         if before == Some('/') && after == Some(':') {
-            // `/emery:<skill>` — the slash-command surface.
             let rest = &text[end + 1..];
             let name: String =
                 rest.chars().take_while(|ch| ch.is_ascii_lowercase() || *ch == '-').collect();
@@ -83,8 +72,6 @@ fn mentions_in(text: &str, out: &mut Vec<Mention>) {
     }
 }
 
-// Every mention in the rule document: fenced lines verbatim, inline
-// code spans from prose lines.
 fn mentions(doc: &str) -> Vec<Mention> {
     let mut out = Vec::new();
     let mut in_fence = false;
@@ -114,9 +101,7 @@ fn is_kebab(token: &str) -> bool {
         && !token.starts_with('-')
 }
 
-// Walk the mention's leading kebab tokens while they extend a known
-// route path or namespace prefix. Returns the walked path and the
-// first unconsumed token.
+// Return the known route prefix and first unconsumed token.
 fn walk_path<'a>(
     tokens: &[&'a str], base: &[String], full: &BTreeSet<Vec<String>>,
     prefixes: &BTreeSet<Vec<String>>,
@@ -140,8 +125,6 @@ fn walk_path<'a>(
     (path, rest)
 }
 
-// The mention's flag tokens (`--…`), stripped of surrounding
-// brackets/quotes.
 fn flags_of(text: &str) -> Vec<String> {
     text.split_whitespace()
         .filter_map(|token| {
@@ -189,8 +172,6 @@ async fn assert_flags(
     }
 }
 
-// The rule can only name verbs, flags, and skills the shipped surface
-// has — mechanical enforcement over the live router, not prose review.
 #[tokio::test]
 async fn rule_matches_router() {
     let rule = plugin_dir().join("rules/emery.mdc");
@@ -208,16 +189,13 @@ async fn rule_matches_router() {
     for mention in mentions {
         match mention {
             Mention::Cli(text) => {
-                // Alternation (`emery slice list | validate | model show`)
-                // resolves every alternative against the first segment's
-                // namespace.
+                // Resolve alternatives under the first segment's namespace.
                 let mut segments = text.split('|');
                 let first = segments.next().expect("split yields at least one segment");
                 let tokens: Vec<&str> = first.split_whitespace().skip(1).collect();
                 let (path, rest) = walk_path(&tokens, &[], &full, &prefixes);
                 if !full.contains(&path) {
-                    // A namespace mention is fine; a further kebab token
-                    // would have been an unknown verb.
+                    // Namespace-only mentions are valid; unknown verbs are not.
                     assert!(
                         rest.is_none_or(|token| !is_kebab(token)),
                         "rule names `emery {} {}`, which is not a routed verb (in `{text}`)",
@@ -255,8 +233,6 @@ async fn rule_matches_router() {
     }
 }
 
-// Every shipped skill is reachable from the rule, so the operator-facing
-// index cannot silently omit a surface.
 #[test]
 fn rule_names_every_skill() {
     let doc = std::fs::read_to_string(plugin_dir().join("rules/emery.mdc")).expect("rule");

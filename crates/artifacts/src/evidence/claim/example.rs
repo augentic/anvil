@@ -1,4 +1,4 @@
-//! Runtime capture claim — the `kind: example` shape (`captures` adapter).
+//! The `kind: example` runtime-capture claim.
 //!
 //! Bodies larger than 64 `KiB` are stored at `path` with only the digest
 //! inline — the cap lives in the adapter brief, not the schema.
@@ -6,51 +6,34 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-/// In-memory shape for a single `kind: example` claim.
+/// A `kind: example` claim.
 ///
-/// `input` and `output` are deliberately untyped per the schema's
-/// open per-kind body posture — the adapter records whatever the
-/// captured scenario carried (HTTP method/route/body, message topic /
-/// payload shape, scheduled-job arguments). Downstream code consults
-/// `replay_digest` as the stable content anchor for replay
-/// verification and `path` for the on-disk location of the full body.
+/// `input` and `output` remain open for protocol-specific payloads.
+/// `replay_digest` is the stable replay anchor.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ExampleClaim {
-    /// Closed claim-kind discriminator. Always serialises as the
-    /// literal `example`.
+    /// Discriminator, always `example`.
     pub kind: ExampleKind,
-    /// Stable claim id (required on `example` per the schema's `allOf`
-    /// branch). Resolves the same id space the provenance table joins
-    /// against.
+    /// Stable claim id.
     pub id: String,
-    /// Optional `<path>#L<n>` anchor (the capture's on-disk location).
+    /// Optional `<path>#L<n>` capture anchor.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
-    /// `sha256:<hex>` digest of the capture bytes — the stable content
-    /// anchor replay verification joins against.
+    /// `sha256:<hex>` digest of the capture bytes.
     pub replay_digest: String,
-    /// Optional inline input payload — typically the captured request.
-    /// Shape is open per the schema's per-kind body posture.
+    /// Optional open input payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<JsonValue>,
-    /// Optional inline output payload — typically the captured
-    /// response plus side-effects. Shape is open.
+    /// Optional open output payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output: Option<JsonValue>,
-    /// Optional single-line statement describing the capture's
-    /// behavioural meaning (the line synthesis lifts into `spec.md`).
+    /// Optional single-line behavioural statement for synthesis.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub statement: Option<String>,
 }
 
-/// Single-variant marker enum locking the `kind:` discriminator to
-/// the literal `example` on the wire.
-///
-/// The variant is the *only* legal value for an [`ExampleClaim`];
-/// generic deserialisation through `Claim<ExampleClaim>` would
-/// otherwise accept any string. Sibling per-kind claim shapes (when
-/// they land) follow the same pattern with their own marker enum.
+/// Marker locking `kind` to `example`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

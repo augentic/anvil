@@ -1,4 +1,4 @@
-//! Authority-class wire and resolution matrix (`emery_artifacts::evidence::authority`).
+//! Authority wire coverage.
 
 use emery_artifacts::evidence::authority::*;
 

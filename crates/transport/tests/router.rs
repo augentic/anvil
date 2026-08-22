@@ -1,27 +1,20 @@
-//! Typed command grammar, conversion, and HTTP parity coverage over
-//! the two-verb surface: `init`, the live `specify` generator, and
-//! the auto-derived `completions`.
+//! Command grammar, conversion, and HTTP parity coverage.
 
 mod support;
 
-// Grammar and parity coverage only: no test dispatches judgment or an
-// adapter seam, so the inert provider's capabilities are never reached.
+// These grammar tests never reach provider capabilities.
 fn command_router()
 -> omnia_guest::api::command::Router<support::Inert, emery_transport::command::Globals> {
     support::router()
 }
 
-// Gate tripwire: the guest HTTP listener serves only the MCP shelves;
-// an HTTP operation surface must arrive with an authenticated ingress
-// design and delete this test in the same decision.
+// An HTTP operation surface requires an authenticated ingress design.
 #[tokio::test]
 async fn adr_0002_http_refusal() {
     use omnia_guest::http::{Method, Request, StatusCode};
     use tower::ServiceExt as _;
 
-    // Every command-router verb, projected as an HTTP-ish path, must
-    // refuse — derived from the live command inventory so a new verb
-    // can never quietly gain an HTTP twin.
+    // Derivation from inventory prevents new verbs gaining HTTP twins.
     let command = command_router();
     for route in command.inventory() {
         let path = format!("/{}", route.selector().path().join("/"));
@@ -40,8 +33,7 @@ async fn adr_0002_http_refusal() {
     }
 }
 
-// Gate tripwire: the route budget is the live verb list and nothing
-// else; widening it requires an ADR.
+// Widening the route budget requires an ADR.
 #[tokio::test]
 async fn adr_0008_route_budget() {
     let router = command_router();
@@ -95,8 +87,6 @@ async fn adr_0008_route_budget() {
     }
 }
 
-// The live generator fails closed outside an initialised project — no
-// orchestration, no output-home writes, no artifacts.
 #[tokio::test]
 async fn specify_uninitialized() {
     let provider = support::Inert::default();
@@ -133,8 +123,7 @@ async fn globals_and_completions() {
 
 #[tokio::test]
 async fn version_host_semver() {
-    // No adapter-train suffix: adapters version independently and
-    // resolve local-first, so the binary reports only its own SemVer.
+    // Adapters version independently, so the binary reports its own SemVer.
     let router = command_router();
     let response = router.execute(["emery", "--version"]).await;
     assert_eq!(response.exit, 0);
@@ -214,9 +203,7 @@ const fn cases() -> [Case; 5] {
 #[tokio::test]
 async fn native_response_contract() {
     for case in cases() {
-        // Each case runs over a fresh, empty scripted store: `init`
-        // without an adapter must refuse rather than take the
-        // re-entry path, and `specify` must fail `not-initialized`.
+        // A fresh store prevents `init` re-entry and keeps `specify` uninitialized.
         let response = command_router().execute(case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");

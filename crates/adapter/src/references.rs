@@ -1,7 +1,4 @@
-//! MCP references server every adapter guest serves over `wasi:http`.
-//!
-//! One [`References`] implementation for all adapters; a shim differs
-//! only in server name and doc table.
+//! Shared MCP server for adapter reference documents.
 
 use omnia_guest::mcp::{
     CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
@@ -10,11 +7,11 @@ use serde_json::{Value, json};
 
 use crate::registry::{self, Doc};
 
-/// `<name>-references`, interned once per process so it stays `&'static`.
+/// Returns an interned `<name>-references`.
 ///
 /// # Panics
 ///
-/// If the intern table's lock is poisoned.
+/// Panics if the intern table lock is poisoned.
 #[must_use]
 pub fn server_name(name: &'static str) -> &'static str {
     static NAMES: std::sync::Mutex<std::collections::BTreeMap<&'static str, &'static str>> =
@@ -26,22 +23,24 @@ pub fn server_name(name: &'static str) -> &'static str {
         .or_insert_with(|| Box::leak(format!("{name}-references").into_boxed_str()))
 }
 
-/// Embedded prose registry served over MCP.
+/// MCP server backed by embedded prose.
 #[derive(Clone, Copy, Debug)]
 pub struct References {
-    /// e.g. `contracts-references`.
+    /// MCP server name.
     pub server_name: &'static str,
-    /// Declaring crate's `CARGO_PKG_VERSION`.
+    /// Adapter version.
     pub version: &'static str,
-    /// Sorted embedded doc table.
+    /// Embedded docs, sorted by path.
     pub docs: &'static [Doc],
 }
 
 #[cfg(target_arch = "wasm32")]
 impl References {
+    /// Serves one references request.
+    ///
     /// # Errors
     ///
-    /// As `omnia_wasi_http::serve` over the router.
+    /// Returns errors from the HTTP router.
     pub async fn serve(
         self, request: wasip3::http::types::Request,
     ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
@@ -49,11 +48,11 @@ impl References {
     }
 }
 
-/// Serve a `wasi:http` request for an adapter's references identity.
+/// Serves an adapter references request.
 ///
 /// # Errors
 ///
-/// As [`References::serve`].
+/// Returns errors from [`References::serve`].
 #[cfg(target_arch = "wasm32")]
 pub async fn serve(
     name: &'static str, version: &'static str, docs: &'static [Doc],

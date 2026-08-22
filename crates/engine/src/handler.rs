@@ -1,6 +1,4 @@
-//! Shared plumbing for command operations: [`RequestContext`],
-//! [`Render`], [`ReportBody`], and the operation-layer [`Error`].
-//! Transports stay out.
+//! Transport-neutral command plumbing.
 
 mod context;
 mod error;
@@ -14,7 +12,5 @@ pub use locations::{ADAPTERS_CONTAINER, Locations, STORE_CONTAINER};
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
 
-/// Result alias for operation bodies: any `emery_error::Error` coerces via
-/// `From`, and the report-carrying failures construct
-/// [`Error::Report`] explicitly.
+/// Result type for command operations.
 pub type Result<T, E = Error> = std::result::Result<T, E>;

@@ -1,5 +1,4 @@
-//! Output-home integration: the generation-pointer commit contract at
-//! the crate's public surface, over the scripted in-memory store.
+//! Output-home integration tests.
 
 #[path = "support/storage.rs"]
 mod storage;
@@ -18,7 +17,6 @@ fn generation_object(id: &str, name: &str) -> String {
     format!("generations/{id}/{name}")
 }
 
-// Commit over a fresh observation of the pointer.
 async fn commit(home: &Home<'_, Memory>, spec: &SpecSet) -> emery_engine::home::Committed {
     let observed = home.observe().await;
     home.commit(spec, &observed).await.expect("commit")
@@ -97,7 +95,6 @@ async fn concurrent_commit_conflicts() {
     assert_eq!(spec, b"# Spec winner\n", "the winning generation is intact");
 }
 
-// One parseable requirement block for the diff kernel's spec fixtures.
 fn block(id: u32, name: &str, body: &str) -> String {
     format!(
         "### Requirement: {name}\n\nID: REQ-{id:03}\nSources: [mock-docs]\nStatus: agreed\n\n{body}\n\n"
@@ -116,9 +113,7 @@ async fn observe_reads_current() {
     assert_eq!(outgoing, set("# Spec\n"), "the outgoing set reads back verbatim");
 }
 
-// The re-mine diff names changed artifacts and `spec.md` sections
-// by heading subject — immune to positional `REQ-NNN` shifts when
-// blocks are inserted or removed.
+// Positional requirement ids must not affect section identity.
 #[test]
 fn remine_diff_sections() {
     let old_spec = format!(

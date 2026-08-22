@@ -1,41 +1,40 @@
-//! Embedded prose vocabulary and lookup helpers.
+//! Embedded prose lookup.
 //!
-//! Each adapter's `build.rs` emits a sorted `DOCS` table; the adapter's
-//! `registry` module includes it via [`crate::registry!`].
+//! [`crate::registry!`] includes the sorted `DOCS` table emitted by `build.rs`.
 
-/// One embedded reference document.
+/// An embedded reference document.
 #[derive(Clone, Copy, Debug)]
 pub struct Doc {
-    /// Adapter-relative path, e.g. `prompts/build.md`.
+    /// Adapter-relative path.
     pub path: &'static str,
-    /// Full markdown body.
+    /// Markdown body.
     pub body: &'static str,
 }
 
-/// Binary-search lookup; `docs` must be sorted by path.
+/// Finds `path`; `docs` must be sorted by path.
 #[must_use]
 pub fn find<'d>(docs: &'d [Doc], path: &str) -> Option<&'d Doc> {
     docs.binary_search_by(|doc| doc.path.cmp(path)).ok().map(|idx| &docs[idx])
 }
 
-/// Body for `path`, or `None` when absent from `docs`.
+/// Returns the body for `path`.
 #[must_use]
 pub fn resolve(docs: &[Doc], path: &str) -> Option<&'static str> {
     find(docs, path).map(|doc| doc.body)
 }
 
-/// Body the registry is guaranteed to embed.
+/// Returns the body for an embedded `path`.
 ///
 /// # Panics
 ///
-/// When `path` is missing — adapter tree and embedded table disagree.
+/// Panics if `path` is absent, indicating a registry/tree mismatch.
 #[must_use]
 pub fn body(docs: &[Doc], path: &str) -> &'static str {
     resolve(docs, path)
         .unwrap_or_else(|| panic!("document `{path}` is not embedded in the registry"))
 }
 
-/// Generate an adapter's `registry` module over the `DOCS` table from `build.rs`.
+/// Generates registry accessors for the build-time `DOCS` table.
 ///
 /// ```ignore
 /// mod registry {

@@ -1,7 +1,4 @@
-//! [`RoutedId`] — the typed routed adapter identity.
-//!
-//! One exact, opaque id (`<axis>:<name>[@<version>]`) names every seam
-//! dispatch; this kernel is the single formatter/parser for that grammar.
+//! Routed adapter identity parsing and formatting.
 
 use std::str::FromStr;
 
@@ -10,21 +7,19 @@ use emery_error::Error;
 use super::core::Axis;
 use super::selector::AdapterSelector;
 
-/// One routed adapter identity: axis, kebab-case name, and the exact
-/// SemVer pin a package-resolved identity carries (`None` for a
-/// cache-backed resolve, which has no package identity).
+/// An adapter identity used for seam dispatch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutedId {
     /// Adapter axis (`source` / `target`).
     pub axis: Axis,
     /// Kebab-case adapter name.
     pub name: String,
-    /// Exact SemVer pin; `None` routes the unversioned id.
+    /// Exact package pin; absent for unversioned dispatch.
     pub version: Option<semver::Version>,
 }
 
 impl RoutedId {
-    /// A routed identity from its parts.
+    /// Creates a routed identity.
     #[must_use]
     pub fn new(axis: Axis, name: impl Into<String>, version: Option<semver::Version>) -> Self {
         Self {
@@ -34,12 +29,9 @@ impl RoutedId {
         }
     }
 
-    /// The routed identity implied by a recorded adapter value
-    /// (`omnia@1.0.0` → `target:omnia@1.0.0`, `omnia` →
-    /// `target:omnia`, `file://…/emery_omnia.wasm` →
-    /// `target:omnia`). Total over historical values — an unparseable
-    /// value routes the raw string as an unversioned name, mirroring
-    /// [`AdapterSelector::recorded_name`].
+    /// Derives an identity from a recorded value.
+    ///
+    /// Malformed historical values route as raw unversioned names.
     #[must_use]
     pub fn recorded(axis: Axis, value: &str) -> Self {
         AdapterSelector::parse(value)
@@ -51,13 +43,11 @@ impl RoutedId {
             .unwrap_or_else(|| Self::new(axis, value, None))
     }
 
-    /// Parse a routed id string (`source:intent`,
-    /// `target:omnia@1.0.0`).
+    /// Parses `<axis>:<name>[@<version>]`.
     ///
     /// # Errors
     ///
-    /// `adapter-routed-id-malformed` when the axis prefix, name, or
-    /// version pin does not fit the grammar.
+    /// Returns `adapter-routed-id-malformed` for invalid grammar.
     pub fn parse(value: &str) -> Result<Self, Error> {
         let malformed = |detail: String| Error::Diag {
             code: "adapter-routed-id-malformed",
