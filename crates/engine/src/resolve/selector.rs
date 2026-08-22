@@ -121,7 +121,6 @@ impl AdapterSelector {
             Self::Component { path } => format!("file://{}", path.display()),
         }
     }
-
 }
 
 impl std::fmt::Display for AdapterSelector {

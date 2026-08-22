@@ -24,18 +24,21 @@ fn from_file(body: &str) -> Result<Vec<SourceBinding>, emery_error::Error> {
 fn argv_bindings() {
     let bound = bindings(&strings(&["./adapters/docs.wasm"]), &strings(&["intent=Ship it."]), None)
         .expect("argv bindings load");
-    assert_eq!(bound, [
-        SourceBinding {
-            key: "docs".to_string(),
-            adapter: "./adapters/docs.wasm".to_string(),
-            content: BindingContent::Workspace(".".to_string()),
-        },
-        SourceBinding {
-            key: "intent".to_string(),
-            adapter: "intent".to_string(),
-            content: BindingContent::Value("Ship it.".to_string()),
-        },
-    ]);
+    assert_eq!(
+        bound,
+        [
+            SourceBinding {
+                key: "docs".to_string(),
+                adapter: "./adapters/docs.wasm".to_string(),
+                content: BindingContent::Workspace(".".to_string()),
+            },
+            SourceBinding {
+                key: "intent".to_string(),
+                adapter: "intent".to_string(),
+                content: BindingContent::Value("Ship it.".to_string()),
+            },
+        ]
+    );
 }
 
 #[test]
@@ -65,7 +68,16 @@ fn mixing_argv_and_file_refused() {
     {
         let err = bindings(&adapters, &values, Some("sources.toml"))
             .expect_err("`--sources` carries the whole binding list");
-        assert!(matches!(err, emery_error::Error::Argument { flag: "--sources", .. }), "{err}");
+        assert!(
+            matches!(
+                err,
+                emery_error::Error::Argument {
+                    flag: "--sources",
+                    ..
+                }
+            ),
+            "{err}"
+        );
     }
 }
 
@@ -124,7 +136,16 @@ fn two_location_keys_refused() {
         "[sources.docs]\nadapter = \"documentation\"\npath = \"docs\"\nvalue = \"text\"\n",
     )
     .expect_err("exactly one location key is allowed");
-    assert!(matches!(err, emery_error::Error::Argument { flag: "--sources", .. }), "{err}");
+    assert!(
+        matches!(
+            err,
+            emery_error::Error::Argument {
+                flag: "--sources",
+                ..
+            }
+        ),
+        "{err}"
+    );
     assert!(err.to_string().contains("more than one"), "{err}");
 }
 
@@ -147,14 +168,22 @@ fn cargo_source_id_form_refused() {
         "[sources.upstream]\nadapter = \"documentation\"\ngit = \"git+https://github.com/acme/api#deadbeef\"\n",
     )
     .expect_err("Cargo's machine-written source-id form is the wrong precedent");
-    assert!(matches!(err, emery_error::Error::Argument { flag: "--sources", .. }), "{err}");
+    assert!(
+        matches!(
+            err,
+            emery_error::Error::Argument {
+                flag: "--sources",
+                ..
+            }
+        ),
+        "{err}"
+    );
 }
 
 #[test]
 fn relative_paths_normalise() {
-    let (_dir, path) = write_sources(
-        "[sources.docs]\nadapter = \"documentation\"\npath = \"nested/../docs\"\n",
-    );
+    let (_dir, path) =
+        write_sources("[sources.docs]\nadapter = \"documentation\"\npath = \"nested/../docs\"\n");
     let bound = bindings(&[], &[], Some(&path)).expect("bindings load");
     assert_eq!(
         bound[0].content,

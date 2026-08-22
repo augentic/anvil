@@ -65,20 +65,26 @@ fn from_argv(adapters: &[String], values: &[String]) -> Result<Vec<SourceBinding
     let mut bindings = Vec::new();
     for value in adapters {
         let key = AdapterSelector::parse(value)?.name()?;
-        push_unique(&mut bindings, SourceBinding {
-            key,
-            adapter: value.clone(),
-            content: BindingContent::Workspace(".".to_string()),
-        })?;
+        push_unique(
+            &mut bindings,
+            SourceBinding {
+                key,
+                adapter: value.clone(),
+                content: BindingContent::Workspace(".".to_string()),
+            },
+        )?;
     }
     for entry in values {
         let (adapter, text) = split_value(entry)?;
         let key = AdapterSelector::parse(adapter)?.name()?;
-        push_unique(&mut bindings, SourceBinding {
-            key,
-            adapter: adapter.to_string(),
-            content: BindingContent::Value(text.to_string()),
-        })?;
+        push_unique(
+            &mut bindings,
+            SourceBinding {
+                key,
+                adapter: adapter.to_string(),
+                content: BindingContent::Value(text.to_string()),
+            },
+        )?;
     }
     Ok(bindings)
 }
@@ -107,12 +113,8 @@ fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
 }
 
 fn binding(key: &str, entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
-    let locations = [
-        entry.path.is_some(),
-        entry.git.is_some(),
-        entry.url.is_some(),
-        entry.value.is_some(),
-    ];
+    let locations =
+        [entry.path.is_some(), entry.git.is_some(), entry.url.is_some(), entry.value.is_some()];
     if locations.iter().filter(|present| **present).count() > 1 {
         return Err(Error::Argument {
             flag: "--sources",
