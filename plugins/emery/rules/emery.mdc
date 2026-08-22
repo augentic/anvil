@@ -1,5 +1,5 @@
 ---
-description: Emery plugin context -- project initialization for the Emery CLI
+description: Emery plugin context -- specification generation with the Emery CLI
 alwaysApply: true
 ---
 
@@ -7,26 +7,26 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the surviving Emery skill: initialize a project. The skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output.
+This plugin provides the surviving Emery skill: generate a specification. The skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output.
 
-The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme (ADR-0008). Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the project's bound sources.
+The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme (ADR-0008). Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the sources named on the invocation; `emery show spec` and `emery show design` print the reviewable documents of the current generation.
 
 ## Workflow
 
 ```text
-/emery:init <adapter>              (once per project)
+/emery:specify <adapter>           (every generation run)
 ```
 
-That is the whole shipped surface. Never hand-edit `.emery/` state files (`project.yaml`, the component cache); route through the CLI.
+That is the whole shipped surface. The binding list never persists — repeat the adapters on every run, or keep them in an operator-owned `sources.toml` passed with `--sources <path>`. Never hand-edit `.emery/` state (the component cache and generation store); route through the CLI.
 
 ## Tracing and output
 
 Tracing is selected by the reserved log flags — never set `RUST_LOG` on an `emery` subprocess. The CLI strips `--debug` / `--quiet` anywhere in argv before the verb parses it, so the flags are position-independent and never collide with a verb's own options.
 
-- **Short deterministic verbs** (`emery --version`, `emery init`) pass `--quiet` so the result card is uncluttered:
+- **Short deterministic verbs** (`emery --version`, `emery show spec`) pass `--quiet` so the result card is uncluttered:
 
 ```text
-emery init <adapter> --quiet
+emery specify <adapter> --quiet
 ```
 
 **Debug mode**: when the operator explicitly asks for debug (says "debug", or passes `debug` / `--debug` on the slash command), pass `--debug` on **every** `emery` subprocess in that skill invocation (it replaces `--quiet` — the two flags are mutually exclusive).
@@ -43,19 +43,19 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 
 | Error code | What it means | Next action |
 |------------|---------------|-------------|
-| `init-source-required` | `emery init` was run without naming a source | `emery init <adapter>` (and/or `--value <adapter>=<text>`) |
-| `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
-| `not-initialized` | `emery specify` was run outside an initialised project | `/emery:init <adapter>` first |
+| `specify-source-required` | `emery specify` was run without naming a source | `emery specify <adapter>` (and/or `--value <adapter>=<text>`, or `--sources <path>`) |
+| `adapter-cli-too-old` | The installed binary is older than an adapter's declared floor | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
+| `spec-not-generated` | `emery show` was run before any generation was committed | `/emery:specify <adapter>` first |
 
-### Project not initialized
+### Reviewing the generated documents
 
-- Run `/emery:init <adapter>` in the project root to create `.emery/` and write `project.yaml`
-- Verify `.emery/project.yaml` exists
+- Run `emery show spec` or `emery show design` — the document renders to stdout
+- There is no working-tree copy to edit; change a source and re-run `/emery:specify`
 
 ## Related Documentation
 
 - See the project root `AGENTS.md` for overall project context
-- [Init SKILL.md](skills/init/SKILL.md) — Initialize Emery
+- [Specify SKILL.md](skills/specify/SKILL.md) — Generate a specification
 
 ## Specification
 

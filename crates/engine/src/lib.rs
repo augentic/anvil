@@ -3,9 +3,9 @@
 pub mod extract;
 pub mod handler;
 pub mod home;
-pub mod init;
-pub mod project;
 pub mod resolve;
+pub mod show;
+pub mod sources;
 pub mod specify;
 mod storage;
 pub mod synthesise;

@@ -18,7 +18,7 @@ When adding coverage, the default write path is crate or wire integration — a 
 
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
-3. Put cross-crate `init` / `specify` orchestration on the native rung (`tests/source.rs`). The `source` and `runtime` examples are not a test rung.
+3. Put cross-crate `specify` / `show` orchestration on the native rung (`tests/source.rs`). The `source` and `runtime` examples are not a test rung.
 4. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
 Do not copy an assertion into another gate for reassurance: each fact has one owning seam.

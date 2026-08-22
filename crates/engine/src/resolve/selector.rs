@@ -122,20 +122,6 @@ impl AdapterSelector {
         }
     }
 
-    /// Returns the persistent wire form, canonicalizing component paths.
-    ///
-    /// # Errors
-    ///
-    /// Returns `adapter-canonicalize-failed` for an unavailable component path.
-    pub fn persist_value(&self, project_dir: &Path) -> Result<String, Error> {
-        match self {
-            Self::Bare { .. } | Self::Package { .. } => Ok(self.wire_value()),
-            Self::Component { path } => {
-                let canonical = canonicalize_component(path, project_dir)?;
-                Ok(format!("file://{}", canonical.display()))
-            }
-        }
-    }
 }
 
 impl std::fmt::Display for AdapterSelector {

@@ -13,7 +13,7 @@ const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--v
 const BUILTIN_PATHS: &[[&str; 1]] = &[["completions"]];
 
 // Each skill's flags validate against its single wrapped verb.
-const SKILL_VERBS: &[(&str, [&str; 1])] = &[("init", ["init"])];
+const SKILL_VERBS: &[(&str, [&str; 1])] = &[("specify", ["specify"])];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")

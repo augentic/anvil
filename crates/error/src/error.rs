@@ -6,10 +6,6 @@ use std::borrow::Cow;
 #[derive(Debug, thiserror::Error)]
 #[expect(missing_docs, reason = "variant-level docs cover self-explanatory error fields")]
 pub enum Error {
-    /// The `.emery/project.yaml` file is missing.
-    #[error("not-initialized: .emery/project.yaml not found")]
-    NotInitialized,
-
     /// Catch-all with a stable kebab-case code.
     ///
     /// Promote recurring, stable call shapes to dedicated variants.
@@ -27,10 +23,6 @@ pub enum Error {
     /// Findings are emitted separately; construct with [`Self::validation_failed`].
     #[error("{code}: {detail}")]
     Validation { code: Cow<'static, str>, detail: String },
-
-    /// The installed CLI version is older than the project floor.
-    #[error("emery version {found} is older than the project floor {required}; upgrade the CLI")]
-    CliTooOld { required: String, found: String },
 
     /// The CLI is older than an adapter's declared compatibility floor.
     ///
@@ -73,16 +65,10 @@ impl Error {
     #[must_use]
     pub fn hint(&self) -> Option<&'static str> {
         match self {
-            Self::NotInitialized => Some(
-                "run `emery init <adapter>` to scaffold .emery/ first, or pass `--change-dir <dir>` to select a detached change home explicitly",
-            ),
             Self::ArtifactNotFound {
                 kind: "plan.yaml", ..
             } => Some(
                 "author a plan first: run /emery:plan, or `emery plan author <name> --from <dir> --wave <id>`",
-            ),
-            Self::CliTooOld { .. } => Some(
-                "update the installed binary through its install channel: `brew upgrade emery` (or `cargo install --git https://github.com/augentic/emery --locked`), then rerun the command",
             ),
             Self::AdapterCliTooOld { .. } => Some(
                 "update the installed binary through its install channel: `brew upgrade emery` (or `cargo install --git https://github.com/augentic/emery --locked`); if the adapter itself is stale instead, `emery adapter upgrade <name>` pulls its newest published version",
@@ -104,8 +90,8 @@ impl Error {
                 "plan-ownership-overlap" => Some(
                     "quiesce affected work, then apply the inert ownership proposal with `emery plan amend --proposal <digest>`",
                 ),
-                "init-source-required" => Some(
-                    "`emery init <adapter>...` scaffolds the project over its source bindings.\nsee: docs/init.md",
+                "specify-source-required" => Some(
+                    "`emery specify <adapter>...` generates the spec over the sources named on the invocation; there is no persisted binding list",
                 ),
                 "slice-claim-conflict" => Some(
                     "claim a different slice, or wait for the current owner to release / retract their claim",
@@ -117,7 +103,7 @@ impl Error {
                     "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/change/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
                 ),
                 "change-home-unanchored" => Some(
-                    "run inside a product checkout (or `emery init` one), or pass `--change-dir <dir>` to select a detached change home explicitly",
+                    "run inside a product checkout, or pass `--change-dir <dir>` to select a detached change home explicitly",
                 ),
                 _ => None,
             },
@@ -129,11 +115,9 @@ impl Error {
     #[must_use]
     pub fn variant_str(&self) -> Cow<'static, str> {
         match self {
-            Self::NotInitialized => Cow::Borrowed("not-initialized"),
             Self::Diag { code, .. } => Cow::Borrowed(*code),
             Self::Argument { .. } => Cow::Borrowed("argument"),
             Self::Validation { code, .. } => code.clone(),
-            Self::CliTooOld { .. } => Cow::Borrowed("emery-version-too-old"),
             Self::AdapterCliTooOld { .. } => Cow::Borrowed("adapter-cli-too-old"),
             Self::ArtifactNotFound { .. } => Cow::Borrowed("artifact-not-found"),
             Self::Filesystem { op, .. } => Cow::Owned(format!("filesystem-{op}")),
@@ -161,6 +145,9 @@ impl Error {
 
 fn diag_hint(code: &str) -> Option<&'static str> {
     match code {
+        "spec-not-generated" => {
+            Some("run `emery specify <adapter>...` to commit a generation, then re-run show")
+        }
         "plan-has-outstanding-work" => {
             Some("complete or drop the listed entries, or rerun with --force to archive anyway")
         }

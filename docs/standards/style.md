@@ -77,5 +77,5 @@ Comments — doc comments and `//` line comments alike — describe what the cod
 //! the pre-cutover name was `charter`. To avoid the
 //! foo → bar → foo cycle we re-export `Layout` from here.
 // GOOD
-//! Resolves project layout and `project.yaml` for every command.
+//! Resolves the deployed preopen layout for every command.
 ```

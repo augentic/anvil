@@ -136,7 +136,7 @@ pub async fn locate<S: StateStore + BlobStore>(
                 code: "adapter-not-found",
                 detail: format!(
                     "adapter `{name}@{version}` (axis `{axis}`) is not installed in the global \
-                     store at {}; seed a local component with `emery init \
+                     store at {}; seed a local component with `emery specify \
                      <path/to/{name}.wasm>` (the explicit install verb arrives with the \
                      distribution surface)",
                     store_reference(&object),
@@ -156,8 +156,8 @@ pub async fn locate<S: StateStore + BlobStore>(
         code: "adapter-not-found",
         detail: format!(
             "adapter `{name}` (axis `{axis}`) is not in the project component cache at \
-             {ADAPTERS_CONTAINER}/{object}; seed it with `emery init <path/to/{name}.wasm>` or \
-             pin a published version (`emery:{name}@<semver>`)",
+             {ADAPTERS_CONTAINER}/{object}; seed it with `emery specify <path/to/{name}.wasm>` \
+             or pin a published version (`emery:{name}@<semver>`)",
         ),
     })
 }

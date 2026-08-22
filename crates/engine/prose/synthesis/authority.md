@@ -2,7 +2,7 @@
 
 Every Evidence document carries one closed `authority` class. Highest wins:
 
-1. **`intent`** — inline operator directives bound at `emery init --value`.
+1. **`intent`** — inline operator directives bound at `emery specify --value`.
 2. **`documentation`** — written product or technical intent the operator supplied.
 3. **`behaviour`** — what legacy code actually does (code, captures, observation sources).
 

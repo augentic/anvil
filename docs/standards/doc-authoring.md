@@ -128,9 +128,9 @@ Read [What is Emery?](orientation/index.md)…
 ```html
 <div class="tutorial-step">
 <span class="step-label">Step 01</span>
-<h3 class="step-title">Initialise the project</h3>
+<h3 class="step-title">Generate the specification</h3>
 
-Run once per project: `/emery:init omnia`
+Run from the project root: `/emery:specify omnia`
 </div>
 ```
 
@@ -169,8 +169,8 @@ Optional `variant=` values: `gate`, `gotcha`, `success`, `unchanged`. Omit `vari
 ### Tutorial step
 
 ```markdown
-\{{#template templates/tutorial-step-open.md num=01 title=Initialise the project}}
-Run once per project: `/emery:init omnia`
+\{{#template templates/tutorial-step-open.md num=01 title=Generate the specification}}
+Run from the project root: `/emery:specify omnia`
 \{{#template templates/tutorial-step-close.md}}
 ```
 
@@ -277,7 +277,7 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 
 | Type                | Exemplar                                                | Key components                                           |
 | ------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
-| **Reference**       | [`reference/cli/init.md`](../reference/cli/init.md)     | intro, verb cheat-sheet table, synopsis blocks, see-also |
+| **Reference**       | [`reference/cli/specify.md`](../reference/cli/specify.md) | intro, verb cheat-sheet table, synopsis blocks, see-also |
 | **Section landing** | [`reference/index.md`](../reference/index.md)           | hero, card-grid, see-also                                 |
 
 ### CLI verb template

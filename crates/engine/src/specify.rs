@@ -10,13 +10,24 @@ use omnia_guest::{BlobStore, Model, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
-use crate::handler::{Render, RequestContext};
+use crate::handler::{ExecutionPaths, Render};
 use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
 
-/// Input for `emery specify`.
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
-pub struct SpecifyInput;
+/// Input for `emery specify` — the run's source bindings.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct SpecifyInput {
+    /// Source adapters bound as workspace-backed sources.
+    #[serde(default)]
+    pub adapters: Vec<String>,
+    /// Value-backed source bindings, each `<adapter>=<text>`.
+    #[serde(default)]
+    pub values: Vec<String>,
+    /// Path of an operator-owned `sources.toml` carrying the bindings.
+    #[serde(default)]
+    pub sources: Option<String>,
+}
 
 /// Successful `emery specify` result.
 #[derive(Debug, Serialize)]
@@ -70,12 +81,15 @@ impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Spe
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let SpecifyInput = input;
-        let request = RequestContext::load(context.provider).await?;
-        let paths = request.paths();
-        let project = request.project();
+        let SpecifyInput {
+            adapters,
+            values,
+            sources,
+        } = input;
+        let paths = ExecutionPaths::deployed();
+        let bindings = crate::sources::bindings(&adapters, &values, sources.as_deref())?;
 
-        let sets = extract_all(context.provider, project, paths).await?;
+        let sets = extract_all(context.provider, &bindings, &paths).await?;
         let rows = reconcile(&sets);
         let documents = synthesise(context.provider, &sets, &rows).await?;
 

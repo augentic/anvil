@@ -8,7 +8,7 @@ Do not put orchestration, synthesis, validation, or code-generation prose in ski
 
 | Plugin | Directory | Prefix | Role |
 | ------ | --------- | ------ | ---- |
-| Emery | `plugins/emery/` | `/emery:` | The surviving wrapper: `init`. The v1 workflow skills are archived at tag `v1` (ADR-0008) |
+| Emery | `plugins/emery/` | `/emery:` | The surviving wrapper: `specify`. The v1 workflow skills are archived at tag `v1` (ADR-0008) |
 
 Layout:
 
@@ -34,7 +34,7 @@ From the repository root:
 cursor-agent --plugin-dir plugins/emery
 ```
 
-That loads `plugins/emery/` instead of the marketplace copy. Omit it to use the published marketplace plugin. Then run `/emery:init` in chat as usual.
+That loads `plugins/emery/` instead of the marketplace copy. Omit it to use the published marketplace plugin. Then run `/emery:specify` in chat as usual.
 
 Skills need a real binary on `PATH`:
 
@@ -50,7 +50,7 @@ Reinstall when you change the CLI.
 | `plugins/emery/skills/*/SKILL.md` | `cursor-agent --plugin-dir plugins/emery` (no rebuild)                           |
 | Rust CLI / guest orchestrations  | `cargo install --path . --locked`, then use skills or call `emery …` directly |
 
-For a dry run without Cursor, call the same verb the skill wraps (`emery init`) after install.
+For a dry run without Cursor, call the same verb the skill wraps (`emery specify`) after install.
 
 ## Publishing a new Cursor plugin
 

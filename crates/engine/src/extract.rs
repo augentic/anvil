@@ -7,8 +7,8 @@ use emery_error::Error;
 use omnia_guest::{BlobStore, StateStore};
 
 use crate::handler::ExecutionPaths;
-use crate::project::{BindingContent, Project, SourceBinding};
-use crate::resolve::{AdapterSelector, Axis, RoutedId, metadata, resolver};
+use crate::resolve::{AdapterSelector, Axis, RoutedId, ensure, metadata};
+use crate::sources::{BindingContent, SourceBinding};
 
 // On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
@@ -39,19 +39,22 @@ pub struct SourceSet {
     pub claims: Vec<Claim>,
 }
 
-/// Resolves, extracts, and validates every source binding.
+/// Ensures, extracts, and validates every source binding.
+///
+/// Ensure runs here — a local component mirrors into the cache on the
+/// first `specify` that names it.
 ///
 /// # Errors
 ///
-/// Propagates resolution, seam, and [`validate_set`] failures.
+/// Propagates ensure, resolution, seam, and [`validate_set`] failures.
 pub async fn extract_all<P: Source + StateStore + BlobStore>(
-    provider: &P, project: &Project, paths: &ExecutionPaths,
+    provider: &P, bindings: &[SourceBinding], paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
-    let component = resolver::Component::new(metadata::runner(provider));
-    let mut sets = Vec::with_capacity(project.sources.len());
-    for binding in &project.sources {
+    let mut sets = Vec::with_capacity(bindings.len());
+    for binding in bindings {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let resolved = component.resolve_source(&selector, provider, paths).await?;
+        let resolved =
+            ensure::source(metadata::runner(provider), &selector, provider, paths).await?;
         let id = RoutedId::new(
             Axis::Source,
             resolved.manifest.name.clone(),

@@ -169,3 +169,26 @@ async fn dangling_pointer_fails() {
         home.current().await.expect_err("a dangling pointer is corruption, not an empty result");
     assert!(err.to_string().contains("spec-home-corrupt"), "typed failure: {err}");
 }
+
+// The fail-closed read behind `emery show`.
+#[tokio::test]
+async fn current_set_reads_documents() {
+    let store = Memory::default();
+    let home = Home::new(&store);
+    assert!(
+        home.current_set().await.expect("empty home reads clean").is_none(),
+        "no generation is `None`, never an error"
+    );
+
+    let committed = commit(&home, &set("# Spec\n")).await;
+    let (current, read) = home.current_set().await.expect("read").expect("committed");
+    assert_eq!(current, committed);
+    assert_eq!(read, set("# Spec\n"), "the committed set reads back verbatim");
+
+    store.insert_state("spec/current", b"0123456789abcdef\n");
+    let err = home
+        .current_set()
+        .await
+        .expect_err("a dangling pointer is corruption, not an empty result");
+    assert!(err.to_string().contains("spec-home-corrupt"), "typed failure: {err}");
+}

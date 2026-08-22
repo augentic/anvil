@@ -48,14 +48,14 @@ Density caps are **review only** — clippy and rustfmt cannot express them. The
 
 ```rust
 // BAD
-//! Per the workspace split 2.9 ("Init wires components, not adapters"),
-//! `init` writes only the per-project skeleton — `project.yaml` plus
-//! the `.emery/` tree. The pre-Phase-3.7 filename was `charter.md`;
+//! Per the workspace split 2.9 ("Specify wires components, not adapters"),
+//! `specify` commits only the generation documents — `spec.md` plus
+//! `design.md`. The pre-Phase-3.7 filename was `charter.md`;
 //! Historical rename detail belongs in git history, not module docs.
 
 // GOOD
-//! Scaffolds `.emery/` plus `project.yaml`. Later artifacts are
-//! minted by their owning verbs, not by `init`.
+//! Commits `spec.md` and `design.md` as one generation. Other state
+//! is minted by its owning verbs, not by `specify`.
 ```
 
 The composition-root failure mode is the essay that restates architecture and hides the tip. Collapse the essay; keep the tip at the site that needs it:
@@ -215,7 +215,7 @@ A dedicated typed variant remains correct for entries that already meet the crit
 
 YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `emery_error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, emery_error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
 
-Writes that must not be observed mid-update use the shared atomic helpers in `emery_artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (e.g. `project.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
+Writes that must not be observed mid-update use the shared atomic helpers in `emery_artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read. See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
 
 ## Module layout
 

@@ -243,6 +243,30 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Ok(Some(Committed { id }))
     }
 
+    /// Returns the current generation and its complete document set,
+    /// or `None` before the first commit.
+    ///
+    /// # Errors
+    ///
+    /// Returns `spec-home-corrupt` for a dangling, incomplete, or
+    /// unreadable generation. Propagates read failures.
+    pub async fn current_set(&self) -> Result<Option<(Committed, SpecSet)>, Error> {
+        let Some(committed) = self.current().await? else {
+            return Ok(None);
+        };
+        let Some((_, set)) = self.load(&committed.id).await else {
+            return Err(Error::Diag {
+                code: "spec-home-corrupt",
+                detail: format!(
+                    "the generation pointer names `{}` but its documents cannot be read; re-run \
+                     `emery specify` to commit a fresh generation",
+                    committed.id
+                ),
+            });
+        };
+        Ok(Some((committed, set)))
+    }
+
     /// Observes CAS input and the outgoing set without failing.
     ///
     /// Corrupt or unreadable state suppresses only the advisory diff;

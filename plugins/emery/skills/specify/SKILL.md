@@ -1,0 +1,37 @@
+---
+name: emery-specify
+description: Generate a specification by invoking `emery specify` over the named sources and relaying its output. Use whenever the operator wants to generate or regenerate `spec.md` / `design.md`.
+argument-hint: <adapter>
+---
+
+# Specify Skill
+
+`emery specify` is the one generate verb: it resolves the named source adapters (mirroring a local component into the project cache), extracts, reconciles, synthesises, and commits one generation behind the `current` pointer. Nothing about the binding list persists between runs — repeat the sources on every invocation, or point at an operator-owned `sources.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
+
+## Invocation
+
+1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling. Install the latest prebuilt release via Homebrew, or from source; an adapter whose declared floor outruns the installed binary fails typed later (`adapter-cli-too-old`, exit 3) with the same reinstall command as its hint:
+
+```bash
+brew tap augentic/tap
+brew install emery
+# or: cargo install --git https://github.com/augentic/emery --locked
+```
+
+Then run `emery --version --quiet` and stop on failure.
+
+2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a `sources.toml` passes it instead with `--sources <path>` — never together with positional adapters or `--value` (mixing fails typed, exit 2).
+3. **Invoke**:
+
+```bash
+emery specify <adapter>... [--value <adapter>=<text>] --quiet
+# or: emery specify --sources <path> --quiet
+```
+
+Specify dispatches model judgment and can take a while on large workspaces; it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).
+
+## Relay
+
+- Surface the CLI output verbatim — the success envelope names the committed generation and the re-mine diff against the superseded one.
+- Review is `emery show spec` / `emery show design` — never read or edit `.emery/` state by hand.
+- On non-zero exit, surface the structured error and stop — never hand-roll spec documents, and never pre-populate the project component cache by hand.

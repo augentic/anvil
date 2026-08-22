@@ -12,7 +12,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `init` → `specify` journey (`tests/source.rs`) over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage seam) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
+The fast rung is **native kernel and wire coverage**: `cargo make test` drives the pure engine kernels (reconciliation, the extras gate, the output home) through their public functions with scripted doubles, the CLI wire contract (grammar, exit codes, the C3 HTTP refusal) through the transport router over an inert provider, and the in-process `specify` → `show` journey (`tests/source.rs`) over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage seam) — engine orchestration without a built component. It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
 
 Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage seam (design/portable-storage.md steps 1–2), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities — the `wasi:keyvalue`/`wasi:blobstore` imports in deployment, bound host-side to the durable `omnia-filesystem` store — and the native suites script them with the shared in-memory store (`crates/engine/tests/support/storage.rs`, `#[path]`-included per suite). No suite changes the process working directory, and no suite asserts an on-disk layout — the backing is host policy, exercised on the live rung, not in tests. Operator-supplied inputs (a local `.wasm` component) stay real files in a `tempfile::TempDir`.
 
@@ -85,7 +85,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 ## Assertion ownership
 
 - A behavior reducible to a crate API, CLI result, filesystem predicate, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its seam.
-- Pure kernel behavior belongs to the native suites; `init` / `specify` orchestration belongs to `tests/source.rs`. Name the seam an assertion owns before writing it.
+- Pure kernel behavior belongs to the native suites; `specify` / `show` orchestration belongs to `tests/source.rs`. Name the seam an assertion owns before writing it.
 
 ## Test naming
 

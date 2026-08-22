@@ -1,4 +1,4 @@
-//! In-process `init` → `specify` journey over scripted capabilities.
+//! In-process `specify` → `show` journey over scripted capabilities.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -38,16 +38,16 @@ async fn gen_spec() {
         storage: Arc::new(Memory::default()),
     };
 
-    cli_exec(&provider, &["emery", "init", component.to_str().expect("utf-8 path")]).await;
-    let record = provider.storage.state("project.yaml").expect("project record committed");
-    assert!(String::from_utf8_lossy(&record).contains("key: source"), "the binding is recorded");
+    let component = component.to_str().expect("utf-8 path");
+
+    // One `specify` ensures, mirrors, extracts, and commits — no prior verb.
+    cli_exec(&provider, &["emery", "specify", component]).await;
     assert_eq!(
         provider.storage.object("adapters", "source.wasm").as_deref(),
         Some(b"\0asm-stub".as_slice()),
         "the component is mirrored into the cache container"
     );
-
-    cli_exec(&provider, &["emery", "specify"]).await;
+    assert!(provider.storage.state("project.yaml").is_none(), "no project record exists");
     let pointer = provider.storage.state("spec/current").expect("current");
     let id = String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string();
     let spec =
@@ -57,7 +57,13 @@ async fn gen_spec() {
         provider.storage.object("spec", &format!("generations/{id}/design.md")).expect("design.md");
     assert!(!design.is_empty());
 
-    let resp = cli_exec(&provider, &["emery", "specify"]).await;
+    // Review is `show`: text stdout is the stored document, byte for byte.
+    let shown = cli_exec(&provider, &["emery", "show", "spec"]).await;
+    assert_eq!(shown.stdout, spec, "show renders the committed spec.md alone");
+    let shown = cli_exec(&provider, &["emery", "show", "design"]).await;
+    assert_eq!(shown.stdout, design, "show renders the committed design.md alone");
+
+    let resp = cli_exec(&provider, &["emery", "specify", component]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("none (byte-stable)"), "{stdout}");
 

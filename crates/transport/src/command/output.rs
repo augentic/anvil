@@ -78,7 +78,7 @@ impl From<Exit> for ExitCode {
 impl From<&Error> for Exit {
     fn from(err: &Error) -> Self {
         match err {
-            Error::CliTooOld { .. } | Error::AdapterCliTooOld { .. } => Self::VersionTooOld,
+            Error::AdapterCliTooOld { .. } => Self::VersionTooOld,
             Error::Validation { .. } => Self::ValidationFailed,
             Error::Argument { .. } => Self::ArgumentError,
             _ => Self::GenericFailure,

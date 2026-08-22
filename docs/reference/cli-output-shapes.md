@@ -6,7 +6,7 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 - `--format json` responses are a **flat body**: every successful body is a single JSON object carrying the command-specific fields **at the top level** — there is no `ok` discriminant, no `data` wrapper, and no top-level envelope-version stamp.
 - Failures keep the same flat shape with three extra top-level keys:
-  - `error` — a **kebab-case discriminant string** (e.g. `"init-source-required"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the exit-code table.
+  - `error` — a **kebab-case discriminant string** (e.g. `"specify-source-required"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the exit-code table.
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise.
@@ -17,31 +17,18 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 Every `Render` impl follows one convention so operators can scan any command's output the same way:
 
-- **Result line first, lowercase, verb-first**: `initialized project`.
-- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  config: .emery/project.yaml`.
+- **Result line first, lowercase, verb-first**: `committed generation 9f8e7d6c…`.
+- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  sources: 3`.
 - **Names in backticks**, paths bare.
 - **No trailing periods** on result or detail lines.
 - **`hint:` is recovery guidance** (what to fix); **`resume:` is the literal next command** (what to run). A line is one or the other, never both.
 - **Every empty state prints a lowercase line** — silence is never the empty rendering.
 
+One documented exception: `emery show` renders the document body alone in text mode — no result line — so its stdout pipes and redirects as the document itself. Its generation id rides the JSON envelope.
+
 ## Shapes
 
 The examples below are hand-curated illustrations of the happy path; the accept/reject variant set is exercised by the integration suites under `crates/*/tests/`.
-
-### `emery init`
-
-The success body's `mode` is the closed run discriminant (`scaffolded` | `already-initialized` | `upgraded`).
-
-```json
-{
-  "mode": "scaffolded",
-  "config-path": "/work/app/.emery/project.yaml",
-  "sources": ["documentation", "intent"],
-  "emery-version": "0.38.0"
-}
-```
-
-`emery init` with no source fails with `error: "init-source-required"` (exit 2). A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"` (exit 2).
 
 ### `emery specify`
 
@@ -64,7 +51,21 @@ The success body names the committed generation and its reviewable set:
 
 `diff` is the re-mine diff against the superseded generation (ADR-0010): the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
-Outside an initialised project the verb fails with `error: "not-initialized"` (exit 1). Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
+`emery specify` with no source fails with `error: "specify-source-required"` (exit 2); mixing `--sources` with positional adapters or `--value` fails with `error: "argument"` (exit 2). A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"`. Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
+
+### `emery show <spec|design>`
+
+The success body wraps the document with its generation id; text mode is the document body alone (see the exception above).
+
+```json
+{
+  "generation": "9f8e7d6c…",
+  "document": "spec",
+  "body": "# Specification\n…"
+}
+```
+
+Before any generation is committed the verb fails with `error: "spec-not-generated"` (exit 1); a pointer naming missing documents fails with `error: "spec-home-corrupt"` (exit 1).
 
 ### `emery completions <shell>`
 
@@ -76,8 +77,8 @@ Every failing verb emits the same flat `ErrorBody` on stderr:
 
 ```json
 {
-  "error": "init-source-required",
-  "message": "emery init requires at least one source adapter",
+  "error": "specify-source-required",
+  "message": "specify-source-required: emery specify requires at least one source: …",
   "exit-code": 2
 }
 ```
