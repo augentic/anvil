@@ -23,8 +23,7 @@ pub const CACHE_MOUNT: &str = ".emery-cache";
 /// never I/O.
 pub const STORE_MOUNT: &str = "/emery-store";
 
-/// Blobstore container of the project component cache
-/// (`<project-cache>/adapters/` under the filesystem backing).
+/// Blobstore container of the project component cache.
 pub const ADAPTERS_CONTAINER: &str = "adapters";
 
 /// Blobstore container of the global adapter store.

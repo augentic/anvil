@@ -8,8 +8,11 @@ cfg_if::cfg_if! {
         use std::sync::Arc;
 
         use anyhow::Context as _;
+        use omnia_filesystem::Client as Filesystem;
         use omnia_testkit::model::Scripted;
+        use omnia_wasi_blobstore::{Container, WasiBlobstore, WasiBlobstoreCtx};
         use omnia_wasi_http::{HttpDefault, WasiHttp};
+        use omnia_wasi_keyvalue::{Bucket, WasiKeyValue, WasiKeyValueCtx};
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
@@ -38,12 +41,63 @@ cfg_if::cfg_if! {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
+                WasiKeyValue: ProjectStore,
+                WasiBlobstore: ProjectStore,
             }
         });
 
         fn cache_dir() -> &'static str {
             drop(std::fs::create_dir_all(".emery-cache"));
             ".emery-cache"
+        }
+
+        // The shipped binary's storage binding, reproduced for the
+        // journey host: a durable filesystem store rooted at `.emery`
+        // under the invocation directory, engine blob containers
+        // created at connect (see `src/main.rs`).
+        const STORE_ROOT: &str = ".emery";
+
+        #[derive(Clone, Debug)]
+        struct ProjectStore(Filesystem);
+
+        impl omnia::Backend for ProjectStore {
+            type ConnectOptions = omnia::NoOptions;
+
+            async fn connect_with(_options: omnia::NoOptions) -> anyhow::Result<Self> {
+                let client = Filesystem::open(STORE_ROOT)?;
+                for container in [
+                    emery_engine::home::SPEC_CONTAINER,
+                    emery_engine::handler::ADAPTERS_CONTAINER,
+                    emery_engine::handler::STORE_CONTAINER,
+                ] {
+                    drop(client.create_container(container.to_string()).await?);
+                }
+                Ok(Self(client))
+            }
+        }
+
+        impl WasiKeyValueCtx for ProjectStore {
+            fn open_bucket(&self, identifier: String) -> FutureResult<Arc<dyn Bucket>> {
+                self.0.open_bucket(identifier)
+            }
+        }
+
+        impl WasiBlobstoreCtx for ProjectStore {
+            fn create_container(&self, name: String) -> FutureResult<Arc<dyn Container>> {
+                self.0.create_container(name)
+            }
+
+            fn get_container(&self, name: String) -> FutureResult<Arc<dyn Container>> {
+                self.0.get_container(name)
+            }
+
+            fn delete_container(&self, name: String) -> FutureResult<()> {
+                self.0.delete_container(name)
+            }
+
+            fn container_exists(&self, name: String) -> FutureResult<bool> {
+                self.0.container_exists(name)
+            }
         }
 
         // script directory: each file is one model answer.

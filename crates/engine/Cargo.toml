@@ -30,7 +30,6 @@ emery-prose.workspace = true
 
 [dev-dependencies]
 omnia-testkit.workspace = true
-tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints]

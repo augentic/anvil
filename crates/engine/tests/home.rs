@@ -1,17 +1,10 @@
 //! Output-home integration: the generation-pointer commit contract at
-//! the crate's public surface — semantics over the scripted in-memory
-//! store, and the byte-for-byte on-disk layout over the filesystem
-//! [`Disk`] backing.
+//! the crate's public surface, over the scripted in-memory store.
 
 #[path = "support/storage.rs"]
 mod storage;
 
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-
 use emery_engine::home::{Diff, Home, SpecSet};
-use emery_engine::storage::Disk;
 use storage::Memory;
 
 fn set(spec: &str) -> SpecSet {
@@ -169,65 +162,4 @@ async fn dangling_pointer_fails() {
     let err =
         home.current().await.expect_err("a dangling pointer is corruption, not an empty result");
     assert!(err.to_string().contains("spec-home-corrupt"), "typed failure: {err}");
-}
-
-// Every file under `dir` by relative path and bytes.
-fn snapshot(dir: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
-    fn walk(root: &Path, dir: &Path, tree: &mut BTreeMap<PathBuf, Vec<u8>>) {
-        for entry in fs::read_dir(dir).expect("read dir") {
-            let path = entry.expect("dir entry").path();
-            if path.is_dir() {
-                walk(root, &path, tree);
-            } else {
-                let relative = path.strip_prefix(root).expect("under root").to_path_buf();
-                tree.insert(relative, fs::read(&path).expect("read file"));
-            }
-        }
-    }
-    let mut tree = BTreeMap::new();
-    walk(dir, dir, &mut tree);
-    tree
-}
-
-// The "no observable change" claim, tested: the filesystem backing
-// reproduces the pre-seam `.emery/spec/` tree byte-for-byte —
-// pointer, generation documents, swap-prune, and crash-litter prune.
-#[tokio::test]
-async fn disk_layout_byte_for_byte() {
-    let project = tempfile::tempdir().expect("tempdir");
-    let disk = Disk::rooted(project.path());
-    let home = Home::new(&disk);
-
-    let committed = home.commit(&set("# Spec\n")).await.expect("commit");
-    let generation = project.path().join(".emery/spec/generations").join(&committed.id);
-    assert_eq!(fs::read_to_string(generation.join("spec.md")).expect("spec"), "# Spec\n");
-    assert_eq!(fs::read_to_string(generation.join("design.md")).expect("design"), "# Design\n");
-    let pointer = fs::read_to_string(project.path().join(".emery/spec/current")).expect("pointer");
-    assert_eq!(pointer, format!("{}\n", committed.id), "the pointer file is `<id>\\n`");
-
-    // An identical re-run leaves the tree byte-stable.
-    let before = snapshot(project.path());
-    home.commit(&set("# Spec\n")).await.expect("re-run commit");
-    assert_eq!(before, snapshot(project.path()), "an identical re-run must be byte-stable");
-
-    // Crash litter — a partial generation directory and a stray temp
-    // file at the spec root — is pruned on the next commit.
-    let partial = project.path().join(".emery/spec/generations/deadbeef");
-    fs::create_dir_all(&partial).expect("partial dir");
-    fs::write(partial.join("spec.md"), "half-written").expect("partial file");
-    fs::write(project.path().join(".emery/spec/.tmpXYZ"), "temp litter").expect("temp litter");
-
-    let second = home.commit(&set("# Spec v2\n")).await.expect("second commit");
-    assert!(!partial.exists(), "crash litter is pruned");
-    assert!(!project.path().join(".emery/spec/.tmpXYZ").exists());
-    assert!(!generation.exists(), "the superseded generation is pruned");
-    assert_eq!(
-        snapshot(project.path()).into_keys().collect::<Vec<_>>(),
-        [
-            PathBuf::from(".emery/spec/current"),
-            PathBuf::from(format!(".emery/spec/generations/{}/design.md", second.id)),
-            PathBuf::from(format!(".emery/spec/generations/{}/spec.md", second.id)),
-        ],
-        "exactly the pointer and the one named generation survive"
-    );
 }

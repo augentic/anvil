@@ -12,16 +12,11 @@ use serde::Serialize;
 use crate::storage;
 
 /// The blobstore container carrying the output home: generation
-/// documents under `generations/<id>/`. The filesystem backing roots
-/// it at `.emery/spec/`, the same tree [`CURRENT_KEY`] resolves into.
+/// documents under `generations/<id>/`.
 pub const SPEC_CONTAINER: &str = "spec";
 
 /// The keyvalue entry naming the current generation id.
 pub const CURRENT_KEY: &str = "spec/current";
-
-// The pointer's file name inside the spec tree: the filesystem
-// backing lists it beside the generations, and prune must keep it.
-const CURRENT_OBJECT: &str = "current";
 
 // The generation objects' parent inside the spec container.
 const GENERATIONS_DIR: &str = "generations";
@@ -269,10 +264,10 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Some((committed.id, SpecSet { spec, design }))
     }
 
-    // Keep only the `current` pointer and the generation it names —
-    // superseded generations and any temp-file or partial-directory
-    // litter a crash left behind are removed. The filesystem backing
-    // lists the pointer inside the same tree; it is never litter.
+    // Keep only the generation the pointer names — superseded
+    // generations and any partial-generation litter a crash left
+    // behind are removed. The pointer itself is a keyvalue entry,
+    // never an object in the container.
     async fn prune(&self, keep: &str) -> Result<(), Error> {
         let kept = format!("{GENERATIONS_DIR}/{keep}/");
         let names = self
@@ -281,7 +276,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
             .await
             .map_err(|err| storage::failed("listing the output home", &err))?;
         for name in names {
-            if name == CURRENT_OBJECT || name.starts_with(&kept) {
+            if name.starts_with(&kept) {
                 continue;
             }
             BlobStore::delete(self.store, SPEC_CONTAINER, &name)

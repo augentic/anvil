@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::storage;
 
-/// The keyvalue entry carrying the project record. The filesystem
-/// backing resolves it to `.emery/project.yaml`, the pre-seam path.
+/// The keyvalue entry carrying the project record.
 pub const PROJECT_KEY: &str = "project.yaml";
 
 /// In-memory representation of the spec generator's `project.yaml`.
