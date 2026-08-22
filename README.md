@@ -29,7 +29,6 @@ emery --version
 
 - **CLI reference:** [docs/reference/cli/index.md](docs/reference/cli/index.md)
 - **Contributing:** [docs/contributing/index.md](docs/contributing/index.md)
-- **Invariants:** [CONSTITUTION.md](CONSTITUTION.md)
 - **Full Developer Guide:** [emery.augentic.io](https://emery.augentic.io/) · [In-tree book source](docs/SUMMARY.md)
 
 ## Developing Emery (contributors)
