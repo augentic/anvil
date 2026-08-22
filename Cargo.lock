@@ -980,7 +980,6 @@ dependencies = [
  "serde-saphyr",
  "serde_json",
  "strum",
- "tempfile",
 ]
 
 [[package]]

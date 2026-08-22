@@ -31,7 +31,7 @@ cfg_if::cfg_if! {
                 },
             ],
             mounts: [
-                { name: ".", path: ".", writable: true },
+                { name: ".", path: "." },
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {

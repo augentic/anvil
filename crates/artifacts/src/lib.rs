@@ -1,5 +1,4 @@
-//! Lifecycle-free artifact types, parsers, and atomic writers.
+//! Lifecycle-free artifact types and parsers.
 
-pub mod atomic;
 pub mod evidence;
 pub mod spec;

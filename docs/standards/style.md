@@ -45,14 +45,14 @@ ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
 
 ## No traits for testability alone
 
-House rule — generic advice about abstracting dependencies for mockability does not apply here. Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` or the filesystem. When a stable in-tree boundary already exists — for example the `emery_artifacts::atomic` write envelope every `.emery/` YAML write goes through — use that instead of inventing a sibling trait pair.
+House rule — generic advice about abstracting dependencies for mockability does not apply here. Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` or the filesystem. When a stable in-tree boundary already exists — for example the storage capability pair (`omnia_guest::StateStore` / `BlobStore`) every engine-state write goes through, scripted in memory by native tests — use that instead of inventing a sibling trait pair.
 
 ```rust
-// BAD — trait pair that exists so MockProjectStore can swap in.
-trait ProjectStore { fn load(&self) -> Result<Project>; }
-struct RealProjectStore;
-// GOOD — write through the existing shared boundary.
-emery_artifacts::atomic::yaml_write(&path, &project)?;
+// BAD — trait pair that exists so MockGenerationStore can swap in.
+trait GenerationStore { fn load(&self) -> Result<SpecSet>; }
+struct RealGenerationStore;
+// GOOD — write through the existing capability boundary.
+store.cas(CURRENT_KEY, observed.as_deref(), id.as_bytes()).await?;
 ```
 
 ## Reach for the standard crate first
