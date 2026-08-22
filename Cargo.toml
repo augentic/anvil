@@ -39,7 +39,6 @@ emery-adapter.workspace = true
 emery-engine.workspace = true
 emery-error.workspace = true
 emery-transport.workspace = true
-jiff.workspace = true
 omnia-guest.workspace = true
 omnia-wasi-http.workspace = true
 wasip3.workspace = true
@@ -177,7 +176,6 @@ cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 clap_complete = "4.6.9"
 futures = "0.3.33"
-jiff = { version = "0.2.35", default-features = false, features = ["serde", "std"] }
 proptest = "1.11.0"
 schemars = "1.2.2"
 semver = { version = "1.0.28", features = ["serde"] }

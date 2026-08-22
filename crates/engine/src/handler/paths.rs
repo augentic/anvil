@@ -1,6 +1,6 @@
 //! [`ExecutionPaths`] — the project root plus artifact [`Locations`].
-//! Every path is a fixed constant relative to a named preopen;
-//! kernels read the value and never consult the environment.
+//! The root is a fixed constant relative to the `.` preopen; kernels
+//! read the value and never consult the environment.
 
 use std::path::{Path, PathBuf};
 
@@ -15,9 +15,9 @@ pub struct ExecutionPaths {
 }
 
 impl ExecutionPaths {
-    /// The deployed layout: `.` is the project-root mount and the
-    /// cache root is the named cache preopen — identical strings on
-    /// wasm32 (preopen table) and native (invocation directory).
+    /// The deployed layout: `.` is the project-root mount — the same
+    /// string on wasm32 (preopen table) and native (invocation
+    /// directory).
     #[must_use]
     pub fn deployed() -> Self {
         Self {
@@ -36,11 +36,5 @@ impl ExecutionPaths {
     #[must_use]
     pub const fn locations(&self) -> &Locations {
         &self.locations
-    }
-
-    /// The per-project derived cache directory.
-    #[must_use]
-    pub fn cache_dir(&self) -> PathBuf {
-        self.locations.cache_dir()
     }
 }

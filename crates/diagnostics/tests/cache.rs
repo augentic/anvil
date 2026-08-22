@@ -1,69 +1,45 @@
-//! Pure cache-math behavior: project-id stability, content digesting,
-//! and the verify-on-read digest sidecar — all root-parameterized, no
-//! environment involved.
-
-use std::path::Path;
+//! The verify-on-read sidecar format: digest math and sidecar-text
+//! parsing over the public bytes-in surface.
 
 use emery_diagnostics::cache::{
-    OciProvenance, StoreVerifyError, file_content_digest, project_id, read_store_meta,
-    read_store_provenance, verify_store_entry, write_store_meta,
+    OciProvenance, content_digest, recorded_digest, recorded_provenance,
 };
 
 #[test]
-fn project_ids_stable() {
-    let a = project_id(Path::new("/some/project/a"));
-    let b = project_id(Path::new("/some/project/b"));
-    assert_ne!(a, b);
-    assert_eq!(a, project_id(Path::new("/some/project/a")));
+fn content_digests_deterministic() {
+    let digest = content_digest(b"wasm-bytes-1");
+
+    assert!(digest.starts_with("sha256:"), "{digest}");
+    assert_eq!(digest, content_digest(b"wasm-bytes-1"));
+    assert_ne!(digest, content_digest(b"wasm-bytes-2"));
 }
 
 #[test]
-fn sidecar_verifies_content() {
-    let store = tempfile::tempdir().expect("store root");
-    let entry = store.path().join("demo-target@1.2.0.wasm");
-    let meta = store.path().join("demo-target@1.2.0.meta");
-    std::fs::write(&entry, b"\0asm-component").expect("write component");
+fn sidecar_parses_digest_and_provenance() {
+    let sidecar = "tree_digest: sha256:abc123\noci:\n  repository: ghcr.io/acme/adapters/demo\n  \
+                   manifest_digest: sha256:manifest\n  layer_digest: sha256:layer\n";
 
-    let digest = file_content_digest(&entry);
-    assert!(digest.starts_with("sha256:"));
-    let provenance = OciProvenance {
-        repository: "ghcr.io/augentic/emery-adapters/demo-target".to_string(),
-        manifest_digest: "sha256:manifest".to_string(),
-        layer_digest: "sha256:registry".to_string(),
-    };
-    write_store_meta(&meta, &digest, Some(&provenance)).expect("write sidecar");
-    assert_eq!(read_store_meta(&meta).as_deref(), Some(digest.as_str()));
-    assert_eq!(read_store_provenance(&meta), Some(provenance));
-    verify_store_entry(&entry, &meta).expect("unchanged entry verifies");
-
-    std::fs::write(&entry, b"\0asm-component-changed").expect("mutate component");
-    let failure = verify_store_entry(&entry, &meta).expect_err("drift must fail");
-    let StoreVerifyError::Mismatch(mismatch) = failure else {
-        panic!("expected a digest mismatch, got {failure:?}");
-    };
-    assert_eq!(mismatch.recorded, digest);
-    assert_eq!(mismatch.actual, file_content_digest(&entry));
+    assert_eq!(recorded_digest(sidecar).as_deref(), Some("sha256:abc123"));
+    assert_eq!(
+        recorded_provenance(sidecar),
+        Some(OciProvenance {
+            repository: "ghcr.io/acme/adapters/demo".to_string(),
+            manifest_digest: "sha256:manifest".to_string(),
+            layer_digest: "sha256:layer".to_string(),
+        })
+    );
 }
 
 #[test]
-fn missing_sidecar_fail() {
-    let store = tempfile::tempdir().expect("store root");
-    let entry = store.path().join("demo-target@1.2.0.wasm");
-    std::fs::write(&entry, b"\0asm-component").expect("write component");
-    let failure = verify_store_entry(&entry, &store.path().join("demo-target@1.2.0.meta"))
-        .expect_err("an entry without a sidecar is unverifiable");
-    assert_eq!(failure, StoreVerifyError::MissingSidecar);
+fn sidecar_without_provenance_parses() {
+    let sidecar = "tree_digest: sha256:abc123\n";
+
+    assert_eq!(recorded_digest(sidecar).as_deref(), Some("sha256:abc123"));
+    assert_eq!(recorded_provenance(sidecar), None);
 }
 
 #[test]
-fn unreadable_mismatch() {
-    // A missing (or unreadable) entry is an I/O refusal, not a digest
-    // drift — the two recoveries differ.
-    let store = tempfile::tempdir().expect("store root");
-    let entry = store.path().join("demo-target@1.2.0.wasm");
-    let meta = store.path().join("demo-target@1.2.0.meta");
-    write_store_meta(&meta, "sha256:recorded", None).expect("write sidecar");
-    let failure =
-        verify_store_entry(&entry, &meta).expect_err("a missing entry cannot be verified");
-    assert!(matches!(failure, StoreVerifyError::Unreadable(_)), "{failure:?}");
+fn malformed_sidecar_is_none() {
+    assert_eq!(recorded_digest("not: [a, sidecar"), None);
+    assert_eq!(recorded_digest(""), None);
 }

@@ -1,6 +1,6 @@
 # Portable storage and the human seam
 
-Status: **Draft** — working design, executed as the discrete steps in [§7](#7-execution-steps); the generation-set shrink prerequisite, the omnia prerequisite, and steps 1–2 have landed. Each step lands independently with the journey test green.
+Status: **Draft** — working design, executed as the discrete steps in [§7](#7-execution-steps); the generation-set shrink prerequisite, the omnia prerequisite, steps 1–2, and step 4 (which lands before step 3) have landed. Each step lands independently with the journey test green.
 
 ## 1. Motivation
 

@@ -36,7 +36,7 @@ Operations live in each domain module's `handlers` submodule beside its kernels.
 
 ## RequestContext and the deployed layout (C5)
 
-Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load(context.provider).await`: paths are constants relative to the named preopens (`.` is the project-root mount — the invocation directory natively — and `CACHE_MOUNT` the cache preopen), and the project record loads fail-closed (version floor included) exactly once through the provider's `StateStore` capability. Operations never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage seam in memory instead of chdir-ing into a tempdir.
+Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load(context.provider).await`: paths are constants relative to the `.` preopen (the project-root mount — the invocation directory natively), engine storage is named by the `Locations` key/container formulas, and the project record loads fail-closed (version floor included) exactly once through the provider's `StateStore` capability. Operations never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage seam in memory instead of chdir-ing into a tempdir.
 
 `emery init` is the one operation that runs before a project exists: it anchors at the raw `ExecutionPaths::deployed()` root instead of loading `RequestContext`.
 

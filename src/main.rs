@@ -26,7 +26,6 @@ cfg_if::cfg_if! {
             ],
             mounts: [
                 { name: ".", path: ".", writable: true },
-                { name: emery_engine::handler::CACHE_MOUNT, path: cache_dir(), writable: true },
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
@@ -37,11 +36,6 @@ cfg_if::cfg_if! {
                 WasiBlobstore: ProjectStore,
             }
         });
-
-        fn cache_dir() -> &'static str {
-            drop(std::fs::create_dir_all(".emery-cache"));
-            ".emery-cache"
-        }
 
         // The engine-state root under the invocation directory: the
         // filesystem backend serves `wasi:keyvalue` and `wasi:blobstore`

@@ -46,7 +46,7 @@ async fn gen_spec() {
     let record = provider.storage.state("project.yaml").expect("project record committed");
     assert!(String::from_utf8_lossy(&record).contains("key: source"), "the binding is recorded");
     assert_eq!(
-        provider.storage.object("components", "source.wasm").as_deref(),
+        provider.storage.object("adapters", "source.wasm").as_deref(),
         Some(b"\0asm-stub".as_slice()),
         "the component is mirrored into the cache container"
     );

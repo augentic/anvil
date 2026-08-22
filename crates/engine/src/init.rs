@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::handler::{ExecutionPaths, Render};
 use crate::project::{BindingContent, Project, SourceBinding};
-use crate::resolve::{AdapterSelector, ComponentMeta, ensure, metadata};
+use crate::resolve::{AdapterSelector, ensure, metadata};
 
 /// Wire input for `emery init` — the full argument surface.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -122,14 +122,7 @@ async fn run_upgrade<P: Source + StateStore + BlobStore>(
     let mut project = Project::load(provider).await?;
     for binding in &project.sources {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        ensure::source(
-            metadata::runner(provider),
-            &selector,
-            provider,
-            paths,
-            jiff::Timestamp::now(),
-        )
-        .await?;
+        ensure::source(metadata::runner(provider), &selector, provider, paths).await?;
     }
     project.emery_version = Some(env!("CARGO_PKG_VERSION").to_string());
     project.store(provider).await?;
@@ -139,27 +132,13 @@ async fn run_upgrade<P: Source + StateStore + BlobStore>(
 // Ensure one adapter on the source axis and shape its binding: the
 // key is the resolved adapter name; a local component persists its
 // canonical `file://` form so the selector value outlives the CWD.
-async fn bind<P: Source + BlobStore>(
+async fn bind<P: Source + StateStore + BlobStore>(
     value: &str, paths: &ExecutionPaths, content: BindingContent, provider: &P,
 ) -> Result<SourceBinding, Error> {
     let selector = AdapterSelector::parse(value)?;
-    let resolved = ensure::source(
-        metadata::runner(provider),
-        &selector,
-        provider,
-        paths,
-        jiff::Timestamp::now(),
-    )
-    .await?;
+    let resolved = ensure::source(metadata::runner(provider), &selector, provider, paths).await?;
     let key = resolved.manifest.name;
-    let adapter = match &selector {
-        AdapterSelector::Component { .. } => match ComponentMeta::load(provider, paths, &key).await
-        {
-            Some(meta) => meta.source,
-            None => selector.persist_value(paths.project_root())?,
-        },
-        _ => selector.persist_value(paths.project_root())?,
-    };
+    let adapter = selector.persist_value(paths.project_root())?;
     Ok(SourceBinding {
         key,
         adapter,

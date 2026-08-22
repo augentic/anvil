@@ -11,6 +11,5 @@ mod selector;
 
 pub use core::{Axis, Origin, ResolvedSource, SourceAdapter};
 
-pub use ensure::ComponentMeta;
 pub use routed::RoutedId;
 pub use selector::AdapterSelector;

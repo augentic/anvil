@@ -3,8 +3,6 @@
 //! Identity lives in the package reference, axis in the exported world;
 //! there is no on-disk manifest. Only the source axis is live.
 
-use std::path::PathBuf;
-
 use emery_error::Error;
 use serde::{Deserialize, Serialize};
 
@@ -55,22 +53,22 @@ impl Axis {
     }
 }
 
-/// Where an adapter component was located on disk. The carried path is
-/// the single `.wasm` component file.
+/// Where an adapter component was located in engine storage. The
+/// carried name is the single component object inside the variant's
+/// blobstore container.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterLocation {
-    /// Resolved from the global content-addressed adapter store entry
-    /// at `<store-root>/<name>@<version>.wasm` — the immutable,
-    /// version-keyed install target resolved through the carried
-    /// `Locations`. Probed whenever the selector carries a pinned
-    /// version.
-    Store(PathBuf),
-    /// Resolved from the project component cache
-    /// (`<project-cache>/components/<name>.wasm`) — the seeded mirror
-    /// a local-component init populated. Probed for bare-name
-    /// (unpinned) references and persisted component selectors; never
-    /// outside the carried cache placement.
-    Cache(PathBuf),
+    /// Resolved from the global content-addressed adapter store — the
+    /// immutable `<name>@<version>.wasm` object inside
+    /// [`crate::handler::STORE_CONTAINER`]. Probed whenever the
+    /// selector carries a pinned version.
+    Store(String),
+    /// Resolved from the project component cache — the seeded
+    /// `<name>.wasm` mirror inside
+    /// [`crate::handler::ADAPTERS_CONTAINER`] a local-component init
+    /// populated. Probed for bare-name (unpinned) references and
+    /// persisted component selectors.
+    Cache(String),
 }
 
 impl AdapterLocation {
@@ -83,18 +81,26 @@ impl AdapterLocation {
         }
     }
 
-    /// The component file path.
+    /// The component object name inside the location's container.
     #[must_use]
-    pub const fn path(&self) -> &PathBuf {
+    pub fn object(&self) -> &str {
         match self {
-            Self::Store(path) | Self::Cache(path) => path,
+            Self::Store(object) | Self::Cache(object) => object,
+        }
+    }
+
+    // The location's blobstore container.
+    pub(super) const fn container(&self) -> &'static str {
+        match self {
+            Self::Store(_) => crate::handler::STORE_CONTAINER,
+            Self::Cache(_) => crate::handler::ADAPTERS_CONTAINER,
         }
     }
 
     pub(super) fn origin(&self) -> Origin {
         Origin {
             label: self.label().to_string(),
-            reference: self.path().display().to_string(),
+            reference: format!("{}/{}", self.container(), self.object()),
         }
     }
 }

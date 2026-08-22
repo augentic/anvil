@@ -1,10 +1,8 @@
 //! Deployment-neutral source-adapter resolution and the component
 //! resolver the routed operations call directly.
 
-use std::path::PathBuf;
-
 use emery_error::Error;
-use omnia_guest::BlobStore;
+use omnia_guest::{BlobStore, StateStore};
 
 use super::core::{
     AdapterLocation, Axis, Origin, ResolvedSource, SourceAdapter, check_requires_emery, parse_floor,
@@ -38,8 +36,8 @@ impl<R: metadata::Runner> Component<R> {
     /// # Errors
     ///
     /// Preserves location, metadata, and compatibility failures.
-    pub async fn resolve_source<B: BlobStore>(
-        &self, selector: &AdapterSelector, blobs: &B, paths: &ExecutionPaths,
+    pub async fn resolve_source<S: StateStore + BlobStore>(
+        &self, selector: &AdapterSelector, store: &S, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
         if let AdapterSelector::Package { version, .. } = selector {
@@ -51,14 +49,14 @@ impl<R: metadata::Runner> Component<R> {
                 store_origin(&name, version, paths),
             );
         }
-        if dispatch_first(selector, &name, blobs, paths).await {
+        if dispatch_first(selector, &name, store, paths).await {
             let metadata = metadata::dispatch(&self.metadata, Axis::Source, &name, None)?;
             return source(&name, None, metadata, bare_origin(Axis::Source, &name));
         }
-        let location = locate(Axis::Source, &name, selector.version(), blobs, paths).await?;
+        let location = locate(Axis::Source, &name, selector.version(), store, paths).await?;
         let metadata = metadata::load(
             &self.metadata,
-            blobs,
+            store,
             &location,
             Axis::Source,
             &name,
@@ -87,23 +85,28 @@ async fn cached<B: BlobStore>(blobs: &B, name: &str, paths: &ExecutionPaths) -> 
 }
 
 // The store identity a package pin maps to, built from the carried
-// layout rather than a probed file: the origin names where the
-// deployment keeps the pin, not a file the caller read.
+// layout rather than a probed entry: the origin names where the
+// deployment keeps the pin, not bytes the caller read.
 fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -> Origin {
     Origin {
         label: "store".to_string(),
-        reference: paths.locations().store_entry(name, &version.to_string()).display().to_string(),
+        reference: store_reference(&paths.locations().store_object(name, &version.to_string())),
     }
 }
 
 // The origin of a bare dispatch-first resolve: the caller never sees
-// a component file (the store is host-owned with no guest mount), so
-// the origin carries the routed identity, not a path.
+// component bytes (the store is host-owned), so the origin carries
+// the routed identity, not a storage location.
 fn bare_origin(axis: Axis, name: &str) -> Origin {
     Origin {
         label: "store".to_string(),
         reference: super::routed::RoutedId::new(axis, name.to_string(), None).to_string(),
     }
+}
+
+// `<container>/<object>` display form of a store entry.
+fn store_reference(object: &str) -> String {
+    format!("{STORE_CONTAINER}/{object}")
 }
 
 /// Build a resolved source from provider metadata, enforcing its CLI floor.
@@ -127,14 +130,8 @@ pub fn source(
     })
 }
 
-/// Project component cache entry for `name`.
-#[must_use]
-pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathBuf {
-    paths.locations().component(name)
-}
-
-/// Locate the single component file for one adapter identity without
-/// dispatching metadata.
+/// Locate the single component object for one adapter identity
+/// without dispatching metadata.
 ///
 /// Probes the verified global store entry for a version pin, else the
 /// project component cache. Resolution is project-contained — no
@@ -145,15 +142,13 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 /// `adapter-not-found` when no probe hits; `adapter-sidecar-missing` /
 /// `adapter-digest-mismatch` / `adapter-store-unreadable` when a store
 /// entry fails verify-on-read.
-pub async fn locate<B: BlobStore>(
-    axis: Axis, name: &str, version: Option<&semver::Version>, blobs: &B, paths: &ExecutionPaths,
+pub async fn locate<S: StateStore + BlobStore>(
+    axis: Axis, name: &str, version: Option<&semver::Version>, store: &S, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
     if let Some(version) = version {
         let version = version.to_string();
-        let locations = paths.locations();
-        let entry = locations.store_entry(name, &version);
-        let object = locations.store_object(name, &version);
-        if !blobs.has(STORE_CONTAINER, &object).await.unwrap_or(false) {
+        let object = paths.locations().store_object(name, &version);
+        if !store.has(STORE_CONTAINER, &object).await.unwrap_or(false) {
             return Err(Error::Diag {
                 code: "adapter-not-found",
                 detail: format!(
@@ -161,49 +156,41 @@ pub async fn locate<B: BlobStore>(
                      store at {}; seed a local component with `emery init \
                      <path/to/{name}.wasm>` (the explicit install verb arrives with the \
                      distribution surface)",
-                    entry.display(),
+                    store_reference(&object),
                 ),
             });
         }
-        verify_store_entry(axis, name, &version, blobs, paths).await?;
-        return Ok(AdapterLocation::Store(entry));
+        verify_store_entry(axis, name, &version, store, paths).await?;
+        return Ok(AdapterLocation::Store(object));
     }
 
     // Bare shorthand and persisted local components share the seeded
     // project-cache probe; a local component resolves through its
     // mirror, so it survives removal of the operator's original file.
-    let entry = component_cache_entry(paths, name);
-    if blobs
-        .has(ADAPTERS_CONTAINER, &paths.locations().component_object(name))
-        .await
-        .unwrap_or(false)
-    {
-        return Ok(AdapterLocation::Cache(entry));
+    let object = paths.locations().component_object(name);
+    if store.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false) {
+        return Ok(AdapterLocation::Cache(object));
     }
     Err(Error::Diag {
         code: "adapter-not-found",
         detail: format!(
-            "adapter `{name}` (axis `{axis}`) is not in the project component cache at {}; seed \
-             it with `emery init <path/to/{name}.wasm>` or pin a published version \
-             (`emery:{name}@<semver>`)",
-            entry.display(),
+            "adapter `{name}` (axis `{axis}`) is not in the project component cache at \
+             {ADAPTERS_CONTAINER}/{object}; seed it with `emery init <path/to/{name}.wasm>` or \
+             pin a published version (`emery:{name}@<semver>`)",
         ),
     })
 }
 
-// Verify-on-read over the storage capability: fetch the sidecar and
-// the entry bytes, then compare digests in memory (the digest math
-// stays in `emery_diagnostics`). Fail-closed on every arm.
-async fn verify_store_entry<B: BlobStore>(
-    axis: Axis, name: &str, version: &str, blobs: &B, paths: &ExecutionPaths,
+// Verify-on-read over the storage capabilities: fetch the keyvalue
+// sidecar and the entry bytes, then compare digests in memory (the
+// digest math stays in `emery_diagnostics`). Fail-closed on every arm.
+async fn verify_store_entry<S: StateStore + BlobStore>(
+    axis: Axis, name: &str, version: &str, store: &S, paths: &ExecutionPaths,
 ) -> Result<(), Error> {
     let locations = paths.locations();
-    let entry = locations.store_entry(name, version);
-    let sidecar = blobs
-        .get(STORE_CONTAINER, &locations.store_meta_object(name, version))
-        .await
-        .ok()
-        .flatten();
+    let entry = store_reference(&locations.store_object(name, version));
+    let sidecar =
+        StateStore::get(store, &locations.store_meta_key(name, version)).await.ok().flatten();
     let recorded = sidecar.and_then(|bytes| {
         emery_diagnostics::cache::recorded_digest(&String::from_utf8_lossy(&bytes))
     });
@@ -211,21 +198,21 @@ async fn verify_store_entry<B: BlobStore>(
         return Err(Error::Diag {
             code: "adapter-sidecar-missing",
             detail: format!(
-                "store entry {} has no digest sidecar; unverifiable components are refused — \
-                 remove the entry and install `emery:{name}@{version}` again",
-                entry.display(),
+                "store entry {entry} has no digest sidecar; unverifiable components are refused \
+                 — remove the entry and install `emery:{name}@{version}` again",
             ),
         });
     };
     let unreadable = |detail: String| Error::Diag {
         code: "adapter-store-unreadable",
         detail: format!(
-            "adapter `{name}@{version}` (axis `{axis}`) store entry at {} cannot be read for \
-             verification: {detail}",
-            entry.display(),
+            "adapter `{name}@{version}` (axis `{axis}`) store entry at {entry} cannot be read \
+             for verification: {detail}",
         ),
     };
-    let bytes = match blobs.get(STORE_CONTAINER, &locations.store_object(name, version)).await {
+    let bytes = match BlobStore::get(store, STORE_CONTAINER, &locations.store_object(name, version))
+        .await
+    {
         Ok(Some(bytes)) => bytes,
         Ok(None) => return Err(unreadable("the entry vanished during verification".to_string())),
         Err(err) => return Err(unreadable(format!("{err:#}"))),
@@ -235,10 +222,7 @@ async fn verify_store_entry<B: BlobStore>(
         Ok(())
     } else {
         Err(digest_mismatch(
-            &format!(
-                "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
-                entry.display()
-            ),
+            &format!("adapter `{name}@{version}` (axis `{axis}`) store entry at {entry}"),
             "verify-on-read",
             &emery_diagnostics::cache::DigestMismatch { recorded, actual },
         ))

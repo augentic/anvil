@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use super::core::{AdapterLocation, Axis};
 use super::routed::RoutedId;
-use crate::handler::{ADAPTERS_CONTAINER, STORE_CONTAINER};
 
 /// A source adapter's metadata answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,16 +68,8 @@ struct MetadataCache {
 
 // The component's container and object name from its resolved
 // location: the sidecar cache lives beside the component it keys.
-fn slot(location: &AdapterLocation) -> (&'static str, String) {
-    let object = location
-        .path()
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    match location {
-        AdapterLocation::Store(_) => (STORE_CONTAINER, object),
-        AdapterLocation::Cache(_) => (ADAPTERS_CONTAINER, object),
-    }
+fn slot(location: &AdapterLocation) -> (&'static str, &str) {
+    (location.container(), location.object())
 }
 
 /// Dispatch metadata by routed id, with no component file access and
@@ -110,7 +101,7 @@ pub(super) async fn load<B: BlobStore>(
     let (container, component) = slot(location);
     // An unreadable component digests as empty, matching the pre-seam
     // file reader; the cache then simply never hits.
-    let bytes = blobs.get(container, &component).await.ok().flatten().unwrap_or_default();
+    let bytes = blobs.get(container, component).await.ok().flatten().unwrap_or_default();
     let digest = emery_diagnostics::cache::content_digest(&bytes);
     let cache_object = format!("{component}.metadata.json");
     if let Some(answer) = read_cache(blobs, container, &cache_object, &digest).await {
