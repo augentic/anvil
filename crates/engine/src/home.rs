@@ -1,12 +1,16 @@
 //! The output home — the one module owning every spec-set read/write:
 //! content-addressed generations behind one swapped `current` pointer,
 //! over the deployment's storage capabilities; reads fail closed.
+//!
+//! The naming shape — immutable objects under `generations/<digest>/`
+//! behind one small pointer key — is the ref-over-objects idiom a
+//! git-backed blobstore binding (layer 3) can adopt unchanged.
 
 use std::collections::BTreeMap;
 
 use emery_artifacts::spec::ast;
 use emery_error::Error;
-use omnia_guest::{BlobStore, StateStore};
+use omnia_guest::{BlobStore, CasError, StateStore};
 use serde::Serialize;
 
 use crate::storage;
@@ -73,6 +77,37 @@ impl SpecSet {
 pub struct Committed {
     /// The generation id the `current` pointer names.
     pub id: String,
+}
+
+/// The pointer state one run observed before committing.
+///
+/// The raw pointer bytes are the CAS expected value ([§3.2 of the
+/// portable-storage design]: absent → first id, or the outgoing id
+/// this run observed → incoming), so the commit never overwrites a
+/// pointer it did not see. The outgoing set is advisory input for the
+/// re-mine diff; one observation feeds both, so the diff and the swap
+/// always agree on the generation being superseded.
+///
+/// [§3.2 of the portable-storage design]: https://github.com/augentic/emery/blob/main/design/portable-storage.md
+#[derive(Clone, Debug)]
+pub struct Observation {
+    // The raw `current` bytes, `None` when the pointer is absent (or
+    // unreadable — then the CAS fails closed rather than clobbering).
+    pointer: Option<Vec<u8>>,
+    // The outgoing generation id and its complete set, for the
+    // re-mine diff; `None` when there is nothing readable to diff
+    // against.
+    outgoing: Option<(String, SpecSet)>,
+}
+
+impl Observation {
+    /// The observed outgoing generation id and its complete set, for
+    /// the re-mine diff; `None` when there is nothing readable to
+    /// diff against.
+    #[must_use]
+    pub fn into_outgoing(self) -> Option<(String, SpecSet)> {
+        self.outgoing
+    }
 }
 
 /// One re-mine diff: how an incoming spec set differs from the
@@ -181,16 +216,18 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     }
 
     /// Commit `set` as the current generation: write the complete
-    /// generation objects, swap the `current` pointer to them, then
-    /// prune everything the pointer no longer names (crash litter
-    /// from an interrupted earlier run included). A crash before the
+    /// generation objects, swap the `current` pointer to them by CAS
+    /// against the pointer bytes `observed`, then prune the
+    /// superseded generation the swap replaced. A crash before the
     /// swap leaves the previous set intact and current.
     ///
     /// # Errors
     ///
-    /// Propagates storage failures from the writes, the swap, or the
-    /// prune.
-    pub async fn commit(&self, set: &SpecSet) -> Result<Committed, Error> {
+    /// Fails typed with `spec-pointer-conflict` when the pointer no
+    /// longer holds the observed value — a concurrent `specify` swapped
+    /// first; this run never last-write-wins over it. Propagates
+    /// storage failures from the writes, the swap, or the prune.
+    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
         let id = set.id();
         for (name, body) in set.files() {
             self.store
@@ -198,11 +235,26 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
                 .await
                 .map_err(|err| storage::failed("committing a generation document", &err))?;
         }
-        self.store
-            .set(CURRENT_KEY, format!("{id}\n").as_bytes(), None)
-            .await
-            .map_err(|err| storage::failed("swapping the generation pointer", &err))?;
-        self.prune(&id).await?;
+        let value = format!("{id}\n");
+        match self.store.cas(CURRENT_KEY, observed.pointer.as_deref(), value.as_bytes()).await {
+            Ok(()) => {}
+            Err(CasError::Conflict(_)) => {
+                return Err(Error::Diag {
+                    code: "spec-pointer-conflict",
+                    detail: "a concurrent `emery specify` committed first and swapped the \
+                             generation pointer; re-run `emery specify` to commit against the \
+                             new current generation"
+                        .to_string(),
+                });
+            }
+            Err(CasError::Store(message)) => {
+                return Err(storage::failed(
+                    "swapping the generation pointer",
+                    &anyhow::anyhow!(message),
+                ));
+            }
+        }
+        self.prune(observed, &id).await?;
         Ok(Committed { id })
     }
 
@@ -241,19 +293,31 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         Ok(Some(Committed { id }))
     }
 
-    /// The outgoing spec set for a re-mine diff: the id the `current`
-    /// pointer names and its complete set, read before the commit
-    /// that will prune it.
+    /// One observation of the pointer, taken before a commit: the raw
+    /// bytes the CAS will expect and the outgoing set for the re-mine
+    /// diff, read before the commit prunes it.
     ///
     /// Total by design: the diff is advisory reporting, never a gate,
     /// and `specify` must stay the recovery path for a corrupt home —
     /// a missing, incomplete, or unreadable outgoing generation is
-    /// `None`, not a failure. The commit itself remains the authority.
-    pub async fn outgoing(&self) -> Option<(String, SpecSet)> {
-        let committed = self.current().await.ok().flatten()?;
+    /// `None`, not a failure. An unreadable pointer observes as
+    /// absent, so the following CAS fails closed instead of
+    /// clobbering. The commit itself remains the authority.
+    pub async fn observe(&self) -> Observation {
+        let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
+        let outgoing = match &pointer {
+            Some(raw) => self.load(String::from_utf8_lossy(raw).trim()).await,
+            None => None,
+        };
+        Observation { pointer, outgoing }
+    }
+
+    // Advisory read of one complete generation; any missing or
+    // unreadable document is `None`, never a failure.
+    async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
         let mut bodies = Vec::with_capacity(FILES.len());
         for name in FILES {
-            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(&committed.id, name))
+            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(id, name))
                 .await
                 .ok()
                 .flatten()?;
@@ -261,27 +325,26 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         }
         let design = bodies.pop()?;
         let spec = bodies.pop()?;
-        Some((committed.id, SpecSet { spec, design }))
+        Some((id.to_string(), SpecSet { spec, design }))
     }
 
-    // Keep only the generation the pointer names — superseded
-    // generations and any partial-generation litter a crash left
-    // behind are removed. The pointer itself is a keyvalue entry,
-    // never an object in the container.
-    async fn prune(&self, keep: &str) -> Result<(), Error> {
-        let kept = format!("{GENERATIONS_DIR}/{keep}/");
-        let names = self
-            .store
-            .list(SPEC_CONTAINER)
-            .await
-            .map_err(|err| storage::failed("listing the output home", &err))?;
-        for name in names {
-            if name.starts_with(&kept) {
-                continue;
-            }
-            BlobStore::delete(self.store, SPEC_CONTAINER, &name)
+    // Prune the superseded generation the swap replaced — exactly the
+    // objects of the id the observed pointer named. Blobstore writes
+    // are complete-on-finalize, so there is no crash litter to sweep;
+    // objects a crashed or conflicting run left behind are inert. The
+    // pointer itself is a keyvalue entry, never an object here.
+    async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
+        let Some(raw) = &observed.pointer else {
+            return Ok(());
+        };
+        let superseded = String::from_utf8_lossy(raw).trim().to_string();
+        if superseded == keep || superseded.is_empty() {
+            return Ok(());
+        }
+        for name in FILES {
+            BlobStore::delete(self.store, SPEC_CONTAINER, &object(&superseded, name))
                 .await
-                .map_err(|err| storage::failed("pruning a superseded generation", &err))?;
+                .map_err(|err| storage::failed("pruning the superseded generation", &err))?;
         }
         Ok(())
     }

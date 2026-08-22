@@ -53,6 +53,11 @@ cfg_if::cfg_if! {
         #[derive(Clone, Debug)]
         struct ProjectStore(Filesystem);
 
+        // let options = omnia_filesystem::ConnectOptions{
+        //     root: STORE_ROOT.to_string(),
+        // };
+        // let client= omnia_filesystem::Client::connect_with(options).await?;
+
         impl omnia::Backend for ProjectStore {
             type ConnectOptions = omnia::NoOptions;
 

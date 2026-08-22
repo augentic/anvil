@@ -47,8 +47,7 @@ impl Memory {
         drop(self.state.lock().expect("state lock").insert(key.to_string(), bytes.to_vec()));
     }
 
-    /// Seed an object (e.g. crash litter) without going through the
-    /// seam.
+    /// Seed an object without going through the seam.
     pub fn insert_object(&self, container: &str, name: &str, bytes: &[u8]) {
         drop(
             self.blobs

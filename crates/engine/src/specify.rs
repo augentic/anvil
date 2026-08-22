@@ -87,11 +87,12 @@ impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Spe
             design: documents.design,
         };
         let home = Home::new(context.provider);
-        // Read the outgoing set before the commit prunes it; the diff
-        // is computed in memory and emitted only here.
-        let outgoing = home.outgoing().await;
-        let committed = home.commit(&set).await?;
-        let diff = outgoing.map(|(from, previous)| Diff::between(from, &previous, &set));
+        // One observation feeds both the CAS expected value and the
+        // re-mine diff, computed in memory and emitted only here.
+        let observed = home.observe().await;
+        let committed = home.commit(&set, &observed).await?;
+        let diff =
+            observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
         Ok(SpecifyBody {
             generation: committed.id,
             requirements: rows.len(),

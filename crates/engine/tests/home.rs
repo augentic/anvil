@@ -18,12 +18,18 @@ fn generation_object(id: &str, name: &str) -> String {
     format!("generations/{id}/{name}")
 }
 
+// Commit over a fresh observation of the pointer.
+async fn commit(home: &Home<'_, Memory>, spec: &SpecSet) -> emery_engine::home::Committed {
+    let observed = home.observe().await;
+    home.commit(spec, &observed).await.expect("commit")
+}
+
 #[tokio::test]
 async fn commit_behind_pointer() {
     let store = Memory::default();
     let home = Home::new(&store);
 
-    let committed = home.commit(&set("# Spec\n")).await.expect("commit");
+    let committed = commit(&home, &set("# Spec\n")).await;
 
     let spec = store.object("spec", &generation_object(&committed.id, "spec.md")).expect("spec");
     assert_eq!(spec, b"# Spec\n");
@@ -45,9 +51,9 @@ async fn rerun_is_byte_stable() {
     let store = Memory::default();
     let home = Home::new(&store);
 
-    home.commit(&set("# Spec\n")).await.expect("first commit");
+    commit(&home, &set("# Spec\n")).await;
     let before = store.snapshot();
-    home.commit(&set("# Spec\n")).await.expect("re-run commit");
+    commit(&home, &set("# Spec\n")).await;
 
     assert_eq!(before, store.snapshot(), "an identical re-run must be byte-stable");
 }
@@ -57,8 +63,8 @@ async fn swap_prunes_superseded() {
     let store = Memory::default();
     let home = Home::new(&store);
 
-    let first = home.commit(&set("# Spec v1\n")).await.expect("first commit");
-    let second = home.commit(&set("# Spec v2\n")).await.expect("second commit");
+    let first = commit(&home, &set("# Spec v1\n")).await;
+    let second = commit(&home, &set("# Spec v2\n")).await;
 
     assert_ne!(first.id, second.id);
     assert!(
@@ -69,21 +75,26 @@ async fn swap_prunes_superseded() {
 }
 
 #[tokio::test]
-async fn crash_litter_pruned() {
+async fn concurrent_commit_conflicts() {
     let store = Memory::default();
     let home = Home::new(&store);
-    let committed = home.commit(&set("# Spec\n")).await.expect("commit");
 
-    // A crash between generation writes and pointer swap leaves a
-    // partial generation; the pointer still names the previous set.
-    let partial = generation_object("deadbeef", "spec.md");
-    store.insert_object("spec", &partial, b"half-written");
+    // Both runs observe the empty home; the winner swaps first.
+    let stale = home.observe().await;
+    let winner = commit(&home, &set("# Spec winner\n")).await;
 
-    let current = home.current().await.expect("current").expect("committed");
-    assert_eq!(current.id, committed.id, "readers trust only what the pointer names");
-
-    home.commit(&set("# Spec\n")).await.expect("re-run commit");
-    assert!(store.object("spec", &partial).is_none(), "crash litter is pruned on the next commit");
+    let err = home
+        .commit(&set("# Spec loser\n"), &stale)
+        .await
+        .expect_err("a stale observation must never last-write-wins over the swapped pointer");
+    assert!(err.to_string().contains("spec-pointer-conflict"), "typed failure: {err}");
+    assert_eq!(
+        home.current().await.expect("current").expect("committed").id,
+        winner.id,
+        "the pointer still names the winner"
+    );
+    let spec = store.object("spec", &generation_object(&winner.id, "spec.md")).expect("spec");
+    assert_eq!(spec, b"# Spec winner\n", "the winning generation is intact");
 }
 
 // One parseable requirement block for the diff kernel's spec fixtures.
@@ -94,13 +105,13 @@ fn block(id: u32, name: &str, body: &str) -> String {
 }
 
 #[tokio::test]
-async fn outgoing_reads_current() {
+async fn observe_reads_current() {
     let store = Memory::default();
     let home = Home::new(&store);
-    assert!(home.outgoing().await.is_none(), "no generation, no outgoing set");
+    assert!(home.observe().await.into_outgoing().is_none(), "no generation, no outgoing set");
 
-    let committed = home.commit(&set("# Spec\n")).await.expect("commit");
-    let (from, outgoing) = home.outgoing().await.expect("outgoing after commit");
+    let committed = commit(&home, &set("# Spec\n")).await;
+    let (from, outgoing) = home.observe().await.into_outgoing().expect("outgoing after commit");
     assert_eq!(from, committed.id, "the outgoing id is the pointer's");
     assert_eq!(outgoing, set("# Spec\n"), "the outgoing set reads back verbatim");
 }
