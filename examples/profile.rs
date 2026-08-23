@@ -1,13 +1,7 @@
-//! A project-id-keyed deployment profile: the shipped runtime with one
-//! substitution — storage binds to a multi-project host wrapper instead of
-//! the CWD-rooted filesystem store.
+//! Project-id-keyed storage profile over Omnia's in-memory hosts.
 //!
-//! `ProjectStore` scopes every keyvalue bucket and blobstore container under
-//! `EMERY_PROJECT_ID`, so any number of projects share one backing without
-//! collision while the engine keeps its flat keys. The backing here is the
-//! omnia in-memory defaults; a real deployment swaps in a remote client
-//! (Redis, NATS, …) behind the same wrapper — the prefix logic is the whole
-//! profile. See `docs/reference/deployment-profiles.md`.
+//! `EMERY_PROJECT_ID` scopes every bucket and container; see
+//! `docs/reference/deployment-profiles.md` for remote-backed deployments.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -28,7 +22,7 @@ cfg_if::cfg_if! {
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                    routes: {http: ["/mcp/source/source", "/mcp/emery/spec"]},
+                    routes: {http: ["/mcp/emery/spec"]},
                 }
             ],
             mounts: [

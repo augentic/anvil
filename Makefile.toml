@@ -69,8 +69,6 @@ command = "cargo"
 args = ["doc", "--no-deps", "--workspace", "--all-features", "--locked"]
 env = { RUSTDOCFLAGS = "-Dwarnings" }
 
-# Developer Guide link integrity (`mdbook-linkcheck2` via docs/book.toml).
-# Part of `cargo make ci`; GitHub Actions also runs the same command in the `links` job.
 [tasks.links]
 command = "mdbook"
 args = ["build", "docs"]
@@ -81,37 +79,23 @@ workspace = false
 command = "cargo"
 args = ["build", "--locked", "--example", "source", "--target", "wasm32-wasip2", "--release"]
 
-# The example host (ADR-0009 §5): the shipped runtime shape with a
-# scripted `WasiModel` backend and the built mock component as its
-# one static adapter guest.
 [tasks.runtime]
 workspace = false
+dependencies = ["source"]
 command = "cargo"
 args = ["build", "--locked", "--example", "runtime"]
 
-# The deployment-profile example host: the shipped runtime shape with
-# project-id-keyed storage over the in-memory defaults
-# (docs/reference/deployment-profiles.md).
 [tasks.profile]
 workspace = false
 command = "cargo"
 args = ["build", "--locked", "--example", "profile"]
 
-# Coverage brake for test reductions (docs/standards/testing.md).
-# Workspace-wide by default: root scenarios exercise engine and
-# transport code from the root package, so per-crate runs undercount.
-# Operator-invoked, never part of `ci`.
+
 [tasks.cov]
 workspace = false
 script = "cargo llvm-cov nextest --workspace --all-features --summary-only"
 install_crate = "cargo-llvm-cov"
 
-# Focused leaf-contract coverage audit.
-# Usage: CRATE=emery-engine cargo make cov-crate
-[tasks.cov-crate]
-workspace = false
-script = "cargo llvm-cov nextest -p ${CRATE} --summary-only"
-install_crate = "cargo-llvm-cov"
 
 [tasks.miri]
 script = '''
@@ -119,14 +103,12 @@ cargo +nightly miri setup
 cargo +nightly miri nextest run --workspace --no-tests=pass
 '''
 
-# Read-only gate: verification must never rewrite the audit inputs it
-# verifies. Regeneration is the explicit maintenance act below.
 [tasks.vet]
 command = "cargo"
 args = ["vet", "--locked"]
 install_crate = "cargo-vet"
 
-[tasks.vet-regenerate]
+[tasks.vetgen]
 script = '''
 cargo vet regenerate imports
 cargo vet regenerate exemptions

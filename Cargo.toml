@@ -5,7 +5,6 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["emery", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
-# autoexamples = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
