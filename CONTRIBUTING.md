@@ -100,7 +100,7 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that cover your change, written against the public seams: crate integration tests under `crates/*/tests/`, wire-contract tests (flag parsing, exit codes, stdout JSON) under `crates/transport/tests/`. The placement rules live in [testing standards](docs/standards/testing.md) — read the triage buckets there before adding a test. Do not add a new `src` `#[cfg(test)]` module without a one-line Keep or Collapse reason from that document; the default home for every test is the integration layer. For skill-wrapper or docs changes, run `cargo make links` (and, for wrapper changes, manually verify the skill in a target project).
+Normally, all pull requests must include tests that cover your change, written against the public seams: root product scenarios under `tests/` (the default — argv or shelf request in, envelope/exit/storage out), with crate integration tests under `crates/*/tests/` only for independent library contracts. The placement rules live in [testing standards](docs/standards/testing.md) — read the triage buckets there before adding a test. Do not add a new `src` `#[cfg(test)]` module without a one-line Keep or Collapse reason from that document; the default home for every test is the root scenario layer. For skill-wrapper or docs changes, run `cargo make links` (and, for wrapper changes, manually verify the skill in a target project).
 
 ## Conduct
 

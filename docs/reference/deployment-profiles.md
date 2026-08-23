@@ -32,7 +32,7 @@ impl WasiKeyValueCtx for ProjectStore {
 }
 ```
 
-[`examples/profile.rs`](../../examples/profile.rs) is the worked example (`cargo make profile` builds it): the shipped runtime shape with `ProjectStore` as both storage hosts, scoping under `EMERY_PROJECT_ID` over the omnia in-memory defaults. The multi-project isolation proof runs in the journey suite ([`tests/source.rs`](../../tests/source.rs), `multi_project_isolation`): two project-scoped views over one shared store commit and `show` independent generations, with no unprefixed key ever written — and no engine change involved.
+[`examples/profile.rs`](../../examples/profile.rs) is the worked example (`cargo make profile` builds it): the shipped runtime shape with `ProjectStore` as both storage hosts, scoping under `EMERY_PROJECT_ID` over the omnia in-memory defaults. The multi-project isolation proof runs in the root scenario suite ([`tests/specify.rs`](../../tests/specify.rs), `multi_project_isolation`): two project-scoped views over one shared store commit and `show` independent generations, with no unprefixed key ever written — and no engine change involved.
 
 The in-memory defaults are the demonstration backing; a real deployment keeps the wrapper and swaps the held clients for a remote backend.
 

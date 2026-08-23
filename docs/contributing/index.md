@@ -52,7 +52,7 @@ No published binary is downloaded — every invocation builds from the in-tree C
 ## What to read next
 
 - [Quality gates](quality-gates.md) — the gate model and the links gate
-- [Testing standards](../standards/testing.md) — the integration-first posture, the triage buckets, and the coverage brake (`cargo make cov`)
+- [Testing standards](../standards/testing.md) — the root-led integration posture, the triage buckets, and the coverage brake (`cargo make cov`)
 - [The developer loop](dev-loop.md) — the local rungs
 - [CLI Architecture](cli-architecture.md) — dispatch pattern and JSON contract
 - [Cursor operator plugins](operator-plugins.md) — marketplace layout and local `--plugin-dir` preview

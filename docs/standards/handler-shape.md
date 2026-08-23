@@ -71,7 +71,7 @@ The four-slot CLI exit-code table is fixed:
 
 ## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns the guest's HTTP surface: the read-only MCP spec shelf plus one typed refusal router (C3). `http::listener` serves the current generation and its id at `/mcp/emery/spec` — a stateless `McpServer` over a per-request storage snapshot (the same `Home::current_set` read `show` uses), exposing `spec://spec.md`, `spec://design.md`, and `spec://generation` as resources with mirroring read tools. Beside the deployment-routed adapter MCP shelves, every other path and method answers a typed 404 — reads are served, mutation is refused. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
+`crates/transport/src/http.rs` owns the guest's HTTP surface: the read-only MCP spec shelf plus one typed refusal router (C3). `http::listener` serves the current generation and its id at `/mcp/emery/spec` — a stateless `McpServer` over a per-request storage snapshot (the same `Home::current_set` read `show` uses), exposing `spec://spec.md`, `spec://design.md`, and `spec://generation` as resources with mirroring read tools. Beside the deployment-routed adapter MCP shelves, every other path and method answers a typed 404 — reads are served, mutation is refused. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); the root scenario `tests/shelf.rs::every_route_refuses` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 

@@ -4,7 +4,7 @@ Emery proves engine correctness from this repository alone. The placement rules 
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and wire integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it prove the pure engine kernels (reconciliation, the extras gate, the output home) over scripted models and the CLI wire contract (grammar, exit codes, the MCP spec shelf, the C3 HTTP refusal) over an inert provider.
+`cargo make ci` owns formatting, lints, schemas, the test suites, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it are led by the root scenario binaries (`tests/specify.rs`, `tests/command.rs`, `tests/shelf.rs`), which drive the in-process command router and HTTP listener over scripted capabilities — the whole product arc from argv to committed storage, plus the CLI wire contract and the MCP spec shelf with its C3 HTTP refusal. The surviving crate suites prove independent library contracts and the CLI-impractical engine invariants.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
@@ -14,11 +14,11 @@ No test builds or spawns the mock source component. The model-free signal is the
 
 ## Placement decision
 
-When adding coverage, the default write path is crate or wire integration — a `src` unit test is the exception, never the starting point:
+When adding coverage, the default write path is a root product scenario — a crate test is the exception, and a `src` unit test the last resort:
 
-1. Put a private dense matrix in a kernel unit test only when integration is impractical.
-2. Put one-crate public behavior in that crate's integration suite.
-3. Put cross-crate `specify` / `show` orchestration on the native rung (`tests/source.rs`). The `source` and `runtime` examples are not a test rung.
+1. Put every CLI- or MCP-reachable behavior in the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/shelf.rs`). The `source` and `runtime` examples are not a test rung.
+2. Put an independently useful library contract (the adapter SDK, artifact parsers, diagnostics, error display, the prose walker) in that crate's integration suite; the same holds for a product invariant impractical to arrange through the entry seams.
+3. Put a private dense matrix in a kernel unit test only when integration is impractical.
 4. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
 Do not copy an assertion into another gate for reassurance: each fact has one owning seam.
