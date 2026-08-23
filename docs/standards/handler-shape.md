@@ -44,7 +44,7 @@ Operations never write to stdout. Each returns a typed body implementing `Serial
 
 ## Errors and their projections
 
-`emery_engine::handler::Error` is the workspace `emery_error::Error` taxonomy. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from it. `Exit` stays in `crates/transport` — there is no second exit table. A report-carrying failure wrapper returns with a gate verb; the live grammar has none.
+`emery_engine::handler::Error` is the workspace `emery_error::Error` taxonomy. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from it. `Exit` stays in `crates/transport` — there is no second exit table. Do not reintroduce a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
