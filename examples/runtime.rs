@@ -23,7 +23,9 @@ cfg_if::cfg_if! {
                 },
                 {
                     id: "source:source",
-                    source: env!("EMERY_SOURCE_WASM"),
+                    source: include_bytes!(
+                        "../target/wasm32-wasip2/release/examples/source.wasm"
+                    ),
                     routes: {http: ["/mcp/source/source"]},
                 },
             ],
