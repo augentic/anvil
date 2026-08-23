@@ -20,10 +20,14 @@ const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
 // Commits one generation through the real `specify` arc, returning
 // the provider and the committed generation id.
 async fn committed() -> (Provider, String) {
-    let workspace = tempfile::tempdir().expect("tempdir");
+    let workspace = tempfile::TempDir::new_in(env!("CARGO_MANIFEST_DIR")).expect("project tempdir");
     let component = workspace.path().join("source.wasm");
     std::fs::write(&component, b"\0asm-stub").expect("stub wasm");
-    let component = component.to_str().expect("utf-8 path");
+    let component = component
+        .strip_prefix(env!("CARGO_MANIFEST_DIR"))
+        .expect("path under project")
+        .to_str()
+        .expect("utf-8 path");
 
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", component]).await;

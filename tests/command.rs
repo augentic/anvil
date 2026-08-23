@@ -81,6 +81,20 @@ async fn specify_without_sources() {
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
+// Naming the file carrier without a value explicitly selects the
+// project-relative `sources.toml`; it is not implicit discovery.
+#[tokio::test]
+async fn specify_default_sources_path() {
+    let provider = Provider::idle();
+
+    let response = cli(&provider, &["emery", "specify", "--sources"]).await;
+    assert_eq!(response.exit, 1);
+    let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(stderr.contains("filesystem-read"), "{stderr}");
+    assert!(stderr.contains("sources.toml"), "{stderr}");
+    assert!(provider.storage.is_empty(), "a refused run writes nothing");
+}
+
 // `--sources` carries the whole binding list; mixing refuses typed.
 #[tokio::test]
 async fn specify_mixed_sources() {

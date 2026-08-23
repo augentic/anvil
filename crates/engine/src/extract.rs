@@ -1,12 +1,14 @@
 //! Source extraction and fail-closed claim validation.
 
+use std::path::Path;
+
 use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
 use emery_adapter::{DispatchError, Source};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
 use omnia_guest::{BlobStore, StateStore};
 
-use crate::handler::{ExecutionPaths, preopen_relative};
+use crate::handler::{ExecutionPaths, preopen_path};
 use crate::resolve::{AdapterSelector, Axis, RoutedId, ensure, metadata};
 use crate::sources::{BindingContent, SourceBinding};
 
@@ -61,7 +63,7 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
             resolved.manifest.version.clone(),
         )
         .to_string();
-        let input = input_for(binding, paths);
+        let input = input_for(binding, paths)?;
         let evidence = dispatch(provider, &id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
@@ -77,25 +79,26 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
 
 // `.` spans the project preopen, including `.emery/`, until guest
 // capability profiles can exclude the output home.
-fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> SourceInput {
+fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> Result<SourceInput, Error> {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
-            let joined = if relative == "." {
+            let relative = preopen_path(Path::new(relative), "source path")?;
+            let joined = if relative == Path::new(".") {
                 paths.project_root().to_path_buf()
             } else {
-                paths.project_root().join(relative)
+                paths.project_root().join(&relative)
             };
             SourceContent::Workspace(SourceWorkspace {
                 id: binding.key.clone(),
-                root: preopen_relative(&joined).display().to_string(),
+                root: joined.display().to_string(),
             })
         }
         BindingContent::Value(value) => SourceContent::Value(value.clone()),
     };
-    SourceInput {
+    Ok(SourceInput {
         key: binding.key.clone(),
         content,
-    }
+    })
 }
 
 /// Returns the required extras for a claim kind.

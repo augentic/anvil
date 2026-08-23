@@ -6,12 +6,12 @@ Generate `spec.md` / `design.md` from the sources named on the invocation and co
 
 ```bash
 emery specify <adapter>... [--value <adapter>=<text>]
-emery specify --sources <path>
+emery specify --sources [<path>]
 ```
 
 ## Description
 
-The one generate verb. Each run names its own sources: every positional `<adapter>` binds a **workspace-backed** source (the adapter reads a read-only view rooted at the project directory; the binding key is the adapter name), and every `--value <adapter>=<text>` (repeatable) binds a **value-backed** source (the adapter extracts the inline text; no filesystem view is lent). Nothing about the binding list persists between runs — repeat the sources on every invocation (Makefile, skill, CI), or keep them in an operator-owned `sources.toml` passed explicitly with `--sources <path>`.
+The one generate verb. Each run names its own sources: every positional `<adapter>` binds a **workspace-backed** source (the adapter reads a read-only view rooted at the project directory; the binding key is the adapter name), and every `--value <adapter>=<text>` (repeatable) binds a **value-backed** source (the adapter extracts the inline text; no filesystem view is lent). Nothing about the binding list persists between runs — repeat the sources on every invocation (Makefile, skill, CI), or keep them in an operator-owned file selected explicitly with `--sources [<path>]`. Omitting that option's value selects `sources.toml`.
 
 Each run resolves its adapters before extracting; a local `.wasm` component mirrors into the out-of-tree project cache as a side effect, so the selector stays resolvable after the original file is removed. Extraction dispatches every binding over the adapter seam, reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer. Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]`. Re-running over identical sources is byte-stable and reports an empty re-mine diff in the success envelope (ADR-0010) — nothing is persisted for the diff. Review the committed set with [`emery show`](show.md).
 
@@ -23,7 +23,9 @@ This is the CLI command invoked by [`/emery:specify`](../../../plugins/emery/ski
 
 ## The `--sources` file
 
-`sources.toml` is operator-authored and operator-owned: the engine never writes it, never discovers it implicitly, and reads it only when `--sources <path>` names it. Each `[sources.<key>]` table binds one source; the table key becomes the seam binding key, so one adapter may bind several roots. Exactly one location key per entry — `path` or `value`; omitted means the workspace lend at `.`. `path` (and a local component `adapter`) resolves relative to the file containing it, as Cargo resolves `path` dependencies, so the file works from any invocation directory. An absolute `--sources` path (or a file-relative `path` / local adapter entry) that sits inside the invocation directory is folded onto the `.` preopen — agents and CI that canonicalize the argument still reach the file; a path outside the preopen fails at read time. The `git` and `url` location keys are reserved: they parse but refuse typed (`source-remote-unsupported`) until the remote read-view grant exists.
+`sources.toml` is operator-authored and operator-owned: the engine never writes it or discovers it implicitly, and reads it only when the `--sources` flag is present. `--sources` without a value names `sources.toml`; an explicit value names another project-relative file. Each `[sources.<key>]` table binds one source; the table key becomes the seam binding key, so one adapter may bind several roots. Exactly one location key per entry — `path` or `value`; omitted means the workspace lend at `.`. `path` (and a local component `adapter`) resolves relative to the file containing it, as Cargo resolves `path` dependencies.
+
+Every filesystem input is normalized within the project preopen `.`. Absolute paths and relative paths that escape above it fail as an argument error (exit `2`); the engine never tries to infer a host path from the guest's ambient working directory. The `git` and `url` location keys are reserved: they parse but refuse typed (`source-remote-unsupported`) until the remote read-view grant exists.
 
 ```toml
 # Workspace lend of the invocation directory (the default: path = ".").
@@ -45,9 +47,9 @@ value = "Ship a location-independent spec generator."
 
 | Option | Description |
 |--------|-------------|
-| `<adapter>...` (positional) | Source adapter identifiers: first-party shorthands, package references, or local `.wasm` component paths — each bound as a workspace-backed source. |
+| `<adapter>...` (positional) | Source adapter identifiers: first-party shorthands, package references, or project-relative local `.wasm` component paths — each bound as a workspace-backed source. |
 | `--value <adapter>=<text>` | Inline value-backed source binding (repeatable). |
-| `--sources <path>` | Operator-owned `sources.toml` carrying the whole binding list; mutually exclusive with positional adapters and `--value`. |
+| `--sources [<path>]` | Operator-owned binding list; the omitted value selects `sources.toml`. Mutually exclusive with positional adapters and `--value`. |
 | `--format` | Global output format: `json` for structured automation output. |
 
 ## JSON output

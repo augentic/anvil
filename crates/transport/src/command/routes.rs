@@ -19,8 +19,8 @@ pub(super) struct SpecifyArgs {
     /// Bind an inline source as `<adapter>=<text>`; repeatable.
     #[arg(long = "value")]
     values: Vec<String>,
-    /// Operator-owned sources.toml carrying the whole binding list.
-    #[arg(long)]
+    /// Operator-owned binding list; defaults to sources.toml.
+    #[arg(long, num_args = 0..=1, default_missing_value = "sources.toml")]
     sources: Option<String>,
 }
 
@@ -88,7 +88,7 @@ where
         SpecifyArgs,
         emery_engine::specify::Specify,
         "Generate spec.md and design.md from the named sources",
-        "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources <path>` (mixing the two refuses typed, exit 2). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 2).\n\nExtraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff."
+        "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources [<path>]`; omitting the path explicitly selects `sources.toml`. Mixing the file carrier with argv bindings refuses typed (exit 2). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 2).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff."
     );
     route!(
         ["show"],

@@ -8,6 +8,7 @@
 mod support;
 
 use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use emery_adapter::seam::{Authority, ClaimKind, SourceContent};
@@ -21,6 +22,18 @@ const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
 const PRECEDENCE_ANSWER: &str = include_str!("specify/3-precedence.md");
 const SOURCES: &str = include_str!("specify/sources.toml");
 
+fn project_tempdir() -> tempfile::TempDir {
+    tempfile::TempDir::new_in(env!("CARGO_MANIFEST_DIR")).expect("project tempdir")
+}
+
+fn project_arg(path: &Path) -> String {
+    path.strip_prefix(env!("CARGO_MANIFEST_DIR"))
+        .expect("path under project")
+        .to_str()
+        .expect("utf-8 path")
+        .to_string()
+}
+
 // One `specify` ensures, mirrors, extracts, and commits — no prior
 // verb; `show` renders the committed bytes alone; an identical re-run
 // is byte-stable and says so.
@@ -30,17 +43,17 @@ async fn gen_spec() {
     // Arrange: only the operator-supplied component touches the
     // filesystem; engine state stays in scripted storage.
     // --------------------------------------------------
-    let workspace = tempfile::tempdir().expect("tempdir");
+    let workspace = project_tempdir();
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
-    let component = component.to_str().expect("utf-8 path");
+    let component = project_arg(&component);
 
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
 
     // --------------------------------------------------
     // Act: the first specify.
     // --------------------------------------------------
-    cli_ok(&provider, &["emery", "specify", component]).await;
+    cli_ok(&provider, &["emery", "specify", &component]).await;
 
     // --------------------------------------------------
     // Observe: the mirror, the pointer, and the generation.
@@ -64,7 +77,7 @@ async fn gen_spec() {
     assert_eq!(shown.stdout, design, "show renders the committed design.md alone");
 
     // An identical re-run reports the empty diff.
-    let resp = cli_ok(&provider, &["emery", "specify", component]).await;
+    let resp = cli_ok(&provider, &["emery", "specify", &component]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("none (byte-stable)"), "{stdout}");
 
@@ -75,16 +88,16 @@ async fn gen_spec() {
 // keys, and a local adapter resolves relative to the file.
 #[tokio::test]
 async fn from_file() {
-    let workspace = tempfile::tempdir().expect("tempdir");
+    let workspace = project_tempdir();
     fs::write(workspace.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
     let sources = workspace.path().join("sources.toml");
     fs::write(&sources, SOURCES).expect("write sources.toml");
-    let sources = sources.to_str().expect("utf-8 path");
+    let sources = project_arg(&sources);
 
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [greeting]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
 
-    let resp = cli_ok(&provider, &["emery", "specify", "--sources", sources]).await;
+    let resp = cli_ok(&provider, &["emery", "specify", "--sources", &sources]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("sources: 1"), "{stdout}");
     assert_eq!(
@@ -459,19 +472,16 @@ async fn sources_file_refused() {
             2,
             "argument",
         ),
+        ("[sources.docs]\nadapter = \"documentation\"\npath = \"../../outside\"\n", 2, "argument"),
+        ("[sources.local]\nadapter = \"/tmp/source.wasm\"\n", 2, "argument"),
     ];
     for (body, exit, code) in cases {
-        let dir = tempfile::tempdir().expect("tempdir");
+        let dir = project_tempdir();
         let path = dir.path().join("sources.toml");
         fs::write(&path, body).expect("write sources.toml");
+        let path = project_arg(&path);
         let provider = Provider::idle();
-        fail(
-            &provider,
-            &["emery", "specify", "--sources", path.to_str().expect("utf-8 path")],
-            *exit,
-            code,
-        )
-        .await;
+        fail(&provider, &["emery", "specify", "--sources", &path], *exit, code).await;
         assert!(provider.storage.is_empty(), "a refused run writes nothing: {code}");
     }
 
@@ -479,11 +489,16 @@ async fn sources_file_refused() {
     let provider = Provider::idle();
     fail(
         &provider,
-        &["emery", "specify", "--sources", "/nonexistent/sources.toml"],
+        &["emery", "specify", "--sources", "nonexistent/sources.toml"],
         1,
         "filesystem-read",
     )
     .await;
+
+    // Host-absolute and escaping paths never cross into the guest namespace.
+    for path in ["/nonexistent/sources.toml", "../sources.toml"] {
+        fail(&provider, &["emery", "specify", "--sources", path], 2, "argument").await;
+    }
 }
 
 // File-relative `path` entries anchor at the file's directory, fold
@@ -492,8 +507,7 @@ async fn sources_file_refused() {
 // seam the adapter receives.
 #[tokio::test]
 async fn binding_paths() {
-    let cwd = std::env::current_dir().expect("cwd");
-    let dir = tempfile::TempDir::new_in(&cwd).expect("tempdir under cwd");
+    let dir = project_tempdir();
     let path = dir.path().join("sources.toml");
     fs::write(
         &path,
@@ -505,7 +519,8 @@ async fn binding_paths() {
 
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs, intent, local]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
-    cli_ok(&provider, &["emery", "specify", "--sources", path.to_str().expect("utf-8 path")]).await;
+    let path = project_arg(&path);
+    cli_ok(&provider, &["emery", "specify", "--sources", &path]).await;
 
     let calls = provider.source.calls.lock().expect("calls");
     for key in ["docs", "local"] {
@@ -514,7 +529,7 @@ async fn binding_paths() {
             panic!("a path binding lends a workspace");
         };
         assert!(
-            !std::path::Path::new(&workspace.root).is_absolute(),
+            !Path::new(&workspace.root).is_absolute(),
             "the lend must stay `.`-relative for the guest preopen: {}",
             workspace.root
         );
@@ -538,10 +553,10 @@ async fn binding_paths() {
 // the operator deletes the source file.
 #[tokio::test]
 async fn mirror_survives_removal() {
-    let workspace = tempfile::tempdir().expect("tempdir");
+    let workspace = project_tempdir();
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
-    let component = component.to_str().expect("utf-8 path").to_string();
+    let component = project_arg(&component);
 
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", &component]).await;
@@ -581,6 +596,9 @@ async fn mirror_probe_fault() {
 async fn component_missing() {
     let provider = Provider::idle();
     fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "adapter-component-missing").await;
+    for path in ["/tmp/missing.wasm", "../missing.wasm"] {
+        fail(&provider, &["emery", "specify", path], 2, "argument").await;
+    }
 }
 
 // GitHub URLs are refused: a source checkout is not an adapter (ADR-0002).
@@ -644,10 +662,10 @@ async fn corrupt_pointer() {
 // (portable-storage step 8).
 #[tokio::test]
 async fn multi_project_isolation() {
-    let workspace = tempfile::tempdir().expect("tempdir");
+    let workspace = project_tempdir();
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
-    let component = component.to_str().expect("utf-8 path");
+    let component = project_arg(&component);
 
     let shared = Arc::new(Memory::default());
     let alpha = Provider::over(
@@ -661,8 +679,8 @@ async fn multi_project_isolation() {
         [beta_spec, beta_design],
     );
 
-    cli_ok(&alpha, &["emery", "specify", component]).await;
-    cli_ok(&beta, &["emery", "specify", component]).await;
+    cli_ok(&alpha, &["emery", "specify", &component]).await;
+    cli_ok(&beta, &["emery", "specify", &component]).await;
 
     // Every write landed under its project prefix; nothing landed flat.
     assert!(shared.state("spec/current").is_none(), "no unprefixed pointer exists");
