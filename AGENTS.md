@@ -8,7 +8,7 @@
 
 A Rust workspace at the repository root producing the `emery` runtime binary, plus one Cursor plugin (`plugins/emery/` carrying the `/emery:specify` skill wrapper). The live CLI grammar is three verbs:
 
-- `emery specify <adapter>... [--value <adapter>=<text>] [--sources <path>]` — the spec generator (ADR-0008 §3, ADR-0009): resolve the sources named on the invocation (mirroring a local `.wasm` into the project cache), extract each binding over the adapter seam, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. The binding list is per-run input, never persisted; a re-run reports the re-mine diff against the superseded generation in the success envelope — never persisted (ADR-0010).
+- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3, ADR-0009): resolve the sources named on the invocation (mirroring a project-relative local `.wasm` into the project cache), extract each binding over the adapter seam, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` without a value explicitly selects `sources.toml`; the engine never discovers it. The binding list is per-run input, never persisted; a re-run reports the re-mine diff against the superseded generation in the success envelope — never persisted (ADR-0010).
 - `emery show <spec|design>` — print a reviewable document of the current generation to stdout; text mode is the document body alone, and the generation id rides the JSON envelope.
 - `emery completions <shell>` — auto-derived from the clap surface.
 
@@ -29,13 +29,13 @@ Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `us
 ```text
 error        # leaf — thiserror + serde-saphyr only
 diagnostics  # neutral Diagnostic substrate + emery_diagnostics::digest (SHA-256)
-artifacts    # artifact types + parsers (evidence, validate registry); no engine deps
+artifacts    # artifact types + parsers (evidence, spec); no engine deps
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import seam wrappers; bare natively so tests script the seam), seam DTOs, embedded prose registry
 engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP surface (read-only MCP spec shelf + C3 refusal)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 testkit      # unpublished — scripted StateStore/BlobStore doubles (`Memory`, `Namespaced`) for native tests; not a production crate
-emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, spec shelf + HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind engine state (component cache and store included) to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
+emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, spec shelf + HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind the generation and component-cache state to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
 ```
 
 ### Repository map
@@ -43,7 +43,7 @@ emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src
 ```text
 src/               shipped binary (omnia::runtime!, static CWD-rooted deployment, filesystem-backed keyvalue/blobstore hosts) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run, spec shelf + HTTP refusal)
 crates/            the workspace crates above
-examples/          source adapter (guest + adapter) + runtime host (root-package examples; ADR-0009 §5) + profile host (project-id-keyed storage; docs/reference/deployment-profiles.md)
+examples/          mock source adapter + static runtime host (root-package examples; ADR-0009 §5)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:specify skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
@@ -62,11 +62,12 @@ docs/              Developer Guide (mdBook; reference + contributing + standards
 
 ## Testing philosophy
 
-Emery strictly enforces an **aggressive integration-first posture**:
+Emery strictly enforces a **root-led integration posture** (DWN-style):
 
-- Design against the public surface: if a behavior is reachable through a CLI input or `pub` fn and observable at a public boundary (stdout JSON, exit code, filesystem), write the integration test in `crates/<name>/tests/`; the unit test is redundant. Wire-contract coverage lives in `crates/transport/tests/`.
-- Default to deletion; do not widen public APIs to test private kernels. `CRATE=<crate> cargo make cov` is the brake.
-- One fast rung: native kernel and wire-contract suites (`cargo make test`, per push) — pure engine kernels over scripted models, transport grammar/parity over an inert provider, and the in-process `specify` → `show` journey (`tests/source.rs`) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg, which subsumes the old compile check); the v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
+- The root `tests/` scenario suites are the default home for every CLI- or MCP-reachable behavior: `tests/specify.rs` (the `specify` → `show` product arc), `tests/command.rs` (the CLI wire contract), `tests/shelf.rs` (the MCP spec shelf and the C3 refusal), and `tests/plugin.rs` (plugin-rule mentions vs the shipped grammar) drive the in-process command router and HTTP listener over scripted capabilities (`tests/support/mod.rs`) and read like usage documentation.
+- Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, artifacts, diagnostics, error, prose) or product invariants impractical to arrange through the entry seams; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
+- Default to deletion; do not widen public APIs to test private kernels. `cargo make cov` (workspace-wide) is the brake; `CRATE=emery-<crate> cargo make cov-crate` audits one leaf contract.
+- One fast rung: the native suites (`cargo make test`, per push) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 
@@ -83,14 +84,13 @@ cargo make lint   # clippy --workspace --all-targets --all-features -- -D warnin
 cargo make fmt    # nightly cargo fmt --all
 cargo make source         # build the mock source example (wasm32-wasip2, release)
 cargo make runtime        # build the scripted-model runtime example
-cargo make profile        # build the project-id-keyed deployment-profile example
 ```
 
 Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/emery` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
 ## Gotchas
 
-- **Adapter admission is static.** `emery specify <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache on the first `specify` that names it; extract dispatch beyond the declared set fails at the seam. There is no download path (ADR-0002 §2), and GitHub URLs are refused (`adapter-github-uri-unsupported`).
+- **Adapter admission is static.** `emery specify <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a project-relative local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache on the first `specify` that names it; extract dispatch beyond the declared set fails at the seam. There is no download path (ADR-0002 §2), and GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Never hand-edit `.emery/` state (the component cache, the generation store); never `mkdir -p .emery/...`. Route through the CLI. The binding list is per-run input — argv or an operator-owned `sources.toml` named by `--sources`; the engine never writes or discovers it.
 - `cargo make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means regenerating with a fresh `emery specify`.

@@ -47,50 +47,6 @@ impl Axis {
     }
 }
 
-/// Engine storage location of an adapter component.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AdapterLocation {
-    /// Immutable object in the global adapter store.
-    Store(String),
-    /// Seeded object in the project component cache.
-    Cache(String),
-}
-
-impl AdapterLocation {
-    /// Returns the location label.
-    #[must_use]
-    pub(crate) const fn label(&self) -> &'static str {
-        match self {
-            Self::Store(_) => "store",
-            Self::Cache(_) => "cache",
-        }
-    }
-
-    /// Returns the component object name.
-    #[must_use]
-    pub fn object(&self) -> &str {
-        match self {
-            Self::Store(object) | Self::Cache(object) => object,
-        }
-    }
-
-    /// Returns the location's blobstore container.
-    pub(super) const fn container(&self) -> &'static str {
-        match self {
-            Self::Store(_) => crate::handler::STORE_CONTAINER,
-            Self::Cache(_) => crate::handler::ADAPTERS_CONTAINER,
-        }
-    }
-
-    /// Returns a deployment-neutral origin.
-    pub(super) fn origin(&self) -> Origin {
-        Origin {
-            label: self.label().to_string(),
-            reference: format!("{}/{}", self.container(), self.object()),
-        }
-    }
-}
-
 /// Deployment-neutral adapter origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Origin {

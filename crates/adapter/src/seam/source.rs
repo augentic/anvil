@@ -1,5 +1,6 @@
 //! DTOs mirroring the WIT `source` records.
 
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 /// Resolve-time source adapter metadata.
@@ -48,7 +49,7 @@ impl SourceInput {
 }
 
 /// Claim-set authority, ordered `intent` > `documentation` > `behaviour`.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum Authority {
     /// Operator directives.
@@ -60,7 +61,7 @@ pub enum Authority {
 }
 
 /// Closed claim taxonomy; update the workflow contract and schema together.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum ClaimKind {
     /// Operator intent.
@@ -94,7 +95,7 @@ pub enum ClaimKind {
 }
 
 /// Claim backing.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum Backing {
     /// Inline verbatim data.
@@ -107,7 +108,7 @@ pub enum Backing {
 ///
 /// Open per-kind fields flatten into [`Claim::extras`]. `synopsis` and
 /// `backing` are lenient: malformed shapes become absent.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Claim {
     /// Kind from the closed taxonomy.
@@ -140,7 +141,7 @@ where
 }
 
 /// Extracted claims and their document-level authority.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Evidence {
     /// Document-level authority.

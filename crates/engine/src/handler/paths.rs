@@ -2,6 +2,8 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use emery_error::Error;
+
 use super::locations::Locations;
 
 /// Project root and artifact locations.
@@ -35,43 +37,36 @@ impl ExecutionPaths {
     }
 }
 
-/// Expresses `path` relative to the `.` preopen when it sits inside the
-/// project. Host-absolute argv (canonicalized `--sources`, file-relative
-/// `path` / local adapter entries) otherwise misses the only mount.
-pub fn preopen_relative(path: &Path) -> PathBuf {
-    if !path.is_absolute() {
-        return path.to_path_buf();
+/// Normalizes an operator path inside the `.` project preopen.
+///
+/// # Errors
+///
+/// Returns [`Error::Argument`] for an absolute path or a relative path
+/// that escapes above the project root.
+pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Error> {
+    if path.is_absolute() {
+        return Err(outside_project(path, argument));
     }
-    let mut roots = Vec::new();
-    push_root(&mut roots, std::fs::canonicalize(".").ok());
-    if let Ok(cwd) = std::env::current_dir() {
-        push_root(&mut roots, std::fs::canonicalize(&cwd).ok());
-        push_root(&mut roots, Some(cwd));
-    }
-    let forms = [Some(path.to_path_buf()), std::fs::canonicalize(path).ok()];
-    for form in forms.into_iter().flatten() {
-        for root in &roots {
-            if let Ok(rel) = form.strip_prefix(root) {
-                return if rel.as_os_str().is_empty() {
-                    PathBuf::from(".")
-                } else {
-                    rel.to_path_buf()
-                };
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::Normal(part) => normalized.push(part),
+            Component::ParentDir if normalized.pop() => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(outside_project(path, argument));
             }
         }
     }
-    path.to_path_buf()
+    Ok(if normalized.as_os_str().is_empty() { PathBuf::from(".") } else { normalized })
 }
 
-// `.` and `/` are guest names, not host prefixes of a canonicalized path.
-fn push_root(roots: &mut Vec<PathBuf>, root: Option<PathBuf>) {
-    let Some(root) = root else {
-        return;
-    };
-    if !root.is_absolute() || !root.components().any(|c| matches!(c, Component::Normal(_))) {
-        return;
-    }
-    if !roots.contains(&root) {
-        roots.push(root);
+fn outside_project(path: &Path, flag: &'static str) -> Error {
+    Error::Argument {
+        flag,
+        detail: format!(
+            "path `{}` must be relative to the project preopen `.` and must not escape it",
+            path.display()
+        ),
     }
 }

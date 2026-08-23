@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use emery_error::Error;
 
+use crate::handler::preopen_path;
+
 /// An operator-supplied adapter reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterSelector {
@@ -138,7 +140,8 @@ impl std::fmt::Display for AdapterSelector {
 ///
 /// Returns `adapter-canonicalize-failed` when the path does not exist.
 pub fn canonicalize_component(path: &Path, project_dir: &Path) -> Result<PathBuf, Error> {
-    let absolute = if path.is_absolute() { path.to_path_buf() } else { project_dir.join(path) };
+    let relative = preopen_path(path, "<adapter>")?;
+    let absolute = project_dir.join(relative);
     match std::fs::canonicalize(&absolute) {
         Ok(canonical) => Ok(canonical),
         Err(_) if absolute.is_file() => Ok(absolute),

@@ -57,7 +57,7 @@ fn precompile(raw: &std::path::Path, out: &std::path::Path) {
 
 fn build_engine() -> PathBuf {
     let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
-    for tracked in ["src", "crates", "Cargo.toml", "Cargo.lock"] {
+    for tracked in ["src", "crates", "wit", "Cargo.toml", "Cargo.lock"] {
         println!("cargo:rerun-if-changed={}", manifest_dir.join(tracked).display());
     }
 

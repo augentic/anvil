@@ -18,7 +18,7 @@ cfg_if::cfg_if! {
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                    routes: {http: ["/mcp/source/source", "/mcp/emery/spec"]},
+                    routes: {http: ["/mcp/emery/spec"]},
                 }
             ],
             mounts: [

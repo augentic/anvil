@@ -4,11 +4,11 @@
 //! persisted, and the engine never writes the sources file.
 
 use std::collections::BTreeMap;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use emery_error::Error;
 
-use crate::handler::preopen_relative;
+use crate::handler::preopen_path;
 use crate::resolve::AdapterSelector;
 
 /// A source binding for one run.
@@ -51,7 +51,7 @@ pub fn bindings(
                         .to_string(),
                 });
             }
-            from_file(&preopen_relative(Path::new(path)))
+            from_file(&preopen_path(Path::new(path), "--sources")?)
         }
         None => from_argv(adapters, values),
     }
@@ -148,7 +148,7 @@ fn binding(key: &str, entry: &SourceEntry, base: &Path) -> Result<SourceBinding,
     }
     let content = match (&entry.path, &entry.value) {
         (Some(relative), None) => {
-            BindingContent::Workspace(resolved(base, Path::new(relative)).display().to_string())
+            BindingContent::Workspace(resolved(base, Path::new(relative))?.display().to_string())
         }
         (None, Some(text)) => BindingContent::Value(text.clone()),
         (None, None) => BindingContent::Workspace(".".to_string()),
@@ -166,34 +166,15 @@ fn binding(key: &str, entry: &SourceEntry, base: &Path) -> Result<SourceBinding,
 // through unchanged.
 fn adapter_value(raw: &str, base: &Path) -> Result<String, Error> {
     match AdapterSelector::parse(raw)? {
-        AdapterSelector::Component { path } if path.is_absolute() => {
-            Ok(preopen_relative(&path).display().to_string())
-        }
-        AdapterSelector::Component { path } => Ok(resolved(base, &path).display().to_string()),
+        AdapterSelector::Component { path } => Ok(resolved(base, &path)?.display().to_string()),
         _ => Ok(raw.to_string()),
     }
 }
 
 // Anchor `relative` at the file's directory and normalise lexically,
-// then fold onto the `.` preopen when the result sits inside the
-// project. A root the deployment cannot read fails at read time.
-fn resolved(base: &Path, relative: &Path) -> PathBuf {
-    let joined = base.join(relative);
-    let mut parts: Vec<Component<'_>> = Vec::new();
-    for component in joined.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => match parts.last() {
-                Some(Component::Normal(_)) => {
-                    let _ = parts.pop();
-                }
-                _ => parts.push(component),
-            },
-            other => parts.push(other),
-        }
-    }
-    let normalised = if parts.is_empty() { PathBuf::from(".") } else { parts.iter().collect() };
-    preopen_relative(&normalised)
+// refusing any path outside the `.` project preopen.
+fn resolved(base: &Path, relative: &Path) -> Result<PathBuf, Error> {
+    preopen_path(&base.join(relative), "--sources")
 }
 
 fn source_required() -> Error {
@@ -201,7 +182,7 @@ fn source_required() -> Error {
         "specify-source-required",
         "emery specify requires at least one source",
         "pass `<adapter>` (package reference or local component path) and/or `--value \
-         <adapter>=<text>`, or point at an operator-owned file with `--sources <path>`",
+         <adapter>=<text>`, or select an operator-owned file with `--sources [<path>]`",
     )
 }
 

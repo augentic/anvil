@@ -8,7 +8,7 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 
 - **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
 - **`call(input, context)`** anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
-- **`type Error = emery_engine::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
+- **`type Error = emery_engine::handler::Error`** — an alias of the workspace taxonomy (`emery_error::Error`).
 
 Deterministic operations bind `P: Provider` only unless their kernel issues model judgments, in which case they additionally bind `Model` — the one capability the provider still carries. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
 
@@ -22,7 +22,7 @@ impl<P: Provider> Operation<P> for Frob {
     fn call(
         input: Self::Input, _context: CallContext<'_, P>,
     ) -> impl Future<Output = Result<Self::Output, Self::Error>> {
-        std::future::ready(frob(input).map_err(Into::into))
+        std::future::ready(frob(input))
     }
 }
 
@@ -42,13 +42,9 @@ Operations anchor at `ExecutionPaths::deployed()` inside `call`: paths are const
 
 Operations never write to stdout. Each returns a typed body implementing `Serialize` for JSON and `Render` for command text output. The HTTP projector always serializes JSON.
 
-### Gate operations ride the error
-
-Check surfaces return `ReportBody` on success and `Error::Report { body, source }` on failure. The command projector renders the report on stdout and the payload-free source error on stderr; the HTTP projector embeds the report under `report`.
-
 ## Errors and their projections
 
-`emery_engine::handler::Error` wraps the workspace `emery_error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
+`emery_engine::handler::Error` is the workspace `emery_error::Error` taxonomy. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from it. `Exit` stays in `crates/transport` — there is no second exit table. Do not reintroduce a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
@@ -71,7 +67,7 @@ The four-slot CLI exit-code table is fixed:
 
 ## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns the guest's HTTP surface: the read-only MCP spec shelf plus one typed refusal router (C3). `http::listener` serves the current generation and its id at `/mcp/emery/spec` — a stateless `McpServer` over a per-request storage snapshot (the same `Home::current_set` read `show` uses), exposing `spec://spec.md`, `spec://design.md`, and `spec://generation` as resources with mirroring read tools. Beside the deployment-routed adapter MCP shelves, every other path and method answers a typed 404 — reads are served, mutation is refused. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
+`crates/transport/src/http.rs` owns the guest's HTTP surface: the read-only MCP spec shelf plus one typed refusal router (C3). `http::listener` serves the current generation and its id at `/mcp/emery/spec` — a stateless `McpServer` over a per-request storage snapshot (the same `Home::current_set` read `show` uses), exposing `spec://spec.md`, `spec://design.md`, and `spec://generation` as resources with mirroring read tools. Beside the deployment-routed adapter MCP shelves, every other path and method answers a typed 404 — reads are served, mutation is refused. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); the root scenario `tests/shelf.rs::every_route_refuses` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 

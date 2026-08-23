@@ -20,12 +20,12 @@ brew install emery
 
 Then run `emery --version --quiet` and stop on failure.
 
-2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a `sources.toml` passes it instead with `--sources <path>` — never together with positional adapters or `--value` (mixing fails typed, exit 2).
+2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a binding file selects it instead with `--sources [<path>]`; omit the value only for the project-relative `sources.toml`. Never combine the file carrier with positional adapters or `--value` (mixing fails typed, exit 2). Local paths must stay relative to the project and must not escape it.
 3. **Invoke**:
 
 ```bash
 emery specify <adapter>... [--value <adapter>=<text>] --quiet
-# or: emery specify --sources <path> --quiet
+# or: emery specify --sources [<path>] --quiet
 ```
 
 Specify dispatches model judgment and can take a while on large workspaces; it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).

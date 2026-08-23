@@ -27,9 +27,28 @@ fn adapter_too_old_display() {
     );
     let hint = err.hint().expect("exit-3 errors carry a recovery hint");
     assert!(
-        hint.contains("brew upgrade emery") && hint.contains("emery adapter upgrade"),
-        "the hint names the install channel and the adapter-upgrade fallback: {hint}"
+        hint.contains("brew upgrade emery")
+            && hint.contains("cargo install --git https://github.com/augentic/emery --locked")
+            && !hint.contains("emery adapter"),
+        "the hint names live install channels only: {hint}"
     );
+}
+
+#[test]
+fn live_codes_hint() {
+    let specify = Error::validation_failed("specify-source-required", "", "detail");
+    let hint = specify.hint().expect("specify-source-required carries a hint");
+    assert!(hint.contains("emery specify"), "{hint}");
+
+    let show = Error::Diag {
+        code: "spec-not-generated",
+        detail: "detail".into(),
+    };
+    let hint = show.hint().expect("spec-not-generated carries a hint");
+    assert!(hint.contains("emery specify"), "{hint}");
+
+    let deleted = Error::validation_failed("plan-epoch-stale", "rule", "detail");
+    assert!(deleted.hint().is_none(), "deleted verbs must not keep recovery hints");
 }
 
 #[test]
@@ -37,35 +56,6 @@ fn validation_code_display() {
     let err = Error::validation_failed("bad-thing", "rule", "detail");
     assert_eq!(err.variant_str(), "bad-thing");
     assert_eq!(err.to_string(), "bad-thing: rule: detail");
-}
-
-#[test]
-fn execute_codes_hint() {
-    for (code, expect) in [
-        ("plan-epoch-stale", "emery plan execute"),
-        ("guest-marker-held", ".emery/change/guest.lock"),
-    ] {
-        let err = Error::validation_failed(code, "rule", "detail");
-        let hint = err.hint().unwrap_or_else(|| panic!("{code} carries a hint"));
-        assert!(hint.contains(expect), "{code} hint names the recovery gesture: {hint}");
-    }
-}
-
-#[test]
-fn closed_plan_codes_hint() {
-    for (code, expect) in [
-        ("plan-discovery-mismatch", "emery plan author"),
-        ("plan-definition-stale", "emery plan author"),
-        ("plan-epoch-required", "emery plan execute"),
-        ("target-base-freeze-detached", "accepted CID"),
-    ] {
-        let err = Error::Diag {
-            code,
-            detail: "detail".into(),
-        };
-        let hint = err.hint().unwrap_or_else(|| panic!("{code} carries a hint"));
-        assert!(hint.contains(expect), "{code} hint names the recovery gesture: {hint}");
-    }
 }
 
 #[test]

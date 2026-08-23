@@ -51,7 +51,7 @@ The success body names the committed generation and its reviewable set:
 
 `diff` is the re-mine diff against the superseded generation (ADR-0010): the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
-`emery specify` with no source fails with `error: "specify-source-required"` (exit 2); mixing `--sources` with positional adapters or `--value` fails with `error: "argument"` (exit 2). A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"`. Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
+`emery specify` with no source fails with `error: "specify-source-required"` (exit 2); mixing `--sources` with positional adapters or `--value`, or naming an absolute or project-escaping local path, fails with `error: "argument"` (exit 2). `--sources` without a value explicitly selects the project-relative `sources.toml`. A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"`. Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
 
 ### `emery show <spec|design>`
 

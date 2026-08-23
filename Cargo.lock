@@ -962,6 +962,7 @@ dependencies = [
  "omnia-guest",
  "omnia-testkit",
  "omnia-wasi-http",
+ "schemars",
  "serde",
  "serde_json",
  "tempfile",
@@ -975,7 +976,6 @@ dependencies = [
 name = "emery-artifacts"
 version = "0.38.0"
 dependencies = [
- "emery-diagnostics",
  "emery-error",
  "schemars",
  "serde",
@@ -992,7 +992,6 @@ dependencies = [
  "proptest",
  "schemars",
  "serde",
- "serde-saphyr",
  "serde_json",
  "sha2 0.11.0",
  "tempfile",
@@ -1010,13 +1009,10 @@ dependencies = [
  "emery-prose",
  "emery-testkit",
  "omnia-guest",
- "omnia-testkit",
  "semver",
  "serde",
  "serde_json",
  "strum",
- "tempfile",
- "thiserror 2.0.20",
  "tokio",
  "toml",
 ]
@@ -1048,20 +1044,15 @@ dependencies = [
 name = "emery-transport"
 version = "0.38.0"
 dependencies = [
- "anyhow",
  "clap",
  "emery-adapter",
  "emery-artifacts",
- "emery-diagnostics",
  "emery-engine",
  "emery-error",
- "emery-testkit",
  "omnia-guest",
  "serde",
  "serde_json",
  "strum",
- "tokio",
- "tower",
 ]
 
 [[package]]

@@ -1,11 +1,10 @@
-//! Journey host using the mock source component and scripted model answers.
+//! Static host for the mock source component with fixed synthesis answers.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
         use std::future::Future;
         use std::sync::Arc;
 
-        use anyhow::Context as _;
         use omnia_filesystem::Client as Filesystem;
         use omnia_testkit::model::Scripted;
         use omnia_wasi_blobstore::WasiBlobstore;
@@ -44,27 +43,10 @@ cfg_if::cfg_if! {
             }
         });
 
-        const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";
-
-        fn connect() -> anyhow::Result<ScriptedModel> {
-            let dir = std::env::var(SCRIPT_ENV)
-                .with_context(|| format!("{SCRIPT_ENV} must name the model script directory"))?;
-            let mut files: Vec<_> = std::fs::read_dir(&dir)
-                .with_context(|| format!("reading the model script directory `{dir}`"))?
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .map(|entry| entry.path())
-                .filter(|path| path.is_file())
-                .collect();
-            files.sort();
-            let answers: Vec<String> = files
-                .iter()
-                .map(std::fs::read_to_string)
-                .collect::<Result<_, _>>()
-                .context("reading a script answer")?;
-            anyhow::ensure!(!answers.is_empty(), "the script directory `{dir}` carries no answers");
-            Ok(ScriptedModel(Scripted::answers(answers)))
-        }
+        const ANSWERS: [&str; 2] = [
+            include_str!("../tests/specify/1-spec.md"),
+            include_str!("../tests/specify/2-design.md"),
+        ];
 
         #[derive(Clone, Debug)]
         struct ScriptedModel(Scripted);
@@ -75,7 +57,7 @@ cfg_if::cfg_if! {
             fn connect_with(
                 _options: omnia::NoOptions,
             ) -> impl Future<Output = anyhow::Result<Self>> {
-                std::future::ready(connect())
+                std::future::ready(Ok(Self(Scripted::answers(ANSWERS))))
             }
         }
 

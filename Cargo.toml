@@ -5,7 +5,6 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["emery", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
-# autoexamples = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -67,10 +66,6 @@ crate-type = ["cdylib"]
 [[example]]
 name = "runtime"
 path = "examples/runtime.rs"
-
-[[example]]
-name = "profile"
-path = "examples/profile.rs"
 
 [lints]
 workspace = true

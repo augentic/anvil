@@ -14,7 +14,7 @@ Never hand-edit `.emery/` state (the component cache, the generation store); nev
 
 ## Verb tree
 
-- `emery specify <adapter>... [--value <adapter>=<text>] [--sources <path>]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. The binding list is per-run input, never persisted. Invoked without a source it exits `2` with `specify-source-required`; mixing `--sources` with argv bindings exits `2` with `argument`.
+- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `2` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `2` with `argument`.
 - `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `1`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 

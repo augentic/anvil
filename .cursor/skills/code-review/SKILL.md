@@ -23,8 +23,10 @@ Look for:
 3. Names longer than needed. Heuristic: >15 chars is suspect, >25 needs
    justification. Sharper rule: the module path is context — flag
    `show_registry` in `registry.rs`, which should be `registry::show`.
-4. Unit tests that violate the integration-first policy: any `src`
-   `#[cfg(test)]` test whose behavior is reachable through the public surface.
+4. Tests that violate the root-led integration policy: any `src`
+   `#[cfg(test)]` test — or crate integration test — whose behavior is
+   reachable through the CLI or MCP entry seams and already owned (or
+   ownable) by a root scenario in `tests/`.
 5. YAGNI — abstractions, flags, or generality with no current consumer.
 6. Latent bugs and footguns.
 

@@ -4,13 +4,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use emery_error::Error;
-use omnia_guest::{BlobStore, StateStore};
+use omnia_guest::BlobStore;
 
 use super::core::ResolvedSource;
 use super::resolver::Component;
 use super::selector::canonicalize_component;
 use super::{AdapterSelector, metadata, selector};
-use crate::handler::{ADAPTERS_CONTAINER, ExecutionPaths};
+use crate::handler::{ADAPTERS_CONTAINER, ExecutionPaths, preopen_path};
 use crate::storage;
 
 /// Provisions and resolves a source selector.
@@ -18,11 +18,11 @@ use crate::storage;
 /// # Errors
 ///
 /// Returns provisioning or resolution failures.
-pub async fn source<S: StateStore + BlobStore>(
-    runner: impl metadata::Runner, selector: &AdapterSelector, store: &S, paths: &ExecutionPaths,
+pub async fn source<B: BlobStore>(
+    runner: impl metadata::Runner, selector: &AdapterSelector, blobs: &B, paths: &ExecutionPaths,
 ) -> Result<ResolvedSource, Error> {
-    provision(selector, store, paths).await?;
-    Component::new(runner).resolve_source(selector, store, paths).await
+    provision(selector, blobs, paths).await?;
+    Component::new(runner).resolve_source(selector, blobs, paths).await
 }
 
 /// Mirrors local components; bare names and package pins require no guest provisioning.
@@ -41,13 +41,16 @@ pub async fn provision<B: BlobStore>(
 
 // An existing mirror keeps a recorded selector resolvable after source removal.
 async fn mirror<B: BlobStore>(path: &Path, blobs: &B, paths: &ExecutionPaths) -> Result<(), Error> {
-    let absolute =
-        if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
+    let relative = preopen_path(path, "<adapter>")?;
+    let absolute = paths.project_root().join(&relative);
     if !absolute.is_file() {
-        let cached = match selector::name_from_component(path) {
+        let cached = match selector::name_from_component(&relative) {
             Ok(name) => {
                 let object = paths.locations().component_object(&name);
-                blobs.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false)
+                blobs
+                    .has(ADAPTERS_CONTAINER, &object)
+                    .await
+                    .map_err(|err| storage::failed("probing the component cache", &err))?
             }
             Err(_) => false,
         };
@@ -55,7 +58,7 @@ async fn mirror<B: BlobStore>(path: &Path, blobs: &B, paths: &ExecutionPaths) ->
             return Ok(());
         }
     }
-    seed(path, blobs, paths).await.map(drop)
+    seed(&relative, blobs, paths).await.map(drop)
 }
 
 /// Result of seeding a component.
@@ -78,10 +81,10 @@ pub struct Seeded {
 pub async fn seed<B: BlobStore>(
     path: &Path, blobs: &B, paths: &ExecutionPaths,
 ) -> Result<Seeded, Error> {
-    let absolute =
-        if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
+    let relative = preopen_path(path, "<adapter>")?;
+    let absolute = paths.project_root().join(&relative);
     ensure_component_file(&absolute, &path.display().to_string())?;
-    let canonical = canonicalize_component(path, paths.project_root())?;
+    let canonical = canonicalize_component(&relative, paths.project_root())?;
     let name = selector::name_from_component(&canonical)?;
 
     // Source reads use the workspace; mirrors use the storage capability.

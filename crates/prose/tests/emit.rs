@@ -76,3 +76,40 @@ fn empty_tree_fails() {
         emery_prose::emit_from(&tmp.path().join("prompts"), &out).expect_err("empty tree fails");
     assert!(err.contains("no markdown documents"), "{err}");
 }
+
+fn symlink_dir(original: impl AsRef<Path>, link: impl AsRef<Path>) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(original, link).expect("symlink");
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(original, link).expect("symlink");
+}
+
+#[test]
+fn followed_symlink_embeds() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let shared = tmp.path().join("shared");
+    write(&shared, "rule.md", "# Rule\n");
+    let tree = tmp.path().join("prompts");
+    write(&tree, "intro.md", "# Intro\n");
+    symlink_dir(&shared, tree.join("runtime"));
+    let out = tmp.path().join("out");
+    fs::create_dir_all(&out).expect("mkdir out");
+
+    emery_prose::emit_from(&tree, &out).expect("followed directory symlink embeds");
+    let generated = fs::read_to_string(out.join("prose_docs.rs")).expect("generated file");
+    assert!(generated.contains("path: \"intro.md\""), "{generated}");
+    assert!(generated.contains("path: \"runtime/rule.md\""), "{generated}");
+}
+
+#[test]
+fn symlink_cycle_fails() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let tree = tmp.path().join("prompts");
+    write(&tree, "intro.md", "# Intro\n");
+    symlink_dir(Path::new("."), tree.join("loop"));
+    let out = tmp.path().join("out");
+    fs::create_dir_all(&out).expect("mkdir out");
+
+    let err = emery_prose::emit_from(&tree, &out).expect_err("cyclic corpus must fail typed");
+    assert!(err.contains("symlink cycle"), "{err}");
+}
