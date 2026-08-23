@@ -28,7 +28,7 @@ run = "cargo doc --no-deps --workspace --all-features --locked"
 [test]
 description = "nextest workspace run under -Dwarnings"
 env = { RUSTFLAGS = "-Dwarnings" }
-run = "cargo nextest run --workspace --all-features --no-tests=pass"
+run = "cargo nextest run --locked --workspace --all-features --no-tests=pass"
 
 [test-docs]
 description = "cargo test --doc --workspace"

@@ -32,7 +32,7 @@ pub fn emit(tree: &str) {
 pub fn emit_from(root: &Path, out_dir: &Path) -> Result<(), String> {
     let mut docs: Vec<(String, PathBuf)> = Vec::new();
     if root.is_dir() {
-        walk(root, "", &mut docs)?;
+        walk(root, "", &mut docs, &mut Vec::new())?;
     }
     docs.sort_by(|a, b| a.0.cmp(&b.0));
     if docs.is_empty() {
@@ -64,8 +64,24 @@ pub fn emit_from(root: &Path, out_dir: &Path) -> Result<(), String> {
     fs::write(out_dir.join("prose_docs.rs"), out).map_err(|err| err.to_string())
 }
 
-fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), String> {
+fn walk(
+    dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>, stack: &mut Vec<PathBuf>,
+) -> Result<(), String> {
     println!("cargo:rerun-if-changed={}", dir.display());
+    let canonical =
+        fs::canonicalize(dir).map_err(|err| format!("canonicalize {}: {err}", dir.display()))?;
+    if stack.contains(&canonical) {
+        return Err(format!("symlink cycle: {} re-enters {}", dir.display(), canonical.display()));
+    }
+    stack.push(canonical);
+    let walked = walk_entries(dir, rel, docs, stack);
+    stack.pop();
+    walked
+}
+
+fn walk_entries(
+    dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>, stack: &mut Vec<PathBuf>,
+) -> Result<(), String> {
     let entries = fs::read_dir(dir).map_err(|err| format!("read {}: {err}", dir.display()))?;
     for entry in entries {
         let entry = entry.map_err(|err| format!("walk {}: {err}", dir.display()))?;
@@ -76,7 +92,7 @@ fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), 
         let metadata = fs::metadata(&path)
             .map_err(|err| format!("resolve {} (dangling symlink?): {err}", path.display()))?;
         if metadata.is_dir() {
-            walk(&path, &child_rel, docs)?;
+            walk(&path, &child_rel, docs, stack)?;
         } else if metadata.is_file() && path.extension().is_some_and(|ext| ext == "md") {
             println!("cargo:rerun-if-changed={}", path.display());
             let resolved = fs::canonicalize(&path)

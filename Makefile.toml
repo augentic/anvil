@@ -57,7 +57,7 @@ install_crate = "cargo-outdated"
 
 [tasks.test]
 command = "cargo"
-args = ["nextest", "run", "--workspace", "--all-features", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "--workspace", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
 [tasks.test-docs]

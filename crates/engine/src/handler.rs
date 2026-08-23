@@ -1,15 +1,16 @@
 //! Transport-neutral command plumbing.
 
-mod error;
 mod locations;
 mod output;
 mod paths;
 
-pub use error::{Error, FailureBody};
 pub use locations::{ADAPTERS_CONTAINER, Locations};
-pub use output::{Render, ReportBody, ReportRow};
+pub use output::Render;
 pub use paths::ExecutionPaths;
 pub(crate) use paths::preopen_path;
+
+/// Operation error type: the workspace taxonomy.
+pub type Error = emery_error::Error;
 
 /// Result type for command operations.
 pub type Result<T, E = Error> = std::result::Result<T, E>;

@@ -1,11 +1,64 @@
-//! Validates plugin-rule mentions against the shipped surface.
+//! Plugin-rule mentions against the shipped CLI surface.
+//!
+//! The always-applied Cursor rule may only name live verbs, flags, and
+//! shipped skills — a cross-cutting product contract, not a transport
+//! library one.
 
-mod support;
+#![cfg(not(target_arch = "wasm32"))]
 
 use std::collections::BTreeSet;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use support::Inert;
+use emery_adapter::seam::{Evidence, SourceInput, SourceMetadata};
+use emery_adapter::{DispatchError, Source};
+use emery_testkit::Memory;
+use emery_transport::command::Globals;
+use omnia_guest::api::command::Router;
+use omnia_guest::api::invoke::Invoker;
+
+type Grammar = Router<Inert, Globals>;
+
+// Capabilities are never dispatched; the suite only inspects the grammar.
+#[derive(Clone, Debug, Default)]
+struct Inert {
+    storage: Arc<Memory>,
+}
+
+emery_testkit::scripted_storage!(Inert, storage);
+
+impl omnia_guest::Model for Inert {
+    fn create(
+        &self, _request: omnia_guest::model::Request,
+    ) -> impl Future<Output = Result<omnia_guest::model::Reply, omnia_guest::model::Error>> {
+        std::future::ready(never_dispatched())
+    }
+}
+
+impl Source for Inert {
+    fn extract(
+        &self, _id: &str, _input: &SourceInput,
+    ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
+        std::future::ready(never_extracted())
+    }
+
+    fn metadata(&self, _id: &str) -> SourceMetadata {
+        unreachable!("the plugin suite never dispatches the source seam")
+    }
+}
+
+fn never_dispatched() -> Result<omnia_guest::model::Reply, omnia_guest::model::Error> {
+    unreachable!("the plugin suite never dispatches the model")
+}
+
+fn never_extracted() -> Result<Evidence, DispatchError> {
+    unreachable!("the plugin suite never dispatches the source seam")
+}
+
+fn grammar() -> Grammar {
+    emery_transport::command::router(Invoker::new("emery", Inert::default())).expect("router")
+}
 
 // Global flags do not appear in route-specific help.
 const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
@@ -16,12 +69,10 @@ const BUILTIN_PATHS: &[[&str; 1]] = &[["completions"]];
 const SKILL_VERBS: &[(&str, [&str; 1])] = &[("specify", ["specify"])];
 
 fn plugin_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins/emery")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/emery")
 }
 
-fn known_paths(
-    router: &omnia_guest::api::command::Router<Inert, emery_transport::command::Globals>,
-) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
+fn known_paths(router: &Grammar) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
     let mut full: BTreeSet<Vec<String>> = BTreeSet::new();
     let mut prefixes: BTreeSet<Vec<String>> = BTreeSet::new();
     for route in router.inventory() {
@@ -142,10 +193,7 @@ fn flags_of(text: &str) -> Vec<String> {
         .collect()
 }
 
-async fn assert_flags(
-    router: &omnia_guest::api::command::Router<Inert, emery_transport::command::Globals>,
-    path: &[String], text: &str,
-) {
+async fn assert_flags(router: &Grammar, path: &[String], text: &str) {
     let mut help: Option<String> = None;
     for flag in flags_of(text) {
         if GLOBAL_FLAGS.contains(&flag.as_str()) {
@@ -172,12 +220,13 @@ async fn assert_flags(
     }
 }
 
+// Plugin-rule CLI mentions must resolve to live verbs and flags.
 #[tokio::test]
 async fn rule_matches_router() {
     let rule = plugin_dir().join("rules/emery.mdc");
     let doc = std::fs::read_to_string(&rule)
         .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
-    let router = support::router();
+    let router = grammar();
     let (full, prefixes) = known_paths(&router);
 
     let mentions = mentions(&doc);
@@ -233,6 +282,7 @@ async fn rule_matches_router() {
     }
 }
 
+// Every shipped skill is named by the always-applied rule.
 #[test]
 fn rule_names_every_skill() {
     let doc = std::fs::read_to_string(plugin_dir().join("rules/emery.mdc")).expect("rule");

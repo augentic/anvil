@@ -78,8 +78,7 @@ impl<P: Provider + StateStore + BlobStore> Operation<P> for Show {
             return Err(Error::Diag {
                 code: "spec-not-generated",
                 detail: "no specification generation has been committed".to_string(),
-            }
-            .into());
+            });
         };
         let body = match input.document {
             Document::Spec => set.spec,

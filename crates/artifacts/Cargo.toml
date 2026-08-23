@@ -14,7 +14,6 @@ readme = "../../README.md"
 workspace = true
 
 [dependencies]
-emery-diagnostics.workspace = true
 emery-error.workspace = true
 schemars.workspace = true
 serde.workspace = true

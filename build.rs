@@ -21,6 +21,8 @@ fn main() {
         return;
     }
 
+    emit_source_wasm_path();
+
     let engine = build_engine();
 
     let len = std::fs::metadata(&engine).map(|meta| meta.len()).unwrap_or_default();
@@ -57,7 +59,7 @@ fn precompile(raw: &std::path::Path, out: &std::path::Path) {
 
 fn build_engine() -> PathBuf {
     let manifest_dir = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
-    for tracked in ["src", "crates", "Cargo.toml", "Cargo.lock"] {
+    for tracked in ["src", "crates", "wit", "Cargo.toml", "Cargo.lock"] {
         println!("cargo:rerun-if-changed={}", manifest_dir.join(tracked).display());
     }
 
@@ -89,6 +91,14 @@ fn build_engine() -> PathBuf {
     assert!(status.success(), "{TARGET_HINT}");
 
     target_dir.join(WASM_TARGET).join(if release { "release" } else { "debug" }).join("emery.wasm")
+}
+
+// Walk OUT_DIR (cargo does not export CARGO_TARGET_DIR to build scripts).
+fn emit_source_wasm_path() {
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env"));
+    let target_dir = out.ancestors().nth(4).expect("OUT_DIR layout");
+    let path = target_dir.join(WASM_TARGET).join("release").join("examples").join("source.wasm");
+    println!("cargo:rustc-env=EMERY_SOURCE_WASM={}", path.display());
 }
 
 // Prevent host flags from leaking into wasm; preserve Cargo settings and the

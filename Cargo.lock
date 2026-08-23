@@ -976,7 +976,6 @@ dependencies = [
 name = "emery-artifacts"
 version = "0.38.0"
 dependencies = [
- "emery-diagnostics",
  "emery-error",
  "schemars",
  "serde",
@@ -1014,7 +1013,6 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
- "thiserror 2.0.20",
  "tokio",
  "toml",
 ]
@@ -1046,19 +1044,15 @@ dependencies = [
 name = "emery-transport"
 version = "0.38.0"
 dependencies = [
- "anyhow",
  "clap",
  "emery-adapter",
  "emery-artifacts",
- "emery-diagnostics",
  "emery-engine",
  "emery-error",
- "emery-testkit",
  "omnia-guest",
  "serde",
  "serde_json",
  "strum",
- "tokio",
 ]
 
 [[package]]
