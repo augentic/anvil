@@ -4,8 +4,9 @@ use emery_error::Error;
 use omnia_guest::BlobStore;
 use serde::{Deserialize, Serialize};
 
-use super::core::{AdapterLocation, Axis};
+use super::core::Axis;
 use super::routed::RoutedId;
+use crate::handler::ADAPTERS_CONTAINER;
 
 /// A source adapter's metadata answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,11 +58,6 @@ struct MetadataCache {
     metadata: Metadata,
 }
 
-// Sidecar caches live beside the component they key.
-fn slot(location: &AdapterLocation) -> (&'static str, &str) {
-    (location.container(), location.object())
-}
-
 /// Dispatches metadata without guest-visible component access or caching.
 ///
 /// The host may fault in a cold component during dispatch, before a
@@ -78,24 +74,20 @@ pub(super) fn dispatch(
 
 /// Loads component metadata through a digest-keyed sidecar cache.
 pub(super) async fn load<B: BlobStore>(
-    runner: &impl Runner, blobs: &B, location: &AdapterLocation, axis: Axis, name: &str,
-    version: Option<&semver::Version>,
+    runner: &impl Runner, blobs: &B, component: &str, bytes: &[u8], axis: Axis, name: &str,
 ) -> Result<Metadata, Error> {
-    let (container, component) = slot(location);
-    // Unreadable components use the empty digest, preventing cache hits.
-    let bytes = blobs.get(container, component).await.ok().flatten().unwrap_or_default();
-    let digest = emery_diagnostics::cache::content_digest(&bytes);
+    let digest = emery_diagnostics::cache::content_digest(bytes);
     let cache_object = format!("{component}.metadata.json");
-    if let Some(answer) = read_cache(blobs, container, &cache_object, &digest).await {
+    if let Some(answer) = read_cache(blobs, ADAPTERS_CONTAINER, &cache_object, &digest).await {
         return Ok(answer);
     }
 
-    let adapter_id = RoutedId::new(axis, name, version.cloned()).to_string();
+    let adapter_id = RoutedId::new(axis, name, None).to_string();
     let answer = runner(&Request {
         axis,
         adapter_id: &adapter_id,
     })?;
-    write_cache(blobs, container, &cache_object, &digest, &answer).await;
+    write_cache(blobs, ADAPTERS_CONTAINER, &cache_object, &digest, &answer).await;
     Ok(answer)
 }
 

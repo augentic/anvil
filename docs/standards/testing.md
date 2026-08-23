@@ -16,7 +16,7 @@ The fast rung is **root product integration plus retained crate contracts**: `ca
 
 Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage seam (design/portable-storage.md steps 1–2), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities — the `wasi:keyvalue`/`wasi:blobstore` imports in deployment, bound host-side to the durable `omnia-filesystem` store — and the native suites script them with `emery_testkit` (`Memory`, `Namespaced`). No suite changes the process working directory, and no suite asserts an on-disk layout — the backing is host policy, exercised on the live rung, not in tests. Operator-supplied inputs (a local `.wasm` component, a `sources.toml`) stay real files in a `tempfile::TempDir`.
 
-The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg: clippy over `--target wasm32-wasip2` with `clippy-wasm/clippy.toml`), which subsumes the old compile check. The `source` and `runtime` examples remain the in-tree component-shape fixture; they are not a test rung.
+The `source` and `runtime` examples remain the in-tree component-shape fixture; they are not a test rung.
 
 ### The mock source example
 

@@ -10,7 +10,7 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## The WASM seam
 
-No test builds or spawns the mock source component. The model-free signal is the guest lint leg: `cargo make lint` runs clippy over `--target wasm32-wasip2` with the guest deny-list (`clippy-wasm/clippy.toml`), subsuming the old compile check. The `source` and `runtime` examples remain for local component-shape work (`cargo make source` / `cargo make runtime`). Run those when a change crosses a WIT, dispatch, hosting, or preopen seam.
+No test builds or spawns the mock source component. The `source` and `runtime` examples remain for local component-shape work (`cargo make source` / `cargo make runtime`). Run those when a change crosses a WIT, dispatch, hosting, or preopen seam.
 
 ## Placement decision
 

@@ -556,6 +556,26 @@ async fn mirror_survives_removal() {
     provider.model.assert_exhausted();
 }
 
+// Storage faults remain infrastructure failures; they never masquerade
+// as an uncached bare adapter.
+#[tokio::test]
+async fn cache_read_fault() {
+    let provider = Provider::idle();
+    provider.storage.fail_blob_get("cache backend unavailable");
+
+    fail(&provider, &["emery", "specify", "source"], 1, "storage-failed").await;
+}
+
+// Mirror recovery distinguishes an unavailable cache from a confirmed
+// absent mirror and therefore never falls through to a path error.
+#[tokio::test]
+async fn mirror_probe_fault() {
+    let provider = Provider::idle();
+    provider.storage.fail_blob_has("cache backend unavailable");
+
+    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "storage-failed").await;
+}
+
 // A path that is not a `.wasm` component file refuses typed.
 #[tokio::test]
 async fn component_missing() {

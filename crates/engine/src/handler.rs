@@ -6,7 +6,7 @@ mod output;
 mod paths;
 
 pub use error::{Error, FailureBody};
-pub use locations::{ADAPTERS_CONTAINER, Locations, STORE_CONTAINER};
+pub use locations::{ADAPTERS_CONTAINER, Locations};
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;
 pub(crate) use paths::preopen_relative;

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use emery_error::Error;
-use omnia_guest::{BlobStore, StateStore};
+use omnia_guest::BlobStore;
 
 use super::core::ResolvedSource;
 use super::resolver::Component;
@@ -18,11 +18,11 @@ use crate::storage;
 /// # Errors
 ///
 /// Returns provisioning or resolution failures.
-pub async fn source<S: StateStore + BlobStore>(
-    runner: impl metadata::Runner, selector: &AdapterSelector, store: &S, paths: &ExecutionPaths,
+pub async fn source<B: BlobStore>(
+    runner: impl metadata::Runner, selector: &AdapterSelector, blobs: &B, paths: &ExecutionPaths,
 ) -> Result<ResolvedSource, Error> {
-    provision(selector, store, paths).await?;
-    Component::new(runner).resolve_source(selector, store, paths).await
+    provision(selector, blobs, paths).await?;
+    Component::new(runner).resolve_source(selector, blobs, paths).await
 }
 
 /// Mirrors local components; bare names and package pins require no guest provisioning.
@@ -47,7 +47,10 @@ async fn mirror<B: BlobStore>(path: &Path, blobs: &B, paths: &ExecutionPaths) ->
         let cached = match selector::name_from_component(path) {
             Ok(name) => {
                 let object = paths.locations().component_object(&name);
-                blobs.has(ADAPTERS_CONTAINER, &object).await.unwrap_or(false)
+                blobs
+                    .has(ADAPTERS_CONTAINER, &object)
+                    .await
+                    .map_err(|err| storage::failed("probing the component cache", &err))?
             }
             Err(_) => false,
         };

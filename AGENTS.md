@@ -35,7 +35,7 @@ engine       # the spec generator — per-run source bindings (argv + sources.to
 transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP surface (read-only MCP spec shelf + C3 refusal)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 testkit      # unpublished — scripted StateStore/BlobStore doubles (`Memory`, `Namespaced`) for native tests; not a production crate
-emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, spec shelf + HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind engine state (component cache and store included) to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
+emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, spec shelf + HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind the generation and component-cache state to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
 ```
 
 ### Repository map
@@ -67,7 +67,7 @@ Emery strictly enforces a **root-led integration posture** (DWN-style):
 - The root `tests/` scenario suites are the default home for every CLI- or MCP-reachable behavior: `tests/specify.rs` (the `specify` → `show` product arc), `tests/command.rs` (the CLI wire contract), and `tests/shelf.rs` (the MCP spec shelf and the C3 refusal) drive the in-process command router and HTTP listener over scripted capabilities (`tests/support/mod.rs`) and read like usage documentation.
 - Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, artifacts, diagnostics, error, prose) or product invariants impractical to arrange through the entry seams; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
 - Default to deletion; do not widen public APIs to test private kernels. `cargo make cov` (workspace-wide) is the brake; `CRATE=emery-<crate> cargo make cov-crate` audits one leaf contract.
-- One fast rung: the native suites (`cargo make test`, per push) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The wasm32 guest is linted under the guest deny-list (`cargo make lint`'s wasm leg, which subsumes the old compile check); the v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
+- One fast rung: the native suites (`cargo make test`, per push) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 
 See [`docs/standards/testing.md`](docs/standards/testing.md).
 
