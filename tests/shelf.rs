@@ -70,8 +70,16 @@ async fn every_route_refuses() {
         .map(|route| format!("/{}", route.selector().path().join("/")))
         .collect();
     paths.extend(
-        ["/", "/init", "/journal", "/plan/status", "/plan/execute", "/adapter/add", "/no/such/path"]
-            .map(str::to_string),
+        [
+            "/",
+            "/init",
+            "/journal",
+            "/plan/status",
+            "/plan/execute",
+            "/adapter/add",
+            "/no/such/path",
+        ]
+        .map(str::to_string),
     );
 
     for path in &paths {

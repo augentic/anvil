@@ -1,16 +1,17 @@
 # Specification
 
-Three bound sources disagree; authority resolves what it can and the
-uncovered acceptance gap is preserved as [unknown], never guessed.
+Four bound sources disagree; authority resolves what it can, tied
+peers surface as [conflict] for the operator, and the uncovered
+acceptance gap is preserved as [unknown], never guessed.
 
-### Requirement: login.flow [divergence]
+### Requirement: login.flow [conflict]
 
 ID: REQ-001
-Sources: [docs, code]
-Status: divergence
+Sources: [docs, wiki-live, code]
+Status: conflict
 
-Users sign in with a magic link; the observed email-and-password flow
-is retained as commentary.
+The documentation peers disagree — magic link versus passkey — and no
+higher authority resolves them; the operator must reconcile.
 
 ### Requirement: session.timeout [divergence]
 

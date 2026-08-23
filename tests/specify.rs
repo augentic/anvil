@@ -35,8 +35,7 @@ async fn gen_spec() {
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
     let component = component.to_str().expect("utf-8 path");
 
-    let provider =
-        Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
 
     // --------------------------------------------------
     // Act: the first specify.
@@ -128,9 +127,10 @@ async fn value_binding() {
     provider.model.assert_exhausted();
 }
 
-// Authority reconciles disagreement: docs outrank behaviour, an intent
-// directive outranks both, and the uncovered acceptance gap stays
-// [unknown] — the committed spec carries every resolution inline.
+// Authority reconciles disagreement: an intent directive outranks the
+// docs, tied documentation peers surface as [conflict] for the
+// operator, and the uncovered acceptance gap stays [unknown] — the
+// committed spec carries every resolution inline.
 #[tokio::test]
 async fn authority_precedence() {
     let mut provider = Provider::answering([PRECEDENCE_ANSWER, DESIGN_ANSWER]);
@@ -146,7 +146,16 @@ async fn authority_precedence() {
                     "login.flow.success",
                     ("criterion", "A valid link signs the user in."),
                 ),
+                // Non-requirement kinds ride along as synthesis context.
+                claim(ClaimKind::Decision, "auth.decision", ("body", "Sessions are cookie-bound.")),
             ],
+        )),
+    );
+    provider.source.evidence.insert(
+        "wiki-live".to_string(),
+        Ok(evidence(
+            Authority::Documentation,
+            vec![requirement("login.flow", "Users sign in with a passkey.")],
         )),
     );
     provider.source.evidence.insert(
@@ -172,16 +181,25 @@ async fn authority_precedence() {
 
     let resp = cli_ok(
         &provider,
-        &["emery", "specify", "docs", "code", "--value", "intent=Sessions expire after 30."],
+        &[
+            "emery",
+            "specify",
+            "docs",
+            "wiki-live",
+            "code",
+            "--value",
+            "intent=Sessions expire after 30.",
+        ],
     )
     .await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("requirements: 3"), "{stdout}");
-    assert!(stdout.contains("sources: 3"), "{stdout}");
+    assert!(stdout.contains("sources: 4"), "{stdout}");
 
     let id = pointer(&provider.storage);
     let spec = String::from_utf8(generation(&provider.storage, &id, "spec.md")).expect("utf-8");
-    assert!(spec.contains("login.flow [divergence]"), "docs outrank behaviour: {spec}");
+    assert!(spec.contains("login.flow [conflict]"), "tied docs peers conflict: {spec}");
+    assert!(spec.contains("session.timeout [divergence]"), "intent outranks docs: {spec}");
     assert!(spec.contains("Sources: [intent, docs, code]"), "the intent directive wins: {spec}");
     assert!(spec.contains("[unknown]"), "the acceptance gap is preserved: {spec}");
     provider.model.assert_exhausted();
@@ -197,7 +215,10 @@ async fn remine_supersedes() {
     // First run: the docs describe a greeting and a legacy export.
     // --------------------------------------------------
     let mut provider = Provider::answering([REMINE_FIRST, DESIGN_ANSWER]);
-    provider.source.evidence.insert("docs".to_string(), Ok(docs_evidence("hello", "legacy.export", "Exports ship nightly.")));
+    provider.source.evidence.insert(
+        "docs".to_string(),
+        Ok(docs_evidence("hello", "legacy.export", "Exports ship nightly.")),
+    );
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let first = pointer(&provider.storage);
 
@@ -207,7 +228,10 @@ async fn remine_supersedes() {
     // --------------------------------------------------
     let mut provider =
         Provider::over(Arc::clone(&provider.storage), [REMINE_SECOND, DESIGN_ANSWER]);
-    provider.source.evidence.insert("docs".to_string(), Ok(docs_evidence("howdy", "access.audit", "Access is audited.")));
+    provider.source.evidence.insert(
+        "docs".to_string(),
+        Ok(docs_evidence("howdy", "access.audit", "Access is audited.")),
+    );
     let resp = cli_ok(&provider, &["emery", "specify", "docs"]).await;
 
     // --------------------------------------------------
@@ -331,31 +355,76 @@ async fn floor_too_new() {
     fail(&provider, &["emery", "specify", "docs"], 3, "adapter-cli-too-old").await;
 }
 
-// A model answer outside the spec AST is refused (A17).
+// A model answer outside the fail-closed spec AST is refused, one
+// grammar breach per case: no blocks, malformed metadata, a bare
+// block, and duplicated requirement ids.
 #[tokio::test]
 async fn unparseable_answer() {
-    let provider = Provider::answering(["Not a spec at all."]);
-    fail(&provider, &["emery", "specify", "docs"], 2, "spec-invalid").await;
+    let answers = [
+        "Not a spec at all.",
+        "# S\n\n### Requirement: greeting [wat]\n\nID: REQ-1\nSources: [Docs!]\nStatus: maybe\n\nBody.\n",
+        "# S\n\n### Requirement: greeting\n\nBody without any metadata.\n",
+        "# S\n\n### Requirement: [unknown]\n\nID: REQ-001\nSources: []\nStatus: unknown\n\nNo name.\n",
+        "# S\n\n### Requirement: a\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\nA.\n\n\
+         ### Requirement: b\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\nB.\n",
+    ];
+    for answer in answers {
+        let provider = Provider::answering([answer]);
+        fail(&provider, &["emery", "specify", "docs"], 2, "spec-invalid").await;
+        assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+    }
+}
+
+// A syntactically valid answer must not drop, rename, retag, recite,
+// or renumber reconciliation rows: every dishonest rendering is a
+// provenance mismatch.
+#[tokio::test]
+async fn dishonest_answer() {
+    // The honest rows: `REQ-001 greeting.behaviour` agreed over
+    // `[docs]`, then the `REQ-002` acceptance gap.
+    let answers = [
+        // The gap row is hidden.
+        "# S\n\n### Requirement: greeting.behaviour\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\nHello.\n".to_string(),
+        // The subject heading is renamed.
+        two_blocks("greeting.renamed", "REQ-001", "[docs]", "agreed"),
+        // The status is retagged.
+        two_blocks("greeting.behaviour [divergence]", "REQ-001", "[docs]", "divergence"),
+        // The sources are recited.
+        two_blocks("greeting.behaviour", "REQ-001", "[other]", "agreed"),
+        // The requirement ids are renumbered.
+        two_blocks("greeting.behaviour", "REQ-009", "[docs]", "agreed"),
+    ];
+    for answer in answers {
+        let provider = Provider::answering([answer.as_str()]);
+        fail(&provider, &["emery", "specify", "docs"], 2, "spec-provenance-mismatch").await;
+        assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+    }
+}
+
+// A parseable two-block answer with one dishonest first block.
+fn two_blocks(heading: &str, id: &str, sources: &str, status: &str) -> String {
+    format!(
+        "# Specification\n\n### Requirement: {heading}\n\nID: {id}\nSources: {sources}\n\
+         Status: {status}\n\nGET /greeting returns the static string 'hello'.\n\n\
+         ### Requirement: greeting.behaviour acceptance criteria [unknown]\n\n\
+         ID: REQ-002\nSources: []\nStatus: unknown\n\nNo source contributed a criterion.\n"
+    )
+}
+
+// The design leg is fail-closed too: an empty second answer refuses.
+#[tokio::test]
+async fn empty_design() {
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let provider = Provider::answering([spec_answer.as_str(), "   "]);
+    fail(&provider, &["emery", "specify", "docs"], 2, "design-empty").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
-// A syntactically valid answer must not erase reconciliation rows:
-// hiding the acceptance gap is a provenance mismatch.
+// A model transport failure surfaces as one typed synthesis error.
 #[tokio::test]
-async fn dishonest_answer() {
-    let dishonest = "# Specification
-
-### Requirement: greeting.behaviour
-
-ID: REQ-001
-Sources: [docs]
-Status: agreed
-
-GET /greeting returns the static string 'hello'.
-";
-    let provider = Provider::answering([dishonest]);
-    fail(&provider, &["emery", "specify", "docs"], 2, "spec-provenance-mismatch").await;
-    assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+async fn model_fails() {
+    let provider = Provider::idle();
+    fail(&provider, &["emery", "specify", "docs"], 1, "synthesis-model-failed").await;
 }
 
 // The operator-owned `sources.toml` parses fail-closed: every
@@ -364,7 +433,11 @@ GET /greeting returns the static string 'hello'.
 async fn sources_file_refused() {
     let cases: &[(&str, u8, &str)] = &[
         ("not toml [", 1, "sources-toml-malformed"),
-        ("[sources.docs]\nadapter = \"documentation\"\nbranch = \"main\"\n", 1, "sources-toml-malformed"),
+        (
+            "[sources.docs]\nadapter = \"documentation\"\nbranch = \"main\"\n",
+            1,
+            "sources-toml-malformed",
+        ),
         ("", 2, "specify-source-required"),
         (
             "[sources.docs]\nadapter = \"documentation\"\npath = \"docs\"\nvalue = \"text\"\n",
@@ -414,36 +487,51 @@ async fn sources_file_refused() {
 }
 
 // File-relative `path` entries anchor at the file's directory, fold
-// `..` lexically, and stay `.`-relative so the guest preopen can open
-// them — observed at the seam the adapter receives.
+// `.` and `..` lexically, and stay `.`-relative so the guest preopen
+// can open them; `value` entries lend nothing — all observed at the
+// seam the adapter receives.
 #[tokio::test]
 async fn binding_paths() {
     let cwd = std::env::current_dir().expect("cwd");
     let dir = tempfile::TempDir::new_in(&cwd).expect("tempdir under cwd");
     let path = dir.path().join("sources.toml");
-    fs::write(&path, "[sources.docs]\nadapter = \"documentation\"\npath = \"nested/../docs\"\n")
-        .expect("write sources.toml");
+    fs::write(
+        &path,
+        "[sources.docs]\nadapter = \"documentation\"\npath = \"nested/../docs\"\n\n\
+         [sources.intent]\nadapter = \"intent\"\nvalue = \"Ship it.\"\n\n\
+         [sources.local]\nadapter = \"local\"\npath = \"./docs\"\n",
+    )
+    .expect("write sources.toml");
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs, intent, local]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
-    cli_ok(&provider, &["emery", "specify", "--sources", path.to_str().expect("utf-8 path")])
-        .await;
+    cli_ok(&provider, &["emery", "specify", "--sources", path.to_str().expect("utf-8 path")]).await;
 
     let calls = provider.source.calls.lock().expect("calls");
-    let (_, input) = calls.first().expect("one extract dispatch");
-    let SourceContent::Workspace(workspace) = &input.content else {
-        panic!("a path binding lends a workspace");
-    };
-    assert!(
-        !std::path::Path::new(&workspace.root).is_absolute(),
-        "the lend must stay `.`-relative for the guest preopen: {}",
-        workspace.root
+    for key in ["docs", "local"] {
+        let (_, input) = calls.iter().find(|(_, input)| input.key == key).expect("dispatched");
+        let SourceContent::Workspace(workspace) = &input.content else {
+            panic!("a path binding lends a workspace");
+        };
+        assert!(
+            !std::path::Path::new(&workspace.root).is_absolute(),
+            "the lend must stay `.`-relative for the guest preopen: {}",
+            workspace.root
+        );
+        assert!(
+            workspace.root.ends_with("docs") && !workspace.root.contains(".."),
+            "`.` and `..` fold away lexically against the file's directory: {}",
+            workspace.root
+        );
+    }
+    let (_, input) = calls.iter().find(|(_, input)| input.key == "intent").expect("dispatched");
+    assert_eq!(
+        input.content,
+        SourceContent::Value("Ship it.".to_string()),
+        "a file `value` entry binds inline text"
     );
-    assert!(
-        workspace.root.ends_with("docs") && !workspace.root.contains(".."),
-        "`nested/..` folds away lexically against the file's directory: {}",
-        workspace.root
-    );
+    drop(calls);
+    provider.model.assert_exhausted();
 }
 
 // The mirrored component keeps a recorded selector resolvable after
@@ -455,8 +543,7 @@ async fn mirror_survives_removal() {
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
     let component = component.to_str().expect("utf-8 path").to_string();
 
-    let provider =
-        Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", &component]).await;
 
     fs::remove_file(&component).expect("remove the operator's file");
@@ -473,8 +560,7 @@ async fn mirror_survives_removal() {
 #[tokio::test]
 async fn component_missing() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "adapter-component-missing")
-        .await;
+    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "adapter-component-missing").await;
 }
 
 // GitHub URLs are refused: a source checkout is not an adapter (ADR-0002).
@@ -488,6 +574,40 @@ async fn github_refused() {
         "adapter-github-uri-unsupported",
     )
     .await;
+}
+
+// An exact package pin (`emery:<name>@<semver>` or the first-party
+// shorthand) dispatches by its versioned routed id; admission stays
+// static — there is no download path (ADR-0002).
+#[tokio::test]
+async fn package_pin() {
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");
+    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+
+    cli_ok(&provider, &["emery", "specify", "emery:demo@1.2.0"]).await;
+
+    let calls = provider.source.calls.lock().expect("calls");
+    let (id, input) = calls.first().expect("one extract dispatch");
+    assert_eq!(id, "source:demo@1.2.0", "the routed id carries the exact pin");
+    assert_eq!(input.key, "demo", "the binding key is the adapter name");
+    drop(calls);
+    provider.model.assert_exhausted();
+}
+
+// Package references pin an exact SemVer — no branches, tags, or
+// namespace-less names.
+#[tokio::test]
+async fn package_ref_refused() {
+    let cases: &[(&str, &str)] = &[
+        ("emery:demo", "adapter-package-ref-version-required"),
+        ("emery:demo@main", "adapter-package-ref-version-required"),
+        ("emery:@1.2.0", "adapter-package-ref-malformed"),
+    ];
+    for (reference, code) in cases {
+        let provider = Provider::idle();
+        fail(&provider, &["emery", "specify", reference], 1, code).await;
+        assert!(provider.storage.is_empty(), "a refused run writes nothing: {code}");
+    }
 }
 
 // A pointer naming a missing generation is corruption, never an empty

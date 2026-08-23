@@ -96,11 +96,17 @@ async fn specify_mixed_sources() {
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
-// Each source binds once; a repeated key refuses typed.
+// Each source binds once; a repeated key refuses typed whichever
+// carrier repeats it.
 #[tokio::test]
 async fn specify_duplicate_source() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "docs", "docs"], 2, "specify-source-duplicate").await;
+    for argv in [
+        &["emery", "specify", "docs", "docs"][..],
+        &["emery", "specify", "docs", "--value", "docs=inline text"][..],
+    ] {
+        fail(&provider, argv, 2, "specify-source-duplicate").await;
+    }
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 

@@ -36,8 +36,7 @@ async fn concurrent_commit_conflicts() {
         winner.id,
         "the pointer still names the winner"
     );
-    let spec = store
-        .object("spec", &format!("generations/{}/spec.md", winner.id))
-        .expect("winning spec");
+    let spec =
+        store.object("spec", &format!("generations/{}/spec.md", winner.id)).expect("winning spec");
     assert_eq!(spec, b"# Spec winner\n", "the winning generation is intact");
 }

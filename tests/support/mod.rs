@@ -87,9 +87,7 @@ impl Provider<Memory> {
 
 impl<S> Provider<S> {
     /// A provider answering `answers` over `storage`.
-    pub fn over<T: Into<String>>(
-        storage: Arc<S>, answers: impl IntoIterator<Item = T>,
-    ) -> Self {
+    pub fn over<T: Into<String>>(storage: Arc<S>, answers: impl IntoIterator<Item = T>) -> Self {
         Self {
             model: Harness::answering(answers),
             source: SourceScript::default(),
