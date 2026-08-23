@@ -1,4 +1,11 @@
-//! Resolver integration tests.
+//! Verify-on-read for pinned store entries.
+//!
+//! Retained at crate level (testing.md "Crate integration"): package
+//! pins resolve dispatch-first while the dynamic resolver is deferred,
+//! so no CLI input reaches the pinned store leg of `locate` today.
+//! The fail-closed verification contract must hold for the resolver's
+//! return. The unpinned cache leg is owned by the root `specify`
+//! scenarios (mirroring and mirror survival).
 
 use emery_diagnostics::cache::content_digest;
 use emery_engine::handler::ExecutionPaths;
@@ -31,48 +38,22 @@ async fn verified_pin_locates() {
     assert_eq!(location.object(), "demo@1.2.0.wasm");
 }
 
+// Every unverifiable pinned entry refuses typed, never resolves.
 #[tokio::test]
-async fn missing_sidecar_refuses() {
-    let store = Memory::default();
-    store.insert_object("store", "demo@1.2.0.wasm", COMPONENT);
+async fn unverifiable_pins_refuse() {
+    let missing_sidecar = Memory::default();
+    missing_sidecar.insert_object("store", "demo@1.2.0.wasm", COMPONENT);
+    let cases: [(Memory, &str); 3] = [
+        (missing_sidecar, "adapter-sidecar-missing"),
+        (seeded_store("sha256:recorded-elsewhere"), "adapter-digest-mismatch"),
+        (Memory::default(), "adapter-not-found"),
+    ];
 
-    let err = locate(Axis::Source, "demo", Some(&version()), &store, &ExecutionPaths::deployed())
-        .await
-        .expect_err("an unverifiable entry is refused, never resolved");
-
-    assert!(err.to_string().contains("adapter-sidecar-missing"), "typed failure: {err}");
-}
-
-#[tokio::test]
-async fn drifted_digest_refuses() {
-    let store = seeded_store("sha256:recorded-elsewhere");
-
-    let err = locate(Axis::Source, "demo", Some(&version()), &store, &ExecutionPaths::deployed())
-        .await
-        .expect_err("digest drift fails closed");
-
-    assert!(err.to_string().contains("adapter-digest-mismatch"), "typed failure: {err}");
-}
-
-#[tokio::test]
-async fn missing_entry_not_found() {
-    let store = Memory::default();
-
-    let err = locate(Axis::Source, "demo", Some(&version()), &store, &ExecutionPaths::deployed())
-        .await
-        .expect_err("no store entry, no resolve");
-
-    assert!(err.to_string().contains("adapter-not-found"), "typed failure: {err}");
-}
-
-#[tokio::test]
-async fn seeded_cache_locates_unpinned() {
-    let store = Memory::default();
-    store.insert_object("adapters", "demo.wasm", COMPONENT);
-
-    let location = locate(Axis::Source, "demo", None, &store, &ExecutionPaths::deployed())
-        .await
-        .expect("a seeded mirror resolves without a pin");
-
-    assert_eq!(location.object(), "demo.wasm");
+    for (store, code) in cases {
+        let err =
+            locate(Axis::Source, "demo", Some(&version()), &store, &ExecutionPaths::deployed())
+                .await
+                .expect_err(code);
+        assert!(err.to_string().contains(code), "typed failure: {err}");
+    }
 }

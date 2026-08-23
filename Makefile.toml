@@ -97,10 +97,18 @@ workspace = false
 command = "cargo"
 args = ["build", "--locked", "--example", "profile"]
 
-# Coverage brake for unit-test reductions (docs/standards/testing.md).
-# Usage: CRATE=project cargo make cov
+# Coverage brake for test reductions (docs/standards/testing.md).
+# Workspace-wide by default: root scenarios exercise engine and
+# transport code from the root package, so per-crate runs undercount.
 # Operator-invoked, never part of `ci`.
 [tasks.cov]
+workspace = false
+script = "cargo llvm-cov nextest --workspace --all-features --summary-only"
+install_crate = "cargo-llvm-cov"
+
+# Focused leaf-contract coverage audit.
+# Usage: CRATE=emery-engine cargo make cov-crate
+[tasks.cov-crate]
 workspace = false
 script = "cargo llvm-cov nextest -p ${CRATE} --summary-only"
 install_crate = "cargo-llvm-cov"

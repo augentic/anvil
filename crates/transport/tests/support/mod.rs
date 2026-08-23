@@ -1,4 +1,6 @@
-//! Inert provider and storage for wire-contract tests.
+//! Inert provider for the plugin-rule grammar checks; capabilities
+//! are never dispatched. Product wire coverage lives in the root
+//! `tests/command.rs` and `tests/shelf.rs` scenario suites.
 
 use std::future::Future;
 use std::sync::Arc;
@@ -45,12 +47,5 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
 }
 
 pub fn router() -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
-    router_over(Inert::default())
-}
-
-// Accept a retained provider for post-run storage inspection.
-pub fn router_over(
-    provider: Inert,
-) -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
-    emery_transport::command::router(Invoker::new("emery", provider)).expect("router")
+    emery_transport::command::router(Invoker::new("emery", Inert::default())).expect("router")
 }
