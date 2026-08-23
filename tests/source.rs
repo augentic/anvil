@@ -21,6 +21,7 @@ use serde_json::{Map, Value};
 
 const SPEC_ANSWER: &str = include_str!("source/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("source/2-design.md");
+const SOURCES: &str = include_str!("source/sources.toml");
 
 #[tokio::test]
 async fn gen_spec() {
@@ -69,6 +70,45 @@ async fn gen_spec() {
     let resp = cli_exec(&provider, &["emery", "specify", component]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("none (byte-stable)"), "{stdout}");
+
+    provider.model.assert_exhausted();
+}
+
+#[tokio::test]
+async fn from_file() {
+    // `--sources` is the other specify authority: table keys become
+    // seam keys, and a local adapter resolves relative to the file.
+    let workspace = tempfile::tempdir().expect("tempdir");
+    fs::write(workspace.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
+    let sources = workspace.path().join("sources.toml");
+    fs::write(&sources, SOURCES).expect("write sources.toml");
+    let sources = sources.to_str().expect("utf-8 path");
+
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [greeting]");
+    let provider = Provider {
+        model: Harness::answering([&spec_answer, DESIGN_ANSWER]),
+        storage: Arc::new(Memory::default()),
+    };
+
+    let resp = cli_exec(&provider, &["emery", "specify", "--sources", sources]).await;
+    let stdout = String::from_utf8_lossy(&resp.stdout);
+    assert!(stdout.contains("sources: 1"), "{stdout}");
+    assert_eq!(
+        provider.storage.object("adapters", "source.wasm").as_deref(),
+        Some(b"\0asm-stub".as_slice()),
+        "the file-relative component is mirrored"
+    );
+
+    let pointer = provider.storage.state("spec/current").expect("current");
+    let id = String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string();
+    let spec =
+        provider.storage.object("spec", &format!("generations/{id}/spec.md")).expect("spec.md");
+    assert!(
+        String::from_utf8_lossy(&spec).contains("Sources: [greeting]"),
+        "the table key is the seam binding key"
+    );
+    let shown = cli_exec(&provider, &["emery", "show", "spec"]).await;
+    assert_eq!(shown.stdout, spec, "show renders the committed spec.md alone");
 
     provider.model.assert_exhausted();
 }
