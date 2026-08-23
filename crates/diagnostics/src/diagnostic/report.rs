@@ -1,15 +1,10 @@
-//! The [`DiagnosticReport`] envelope: the version pin, the
-//! per-severity [`DiagnosticSummary`] tally, and the report shape
-//! every check producer emits.
+//! Versioned diagnostic reports.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{Diagnostic, Severity};
 
-/// Type-level pin of the [`DiagnosticReport`] envelope version.
-///
-/// Serialises to the integer `1` and refuses to deserialise any other
-/// value.
+/// Report version, serialized as `1`; all other values are rejected.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DiagnosticReportVersion;
 
@@ -32,7 +27,7 @@ impl<'de> Deserialize<'de> for DiagnosticReportVersion {
     }
 }
 
-/// Diagnostic tally by severity for the [`DiagnosticReport`] envelope.
+/// Diagnostic counts by severity.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DiagnosticSummary {
@@ -63,27 +58,7 @@ impl DiagnosticSummary {
     }
 }
 
-/// Diagnostic report envelope — `{ version, summary, diagnostics }` —
-/// emitted by every check producer.
-///
-/// ```
-/// use emery_diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary};
-///
-/// let findings = vec![Diagnostic::violation(
-///     "spec.requirement-id-missing",
-///     "Every requirement carries an `ID:` line",
-///     "`### Requirement: Login` has no `ID:` line",
-///     Artifact::Specs,
-///     None,
-/// )];
-/// let report = DiagnosticReport {
-///     version: Default::default(),
-///     summary: DiagnosticSummary::from_diagnostics(&findings),
-///     findings,
-/// };
-/// let wire = serde_json::to_string(&report).unwrap();
-/// assert!(wire.contains("spec.requirement-id-missing"));
-/// ```
+/// Report envelope emitted by check producers.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DiagnosticReport {
@@ -91,7 +66,6 @@ pub struct DiagnosticReport {
     pub version: DiagnosticReportVersion,
     /// Diagnostic tally by severity.
     pub summary: DiagnosticSummary,
-    /// Byte-stable list of structured diagnostics. Ordering is the
-    /// producer's responsibility and is preserved on the wire.
+    /// Diagnostics in producer-defined, wire-preserved order.
     pub findings: Vec<Diagnostic>,
 }

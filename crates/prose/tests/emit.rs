@@ -1,6 +1,4 @@
-//! The prose codegen through its public surface: tree discovery,
-//! sorted table generation, link checking, and the failure modes a
-//! consumer `build.rs` relies on to fail the build.
+//! Prose codegen coverage.
 
 use std::fs;
 use std::path::Path;

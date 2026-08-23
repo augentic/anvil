@@ -1,19 +1,14 @@
-//! Build-time codegen for embedded prompt corpora.
-//!
-//! A crate's `build.rs` calls [`emit`]; every markdown document under the
-//! tree is embedded and link-checked (a dangling relative link fails the build).
+//! Build-time embedding and link checks for prompt corpora.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// [`emit_from`] for a crate's `build.rs`: the tree root is
-/// `<CARGO_MANIFEST_DIR>/<tree>/` and the output is `OUT_DIR`.
+/// Run [`emit_from`] using Cargo's manifest and output directories.
 ///
 /// # Panics
 ///
-/// Panics on any failure — the caller is a build script and must not
-/// limp on.
+/// Panics on any failure so the build stops.
 #[expect(
     clippy::disallowed_methods,
     reason = "build-script crate; cargo communicates CARGO_MANIFEST_DIR and OUT_DIR through the env"
@@ -27,21 +22,13 @@ pub fn emit(tree: &str) {
     }
 }
 
-/// Walk `root` and write the sorted `DOCS` table to
-/// `<out_dir>/prose_docs.rs`, printing `cargo:rerun-if-changed` for
-/// every directory and document walked.
+/// Write a sorted `DOCS` table to `<out_dir>/prose_docs.rs`.
 ///
-/// The embed set is discovered from disk, not declared by the caller:
-/// every markdown document under `root` is embedded, keyed by its
-/// root-relative path, after its relative markdown links resolve.
+/// Embeds every discovered Markdown file after relative links resolve.
 ///
 /// # Errors
 ///
-/// Returns a rendered message when the tree is missing or holds no
-/// markdown documents, when it cannot be walked, when a document
-/// carries a dangling relative markdown reference, or when the
-/// generated file cannot be written — the caller (a `build.rs`) should
-/// fail the build with it.
+/// Returns an error for discovery, link, or output failures.
 pub fn emit_from(root: &Path, out_dir: &Path) -> Result<(), String> {
     let mut docs: Vec<(String, PathBuf)> = Vec::new();
     if root.is_dir() {
@@ -77,8 +64,6 @@ pub fn emit_from(root: &Path, out_dir: &Path) -> Result<(), String> {
     fs::write(out_dir.join("prose_docs.rs"), out).map_err(|err| err.to_string())
 }
 
-// Collect every `.md` file under `dir` as `(tree-relative path,
-// resolved absolute path)`, descending through directory symlinks.
 fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), String> {
     println!("cargo:rerun-if-changed={}", dir.display());
     let entries = fs::read_dir(dir).map_err(|err| format!("read {}: {err}", dir.display()))?;
@@ -87,8 +72,7 @@ fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), 
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().into_owned();
         let child_rel = if rel.is_empty() { name } else { format!("{rel}/{name}") };
-        // `metadata` follows symlinks; a dangling link errors here,
-        // failing the build as the embed contract requires.
+        // Follow directory symlinks; dangling links fail the build.
         let metadata = fs::metadata(&path)
             .map_err(|err| format!("resolve {} (dangling symlink?): {err}", path.display()))?;
         if metadata.is_dir() {
@@ -103,9 +87,7 @@ fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), 
     Ok(())
 }
 
-// Fail when a relative markdown link in `body` does not resolve on
-// disk; URLs and same-document anchors are out of scope. Fenced code
-// is ignored so casts like Swift `[UInt8](data)` are not links.
+// Relative links must resolve; URLs, anchors, and fenced code are excluded.
 fn check_links(source: &Path, body: &str) -> Result<(), String> {
     let dir = source.parent().ok_or_else(|| format!("{} has no parent", source.display()))?;
     let prose = strip_fenced_code(body);
@@ -126,8 +108,7 @@ fn check_links(source: &Path, body: &str) -> Result<(), String> {
     Ok(())
 }
 
-// Drop fenced code blocks (` ``` ` … ` ``` `) so link extraction only
-// sees prose. Fence marker lines themselves are discarded.
+// Ignore fenced code so syntax such as Swift `[UInt8](data)` is not a link.
 fn strip_fenced_code(body: &str) -> String {
     let mut out = String::with_capacity(body.len());
     let mut in_fence = false;
@@ -144,7 +125,6 @@ fn strip_fenced_code(body: &str) -> String {
     out
 }
 
-// Every inline markdown link destination (`](…)`) in `body`, in order.
 fn link_targets(body: &str) -> Vec<&str> {
     let mut targets = Vec::new();
     let mut rest = body;

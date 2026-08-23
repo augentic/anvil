@@ -1,60 +1,67 @@
-//! The exhaustive route inventory: `init`, the live `specify`
-//! generator, and the auto-derived `completions`. Deleted verbs are
-//! gone from the grammar — no hidden routes, no aliases.
+//! Complete command-route inventory.
 
 use clap::Args;
 use emery_adapter::Source;
-use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Router, RouterBuilder, run};
 use omnia_guest::api::invoke::Invoker;
+use omnia_guest::{BlobStore, Model, StateStore};
 
 use super::{EmeryProjector, Globals};
 
-// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
-/// Flags for `emery init`.
+/// Arguments for `emery specify`.
 #[derive(Debug, Args)]
-pub(super) struct InitArgs {
-    /// Source adapter identifiers or local component paths, each bound
-    /// as a workspace-backed source.
+pub(super) struct SpecifyArgs {
+    /// Workspace-backed source adapters or local component paths.
     pub(super) adapters: Vec<String>,
-    /// Inline value-backed source binding (`<adapter>=<text>`; repeatable).
+    /// Bind an inline source as `<adapter>=<text>`; repeatable.
     #[arg(long = "value")]
     values: Vec<String>,
-    /// Project name.
+    /// Operator-owned sources.toml carrying the whole binding list.
     #[arg(long)]
-    name: Option<String>,
-    /// Project description.
-    #[arg(long)]
-    description: Option<String>,
-    /// Re-enter initialization to bump the Emery version pin.
-    #[arg(long, conflicts_with_all = ["adapters", "values", "name", "description"])]
-    pub(super) upgrade: bool,
+    sources: Option<String>,
 }
 
-/// Flags for `emery specify` (none, deliberately).
+/// Arguments for `emery show`.
 #[derive(Debug, Args)]
-pub(super) struct SpecifyArgs;
+pub(super) struct ShowArgs {
+    /// Reviewable document of the current generation.
+    #[arg(value_enum)]
+    document: ShowDocument,
+}
 
-impl TryFrom<SpecifyArgs> for emery_engine::specify::SpecifyInput {
+#[derive(Copy, Clone, Debug, clap::ValueEnum)]
+enum ShowDocument {
+    /// The behavioural specification document.
+    Spec,
+    /// The rebuild design document.
+    Design,
+}
+
+impl TryFrom<ShowArgs> for emery_engine::show::ShowInput {
     type Error = emery_error::Error;
 
-    fn try_from(args: SpecifyArgs) -> Result<Self, Self::Error> {
-        let SpecifyArgs = args;
-        Ok(Self)
+    fn try_from(args: ShowArgs) -> Result<Self, Self::Error> {
+        let ShowArgs { document } = args;
+        Ok(Self {
+            document: match document {
+                ShowDocument::Spec => emery_engine::show::Document::Spec,
+                ShowDocument::Design => emery_engine::show::Document::Design,
+            },
+        })
     }
 }
 
-/// Assemble the complete Emery command router.
+/// Builds the Emery command router.
 ///
 /// # Errors
 ///
-/// Returns a deterministic route or argument conflict.
+/// Returns route or argument conflicts.
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Model + Source,
+    P: Provider + Model + Source + StateStore + BlobStore,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -77,25 +84,24 @@ where
     }
 
     route!(
-        ["init"],
-        InitArgs,
-        emery_engine::init::Init,
-        "Initialize .emery/ with source bindings",
-        "Initialize .emery/ with source bindings.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources. No sources fails typed with `init-source-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
-    );
-    route!(
         ["specify"],
         SpecifyArgs,
         emery_engine::specify::Specify,
-        "Generate spec.md and design.md from the bound sources",
-        "Generate spec.md and design.md from the bound sources.\n\nExtracts every source binding over the adapter seam, reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff."
+        "Generate spec.md and design.md from the named sources",
+        "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources <path>` (mixing the two refuses typed, exit 2). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 2).\n\nExtraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff."
+    );
+    route!(
+        ["show"],
+        ShowArgs,
+        emery_engine::show::Show,
+        "Print a reviewable document of the current generation to stdout",
+        "Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 1)."
     );
     router.build()
 }
 
 macro_rules! convert {
-    // The destructuring pattern is exhaustive on purpose: a new clap
-    // flag missing from the field list is a compile error.
+    // Exhaustive destructuring makes an unmapped clap field fail compilation.
     ($args:path => $input:path { $($field:ident),* $(,)? }) => {
         impl TryFrom<$args> for $input {
             type Error = emery_error::Error;
@@ -108,4 +114,4 @@ macro_rules! convert {
     };
 }
 
-convert!(InitArgs => emery_engine::init::InitInput { adapters, values, name, description, upgrade });
+convert!(SpecifyArgs => emery_engine::specify::SpecifyInput { adapters, values, sources });

@@ -1,20 +1,21 @@
-//! Judgment-answer schema, deserializer, and the extract validation tail.
+//! Evidence answer parsing and validation.
 
 use crate::seam::{ClaimKind, Error, Evidence};
 
-/// Answer schema gating `extract` replies.
+/// Schema for `extract` answers.
 pub const EVIDENCE_ANSWER_SCHEMA: &str = include_str!("../schemas/answers/evidence.schema.json");
 
+/// Parses an evidence answer.
+///
 /// # Errors
 ///
-/// When the answer does not parse into Evidence.
+/// Returns a JSON error if the answer is not [`Evidence`].
 pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
     serde_json::from_str(answer)
 }
 
-// The schema leaves claim ids as plain strings; the grammar is enforced
-// in-guest. Deliberately sibling to `emery_artifacts::evidence::is_kebab`
-// (this leaf can't depend on it).
+// The schema accepts strings; enforce grammar here because this leaf
+// cannot depend on `emery_artifacts`.
 const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
 fn is_kebab(value: &str) -> bool {
@@ -38,11 +39,11 @@ fn enforce(operation: &str, findings: &[String]) -> Result<(), Error> {
     )))
 }
 
-/// Deterministic post-host-gate check: dotted-kebab claim ids where required.
+/// Enforces required dotted-kebab claim IDs.
 ///
 /// # Errors
 ///
-/// [`Error::Internal`] with one findings-style line per violation.
+/// Returns [`Error::Internal`] with one finding per violation.
 pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
     let mut findings = Vec::new();
     for (index, claim) in evidence.claims.iter().enumerate() {
@@ -65,11 +66,11 @@ pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
     enforce("extract", &findings)
 }
 
-/// Typed parse + [`validate_evidence`] — the [`crate::repaired`] tail.
+/// Parses and validates an evidence answer for [`crate::repaired`].
 ///
 /// # Errors
 ///
-/// [`Error::Internal`] on parse or validation failure.
+/// Returns [`Error::Internal`] on parse or validation failure.
 pub fn evidence_tail(answer: &str) -> Result<Evidence, Error> {
     let evidence = parse_evidence(answer)
         .map_err(|err| Error::Internal(format!("evidence answer did not deserialize: {err}")))?;

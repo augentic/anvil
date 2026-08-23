@@ -1,41 +1,34 @@
-//! The output home — the one module owning every spec-set read/write:
-//! content-addressed generations behind one swapped `current` pointer;
-//! reads fail closed.
+//! Content-addressed spec generations behind a swapped `current` pointer.
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 use emery_artifacts::spec::ast;
 use emery_error::Error;
+use omnia_guest::{BlobStore, CasError, StateStore};
 use serde::Serialize;
 
-// The output-home directory under `.emery/`.
-const SPEC_DIR: &str = "spec";
+use crate::storage;
 
-// The generation-pointer document at the output-home root.
-const CURRENT_FILE: &str = "current";
+/// Blobstore container for spec generations.
+pub const SPEC_CONTAINER: &str = "spec";
 
-// The generation directories' parent under the output home.
+/// Keyvalue entry naming the current generation.
+pub const CURRENT_KEY: &str = "spec/current";
+
 const GENERATIONS_DIR: &str = "generations";
 
-// Every document of one complete generation, in the fixed on-disk
-// order the generation digest folds them.
-const FILES: [&str; 4] = ["bindings.yaml", "receipts.yaml", "spec.md", "design.md"];
+// Digest order is part of the generation identity.
+const FILES: [&str; 2] = ["spec.md", "design.md"];
 
-/// One complete spec set, assembled in memory before any write.
+fn object(id: &str, name: &str) -> String {
+    format!("{GENERATIONS_DIR}/{id}/{name}")
+}
+
+/// A complete, atomically committed spec set.
 ///
-/// The resolved-bindings snapshot, the extract receipts, and the two
-/// reviewable documents commit as a unit or not at all. Because the
-/// generation id is the digest of the set's bytes, an identical
-/// re-run converges on the same directory and the home stays
-/// byte-stable. No document carries a timestamp or log line.
+/// Its content-derived id makes identical runs byte-stable.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpecSet {
-    /// Canonical YAML of the bindings this run resolved.
-    pub bindings: String,
-    /// Canonical YAML of the per-source extract receipts.
-    pub receipts: String,
     /// The behavioural specification document.
     pub spec: String,
     /// The rebuild design document.
@@ -43,21 +36,13 @@ pub struct SpecSet {
 }
 
 impl SpecSet {
-    /// The set's documents as `(file name, body)` pairs, in `FILES`
-    /// order.
+    /// Returns documents in generation-digest order.
     #[must_use]
-    pub fn files(&self) -> [(&'static str, &str); 4] {
-        [
-            (FILES[0], &self.bindings),
-            (FILES[1], &self.receipts),
-            (FILES[2], &self.spec),
-            (FILES[3], &self.design),
-        ]
+    pub fn files(&self) -> [(&'static str, &str); 2] {
+        [(FILES[0], &self.spec), (FILES[1], &self.design)]
     }
 
-    /// The content-addressed generation id: the SHA-256 digest over
-    /// every document name and body, length-prefixed so the encoding
-    /// is unambiguous.
+    /// Returns the SHA-256 generation id over length-prefixed names and bodies.
     #[must_use]
     pub fn id(&self) -> String {
         let mut hasher = emery_diagnostics::digest::Hasher::new();
@@ -71,49 +56,53 @@ impl SpecSet {
     }
 }
 
-/// A committed generation: the pointer-named id and its directory.
+/// A generation named by the current pointer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Committed {
-    /// The generation id the `current` pointer names.
+    /// Current generation id.
     pub id: String,
-    /// The generation directory carrying the complete spec set.
-    pub dir: PathBuf,
 }
 
-/// One re-mine diff: how an incoming spec set differs from the
-/// outgoing generation it supersedes.
+/// Pointer state observed before a compare-and-swap commit.
 ///
-/// Computed at commit time — the outgoing set is pruned immediately
-/// after the swap — and emitted in the `specify` success envelope
-/// only; nothing persists. An identical re-run yields
-/// an [`empty`](Self::is_empty) diff, making "nothing changed" an
-/// explicit, reviewable statement.
+/// One observation drives both the CAS and advisory diff.
+#[derive(Clone, Debug)]
+pub struct Observation {
+    // Unreadable pointers appear absent so the subsequent CAS fails closed.
+    pointer: Option<Vec<u8>>,
+    // Advisory diff input; absent when no complete set is readable.
+    outgoing: Option<(String, SpecSet)>,
+}
+
+impl Observation {
+    /// Returns the complete outgoing generation when readable.
+    #[must_use]
+    pub fn into_outgoing(self) -> Option<(String, SpecSet)> {
+        self.outgoing
+    }
+}
+
+/// An ephemeral re-mine diff against the superseded generation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Diff {
     /// The outgoing generation id this run superseded.
     pub from: String,
-    /// Spec-set file names whose bytes changed, in `FILES` order.
+    /// Changed file names in generation-digest order.
     pub artifacts: Vec<String>,
     /// Requirement subjects present only in the incoming `spec.md`.
     pub added: Vec<String>,
     /// Requirement subjects present only in the outgoing `spec.md`.
     pub removed: Vec<String>,
-    /// Requirement subjects whose block changed (status, tag,
-    /// sources, or body).
+    /// Requirement subjects whose blocks changed.
     pub changed: Vec<String>,
 }
 
 impl Diff {
-    /// Diff `incoming` against the `outgoing` set committed as `from`.
+    /// Diffs `incoming` against `outgoing`, identified by `from`.
     ///
-    /// Section lists compare `spec.md` requirement blocks keyed by
-    /// heading subject — the reconciliation join key — ignoring the
-    /// positional `REQ-NNN` ids, which shift when rows are inserted
-    /// or removed. The outgoing spec parsing fails only across a
-    /// binary upgrade (pre-1.0: re-init); the diff is advisory, so
-    /// that leaves the artifact list standing and the section lists
-    /// empty rather than failing the commit.
+    /// Sections use heading subjects, not positional ids. Because the
+    /// diff is advisory, an unparseable old spec leaves section lists empty.
     #[must_use]
     pub fn between(from: String, outgoing: &SpecSet, incoming: &SpecSet) -> Self {
         let artifacts = outgoing
@@ -149,7 +138,7 @@ impl Diff {
         }
     }
 
-    /// No artifact or section differs — the byte-stable re-run.
+    /// Returns whether no artifact or section differs.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.artifacts.is_empty()
@@ -159,12 +148,11 @@ impl Diff {
     }
 }
 
-// Requirement blocks keyed by heading subject, in subject order.
 fn subjects(spec: &ast::Spec) -> BTreeMap<&str, &ast::Requirement> {
     spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
 }
 
-// Block equality minus the positional `REQ-NNN` id.
+// Positional ids do not define requirement identity.
 fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
     old.status == new.status
         && old.tag == new.tag
@@ -172,120 +160,154 @@ fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
         && old.body == new.body
 }
 
-/// The output home rooted at one project's `.emery/spec/`.
-#[derive(Clone, Debug)]
-pub struct Home {
-    root: PathBuf,
+/// Spec generations over a deployment's storage capabilities.
+#[derive(Clone, Copy, Debug)]
+pub struct Home<'p, S> {
+    store: &'p S,
 }
 
-impl Home {
-    /// The output home under `project_dir`'s `.emery/` tree.
+impl<'p, S: StateStore + BlobStore> Home<'p, S> {
+    /// Creates an output home over `store`.
     #[must_use]
-    pub fn new(project_dir: &Path) -> Self {
-        Self {
-            root: project_dir.join(".emery").join(SPEC_DIR),
-        }
+    pub const fn new(store: &'p S) -> Self {
+        Self { store }
     }
 
-    /// Commit `set` as the current generation: write the complete
-    /// generation directory, atomically swap the `current` pointer to
-    /// it, then prune everything the pointer no longer names (crash
-    /// litter from an interrupted earlier run included). A crash
-    /// before the swap leaves the previous set intact and current.
+    /// Commits `set` by writing its generation, swapping the pointer, and pruning its predecessor.
     ///
     /// # Errors
     ///
-    /// Propagates filesystem failures from the writes, the swap, or
-    /// the prune.
-    pub fn commit(&self, set: &SpecSet) -> Result<Committed, Error> {
+    /// Returns `spec-pointer-conflict` if the observation is stale.
+    /// Propagates write, swap, and prune failures.
+    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
         let id = set.id();
-        let dir = self.root.join(GENERATIONS_DIR).join(&id);
         for (name, body) in set.files() {
-            emery_artifacts::atomic::bytes_write(&dir.join(name), body.as_bytes())?;
+            self.store
+                .put(SPEC_CONTAINER, &object(&id, name), body.as_bytes())
+                .await
+                .map_err(|err| storage::failed("committing a generation document", &err))?;
         }
-        emery_artifacts::atomic::bytes_write(
-            &self.root.join(CURRENT_FILE),
-            format!("{id}\n").as_bytes(),
-        )?;
-        self.prune(&id)?;
-        Ok(Committed { id, dir })
+        let value = format!("{id}\n");
+        match self.store.cas(CURRENT_KEY, observed.pointer.as_deref(), value.as_bytes()).await {
+            Ok(()) => {}
+            Err(CasError::Conflict(_)) => {
+                return Err(Error::Diag {
+                    code: "spec-pointer-conflict",
+                    detail: "a concurrent `emery specify` committed first and swapped the \
+                             generation pointer; re-run `emery specify` to commit against the \
+                             new current generation"
+                        .to_string(),
+                });
+            }
+            Err(CasError::Store(message)) => {
+                return Err(storage::failed(
+                    "swapping the generation pointer",
+                    &anyhow::anyhow!(message),
+                ));
+            }
+        }
+        self.prune(observed, &id).await?;
+        Ok(Committed { id })
     }
 
-    /// The committed generation the `current` pointer names, or `None`
-    /// when no generation has ever been committed (no pointer exists).
+    /// Returns the current generation, or `None` before the first commit.
     ///
     /// # Errors
     ///
-    /// Fails closed with `spec-home-corrupt` when the pointer exists
-    /// but names a missing or incomplete generation, and propagates
-    /// read failures. Corruption is never an empty result.
-    pub fn current(&self) -> Result<Option<Committed>, Error> {
-        let path = self.root.join(CURRENT_FILE);
-        let raw = match fs::read_to_string(&path) {
-            Ok(raw) => raw,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(err) => return Err(Error::Io(err)),
+    /// Returns `spec-home-corrupt` for a dangling or incomplete generation.
+    /// Propagates read failures.
+    pub async fn current(&self) -> Result<Option<Committed>, Error> {
+        let raw = StateStore::get(self.store, CURRENT_KEY)
+            .await
+            .map_err(|err| storage::failed("reading the generation pointer", &err))?;
+        let Some(raw) = raw else {
+            return Ok(None);
         };
-        let id = raw.trim().to_string();
-        let dir = self.root.join(GENERATIONS_DIR).join(&id);
+        let id = String::from_utf8_lossy(&raw).trim().to_string();
         for name in FILES {
-            let document = dir.join(name);
-            if !document.is_file() {
+            let present = self
+                .store
+                .has(SPEC_CONTAINER, &object(&id, name))
+                .await
+                .map_err(|err| storage::failed("probing a generation document", &err))?;
+            if !present {
                 return Err(Error::Diag {
                     code: "spec-home-corrupt",
                     detail: format!(
-                        "the generation pointer names `{id}` but `{}` is missing; re-run `emery \
-                         specify` to commit a fresh generation",
-                        document.display()
+                        "the generation pointer names `{id}` but `{name}` is missing; re-run \
+                         `emery specify` to commit a fresh generation"
                     ),
                 });
             }
         }
-        Ok(Some(Committed { id, dir }))
+        Ok(Some(Committed { id }))
     }
 
-    /// The outgoing spec set for a re-mine diff: the id the `current`
-    /// pointer names and its complete set, read before the commit
-    /// that will prune it.
+    /// Returns the current generation and its complete document set,
+    /// or `None` before the first commit.
     ///
-    /// Total by design: the diff is advisory reporting, never a gate,
-    /// and `specify` must stay the recovery path for a corrupt home —
-    /// a missing, incomplete, or unreadable outgoing generation is
-    /// `None`, not a failure. The commit itself remains the authority.
-    #[must_use]
-    pub fn outgoing(&self) -> Option<(String, SpecSet)> {
-        let committed = self.current().ok().flatten()?;
-        let read = |name: &str| fs::read_to_string(committed.dir.join(name)).ok();
-        let set = SpecSet {
-            bindings: read(FILES[0])?,
-            receipts: read(FILES[1])?,
-            spec: read(FILES[2])?,
-            design: read(FILES[3])?,
+    /// # Errors
+    ///
+    /// Returns `spec-home-corrupt` for a dangling, incomplete, or
+    /// unreadable generation. Propagates read failures.
+    pub async fn current_set(&self) -> Result<Option<(Committed, SpecSet)>, Error> {
+        let Some(committed) = self.current().await? else {
+            return Ok(None);
         };
-        Some((committed.id, set))
+        let Some((_, set)) = self.load(&committed.id).await else {
+            return Err(Error::Diag {
+                code: "spec-home-corrupt",
+                detail: format!(
+                    "the generation pointer names `{}` but its documents cannot be read; re-run \
+                     `emery specify` to commit a fresh generation",
+                    committed.id
+                ),
+            });
+        };
+        Ok(Some((committed, set)))
     }
 
-    // Keep only the `current` pointer and the generation it names —
-    // superseded generations and any temp-file or partial-directory
-    // litter a crash left behind are removed.
-    fn prune(&self, keep: &str) -> Result<(), Error> {
-        for entry in fs::read_dir(&self.root)? {
-            let path = entry?.path();
-            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
-            if path.is_dir() {
-                if name != GENERATIONS_DIR {
-                    fs::remove_dir_all(&path)?;
-                }
-            } else if name != CURRENT_FILE {
-                fs::remove_file(&path)?;
-            }
+    /// Observes CAS input and the outgoing set without failing.
+    ///
+    /// Corrupt or unreadable state suppresses only the advisory diff;
+    /// the following CAS remains authoritative and fail-closed.
+    pub async fn observe(&self) -> Observation {
+        let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
+        let outgoing = match &pointer {
+            Some(raw) => self.load(String::from_utf8_lossy(raw).trim()).await,
+            None => None,
+        };
+        Observation { pointer, outgoing }
+    }
+
+    // Advisory reads collapse incomplete or unreadable generations to `None`.
+    async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
+        let mut bodies = Vec::with_capacity(FILES.len());
+        for name in FILES {
+            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(id, name))
+                .await
+                .ok()
+                .flatten()?;
+            bodies.push(String::from_utf8(bytes).ok()?);
         }
-        for entry in fs::read_dir(self.root.join(GENERATIONS_DIR))? {
-            let path = entry?.path();
-            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
-            if name != keep {
-                if path.is_dir() { fs::remove_dir_all(&path)? } else { fs::remove_file(&path)? }
-            }
+        let design = bodies.pop()?;
+        let spec = bodies.pop()?;
+        Some((id.to_string(), SpecSet { spec, design }))
+    }
+
+    // Only the observed predecessor is pruned; other orphaned objects are inert.
+    async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
+        let Some(raw) = &observed.pointer else {
+            return Ok(());
+        };
+        let superseded = String::from_utf8_lossy(raw).trim().to_string();
+        if superseded == keep || superseded.is_empty() {
+            return Ok(());
+        }
+        for name in FILES {
+            BlobStore::delete(self.store, SPEC_CONTAINER, &object(&superseded, name))
+                .await
+                .map_err(|err| storage::failed("pruning the superseded generation", &err))?;
         }
         Ok(())
     }

@@ -1,3 +1,3 @@
-//! Spec-format parsing: [`ast`] is the one fail-closed load gate.
+//! Fail-closed spec parsing.
 
 pub mod ast;

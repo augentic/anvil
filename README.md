@@ -6,17 +6,17 @@
 
 Emery reconciles intent, documentation, existing code, and captured behaviour into reviewable specifications — durable artifacts, not chat history.
 
-> **Remediation programme in flight.** The v1 delivery workflow (survey/extract, plan/refine/execute/finalize, target adapters) is archived at git tag `v1`. This tree carries the spec generator: `emery init` binds sources, `emery specify` synthesises the reviewable set. Retrieve the archived implementation with `git worktree add ../emery-v1 v1`.
+> **Remediation programme in flight.** The v1 delivery workflow (survey/extract, plan/refine/execute/finalize, target adapters) is archived at git tag `v1`. This tree carries the spec generator: `emery specify` synthesises the reviewable set from the sources named on the invocation, `emery show` renders it. Retrieve the archived implementation with `git worktree add ../emery-v1 v1`.
 
 ## The live surface
 
 ```bash
-emery init <adapter>...  # scaffold .emery/ and bind the source adapters
-emery specify            # extract, reconcile, synthesise spec.md + design.md
-emery completions <sh>   # shell completions
+emery specify <adapter>...  # extract, reconcile, synthesise spec.md + design.md
+emery show spec             # print a reviewable document of the current generation
+emery completions <sh>      # shell completions
 ```
 
-In Cursor, `/emery:init` wraps `emery init`. Everything else was deleted from the grammar, not hidden — see the [CLI reference](docs/reference/cli/index.md).
+In Cursor, `/emery:specify` wraps `emery specify`. Everything else was deleted from the grammar, not hidden — see the [CLI reference](docs/reference/cli/index.md).
 
 Install from source:
 
@@ -29,7 +29,6 @@ emery --version
 
 - **CLI reference:** [docs/reference/cli/index.md](docs/reference/cli/index.md)
 - **Contributing:** [docs/contributing/index.md](docs/contributing/index.md)
-- **Invariants:** [CONSTITUTION.md](CONSTITUTION.md)
 - **Full Developer Guide:** [emery.augentic.io](https://emery.augentic.io/) · [In-tree book source](docs/SUMMARY.md)
 
 ## Developing Emery (contributors)

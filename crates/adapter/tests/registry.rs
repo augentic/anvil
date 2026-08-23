@@ -1,4 +1,4 @@
-//! The prose lookup helpers over a sorted doc table.
+//! Embedded document registry tests.
 
 use emery_adapter::registry::{Doc, body, find};
 

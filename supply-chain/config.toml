@@ -179,7 +179,7 @@ version = "0.2.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.crc32fast]]
-version = "1.5.0"
+version = "1.5.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.crossbeam-channel]]
@@ -236,18 +236,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.data-encoding]]
 version = "2.11.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.defmt]]
-version = "1.1.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.defmt-macros]]
-version = "1.1.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.defmt-parser]]
-version = "1.0.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.digest]]
@@ -470,18 +458,6 @@ criteria = "safe-to-deploy"
 version = "1.0.18"
 criteria = "safe-to-deploy"
 
-[[exemptions.jiff]]
-version = "0.2.35"
-criteria = "safe-to-deploy"
-
-[[exemptions.jiff-core]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.jiff-static]]
-version = "0.2.35"
-criteria = "safe-to-deploy"
-
 [[exemptions.jni]]
 version = "0.22.4"
 criteria = "safe-to-deploy"
@@ -531,7 +507,7 @@ version = "0.8.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.log]]
-version = "0.4.33"
+version = "0.4.34"
 criteria = "safe-to-deploy"
 
 [[exemptions.lru-slab]]
@@ -652,10 +628,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.portable-atomic]]
 version = "1.15.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.portable-atomic-util]]
-version = "0.2.7"
 criteria = "safe-to-deploy"
 
 [[exemptions.potential_utf]]
@@ -1027,7 +999,7 @@ version = "0.2.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.uuid]]
-version = "1.24.1"
+version = "1.25.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.uuid-simd]]

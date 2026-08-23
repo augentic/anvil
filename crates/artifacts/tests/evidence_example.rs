@@ -1,4 +1,4 @@
-//! Example-claim wire-shape matrix (`emery_artifacts::evidence::claim::example`).
+//! Example-claim wire coverage.
 
 use emery_artifacts::evidence::claim::example::*;
 use serde_json::json;

@@ -1,6 +1,4 @@
-//! The journey host: the shipped runtime shape with the mock source
-//! component as the one adapter guest and `WasiModel` answering from
-//! a script directory instead of the Cursor backend.
+//! Journey host using the mock source component and scripted model answers.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -8,8 +6,11 @@ cfg_if::cfg_if! {
         use std::sync::Arc;
 
         use anyhow::Context as _;
+        use omnia_filesystem::Client as Filesystem;
         use omnia_testkit::model::Scripted;
+        use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
+        use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
@@ -19,6 +20,7 @@ cfg_if::cfg_if! {
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
+                    routes: {http: ["/mcp/emery/spec"]},
                 },
                 {
                     id: "source:source",
@@ -30,23 +32,18 @@ cfg_if::cfg_if! {
                 },
             ],
             mounts: [
-                { name: ".", path: ".", writable: true },
-                { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
+                { name: ".", path: "." },
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
+                WasiKeyValue: Filesystem,
+                WasiBlobstore: Filesystem,
             }
         });
 
-        fn cache_dir() -> &'static str {
-            drop(std::fs::create_dir_all(".emery-cache"));
-            ".emery-cache"
-        }
-
-        // script directory: each file is one model answer.
         const SCRIPT_ENV: &str = "EMERY_JOURNEY_SCRIPT";
 
         fn connect() -> anyhow::Result<ScriptedModel> {
@@ -69,7 +66,6 @@ cfg_if::cfg_if! {
             Ok(ScriptedModel(Scripted::answers(answers)))
         }
 
-        // The scripted `wasi:model` backend behind the unchanged seam.
         #[derive(Clone, Debug)]
         struct ScriptedModel(Scripted);
 

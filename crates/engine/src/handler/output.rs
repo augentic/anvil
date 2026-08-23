@@ -1,7 +1,4 @@
 //! Transport-neutral output rendering.
-//!
-//! The [`Render`] text-rendering trait and shared [`ReportBody`]
-//! diagnostic-report envelope.
 
 use std::io::Write;
 
@@ -11,34 +8,23 @@ use emery_diagnostics::{
 };
 use serde::Serialize;
 
-/// Text rendering for a verb body.
-///
-/// The transport-side twin of the body's `Serialize` impl, colocated
-/// with the body type so the response shape stays in a single block of
-/// code. The CLI front-end calls it for `--format text`; the HTTP
-/// transport serialises the same body as JSON and never calls it.
+/// Human-readable rendering for a serializable command body.
 pub trait Render: Serialize {
-    /// Write the human-readable rendering of `self` to `w`.
+    /// Writes `self` to `w`.
     ///
     /// # Errors
     ///
-    /// Propagates the underlying I/O error.
+    /// Propagates I/O errors.
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()>;
 }
 
-/// Per-finding text row renderer for a [`ReportBody`].
+/// Text renderer for one report finding.
 pub type ReportRow = fn(&mut dyn Write, &Diagnostic) -> std::io::Result<()>;
 
-/// The neutral [`DiagnosticReport`] envelope shared by `slice
-/// validate` and `plan validate`, which differ only in the per-finding
-/// row formatter and the empty-report line.
-///
-/// JSON serialises the wire envelope (`{ version, summary, findings }`)
-/// verbatim; text renders a PASS/FAIL banner plus one `row`-formatted
-/// line per finding. Ids are assigned sequentially at construction.
+/// A diagnostic report with transport-neutral text rendering.
 #[derive(Debug, Serialize)]
 pub struct ReportBody {
-    /// The wire report (`{ version, summary, findings }`).
+    /// Wire report.
     #[serde(flatten)]
     report: DiagnosticReport,
     #[serde(skip)]
@@ -46,8 +32,7 @@ pub struct ReportBody {
 }
 
 impl ReportBody {
-    /// Assemble the wire report from raw findings: renumber ids, fold
-    /// the summary, and attach the text-rendering hook.
+    /// Builds a report, assigning ids and computing its summary.
     #[must_use]
     pub fn new(mut findings: Vec<Diagnostic>, row: ReportRow) -> Self {
         renumber(&mut findings);
@@ -61,7 +46,7 @@ impl ReportBody {
         }
     }
 
-    /// The wire report (`{ version, summary, findings }`).
+    /// Returns the wire report.
     #[must_use]
     pub const fn report(&self) -> &DiagnosticReport {
         &self.report

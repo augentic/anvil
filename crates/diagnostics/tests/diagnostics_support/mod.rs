@@ -1,4 +1,4 @@
-//! Shared diagnostic fixtures consumed by the sibling integration binaries.
+// Shared integration-test fixtures.
 
 #![expect(dead_code, reason = "shared fixtures; each consuming binary uses a subset")]
 
@@ -7,8 +7,7 @@ use emery_diagnostics::{
     FindingLocation, Severity,
 };
 
-/// Minimal diagnostic with the given `id` and `severity`; every other
-/// field is a fixed placeholder. Used by the report-summary tests.
+// Minimal diagnostic with fixed placeholder fields.
 pub fn diagnostic(id: &str, severity: Severity) -> Diagnostic {
     Diagnostic {
         id: id.into(),
@@ -33,9 +32,7 @@ pub fn diagnostic(id: &str, severity: Severity) -> Diagnostic {
     }
 }
 
-/// Fully-populated diagnostic template used by the fingerprint and
-/// validate tests. Callers mutate fields and recompute the
-/// fingerprint to assert which dimensions enter the hash.
+// Template for testing which fields enter the fingerprint.
 pub fn sample_diagnostic() -> Diagnostic {
     Diagnostic {
         id: "FIND-0001".into(),

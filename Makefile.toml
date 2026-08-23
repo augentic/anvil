@@ -89,6 +89,14 @@ workspace = false
 command = "cargo"
 args = ["build", "--locked", "--example", "runtime"]
 
+# The deployment-profile example host: the shipped runtime shape with
+# project-id-keyed storage over the in-memory defaults
+# (docs/reference/deployment-profiles.md).
+[tasks.profile]
+workspace = false
+command = "cargo"
+args = ["build", "--locked", "--example", "profile"]
+
 # Coverage brake for unit-test reductions (docs/standards/testing.md).
 # Usage: CRATE=project cargo make cov
 # Operator-invoked, never part of `ci`.

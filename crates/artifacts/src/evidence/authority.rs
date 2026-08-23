@@ -1,16 +1,11 @@
-//! Evidence authority enums — the closed `AuthorityClass` / `ClaimKind` sets.
-//!
-//! Authority resolves at document level; the sole operator override is
-//! `plan.yaml`'s per-slice `authority-override`, keyed by claim kind.
+//! Closed Evidence authority and claim-kind sets.
 
 use serde::{Deserialize, Serialize};
 
-/// Closed authority-class enum on the Evidence document.
+/// Evidence document authority.
 ///
-/// workflow §Authority hierarchy fixes the default ordering as
-/// `intent > documentation > behaviour`; Evidence authority override lifts authority
-/// from per-Evidence to per-(Evidence, claim-kind) without widening
-/// the class set. New classes still require a workflow contract update.
+/// Default precedence is `intent > documentation > behaviour`.
+/// Overrides may vary by claim kind but cannot widen this set.
 #[derive(
     Debug,
     Clone,
@@ -34,11 +29,7 @@ pub enum AuthorityClass {
     Behaviour,
 }
 
-/// Closed claim-kind enum on Evidence claims.
-///
-/// The per-slice authority override map in `plan.yaml.slices[]` keys
-/// against this same closed set. `example` (runtime capture claim) is
-/// the runtime capture kind emitted by the `captures` source adapter.
+/// Evidence claim kind and authority-override key.
 #[derive(
     Debug,
     Clone,
@@ -75,7 +66,7 @@ pub enum ClaimKind {
     Diagram,
     /// `kind: contract` — interface contract excerpt.
     Contract,
-    /// `kind: example` — runtime capture (runtime capture claim, `captures`).
+    /// `kind: example` — runtime capture.
     Example,
     /// `kind: excerpt` — code excerpt.
     Excerpt,

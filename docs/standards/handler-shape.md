@@ -1,13 +1,13 @@
 # Operation shape
 
-The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/engine`, how `RequestContext` is assembled over the deployed preopen layout, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
+The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/engine`, how paths anchor at the deployed preopen layout, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
 
 ## Shared operation plumbing (`emery_engine::handler`)
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
 - **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
-- **`call(input, context)`** assembles `RequestContext` over the deployed layout, delegates to the deterministic kernel, and returns the typed body.
+- **`call(input, context)`** anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = emery_engine::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
 Deterministic operations bind `P: Provider` only unless their kernel issues model judgments, in which case they additionally bind `Model` — the one capability the provider still carries. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
@@ -27,19 +27,16 @@ impl<P: Provider> Operation<P> for Frob {
 }
 
 fn frob(input: FrobInput) -> Result<FrobBody, emery_error::Error> {
-    let request = RequestContext::load()?;
-    let outcome = some_crate::do_work(request.paths(), request.project(), &input)?;
+    let outcome = some_crate::do_work(&input)?;
     Ok(FrobBody::from(&outcome))
 }
 ```
 
 Operations live in each domain module's `handlers` submodule beside its kernels.
 
-## RequestContext and the deployed layout (C5)
+## The deployed layout (C5)
 
-Project-scoped operations assemble the one `emery_engine::handler::RequestContext` inside `call` via `RequestContext::load()`: paths are constants relative to the named preopens (`.` is the project-root mount — the invocation directory natively — and `GUEST_CACHE_MOUNT` the cache preopen), and the project loads fail-closed (version floor included) exactly once. Operations never derive paths any other way — no environment reads, no ancestor walks; native tests that need a scratch root chdir into a tempdir (one nextest process per test).
-
-`emery init` is the one operation that runs before a project exists: it anchors at the raw `ExecutionPaths::deployed()` root instead of loading `RequestContext`.
+Operations anchor at `ExecutionPaths::deployed()` inside `call`: paths are constants relative to the `.` preopen (the project-root mount — the invocation directory natively), and engine storage is named by the `Locations` key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Operations never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage seam in memory instead of chdir-ing into a tempdir.
 
 ## Output: `Render + Serialize`
 
@@ -57,24 +54,24 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 The four-slot CLI exit-code table is fixed:
 
-| Code | Name | When |
-|---|---|---|
-| 0 | `EXIT_SUCCESS` | Command succeeded |
-| 1 | `EXIT_GENERIC_FAILURE` | Default `Error` → exit 1 |
-| 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
-| 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`emery-version-too-old` in JSON) |
+| Code | Name                     | When                                                                      |
+| ---- | ------------------------ | ------------------------------------------------------------------------- |
+| 0    | `EXIT_SUCCESS`           | Command succeeded                                                         |
+| 1    | `EXIT_GENERIC_FAILURE`   | Default `Error` → exit 1                                                  |
+| 2    | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
+| 3    | `EXIT_VERSION_TOO_OLD`   | `Error::AdapterCliTooOld` (`adapter-cli-too-old` in JSON)                 |
 
 `Exit::from(&Error)` in [`crates/transport/src/command/output.rs`](../../crates/transport/src/command/output.rs) is the single source of truth. `EmeryProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes.
 
 ## The transport crate (`crates/transport`)
 
-`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the HTTP refusal surface, the Emery command projector, and the fixed exit contract.
+`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the guest HTTP surface (the read-only MCP spec shelf plus the refusal), the Emery command projector, and the fixed exit contract.
 
 `crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`.
 
 ## The HTTP surface (`http.rs`)
 
-`crates/transport/src/http.rs` owns the guest's non-MCP HTTP surface: one typed refusal router (C3). The unauthenticated pre-bound listener serves only the deployment-routed adapter MCP shelves; every other path and method answers a typed 404. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
+`crates/transport/src/http.rs` owns the guest's HTTP surface: the read-only MCP spec shelf plus one typed refusal router (C3). `http::listener` serves the current generation and its id at `/mcp/emery/spec` — a stateless `McpServer` over a per-request storage snapshot (the same `Home::current_set` read `show` uses), exposing `spec://spec.md`, `spec://design.md`, and `spec://generation` as resources with mirroring read tools. Beside the deployment-routed adapter MCP shelves, every other path and method answers a typed 404 — reads are served, mutation is refused. There is no HTTP operation route table until an authenticated operator ingress is designed (target-architecture §7); `crates/transport/tests/router.rs::adr_0002_http_refusal` holds the refusal.
 
 ## Dispatch contract (`command.rs`)
 
@@ -90,6 +87,6 @@ Target discipline per leaf arm:
 
 Never put domain logic in `transport` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
-## Gotcha — `emery init` and the version floor
+## Gotcha — the only version floor is per adapter
 
-`emery init` bypasses the `emery` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `RequestContext::load` (over `emery_engine::project::Project::load`). Don't reimplement the floor check at a route or operation site.
+There is no project-level `emery` version floor: the adapter compatibility floor (`requires-emery` from `metadata`, enforced during resolve as `adapter-cli-too-old`) is the whole exit-3 surface. Don't reintroduce a floor check at a route or operation site.

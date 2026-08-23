@@ -1,4 +1,4 @@
-//! Typed command grammar, conversions, and Emery projection policy.
+//! CLI grammar, conversions, and output projection.
 
 use clap::Args;
 use emery_engine::handler::Render;
@@ -12,15 +12,15 @@ pub use self::routes::router;
 mod output;
 mod routes;
 
-/// Arguments shared by every command route.
+/// Global command arguments.
 #[derive(Clone, Copy, Debug, Args)]
 pub struct Globals {
-    /// Output format.
+    /// Select the output format.
     #[arg(long, env = "EMERY_FORMAT", default_value = "text")]
     pub format: Format,
 }
 
-/// Emery's command output and error projection.
+/// Projects Emery outcomes into command responses.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EmeryProjector;
 
@@ -48,8 +48,6 @@ where
     }
 }
 
-// Buffer one [`emit`] rendering of `value` for a `CommandResponse`
-// channel.
 fn encode<T: Serialize>(
     format: Format, value: &T,
     text: impl FnOnce(&mut dyn std::io::Write, &T) -> std::io::Result<()>,
@@ -67,8 +65,6 @@ fn error_response(
     Ok(CommandResponse::failure(stderr, Exit::from(error).code()))
 }
 
-// [`render_failure`] mapped onto a `CommandResponse` — the terminal
-// fallback (a plain exit-1 line) lives in one place.
 fn failure_response(format: Format, error: &emery_error::Error) -> CommandResponse {
     let (stderr, code) = render_failure(format, error);
     CommandResponse::failure(stderr, code)

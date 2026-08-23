@@ -1,5 +1,4 @@
-//! `v1` fingerprint algorithm: determinism, the excluded/included
-//! field matrix, `verify_fingerprint`, and canonical JSON.
+//! Fingerprint and canonical-JSON coverage.
 
 use emery_diagnostics::digest::sha256_hex;
 use emery_diagnostics::{

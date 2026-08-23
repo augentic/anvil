@@ -1,14 +1,14 @@
 //! The shipped `emery` executable: one `omnia::runtime!` invocation.
 
-// Create the CWD-relative cache
-#[cfg(not(target_arch = "wasm32"))]
-
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         fn main() {}
     } else {
         use omnia_cursor::Client as Cursor;
+        use omnia_filesystem::Client as Filesystem;
+        use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
+        use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
@@ -18,24 +18,20 @@ cfg_if::cfg_if! {
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                    routes: {http: ["/mcp/source/source"]},
+                    routes: {http: ["/mcp/source/source", "/mcp/emery/spec"]},
                 }
             ],
             mounts: [
-                { name: ".", path: ".", writable: true },
-                { name: emery_engine::handler::GUEST_CACHE_MOUNT, path: cache_dir(), writable: true },
+                { name: ".", path: "." },
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: Cursor,
+                WasiKeyValue: Filesystem,
+                WasiBlobstore: Filesystem,
             }
         });
-
-        fn cache_dir() -> &'static str {
-            drop(std::fs::create_dir_all(".emery-cache"));
-            ".emery-cache"
-        }
     }
 }

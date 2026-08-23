@@ -1,0 +1,61 @@
+# Deployment profiles
+
+How the `emery` runtime binds engine storage, and how deployments other than the shipped local binary swap that binding without touching engine code. A profile is host policy: one `omnia::runtime!` invocation choosing what backs the `wasi:keyvalue` / `wasi:blobstore` capability imports. The engine ships fixed key and container formulas and never learns which backing it runs over.
+
+## The seam
+
+Engine state — the generation store, the `current` pointer, the component cache, the global store — is reachable only through the storage capabilities (`omnia_guest::StateStore` / `BlobStore` on the guest side). The names the engine uses are flat, deployment-neutral formulas:
+
+| Surface | Kind | Name |
+| --- | --- | --- |
+| Current-generation pointer | keyvalue key | `spec/current` |
+| Generation documents | blobstore container `spec` | `generations/<id>/<doc>.md` |
+| Component cache | blobstore container `adapters` | `<name>.wasm` |
+| Global adapter store | blobstore container `store` | `<name>@<version>.wasm` |
+| Store verify-on-read digest | keyvalue key | `store/<name>@<version>.meta` |
+
+The host side of the seam is a backend type implementing `omnia::Backend` (connection options from the environment) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the seam exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
+
+## The shipped profile: local filesystem
+
+[`src/main.rs`](../../src/main.rs) binds both storage hosts to `omnia_filesystem::Client`: a durable, network-free store rooted at `FILESYSTEM_ROOT` (default `.omnia/storage` under the invocation directory). One invocation directory is one project; isolation between projects is the filesystem root itself. Generations survive restart, and nothing writes the working tree — the `.` mount is read-only.
+
+## Project-id-keyed: one host, many projects
+
+A multi-project deployment shares one backing and scopes every bucket and container under a project id. The engine's flat names make this a pure host wrapper — prefix the identifier at the seam, delegate the rest:
+
+```rust
+impl WasiKeyValueCtx for ProjectStore {
+    fn open_bucket(&self, identifier: String) -> FutureResult<Arc<dyn Bucket>> {
+        self.keyvalue.open_bucket(self.scoped(&identifier))
+    }
+}
+```
+
+[`examples/profile.rs`](../../examples/profile.rs) is the worked example (`cargo make profile` builds it): the shipped runtime shape with `ProjectStore` as both storage hosts, scoping under `EMERY_PROJECT_ID` over the omnia in-memory defaults. The multi-project isolation proof runs in the journey suite ([`tests/source.rs`](../../tests/source.rs), `multi_project_isolation`): two project-scoped views over one shared store commit and `show` independent generations, with no unprefixed key ever written — and no engine change involved.
+
+The in-memory defaults are the demonstration backing; a real deployment keeps the wrapper and swaps the held clients for a remote backend.
+
+## Remote backings
+
+`omnia-backends` ships host clients that drop into the same `hosts:` table:
+
+| Backend | keyvalue | blobstore | Configuration |
+| --- | --- | --- | --- |
+| `omnia-filesystem` | yes | yes | `FILESYSTEM_ROOT` |
+| `omnia-redis` | yes | — | `REDIS_URL` |
+| `omnia-nats` | yes | yes | `NATS_ADDR` |
+| `omnia-mongodb` | — | yes | `MONGODB_URL` |
+| `omnia-azure-blob` | — | yes | `AZURE_BLOB_ENDPOINT` |
+
+Credentials and endpoints live in the host binding's environment, never in engine state or operator files.
+
+> [!WARNING]
+> Identifier grammar is backend policy. The filesystem backend rejects `/` inside a bucket or container name (path-traversal fencing), so a project-id prefix targeting it needs a single-segment delimiter (for example `<project>--spec`) or per-project roots. The in-memory and remote backends accept `/`-separated identifiers.
+
+Remote-binding performance is unmeasured: the numbers stay unconfirmed until a remote backing is deployed and wall-clocked (design/portable-storage.md, risk 4).
+
+## See also
+
+- [Architecture standards](../standards/architecture.md) — deployment policy and the workspace shape.
+- [CLI architecture](../contributing/cli-architecture.md) — the `omnia::runtime!` invocation in detail.

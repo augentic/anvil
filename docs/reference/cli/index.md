@@ -21,6 +21,6 @@ brew install emery
 
 | Verb | Purpose |
 |------|---------|
-| [emery init](init.md) | Project scaffold over the authored source bindings; `--upgrade` re-entry bumps the version pin |
-| `emery specify` | Generate `spec.md` / `design.md` from the bound sources and commit them behind the generation pointer (ADR-0008, ADR-0009) |
+| [emery specify](specify.md) | Generate `spec.md` / `design.md` from the sources named on the invocation and commit them behind the generation pointer (ADR-0008, ADR-0009) |
+| [emery show](show.md) | Print a reviewable document of the current generation to stdout |
 | `emery completions <shell>` | Print a shell-completion script; auto-derived from the live clap surface |

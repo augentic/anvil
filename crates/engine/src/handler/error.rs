@@ -1,19 +1,14 @@
-//! The operation-layer failure type.
-//!
-//! [`Error`] wraps the workspace taxonomy; a failing gate's stdout body
-//! ([`FailureBody`]) rides the error to the transport beside the envelope.
+//! Operation-layer failures.
 
 use serde::Serialize;
 
 use super::output::{Render, ReportBody};
 
-/// The stdout payload an [`Error::Report`] carries beside the failure
-/// envelope — a closed set so the transport renders the known report
-/// currency without a trait object.
+/// Report payload carried with an operation failure.
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum FailureBody {
-    /// Diagnostic findings (the validate gates' contract).
+    /// Diagnostic findings.
     Findings(ReportBody),
 }
 
@@ -25,21 +20,19 @@ impl Render for FailureBody {
     }
 }
 
-/// Failure currency for every command operation.
+/// Command-operation failure.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// The plain workspace failure taxonomy.
+    /// Workspace failure.
     #[error(transparent)]
     Core(#[from] emery_error::Error),
 
-    /// A failure carrying a stdout body the transport renders
-    /// alongside the failure envelope (findings on stdout, the
-    /// payload-free error on stderr).
+    /// A failure with a report body.
     #[error("{source}")]
     Report {
-        /// The body rendered on the success channel.
+        /// Report body.
         body: FailureBody,
-        /// The payload-free failure for the error channel.
+        /// Underlying failure.
         source: emery_error::Error,
     },
 }
@@ -53,10 +46,7 @@ impl Error {
         }
     }
 
-    /// Construct [`Error::Report`]: a diagnostic report bundled with a
-    /// payload-free [`emery_error::Error::validation_failed`] failure — the
-    /// gate verbs' contract (findings on stdout, the `code`-keyed
-    /// envelope on stderr, exit 2).
+    /// Constructs a validation failure carrying a diagnostic report.
     #[must_use]
     pub fn report(
         body: ReportBody, code: &'static str, rule: impl Into<String>, detail: impl Into<String>,

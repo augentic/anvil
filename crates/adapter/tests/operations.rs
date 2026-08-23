@@ -1,4 +1,4 @@
-//! Operations-trait dispatch and references-server identity.
+//! Source adapter operation tests.
 
 use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
 use emery_adapter::registry::Doc;
@@ -75,7 +75,7 @@ fn fn_pointer_coercion() {
 fn server_name() {
     let first = references::server_name("captures");
     assert_eq!(first, "captures-references");
-    // Interned: the projection returns the same allocation every call.
+    // Interning reuses the allocation.
     assert!(std::ptr::eq(first, references::server_name("captures")));
     assert_eq!(references::server_name("some-adapter"), "some-adapter-references");
 }

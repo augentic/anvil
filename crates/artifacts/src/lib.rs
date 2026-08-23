@@ -1,7 +1,4 @@
-//! Artifact types and parsers plus the shared atomic writer.
-//!
-//! A lifecycle-free leaf: a parser cannot transition engine state.
+//! Lifecycle-free artifact types and parsers.
 
-pub mod atomic;
 pub mod evidence;
 pub mod spec;

@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. The surviving skill in this repository (`/emery:init`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1` (ADR-0008).
+The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1` (ADR-0008).
 
 The CLI itself is built in the in-tree Cargo workspace at the repo root. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -10,12 +10,12 @@ Skills are ultrathin invoke-and-relay wrappers: they elicit missing arguments, i
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. See [AGENTS.md](../../AGENTS.md).
 
-Never hand-edit `.emery/` state files (`project.yaml`, the component cache); never `mkdir -p .emery/...`. Route through the CLI — it enforces the legal set of states and validates inputs in one place for humans, agents, and CI alike.
+Never hand-edit `.emery/` state (the component cache, the generation store); never `mkdir -p .emery/...`. Route through the CLI — it enforces the legal set of states and validates inputs in one place for humans, agents, and CI alike.
 
 ## Verb tree
 
-- `emery init <adapter>... [--value <adapter>=<text>]` — scaffold `.emery/`, resolve/cache each source adapter, and write `project.yaml` with the authored `sources:` bindings (ADR-0009 §1). `emery init` invoked without a source exits `2` with `init-source-required`. `emery init --upgrade` is the re-entry path.
-- `emery specify` — the spec generator (ADR-0008 §3): extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. Outside an initialised project it fails `not-initialized` (exit `1`).
+- `emery specify <adapter>... [--value <adapter>=<text>] [--sources <path>]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. The binding list is per-run input, never persisted. Invoked without a source it exits `2` with `specify-source-required`; mixing `--sources` with argv bindings exits `2` with `argument`.
+- `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `1`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
 ## JSON envelope
@@ -28,9 +28,9 @@ The canonical envelope shapes live in [docs/reference/cli-output-shapes.md](../r
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `init-source-required` — `emery init` without a source binding.
-- `not-initialized` — `emery specify` outside an initialised project.
-- `emery-version-too-old` — the project's `emery` pin is newer than the running binary.
+- `specify-source-required` — `emery specify` without a source binding.
+- `spec-not-generated` — `emery show` before any generation is committed.
+- `adapter-cli-too-old` — an adapter's declared `emery` compatibility floor is newer than the running binary.
 
 ## Exit codes
 
@@ -41,7 +41,7 @@ The CLI uses a four-slot exit-code table. The authoritative definition (variants
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
 | `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
 | `2` | `EXIT_VALIDATION_FAILED` | Validation errors, argument errors, clap usage errors. |
-| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`emery-version-too-old`) — the project's `emery` pin is **newer** than this binary — or `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `emery` compatibility floor is newer than this binary; tell the operator to update the installed binary through its install channel. |
+| `3` | `EXIT_VERSION_TOO_OLD` | `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `emery` compatibility floor is newer than this binary; tell the operator to update the installed binary through its install channel. |
 
 Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 

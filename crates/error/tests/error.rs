@@ -13,22 +13,7 @@ fn diag_round_trip() {
 }
 
 #[test]
-fn cli_too_old_display() {
-    let err = Error::CliTooOld {
-        required: "1.0.0".to_string(),
-        found: "0.9.0".to_string(),
-    };
-    assert_eq!(err.variant_str(), "emery-version-too-old");
-    let msg = err.to_string();
-    assert!(msg.contains("0.9.0") && msg.contains("1.0.0"), "both versions in display: {msg}");
-    let hint = err.hint().expect("exit-3 errors carry a recovery hint");
-    assert!(hint.contains("brew upgrade emery"), "the hint names the install channel: {hint}");
-}
-
-#[test]
 fn adapter_too_old_display() {
-    // The adapter floor reuses the exit-3 family but carries
-    // a distinct discriminant naming the adapter that outran the binary.
     let err = Error::AdapterCliTooOld {
         adapter: "omnia (omnia@1.0.0.wasm)".to_string(),
         required: "2.0.0".to_string(),
@@ -49,8 +34,6 @@ fn adapter_too_old_display() {
 
 #[test]
 fn validation_code_display() {
-    // The common path borrows a `&'static str` code, and
-    // `validation_failed` folds `rule` + `detail` into one message.
     let err = Error::validation_failed("bad-thing", "rule", "detail");
     assert_eq!(err.variant_str(), "bad-thing");
     assert_eq!(err.to_string(), "bad-thing: rule: detail");
@@ -58,8 +41,6 @@ fn validation_code_display() {
 
 #[test]
 fn execute_codes_hint() {
-    // Each exit-2 refusal carries a recovery hint mirroring
-    // docs/reference/diagnostics.md.
     for (code, expect) in [
         ("plan-epoch-stale", "emery plan execute"),
         ("guest-marker-held", ".emery/change/guest.lock"),
@@ -89,7 +70,7 @@ fn closed_plan_codes_hint() {
 
 #[test]
 fn empty_rule_omits_prefix() {
-    // Edge: an empty `rule` must not leave a dangling `": "` prefix.
+    // An empty rule must not leave a dangling separator.
     let err = Error::validation_failed("code", "", "just detail");
     assert_eq!(err.to_string(), "code: just detail");
     assert_eq!(err.variant_str(), "code");

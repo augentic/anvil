@@ -1,4 +1,4 @@
-//! The seam vocabulary's own behavior: the model-to-seam error mapping.
+//! Adapter seam tests.
 
 use emery_adapter::Error as ModelError;
 use emery_adapter::seam::Error;

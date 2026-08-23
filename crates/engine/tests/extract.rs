@@ -1,7 +1,7 @@
-//! The extract kernel at the crate's public surface.
+//! Extraction integration tests.
 
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
-use emery_engine::extract::{Receipt, SourceSet, validate_set};
+use emery_engine::extract::{SourceSet, validate_set};
 
 fn requirement(id: &str, statement: Option<&str>) -> Claim {
     let mut claim = Claim::new(ClaimKind::Requirement);
@@ -36,17 +36,4 @@ fn missing_extras_refused() {
     assert!(message.contains("mock-docs"), "names the source: {message}");
     assert!(message.contains("greeting.behaviour"), "names the claim: {message}");
     assert!(message.contains("statement"), "names the missing key: {message}");
-}
-
-#[test]
-fn receipts_deterministic() {
-    let set = docs_set(vec![
-        requirement("login.flow", Some("Users sign in.")),
-        requirement("session.timeout", Some("Sessions expire.")),
-    ]);
-    let receipt = Receipt::of(&set);
-    assert_eq!(receipt.key, "mock-docs");
-    assert_eq!(receipt.claims, 2);
-    assert!(receipt.digest.starts_with("sha256:"), "{}", receipt.digest);
-    assert_eq!(receipt, Receipt::of(&set), "receipts are deterministic");
 }

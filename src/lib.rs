@@ -1,16 +1,19 @@
-//! The emery guest (wasm32) — the deployment's only `wasi:cli/run`
-//! exporter. Native deployment policy lives inline in `src/main.rs`;
-//! this library carries nothing on native targets.
+//! Wasm32 engine guest exporting the deployment's CLI and HTTP entry points.
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         use emery_transport::{command, http};
         use omnia_guest::api::invoke::Invoker;
 
-        // Bare provider over the WASI capability defaults
+        // The bare provider uses imported model and source capabilities.
+        // Host-bound key-value and blobstore capabilities provide durable
+        // engine storage through the default trait bodies.
+        #[derive(Clone)]
         struct Provider;
         impl omnia_guest::Model for Provider {}
         impl emery_adapter::Source for Provider {}
+        impl omnia_guest::StateStore for Provider {}
+        impl omnia_guest::BlobStore for Provider {}
 
         struct Cli;
         wasip3::cli::command::export!(Cli);
@@ -29,7 +32,7 @@ cfg_if::cfg_if! {
             async fn handle(
                 request: wasip3::http::types::Request,
             ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-                omnia_wasi_http::serve(http::refusal(), request).await
+                omnia_wasi_http::serve(http::listener(Provider), request).await
             }
         }
     }

@@ -6,5 +6,6 @@ The lookup table for the shipped `emery` surface. The v1 delivery workflow's ref
 
 - [CLI Reference](cli/index.md) — the shipped verbs.
 - [CLI output shapes](cli-output-shapes.md) — the JSON envelopes and exit contract every verb honours.
+- [Deployment profiles](deployment-profiles.md) — how the runtime binds engine storage, and how other deployments swap that binding.
 
 Standing design decisions (error layering, exit codes, journal taxonomy, and the rest) are recorded per area under [Standards](../standards/style.md) and in git history.

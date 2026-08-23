@@ -12,7 +12,7 @@ The engine and operator plugin live in [`augentic/emery`](https://github.com/aug
 | `plugins/`, `docs/` | The ultrathin Cursor skill wrapper and documentation | Markdown, YAML |
 | `emery-adapters/sources/` | Source adapter crates plus embedded prose | Rust, Markdown |
 
-The Rust workspace owns deterministic operations. The `/emery:init` skill under `plugins/emery/` is an ultrathin invoke-and-relay wrapper over the CLI verb.
+The Rust workspace owns deterministic operations. The `/emery:specify` skill under `plugins/emery/` is an ultrathin invoke-and-relay wrapper over the CLI verb.
 
 ## Development environment
 

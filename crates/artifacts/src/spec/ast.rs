@@ -1,5 +1,4 @@
-//! The one fail-closed spec AST: the engine's load gate over
-//! `spec.md`. Unparseable is a typed error, never a lenient pass.
+//! Fail-closed `spec.md` AST.
 
 use emery_error::Error;
 use serde::{Deserialize, Serialize};
@@ -7,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Markdown heading prefix opening a requirement block.
 pub const HEADING: &str = "### Requirement:";
 
-/// Closed `Status:` vocabulary for a requirement's provenance lines.
+/// Closed requirement `Status:` vocabulary.
 #[derive(
     Debug,
     Copy,
@@ -34,8 +33,7 @@ pub enum Status {
     Divergence,
 }
 
-/// Inline heading tag paired with every non-`agreed` status —
-/// honesty stays inline, nothing auto-defers.
+/// Heading tag required for every non-`agreed` status.
 #[derive(
     Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString, strum::IntoStaticStr,
 )]
@@ -70,7 +68,7 @@ pub struct Spec {
     pub requirements: Vec<Requirement>,
 }
 
-/// One requirement block; every field is present or [`parse`] failed.
+/// One fully parsed requirement block.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Requirement {
     /// The requirement id (`REQ-NNN`).
@@ -79,23 +77,19 @@ pub struct Requirement {
     pub name: String,
     /// The inline heading tag; `None` exactly when `Status: agreed`.
     pub tag: Option<Tag>,
-    /// Source keys from the `Sources:` line; empty only with
-    /// `Status: unknown`.
+    /// Source keys; empty only for `Status: unknown`.
     pub sources: Vec<String>,
     /// The `Status:` value.
     pub status: Status,
-    /// Body text below the metadata lines, blank edges trimmed.
+    /// Body text with blank edges trimmed.
     pub body: String,
 }
 
-/// Parse `text` as `spec.md` under the fail-closed AST.
+/// Parse `text` under the fail-closed grammar.
 ///
 /// # Errors
 ///
-/// One `spec-invalid` validation error aggregating every finding: a
-/// missing or malformed `ID:` / `Sources:` / `Status:` line, a
-/// duplicate id, an unrecognised heading tag, tag–status incoherence,
-/// or a document with no requirement blocks.
+/// Returns one `spec-invalid` error aggregating all grammar findings.
 pub fn parse(text: &str) -> Result<Spec, Error> {
     let mut findings: Vec<String> = Vec::new();
     let mut requirements: Vec<Requirement> = Vec::new();
@@ -145,8 +139,7 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
     }
 }
 
-// One requirement block being accumulated by the strict line scan:
-// metadata lines first, then body once a non-metadata line appears.
+// Metadata must precede the first body line.
 struct Block {
     line_no: usize,
     name: String,
@@ -263,8 +256,7 @@ impl Block {
     }
 }
 
-// Split a trailing ` [tag]` off the heading. An unrecognised bracket
-// suffix is a finding, never silently part of the name (A17).
+// An unknown trailing `[tag]` is a finding, not part of the name.
 fn split_tag(heading: &str, line_no: usize, findings: &mut Vec<String>) -> (String, Option<Tag>) {
     if let Some(open) = heading.rfind(" [")
         && heading.ends_with(']')

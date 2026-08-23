@@ -1,7 +1,4 @@
-//! Source-adapter Evidence shapes.
-//!
-//! Per-source `extract` output at `.emery/change/slices/<slice>/evidence/<source>.yaml`:
-//! typed [`Document`] / [`Claim`] plus the closed [`AuthorityClass`] / [`ClaimKind`] enums.
+//! Source-adapter Evidence types.
 
 pub mod authority;
 pub mod claim;
@@ -12,10 +9,8 @@ use serde::{Deserialize, Serialize};
 
 /// One kebab-case slug segment (`^[a-z0-9]+(-[a-z0-9]+)*$`).
 ///
-/// Deliberately sibling to the adapter SDK's answer-side copy (a leaf
-/// crate that cannot depend on `artifacts`): this side validates
-/// persisted catalog rows, whose `focus` stays opaque (`POST /orders`);
-/// survey answers gate `focus` as kebab at the SDK seam.
+/// This copy remains separate because the leaf adapter SDK cannot
+/// depend on `artifacts`.
 #[must_use]
 pub fn is_kebab(value: &str) -> bool {
     !value.is_empty()
@@ -25,29 +20,24 @@ pub fn is_kebab(value: &str) -> bool {
         })
 }
 
-/// The full persisted Evidence document: the envelope `lead` key plus
-/// the extract answer's `authority` and `claims`.
+/// A persisted Evidence document.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Document {
-    /// Lead id (matches a `## Lead inventory` block in `leads.md`)
-    /// the Evidence is bound to.
+    /// Bound lead id.
     pub lead: String,
     /// Document-level authority class for this Evidence.
     pub authority: AuthorityClass,
-    /// Per-claim extraction records. Empty `claims: []` is valid;
-    /// failure is signalled by not writing the Evidence file at all.
+    /// Extracted claims. An empty set is valid.
     pub claims: Vec<Claim>,
 }
 
 impl Document {
-    /// Deterministically re-check the document: the `lead` must be a
-    /// kebab slug and the claim set must pass [`validate_claims`].
+    /// Check the lead slug and claims.
     ///
     /// # Errors
     ///
-    /// Returns [`emery_error::Error::Validation`] keyed on `evidence-schema`
-    /// (exit code 2) carrying one line per violation.
+    /// Returns `evidence-schema` validation findings.
     pub fn validate(&self) -> Result<(), emery_error::Error> {
         let mut findings = Vec::new();
         if !is_kebab(&self.lead) {

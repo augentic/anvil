@@ -1,47 +1,43 @@
-//! Source-axis seam vocabulary mirroring the WIT `source` records:
-//! resolve-time metadata, the extract input, and the extract claim-set
-//! shape (authority, claim taxonomy, backing).
+//! DTOs mirroring the WIT `source` records.
 
 use serde::Deserialize;
 
-/// A source adapter's metadata — mirrors the WIT `source.metadata`
-/// record. Read by the host at resolve time from compiled-in constants.
+/// Resolve-time source adapter metadata.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceMetadata {
-    /// Optional host-CLI compatibility floor (exact minimum `emery`
-    /// version). Absent means no floor.
+    /// Exact minimum Emery version, if any.
     pub emery_floor: Option<String>,
 }
 
-/// Read-only source view — mirrors the WIT `source.workspace` record.
+/// Read-only source workspace.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceWorkspace {
-    /// Opaque identity of the preparation.
+    /// Opaque preparation identity.
     pub id: String,
-    /// Deployment-local path of the read-only view root.
+    /// Deployment-local view root.
     pub root: String,
 }
 
-/// Workspace-or-value payload — mirrors the WIT `source.content` variant.
+/// Workspace or inline source content.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SourceContent {
-    /// Read-only CID view of a location-backed source.
+    /// Read-only view of a location-backed source.
     Workspace(SourceWorkspace),
-    /// Inline value; no filesystem lend.
+    /// Inline value without a filesystem lend.
     Value(String),
 }
 
-/// Typed source-operation input — mirrors the WIT `source.input` record.
+/// Source operation input.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceInput {
-    /// Source-binding key.
+    /// Binding key.
     pub key: String,
-    /// Read-only source view or inline value.
+    /// Workspace or inline content.
     pub content: SourceContent,
 }
 
 impl SourceInput {
-    /// Inline-value input — the value extract shape.
+    /// Creates inline-value input.
     #[must_use]
     pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
         Self {
@@ -51,101 +47,89 @@ impl SourceInput {
     }
 }
 
-/// Document-level authority class for an extracted claim set
-/// (`intent` > `documentation` > `behaviour`). Controls who wins a
-/// cross-source disagreement.
+/// Claim-set authority, ordered `intent` > `documentation` > `behaviour`.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Authority {
-    /// Operator directives. Highest authority.
+    /// Operator directives.
     Intent,
-    /// Written specifications and documentation.
+    /// Specifications and documentation.
     Documentation,
-    /// Empirically observed behaviour. Lowest authority.
+    /// Observed behaviour.
     Behaviour,
 }
 
-/// Claim-kind taxonomy from `schemas/evidence.schema.json`. New kinds
-/// require updating the workflow contract and schemas together.
+/// Closed claim taxonomy; update the workflow contract and schema together.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum ClaimKind {
-    /// Operator intent statement.
+    /// Operator intent.
     Intent,
-    /// A behavioural requirement.
+    /// Behavioural requirement.
     Requirement,
-    /// An acceptance criterion.
+    /// Acceptance criterion.
     Criterion,
-    /// A recorded decision.
+    /// Recorded decision.
     Decision,
-    /// A document section.
+    /// Document section.
     Section,
-    /// A diagram.
+    /// Diagram.
     Diagram,
-    /// An API contract.
+    /// API contract.
     Contract,
-    /// Runtime capture claims emitted by the `captures` source adapter.
+    /// Runtime capture.
     Example,
-    /// A verbatim excerpt.
+    /// Verbatim excerpt.
     Excerpt,
-    /// A type declaration.
+    /// Type declaration.
     Type,
-    /// A call site.
+    /// Call site.
     Call,
-    /// A code region.
+    /// Code region.
     Region,
-    /// A container (module, package, …).
+    /// Container such as a module or package.
     Container,
-    /// A leaf item.
+    /// Leaf item.
     Leaf,
 }
 
-/// Backing data of a claim — mirrors the WIT `source.backing` variant.
+/// Claim backing.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Backing {
-    /// A small, verbatim piece of data passed directly.
+    /// Inline verbatim data.
     Payload(String),
-    /// A pointer to a block of data in the filesystem.
+    /// Filesystem path.
     Path(String),
 }
 
-/// A claim extracted from a source — mirrors the WIT `source.claim` record.
+/// A claim extracted from a source.
 ///
-/// The schema leaves per-kind body fields open (`additionalProperties:
-/// true`), so unmodeled keys flatten into [`Claim::extras`], and the
-/// modeled open fields (`synopsis`, `backing`) deserialize leniently
-/// rather than failing the whole answer.
+/// Open per-kind fields flatten into [`Claim::extras`]. `synopsis` and
+/// `backing` are lenient: malformed shapes become absent.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Claim {
-    /// The claim's kind from the closed taxonomy.
+    /// Kind from the closed taxonomy.
     pub kind: ClaimKind,
-    /// Stable claim identifier (dotted kebab slug, e.g.
-    /// `password-reset.expiry`). Required when `kind` is `requirement`,
-    /// `criterion`, or `example`; optional on other kinds.
+    /// Stable dotted-kebab ID; required for requirements, criteria, and examples.
     #[serde(default)]
     pub id: Option<String>,
-    /// Per-claim source anchor: `<path>`, `<path>#L<n>`, or
-    /// `<path>#L<start>-L<end>`.
+    /// Source anchor: `<path>`, `<path>#L<n>`, or `<path>#L<n>-L<n>`.
     #[serde(default)]
     pub path: Option<String>,
-    /// Headline summarizing the semantic meaning of this evidence.
+    /// Semantic headline.
     #[serde(default, deserialize_with = "lenient")]
     pub synopsis: Option<String>,
-    /// Backing data of the claim (a path or a raw payload).
+    /// Path or inline backing.
     #[serde(default, deserialize_with = "lenient")]
     pub backing: Option<Backing>,
-    /// Open per-kind body fields (`statement`, `criterion`,
-    /// `replay-digest`, …), captured verbatim from the answer instead
-    /// of being dropped — synthesis reads them from the persisted
-    /// Evidence document.
+    /// Open per-kind fields preserved for synthesis.
     #[serde(flatten)]
     pub extras: serde_json::Map<String, serde_json::Value>,
 }
 
-// Deserialize an open per-kind body field tolerantly: a value that does
-// not match the modeled shape is treated as absent.
+// Treat a malformed open field as absent.
 fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -155,14 +139,12 @@ where
     Ok(T::deserialize(value).ok())
 }
 
-/// Evidence returned by extract — mirrors the WIT `source.evidence`
-/// record: the document-level authority class plus the extracted
-/// claim set.
+/// Extracted claims and their document-level authority.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Evidence {
-    /// The document-level authority class of this evidence.
+    /// Document-level authority.
     pub authority: Authority,
-    /// The claims extracted from the source.
+    /// Extracted claims.
     pub claims: Vec<Claim>,
 }

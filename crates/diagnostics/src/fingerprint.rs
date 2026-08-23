@@ -1,4 +1,4 @@
-//! Diagnostic fingerprint and canonical JSON helpers.
+//! Diagnostic fingerprints and canonical JSON.
 //!
 //! The algorithm is the normative `v1` wire format — drift breaks dedup
 //! across CI history; touch it only with a deliberate `v2` bump:
@@ -17,13 +17,11 @@ use serde_json::Value;
 use crate::diagnostic::{Diagnostic, FindingEvidence, FindingLocation};
 use crate::digest::sha256_hex;
 
-// Wire-format version embedded into every fingerprint preimage.
 const FINGERPRINT_VERSION: &str = "v1";
 
-/// Compute the diagnostic fingerprint for `diagnostic`.
+/// Compute a `sha256:<64 lowercase hex>` fingerprint.
 ///
-/// Returns `sha256:` followed by 64 lowercase hex chars. The
-/// `diagnostic.fingerprint` field is **not** consulted.
+/// The stored fingerprint field is not consulted.
 #[must_use]
 pub fn fingerprint(diagnostic: &Diagnostic) -> String {
     let rule_id = diagnostic.rule_id.as_deref().unwrap_or("");
@@ -49,8 +47,7 @@ pub fn fingerprint(diagnostic: &Diagnostic) -> String {
     format!("sha256:{}", sha256_hex(input.as_bytes()))
 }
 
-/// Recompute the fingerprint from `diagnostic`'s other fields and
-/// compare against the stored [`Diagnostic::fingerprint`].
+/// Verify the stored [`Diagnostic::fingerprint`].
 #[must_use]
 pub fn verify_fingerprint(diagnostic: &Diagnostic) -> bool {
     let Some(hex) = diagnostic.fingerprint.strip_prefix("sha256:") else {
@@ -62,16 +59,7 @@ pub fn verify_fingerprint(diagnostic: &Diagnostic) -> bool {
     fingerprint(diagnostic) == diagnostic.fingerprint
 }
 
-/// Canonical JSON serialisation: sorted object keys, no insignificant
-/// whitespace, arrays preserve insertion order.
-///
-/// ```
-/// use serde_json::json;
-/// use emery_diagnostics::canonical_json;
-///
-/// let value = json!({"b": 1, "a": [2, 1]});
-/// assert_eq!(canonical_json(&value), r#"{"a":[2,1],"b":1}"#);
-/// ```
+/// Serialize JSON with sorted keys, no extra whitespace, and stable array order.
 #[must_use]
 pub fn canonical_json(value: &Value) -> String {
     let mut out = String::new();
@@ -85,8 +73,7 @@ fn write_canonical(out: &mut String, value: &Value) {
         Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
         Value::Number(n) => out.push_str(&n.to_string()),
         Value::String(s) => {
-            // Serialising a `String` to JSON cannot fail; `unreachable!` keeps
-            // fingerprint stability off the `expect` panic path.
+            // JSON strings serialize infallibly; avoid an `expect` panic path.
             out.push_str(
                 &serde_json::to_string(s)
                     .unwrap_or_else(|_| unreachable!("a JSON string is infallibly serialisable")),

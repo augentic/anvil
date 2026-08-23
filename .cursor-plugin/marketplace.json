@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Spec-driven code generation plugins for Augentic.",
-    "version": "0.29.0",
+    "version": "0.30.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
     {
       "name": "emery",
       "source": "emery",
-      "description": "Six skills for the Emery workflow: `/emery:init` scaffolds a project, `/emery:plan` authors the change-level plan, `/emery:refine` drains specification refinement over the closed plan, `/emery:execute` drives the build → merge loop to completion, `/emery:status` reports where the plan stands, and `/emery:finalize` closes the change."
+      "description": "One skill for the Emery spec generator: `/emery:specify` generates the reviewable `spec.md` / `design.md` set from the named sources."
     }
   ]
 }

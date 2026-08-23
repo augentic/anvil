@@ -1,56 +1,32 @@
-//! `Error` enum and saphyr-error conversions.
-//!
-//! The `YamlDe` / `YamlSer` variants flatten `serde_saphyr`'s two error
-//! types directly into the crate's error surface.
+//! Structured errors and YAML conversions.
 
 use std::borrow::Cow;
 
-/// Structured error type for all `emery-*` crates.
-///
-/// Variants carry enough context for the CLI to assign exit codes and
-/// choose an output format without string-parsing.
+/// Workspace error type with structured CLI routing context.
 #[derive(Debug, thiserror::Error)]
 #[expect(missing_docs, reason = "variant-level docs cover self-explanatory error fields")]
 pub enum Error {
-    /// The `.emery/project.yaml` file is missing.
-    #[error("not-initialized: .emery/project.yaml not found")]
-    NotInitialized,
-
-    /// Structured catch-all for diagnostics that don't have a dedicated
-    /// variant. The `code` is a stable kebab-case discriminant surfaced
-    /// in JSON envelopes; `detail` is the human-readable message.
-    /// Promote a recurring `Diag` site to its own variant once the call
-    /// shape stabilises.
+    /// Catch-all with a stable kebab-case code.
+    ///
+    /// Promote recurring, stable call shapes to dedicated variants.
     #[error("{code}: {detail}")]
     Diag { code: &'static str, detail: String },
 
-    /// A user-supplied CLI argument is invalid for reasons clap cannot
-    /// catch (kebab-case names, mutually exclusive flag combinations,
-    /// unknown enum keys, etc.). Carries the offending flag/value plus a
-    /// human-readable detail. Prefer this over [`Error::Diag`] for
-    /// argument-shape validation so the CLI can map it onto the
-    /// argument-error exit code.
+    /// Argument validation that clap cannot express.
+    ///
+    /// Prefer this over [`Error::Diag`] for argument-error exit routing.
     #[error("invalid argument {flag}: {detail}")]
     Argument { flag: &'static str, detail: String },
 
-    /// A workflow-gating validation surface failed. Payload-free: the
-    /// rendered findings (a `DiagnosticReport`) are emitted to stdout by
-    /// the handler; this variant only carries the stable kebab `code`
-    /// (the JSON `error` discriminant) and a human-readable `detail`,
-    /// and routes to exit code 2 (`Exit::ValidationFailed`). Construct
-    /// via [`Self::validation_failed`].
+    /// Payload-free validation failure routed to exit code 2.
+    ///
+    /// Findings are emitted separately; construct with [`Self::validation_failed`].
     #[error("{code}: {detail}")]
     Validation { code: Cow<'static, str>, detail: String },
 
-    /// The installed CLI version is older than the project floor.
-    #[error("emery version {found} is older than the project floor {required}; upgrade the CLI")]
-    CliTooOld { required: String, found: String },
-
-    /// The installed CLI version is older than an adapter's declared
-    /// host-CLI compatibility floor (the `emery-floor` describe
-    /// key). Routes to exit 3 (`Exit::VersionTooOld`) like
-    /// [`Self::CliTooOld`] but carries the distinct `adapter-cli-too-old`
-    /// discriminant so the operator sees which adapter outran the binary.
+    /// The CLI is older than an adapter's declared compatibility floor.
+    ///
+    /// Routes to exit 3 with the distinct `adapter-cli-too-old` code.
     #[error(
         "emery version {found} is older than the floor {required} required by adapter {adapter}; upgrade the CLI"
     )]
@@ -60,9 +36,7 @@ pub enum Error {
     #[error("{kind} not found at {}", path.display())]
     ArtifactNotFound { kind: &'static str, path: std::path::PathBuf },
 
-    /// A filesystem operation failed. The `op` field is a stable
-    /// kebab-case suffix that, prefixed with `filesystem-`, becomes the
-    /// JSON envelope's `error` discriminant (e.g. `filesystem-readdir`).
+    /// Filesystem failure with a `filesystem-<op>` error code.
     #[error("filesystem-{op}: {} ({source})", path.display())]
     Filesystem {
         op: &'static str,
@@ -75,42 +49,26 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    /// A YAML deserialization error (e.g. `serde_saphyr::from_str`).
-    /// Library crates rely on `?`-propagation; the variant docstring is
-    /// the canonical "you don't have to care which `serde_saphyr` API
-    /// tripped" — match on either YAML variant when that distinction is
-    /// irrelevant.
+    /// A YAML deserialization error.
     #[error(transparent)]
     YamlDe(#[from] serde_saphyr::Error),
 
-    /// A YAML serialization error (e.g. `serde_saphyr::to_string`).
+    /// A YAML serialization error.
     #[error(transparent)]
     YamlSer(#[from] serde_saphyr::ser::Error),
 }
 
 impl Error {
-    /// Long-form recovery hint for tightened diagnostics. Returns
-    /// `None` when the variant has no actionable follow-up beyond the
-    /// `#[error("…")]` body.
+    /// Return an actionable recovery hint, if one exists.
     ///
-    /// The renderer in `crates/transport/src/command/output.rs` calls this to surface guidance
-    /// alongside the kebab discriminant on a TTY, while keeping the
-    /// machine-readable JSON envelope compact. New hints land here
-    /// (typed-arm for typed variants; `Self::Diag { code, .. }` arm for
-    /// `Diag`-routed sites), not in the renderer.
+    /// Hints belong here, not in the renderer.
     #[must_use]
     pub fn hint(&self) -> Option<&'static str> {
         match self {
-            Self::NotInitialized => Some(
-                "run `emery init <adapter>` to scaffold .emery/ first, or pass `--change-dir <dir>` to select a detached change home explicitly",
-            ),
             Self::ArtifactNotFound {
                 kind: "plan.yaml", ..
             } => Some(
                 "author a plan first: run /emery:plan, or `emery plan author <name> --from <dir> --wave <id>`",
-            ),
-            Self::CliTooOld { .. } => Some(
-                "update the installed binary through its install channel: `brew upgrade emery` (or `cargo install --git https://github.com/augentic/emery --locked`), then rerun the command",
             ),
             Self::AdapterCliTooOld { .. } => Some(
                 "update the installed binary through its install channel: `brew upgrade emery` (or `cargo install --git https://github.com/augentic/emery --locked`); if the adapter itself is stale instead, `emery adapter upgrade <name>` pulls its newest published version",
@@ -132,8 +90,8 @@ impl Error {
                 "plan-ownership-overlap" => Some(
                     "quiesce affected work, then apply the inert ownership proposal with `emery plan amend --proposal <digest>`",
                 ),
-                "init-source-required" => Some(
-                    "`emery init <adapter>...` scaffolds the project over its source bindings.\nsee: docs/init.md",
+                "specify-source-required" => Some(
+                    "`emery specify <adapter>...` generates the spec over the sources named on the invocation; there is no persisted binding list",
                 ),
                 "slice-claim-conflict" => Some(
                     "claim a different slice, or wait for the current owner to release / retract their claim",
@@ -145,7 +103,7 @@ impl Error {
                     "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/change/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
                 ),
                 "change-home-unanchored" => Some(
-                    "run inside a product checkout (or `emery init` one), or pass `--change-dir <dir>` to select a detached change home explicitly",
+                    "run inside a product checkout, or pass `--change-dir <dir>` to select a detached change home explicitly",
                 ),
                 _ => None,
             },
@@ -153,19 +111,13 @@ impl Error {
         }
     }
 
-    /// Kebab-case identifier used in structured CLI error payloads.
-    ///
-    /// Most arms borrow a `&'static str` literal at zero cost;
-    /// [`Self::Filesystem`] is the lone owned arm, composing
-    /// `filesystem-<op>`.
+    /// Kebab-case identifier for structured CLI errors.
     #[must_use]
     pub fn variant_str(&self) -> Cow<'static, str> {
         match self {
-            Self::NotInitialized => Cow::Borrowed("not-initialized"),
             Self::Diag { code, .. } => Cow::Borrowed(*code),
             Self::Argument { .. } => Cow::Borrowed("argument"),
             Self::Validation { code, .. } => code.clone(),
-            Self::CliTooOld { .. } => Cow::Borrowed("emery-version-too-old"),
             Self::AdapterCliTooOld { .. } => Cow::Borrowed("adapter-cli-too-old"),
             Self::ArtifactNotFound { .. } => Cow::Borrowed("artifact-not-found"),
             Self::Filesystem { op, .. } => Cow::Owned(format!("filesystem-{op}")),
@@ -174,13 +126,9 @@ impl Error {
         }
     }
 
-    /// Build a payload-free `Validation` failure that lands on
-    /// `Exit::ValidationFailed` (exit 2).
+    /// Build a payload-free validation failure for exit code 2.
     ///
-    /// `code` is the stable kebab discriminant surfaced as the JSON
-    /// `error` field (and by [`Self::variant_str`]); `rule` (the
-    /// human-readable invariant) and `detail` (the specific
-    /// explanation) are folded into the rendered message.
+    /// `code` is stable; `rule` and `detail` form the rendered message.
     #[must_use]
     pub fn validation_failed(
         code: impl Into<Cow<'static, str>>, rule: impl Into<String>, detail: impl Into<String>,
@@ -197,6 +145,9 @@ impl Error {
 
 fn diag_hint(code: &str) -> Option<&'static str> {
     match code {
+        "spec-not-generated" => {
+            Some("run `emery specify <adapter>...` to commit a generation, then re-run show")
+        }
         "plan-has-outstanding-work" => {
             Some("complete or drop the listed entries, or rerun with --force to archive anyway")
         }

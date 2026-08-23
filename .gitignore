@@ -27,7 +27,6 @@ sandbox.lock
 
 # Emery project state and integration-run scratch logs
 .emery/.cache/
-.emery/project.yaml
-.emery-cache/
+.omnia/
 stderr.log
 stdout.log

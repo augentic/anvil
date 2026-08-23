@@ -1,16 +1,20 @@
-//! Shared inert provider for the wire-contract suites: satisfies the
-//! router's capability bounds so the grammar assembles and pre-dispatch
-//! refusals run; no test dispatches the model (`tests/native.rs` covers that).
+//! Inert provider and storage for wire-contract tests.
 
 use std::future::Future;
+use std::sync::Arc;
 
 use emery_adapter::seam::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
+use emery_testkit::Memory;
 use omnia_guest::api::invoke::Invoker;
 
-/// The inert provider: unreachable capabilities.
-#[derive(Clone, Debug)]
-pub struct Inert;
+// Provider capabilities are unreachable in these tests.
+#[derive(Clone, Debug, Default)]
+pub struct Inert {
+    pub storage: Arc<Memory>,
+}
+
+emery_testkit::scripted_storage!(Inert, storage);
 
 impl omnia_guest::Model for Inert {
     fn create(
@@ -40,7 +44,13 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
     unreachable!("the wire suites never dispatch the source seam")
 }
 
-/// The command router over the inert provider.
 pub fn router() -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
-    emery_transport::command::router(Invoker::new("emery", Inert)).expect("router")
+    router_over(Inert::default())
+}
+
+// Accept a retained provider for post-run storage inspection.
+pub fn router_over(
+    provider: Inert,
+) -> omnia_guest::api::command::Router<Inert, emery_transport::command::Globals> {
+    emery_transport::command::router(Invoker::new("emery", provider)).expect("router")
 }

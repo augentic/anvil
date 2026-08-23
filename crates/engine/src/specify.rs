@@ -1,37 +1,45 @@
-//! `emery specify` — the one loop: extract every bound source,
-//! reconcile and synthesise under authority precedence, and commit the
-//! gated spec set behind the generation pointer.
+//! The `emery specify` operation.
 
 use std::io::Write;
 
 use emery_adapter::Source;
-use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use omnia_guest::{BlobStore, Model, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::extract::{Receipt, extract_all};
-use crate::handler::{Render, RequestContext};
+use crate::extract::extract_all;
+use crate::handler::{ExecutionPaths, Render};
 use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
 
-/// Wire input for `emery specify` (no flags).
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
-pub struct SpecifyInput;
+/// Input for `emery specify` — the run's source bindings.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct SpecifyInput {
+    /// Source adapters bound as workspace-backed sources.
+    #[serde(default)]
+    pub adapters: Vec<String>,
+    /// Value-backed source bindings, each `<adapter>=<text>`.
+    #[serde(default)]
+    pub values: Vec<String>,
+    /// Path of an operator-owned `sources.toml` carrying the bindings.
+    #[serde(default)]
+    pub sources: Option<String>,
+}
 
-/// Success body: the committed generation and its reviewable set.
+/// Successful `emery specify` result.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SpecifyBody {
-    /// The committed generation id the pointer names.
+    /// Committed generation id.
     pub generation: String,
-    /// Requirement blocks in the committed `spec.md`.
+    /// Number of committed requirements.
     pub requirements: usize,
-    /// Sources extracted this run.
+    /// Number of extracted sources.
     pub sources: usize,
-    /// The re-mine diff against the superseded generation; absent on
-    /// a first run, empty on a byte-stable re-run.
+    /// Diff from the predecessor; absent on the first run.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
 }
@@ -61,11 +69,11 @@ impl Render for SpecifyBody {
     }
 }
 
-/// The live `specify` route over the model seam.
+/// The `specify` operation route.
 #[derive(Clone, Copy, Debug)]
 pub struct Specify;
 
-impl<P: Provider + Model + Source> Operation<P> for Specify {
+impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Specify {
     type Error = crate::handler::Error;
     type Input = SpecifyInput;
     type Output = SpecifyBody;
@@ -73,29 +81,29 @@ impl<P: Provider + Model + Source> Operation<P> for Specify {
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let SpecifyInput = input;
-        let request = RequestContext::load()?;
-        let paths = request.paths();
-        let project_dir = paths.project_root();
-        let project = request.project();
+        let SpecifyInput {
+            adapters,
+            values,
+            sources,
+        } = input;
+        let paths = ExecutionPaths::deployed();
+        let bindings = crate::sources::bindings(&adapters, &values, sources.as_deref())?;
 
-        let sets = extract_all(context.provider, project, paths).await?;
+        let sets = extract_all(context.provider, &bindings, &paths).await?;
         let rows = reconcile(&sets);
         let documents = synthesise(context.provider, &sets, &rows).await?;
 
-        let receipts: Vec<Receipt> = sets.iter().map(Receipt::of).collect();
         let set = SpecSet {
-            bindings: emery_artifacts::atomic::serialise_yaml(&project.sources)?,
-            receipts: emery_artifacts::atomic::serialise_yaml(&receipts)?,
             spec: documents.spec,
             design: documents.design,
         };
-        let home = Home::new(project_dir);
-        // Read the outgoing set before the commit prunes it; the diff
-        // is computed in memory and emitted only here.
-        let outgoing = home.outgoing();
-        let committed = home.commit(&set)?;
-        let diff = outgoing.map(|(from, previous)| Diff::between(from, &previous, &set));
+        let home = Home::new(context.provider);
+        // One observation feeds both the CAS expected value and the
+        // re-mine diff, computed in memory and emitted only here.
+        let observed = home.observe().await;
+        let committed = home.commit(&set, &observed).await?;
+        let diff =
+            observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
         Ok(SpecifyBody {
             generation: committed.id,
             requirements: rows.len(),

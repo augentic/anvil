@@ -1,7 +1,4 @@
-//! Shared judgment-call shape every adapter operation uses.
-//!
-//! Extract legs use [`repaired`] (bounded repair loop); [`judgment`] is
-//! the one-shot form for legs that must never be replayed.
+//! Schema-gated judgment calls, with optional bounded repair.
 
 use omnia_guest::Model;
 use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat, Tool};
@@ -9,15 +6,14 @@ use serde::de::DeserializeOwned;
 
 use crate::seam::{Context, Error};
 
-/// Maximum repair attempts after the first answer.
+/// Maximum repairs after the initial answer.
 pub const MAX_REPAIRS: usize = 2;
 
-/// One schema-gated judgment leg; deserializes the host-validated answer.
+/// Runs one schema-gated judgment and deserializes its answer.
 ///
 /// # Errors
 ///
-/// [`Error::InvalidRequest`] when the model rejects the request;
-/// [`Error::Internal`] for other model failures or a deserialize miss.
+/// Returns the mapped model error or [`Error::Internal`] on deserialization.
 pub async fn judgment<P: Model, T: DeserializeOwned>(
     model: &P, ctx: &Context<'_>, system: String, user: String, schema_name: &str, schema: &str,
 ) -> Result<T, Error> {
@@ -26,15 +22,15 @@ pub async fn judgment<P: Model, T: DeserializeOwned>(
         .map_err(|err| Error::Internal(format!("{schema_name} answer did not deserialize: {err}")))
 }
 
-/// Schema-gated judgment leg with a bounded repair loop over `tail`.
+/// Runs a schema-gated judgment with bounded `tail` repair.
 ///
-/// Only answer-tail failures ([`Error::Internal`] from `tail`) are
-/// retried; model / invalid-request / I/O failures return immediately.
+/// Only [`Error::Internal`] from `tail` is retried. Request and model
+/// failures return immediately.
 ///
 /// # Errors
 ///
-/// The mapped model failure, a non-repairable tail failure, or the last
-/// tail failure once the repair budget is exhausted.
+/// Returns the mapped model error, a non-repairable tail error, or the
+/// final tail error after exhausting repairs.
 pub async fn repaired<P, T, F>(
     model: &P, ctx: &Context<'_>, system: String, user: String, schema_name: &str, schema: &str,
     mut tail: F,

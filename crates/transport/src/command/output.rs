@@ -1,6 +1,5 @@
-//! Output format, the single [`emit`] entry point, and the exit-code
-//! contract shared by the native binary and the workflow guest.
-//! `Exit::from(&Error)` is the single source of truth for failures.
+//! Output rendering and process exit codes.
+//! [`Exit::from`] is the failure-code authority.
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -10,28 +9,21 @@ use emery_engine::handler::Render;
 use emery_error::Error;
 use serde::Serialize;
 
-/// Structured (`json`) or human (`text`) CLI output.
+/// CLI output format.
 #[derive(Copy, Clone, Debug, Default, ValueEnum, PartialEq, Eq)]
 pub enum Format {
-    /// Human-readable lines on stdout/stderr.
+    /// Human-readable text.
     #[default]
     Text,
-    /// Pretty-printed JSON envelopes for skill/CI consumption.
+    /// Pretty-printed JSON.
     Json,
 }
 
-/// Emit `payload` through `writer` in the requested format.
-///
-/// JSON serialises the body directly via
-/// `serde_json::to_writer_pretty`; Text delegates to `render_text`.
-/// The single signature covers both success (stdout) and failure
-/// (stderr) — there is one entry point for all structured output.
-/// Callers construct the locked writer at the boundary so the sink
-/// choice is visible at the call site.
+/// Writes `payload` in the requested format.
 ///
 /// # Errors
 ///
-/// Propagates the underlying serialization or I/O error.
+/// Returns serialization or I/O failures.
 pub fn emit<T: Serialize>(
     writer: &mut dyn Write, format: Format, payload: &T,
     render_text: impl FnOnce(&mut dyn Write, &T) -> std::io::Result<()>,
@@ -48,29 +40,24 @@ pub fn emit<T: Serialize>(
     }
 }
 
-/// Process exit code the CLI returns, mapped from a handler result.
-///
-/// [`Exit::from`] (`&Error`) is the single source of truth for the
-/// failure mapping.
+/// Process exit classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub enum Exit {
-    /// Command succeeded (exit 0).
+    /// Success (exit 0).
     Success,
-    /// Any error without a more specific code (exit 1).
+    /// Unclassified failure (exit 1).
     GenericFailure,
-    /// Validation findings or `Error::Validation` (exit 2).
+    /// Validation failure (exit 2).
     ValidationFailed,
-    /// `Error::CliTooOld` — the binary is older than the project floor (exit 3).
+    /// Incompatible old version (exit 3).
     VersionTooOld,
-    /// Argument-shape failure: `clap` exits 2 for unknown flags / missing
-    /// arguments; we mirror that for argument errors discovered after
-    /// parsing (kebab-case checks, mutually exclusive payloads, etc.).
+    /// Post-parse argument failure (exit 2).
     ArgumentError,
 }
 
 impl Exit {
-    /// Numeric process exit code for this outcome.
+    /// Returns the numeric exit code.
     #[must_use]
     pub const fn code(self) -> u8 {
         match self {
@@ -91,7 +78,7 @@ impl From<Exit> for ExitCode {
 impl From<&Error> for Exit {
     fn from(err: &Error) -> Self {
         match err {
-            Error::CliTooOld { .. } | Error::AdapterCliTooOld { .. } => Self::VersionTooOld,
+            Error::AdapterCliTooOld { .. } => Self::VersionTooOld,
             Error::Validation { .. } => Self::ValidationFailed,
             Error::Argument { .. } => Self::ArgumentError,
             _ => Self::GenericFailure,
@@ -99,14 +86,7 @@ impl From<&Error> for Exit {
     }
 }
 
-/// Failure envelope used by the transport projectors for every error
-/// variant.
-///
-/// Payload-free: `error` carries the variant discriminant, `message`
-/// the rendered detail, `exit-code` the numeric exit, and `hint` the
-/// optional recovery guidance (present in text and JSON alike). No
-/// per-finding rows — handlers render `emery_diagnostics::DiagnosticReport`
-/// on stdout before returning this. Construct via `ErrorBody::from`.
+/// Serialized command failure.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ErrorBody {
@@ -128,26 +108,20 @@ impl From<&Error> for ErrorBody {
     }
 }
 
-/// Render a success `body` as the stdout bytes the command projector
-/// would emit — the success envelope for callers outside a router
-/// dispatch.
+/// Renders command-success bytes outside router dispatch.
 ///
 /// # Errors
 ///
-/// Propagates the underlying serialization or I/O failure; callers
-/// route it through [`render_failure`].
+/// Returns serialization or I/O failures.
 pub fn render_success<T: Serialize + Render>(format: Format, body: &T) -> Result<Vec<u8>, Error> {
     let mut stdout = Vec::new();
     emit(&mut stdout, format, body, |w, v| v.render(w))?;
     Ok(stdout)
 }
 
-/// Render `error` as the stderr bytes and exit code the command
-/// projector would emit — the failure envelope for callers outside a
-/// router dispatch.
+/// Renders command-failure bytes and their exit code.
 ///
-/// Rendering failures collapse onto a plain exit-1 line, mirroring the
-/// projector's terminal fallback.
+/// Rendering failures become a plain exit-1 line.
 #[must_use]
 pub fn render_failure(format: Format, error: &Error) -> (Vec<u8>, u8) {
     let body = ErrorBody::from(error);
@@ -167,9 +141,8 @@ pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<
     Ok(())
 }
 
-// ANSI red for the `error:` line. `NO_COLOR` (any non-empty value),
-// a missing `TERM`, and `TERM=dumb` opt out; under wasm32 there is no
-// terminal probe, so the env guards alone decide.
+// `NO_COLOR`, missing `TERM`, and `TERM=dumb` disable ANSI styling.
+// Wasm has no terminal probe, so only those environment guards apply.
 #[expect(
     clippy::disallowed_methods,
     reason = "the guest is the CLI (wasi:cli/run); NO_COLOR/TERM are the terminal \

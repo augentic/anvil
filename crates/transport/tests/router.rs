@@ -1,29 +1,21 @@
-//! Typed command grammar, conversion, and HTTP parity coverage over
-//! the two-verb surface: `init`, the live `specify` generator, and
-//! the auto-derived `completions`.
+//! Command grammar, conversion, and HTTP parity coverage.
 
 mod support;
 
-use std::fs;
-
-// Grammar and parity coverage only: no test dispatches judgment or an
-// adapter seam, so the inert provider's capabilities are never reached.
+// These grammar tests never reach provider capabilities.
 fn command_router()
 -> omnia_guest::api::command::Router<support::Inert, emery_transport::command::Globals> {
     support::router()
 }
 
-// Gate tripwire: the guest HTTP listener serves only the MCP shelves;
-// an HTTP operation surface must arrive with an authenticated ingress
-// design and delete this test in the same decision.
+// An HTTP operation surface requires an authenticated ingress design.
 #[tokio::test]
 async fn adr_0002_http_refusal() {
     use omnia_guest::http::{Method, Request, StatusCode};
     use tower::ServiceExt as _;
 
-    // Every command-router verb, projected as an HTTP-ish path, must
-    // refuse — derived from the live command inventory so a new verb
-    // can never quietly gain an HTTP twin.
+    // Derivation from inventory prevents new verbs gaining HTTP twins,
+    // the spec shelf route included.
     let command = command_router();
     for route in command.inventory() {
         let path = format!("/{}", route.selector().path().join("/"));
@@ -33,17 +25,16 @@ async fn adr_0002_http_refusal() {
                 .uri(&path)
                 .body(omnia_guest::axum::body::Body::empty())
                 .expect("build request");
-            let response = emery_transport::http::refusal()
+            let response = emery_transport::http::listener(support::Inert::default())
                 .oneshot(request)
                 .await
-                .expect("refusal serves the request");
+                .expect("the listener serves the request");
             assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {path} must refuse");
         }
     }
 }
 
-// Gate tripwire: the route budget is the live verb list and nothing
-// else; widening it requires an ADR.
+// Widening the route budget requires an ADR.
 #[tokio::test]
 async fn adr_0008_route_budget() {
     let router = command_router();
@@ -54,12 +45,13 @@ async fn adr_0008_route_budget() {
         inventory,
         [
             Vec::from(["completions"].map(str::to_string)),
-            Vec::from(["init"].map(str::to_string)),
+            Vec::from(["show"].map(str::to_string)),
             Vec::from(["specify"].map(str::to_string)),
         ]
     );
 
     for removed in [
+        &["emery", "init"][..],
         &["emery", "plan", "status"][..],
         &["emery", "plan", "author"][..],
         &["emery", "plan", "refine"][..],
@@ -87,9 +79,9 @@ async fn adr_0008_route_budget() {
     let help = router.execute(["emery", "--help"]).await;
     assert_eq!(help.exit, 0);
     let help = String::from_utf8_lossy(&help.stdout);
-    assert!(help.contains("init"), "{help}");
     assert!(help.contains("specify"), "{help}");
-    for gone in ["plan", "slice", "system", "journal", "debt", "adapter"] {
+    assert!(help.contains("show"), "{help}");
+    for gone in ["init", "plan", "slice", "system", "journal", "debt", "adapter"] {
         assert!(
             !help.lines().any(|line| line.trim_start().starts_with(gone)),
             "help must not list `{gone}`: {help}"
@@ -97,32 +89,71 @@ async fn adr_0008_route_budget() {
     }
 }
 
-// The live generator fails closed outside an initialised project — no
-// orchestration, no output-home scaffolding, no artifacts.
 #[tokio::test]
-async fn specify_uninitialized() {
-    // Paths are CWD-relative constants; nextest gives this test its
-    // own process, so the chdir cannot leak into another test.
-    let home = tempfile::tempdir().expect("tempdir");
-    std::env::set_current_dir(home.path()).expect("chdir into the scratch project root");
-    let router = command_router();
+async fn specify_without_sources() {
+    let provider = support::Inert::default();
+    let storage = std::sync::Arc::clone(&provider.storage);
+    let router = support::router_over(provider);
 
     let response = router.execute(["emery", "specify"]).await;
-    assert_eq!(response.exit, 1);
+    assert_eq!(response.exit, 2);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("not-initialized"), "{stderr}");
+    assert!(stderr.contains("at least one source"), "{stderr}");
 
     let json = router.execute(["emery", "--format", "json", "specify"]).await;
+    assert_eq!(json.exit, 2);
+    let stderr = String::from_utf8(json.stderr).expect("stderr utf-8");
+    let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("one JSON envelope");
+    assert_eq!(envelope["error"], "specify-source-required");
+    assert_eq!(envelope["exit-code"], 2);
+
+    assert!(storage.is_empty(), "a refused run writes nothing");
+}
+
+// `--sources` carries the whole binding list; mixing refuses typed.
+#[tokio::test]
+async fn specify_mixed_sources_refused() {
+    let provider = support::Inert::default();
+    let storage = std::sync::Arc::clone(&provider.storage);
+    let router = support::router_over(provider);
+
+    for argv in [
+        &["emery", "specify", "docs", "--sources", "sources.toml"][..],
+        &["emery", "specify", "--value", "intent=text", "--sources", "sources.toml"][..],
+    ] {
+        let mut json = vec!["emery", "--format", "json"];
+        json.extend(argv.iter().skip(1));
+        let response = router.execute(json).await;
+        assert_eq!(response.exit, 2, "{argv:?}");
+        let stderr = String::from_utf8(response.stderr).expect("stderr utf-8");
+        let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("one JSON envelope");
+        assert_eq!(envelope["error"], "argument", "{argv:?}");
+        assert_eq!(envelope["exit-code"], 2, "{argv:?}");
+    }
+
+    assert!(storage.is_empty(), "a refused run writes nothing");
+}
+
+// The read verb fails typed before any generation is committed.
+#[tokio::test]
+async fn show_without_generation() {
+    let provider = support::Inert::default();
+    let storage = std::sync::Arc::clone(&provider.storage);
+    let router = support::router_over(provider);
+
+    let response = router.execute(["emery", "show", "spec"]).await;
+    assert_eq!(response.exit, 1);
+    let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(stderr.contains("spec-not-generated"), "{stderr}");
+
+    let json = router.execute(["emery", "--format", "json", "show", "design"]).await;
     assert_eq!(json.exit, 1);
     let stderr = String::from_utf8(json.stderr).expect("stderr utf-8");
     let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("one JSON envelope");
-    assert_eq!(envelope["error"], "not-initialized");
+    assert_eq!(envelope["error"], "spec-not-generated");
     assert_eq!(envelope["exit-code"], 1);
 
-    assert!(
-        fs::read_dir(home.path()).expect("home").next().is_none(),
-        "a refused run writes nothing"
-    );
+    assert!(storage.is_empty(), "a refused read writes nothing");
 }
 
 #[tokio::test]
@@ -140,8 +171,7 @@ async fn globals_and_completions() {
 
 #[tokio::test]
 async fn version_host_semver() {
-    // No adapter-train suffix: adapters version independently and
-    // resolve local-first, so the binary reports only its own SemVer.
+    // Adapters version independently, so the binary reports its own SemVer.
     let router = command_router();
     let response = router.execute(["emery", "--version"]).await;
     assert_eq!(response.exit, 0);
@@ -153,14 +183,14 @@ async fn version_host_semver() {
 #[tokio::test]
 async fn argv_zero_replaced() {
     let router = command_router();
-    let expected = router.execute(["emery", "init", "--no-such-flag"]).await;
-    let forwarded = router.execute(["emery:engine@0.1.0", "init", "--no-such-flag"]).await;
+    let expected = router.execute(["emery", "specify", "--no-such-flag"]).await;
+    let forwarded = router.execute(["emery:engine@0.1.0", "specify", "--no-such-flag"]).await;
 
     assert_eq!(expected.exit, 2);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
-    assert!(stderr.contains("Usage: emery init"), "{stderr}");
+    assert!(stderr.contains("Usage: emery specify"), "{stderr}");
     assert!(!stderr.contains("emery:engine@0.1.0"));
 }
 
@@ -200,19 +230,19 @@ const fn cases() -> [Case; 5] {
             json_channels: false,
         },
         Case {
-            name: "init source required",
-            argv: &["emery", "init"],
+            name: "specify source required",
+            argv: &["emery", "specify"],
             exit: 2,
             stdout: "",
-            stderr: "init-source-required",
+            stderr: "specify-source-required",
             json_channels: false,
         },
         Case {
-            name: "specify uninitialized",
-            argv: &["emery", "--format", "json", "specify"],
+            name: "show not generated",
+            argv: &["emery", "--format", "json", "show", "spec"],
             exit: 1,
             stdout: "",
-            stderr: "not-initialized",
+            stderr: "spec-not-generated",
             json_channels: true,
         },
     ]
@@ -221,11 +251,7 @@ const fn cases() -> [Case; 5] {
 #[tokio::test]
 async fn native_response_contract() {
     for case in cases() {
-        // A bare uninitialized tempdir: `init` without an adapter must
-        // refuse rather than take the re-entry path. Paths are CWD-
-        // relative, so each case chdirs into its own scratch root.
-        let project = tempfile::tempdir().expect("tempdir");
-        std::env::set_current_dir(project.path()).expect("chdir into the scratch project root");
+        // A fresh store keeps `specify` sourceless and `show` without a generation.
         let response = command_router().execute(case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");

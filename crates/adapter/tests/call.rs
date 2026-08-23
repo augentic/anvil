@@ -1,6 +1,4 @@
-//! The shared judgment-call helpers: request assembly, grant and lend
-//! wiring, error mapping, and the bounded source answer-tail repair
-//! loop.
+//! Model call tests.
 
 use std::path::Path;
 
@@ -62,7 +60,7 @@ async fn assembles_and_parses() {
     assert_eq!(grants[0].url, "http://references/mcp");
 }
 
-// Without a resolved MCP URL the leg runs grant-free rather than failing.
+// Missing MCP resolution is grant-free, not an error.
 #[tokio::test]
 async fn no_mcp_no_grant() {
     let model = Harness::answering([r#"{"done":true}"#]);
@@ -106,9 +104,7 @@ async fn error_mapping() {
     }
 }
 
-// The bounded repair loop around source answer tails: tail failures
-// re-prompt with the findings inlined; everything else returns
-// immediately.
+// Only answer-tail failures enter the bounded repair loop.
 mod repaired {
     use emery_adapter::{MAX_REPAIRS, repaired};
 
@@ -124,8 +120,6 @@ mod repaired {
         }
     }
 
-    // A tail failure triggers one repair; the repair prompt carries the
-    // original request, the rejected answer, and the findings.
     #[tokio::test]
     async fn repairs_tail_failure() {
         let model = Harness::answering([r#"{"done":false}"#, r#"{"done":true}"#]);
@@ -152,9 +146,7 @@ mod repaired {
         assert!(repair.contains("- probe: done must be true"), "and the findings");
     }
 
-    // After the initial answer plus MAX_REPAIRS failed repairs the last
-    // tail failure surfaces; repair prompts rebuild from the original
-    // request rather than nesting.
+    // Repair prompts rebuild from the original request rather than nesting.
     #[tokio::test]
     async fn budget_exhausted() {
         let model = Harness::answering([r#"{"done":false}"#; 1 + MAX_REPAIRS]);
@@ -186,8 +178,7 @@ mod repaired {
         );
     }
 
-    // A model failure returns immediately: the request did not change,
-    // so replaying it is pointless.
+    // Model failures are not replayed because the request is unchanged.
     #[tokio::test]
     async fn model_failure_not_retried() {
         let model = Harness::scripted([Err(ModelError::InvalidRequest(
@@ -209,9 +200,7 @@ mod repaired {
     }
 }
 
-// The URL mirrors the routed id verbatim (version pin included) so
-// the HTTP router maps it back onto the registered identity; the
-// grant name strips both axis and pin.
+// Routing preserves the version pin; grant names strip axis and pin.
 #[test]
 fn mcp_url_mirrors_routed_id() {
     let addr = Some("127.0.0.1:8080");
@@ -229,9 +218,8 @@ fn mcp_url_mirrors_routed_id() {
     );
 }
 
-// The port follows `HTTP_ADDR` (any bind form); the connect host stays
-// the IPv4 loopback literal. An absent or unparseable address yields
-// no URL at all — never a wrong-port guess.
+// Any bind form supplies the port, but the connect host is IPv4 loopback.
+// Invalid addresses yield no URL rather than guessing a port.
 #[test]
 fn mcp_url_port_from_trigger() {
     for (addr, expected) in [
@@ -246,9 +234,7 @@ fn mcp_url_port_from_trigger() {
     }
 }
 
-// The injected fully-formed base (D6) is preferred as-is: no host
-// literal and no `HTTP_ADDR` parsing; a trailing slash normalizes and
-// an empty base yields no grant.
+// An injected base (D6) bypasses `HTTP_ADDR`; empty means no grant.
 #[test]
 fn mcp_url_base_preferred() {
     use emery_adapter::seam::mcp_url_with_base;
@@ -278,8 +264,7 @@ fn pinned_grant_strips() {
     assert_eq!(grants[0].url, "http://127.0.0.1:8080/mcp/target/contracts@1.0.0");
 }
 
-// Build and merge legs re-lend their prepared workspace: the lent path
-// rides the model request instead of the `"."` project mount.
+// A prepared workspace replaces the default `"."` lend.
 #[tokio::test]
 async fn lending_overrides_lend() {
     let model = Harness::answering([r#"{"done":true}"#]);

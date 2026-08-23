@@ -8,8 +8,10 @@
 
 - [Overview](reference/index.md)
 - [CLI reference](reference/cli/index.md)
-  - [emery init](reference/cli/init.md)
+  - [emery specify](reference/cli/specify.md)
+  - [emery show](reference/cli/show.md)
   - [CLI output shapes](reference/cli-output-shapes.md)
+- [Deployment profiles](reference/deployment-profiles.md)
 
 ---
 
