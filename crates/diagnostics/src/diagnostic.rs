@@ -141,9 +141,13 @@ pub enum FindingEvidence {
     },
     /// Digest reference for evidence too large or sensitive to inline.
     Digest {
-        /// Hex-encoded SHA-256 of the underlying evidence bytes.
+        /// Hex-encoded SHA-256 identifying the underlying evidence bytes.
+        ///
+        /// Fingerprint v1 deliberately excludes this field.
         sha256: String,
-        /// Short human summary of what was hashed.
+        /// Stable, discriminating summary of what was hashed.
+        ///
+        /// Fingerprint v1 uses this as the diagnostic's evidence identity.
         summary: String,
         /// Optional contributing locations referenced by the digest.
         #[serde(default, skip_serializing_if = "Option::is_none")]

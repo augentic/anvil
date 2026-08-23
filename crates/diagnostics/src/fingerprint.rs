@@ -11,6 +11,11 @@
 //!   + hex(sha256(evidence-payload))
 //! ))
 //! ```
+//!
+//! For digest evidence, `evidence-payload` is the summary rather than the
+//! referenced digest. Fingerprints identify a diagnostic for deduplication;
+//! the digest separately identifies and verifies the underlying evidence bytes.
+//! Producers must therefore keep digest summaries stable and discriminating.
 
 use serde_json::Value;
 
@@ -122,6 +127,8 @@ fn canonical_location(location: Option<&FindingLocation>) -> String {
 fn evidence_payload(evidence: &FindingEvidence) -> String {
     match evidence {
         FindingEvidence::Snippet { value } => value.clone(),
+        // Normative v1 behavior: summary is the diagnostic identity while
+        // `sha256` is the identity of the separately stored evidence bytes.
         FindingEvidence::Digest { summary, .. } => summary.clone(),
         FindingEvidence::Structured { summary, data, .. } => {
             let canonical = canonical_json(data);

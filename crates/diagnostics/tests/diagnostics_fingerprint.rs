@@ -91,6 +91,52 @@ fn fp_includes_identity() {
 }
 
 #[test]
+fn fp_digest_uses_summary() {
+    let digest = |sha256: char, summary: &str, locations| FindingEvidence::Digest {
+        sha256: sha256.to_string().repeat(64),
+        summary: summary.into(),
+        locations,
+    };
+    let mut base = sample_diagnostic();
+    base.evidence = digest('a', "compiler output for E0308", None);
+    let expected = fingerprint(&base);
+
+    let mut bytes_changed = base.clone();
+    bytes_changed.evidence = digest('b', "compiler output for E0308", None);
+    assert_eq!(
+        fingerprint(&bytes_changed),
+        expected,
+        "the evidence digest is excluded from v1 diagnostic identity"
+    );
+
+    let mut locations_changed = base.clone();
+    locations_changed.evidence = digest(
+        'a',
+        "compiler output for E0308",
+        Some(vec![FindingLocation {
+            path: "src/other.rs".into(),
+            line: Some(2),
+            column: None,
+            end_line: None,
+            end_column: None,
+        }]),
+    );
+    assert_eq!(
+        fingerprint(&locations_changed),
+        expected,
+        "contributing locations are excluded from v1 diagnostic identity"
+    );
+
+    let mut summary_changed = base;
+    summary_changed.evidence = digest('a', "compiler output for E0277", None);
+    assert_ne!(
+        fingerprint(&summary_changed),
+        expected,
+        "the stable summary is the v1 diagnostic identity"
+    );
+}
+
+#[test]
 fn fp_ignores_range_end() {
     let base = sample_diagnostic();
     let expected = fingerprint(&base);
