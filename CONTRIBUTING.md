@@ -16,7 +16,7 @@ Unless you are fixing a known bug, we recommend discussing your change with the 
 
 The framework lives in one repository with two surfaces:
 
-- **Rust workspace** (`src/`, `crates/`, `examples/`) — the `emery` binary, guest orchestrations, and JSON schemas it distributes
+- **Rust workspace** (`src/`, `crates/`, `examples/`) — the `emery` binary, guest orchestrations, and runtime-generated model answer contracts
 - **Prose and Cursor wrappers** (`plugins/`, `docs/`, `.cursor-plugin/`) — ultrathin `/emery:*` skill wrappers, documentation, and the marketplace manifest
 
 Adapters live in the sibling [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) repository.

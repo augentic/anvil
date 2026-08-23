@@ -1,6 +1,6 @@
 //! Source adapter operation tests.
 
-use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, evidence_tail};
+use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::registry::Doc;
 use emery_adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, references, repaired};
@@ -27,13 +27,14 @@ impl SourceAdapter for Probe {
     async fn extract<P: Model>(
         model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
+        let schema = evidence_schema();
         repaired(
             model,
             ctx,
             "SYSTEM".to_string(),
             input.key.clone(),
             "evidence",
-            EVIDENCE_ANSWER_SCHEMA,
+            &schema,
             evidence_tail,
         )
         .await

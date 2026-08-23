@@ -1,16 +1,34 @@
 //! Evidence answer tests.
 
-use emery_adapter::answers::{EVIDENCE_ANSWER_SCHEMA, parse_evidence, validate_evidence};
+use emery_adapter::answers::{evidence_schema, parse_evidence, validate_evidence};
 use emery_adapter::seam::{Authority, Backing, ClaimKind, Error};
 
 #[test]
-fn schema_pin() {
-    let on_disk = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("schemas/answers/evidence.schema.json"),
-    )
-    .expect("vendored schema file");
-    assert_eq!(EVIDENCE_ANSWER_SCHEMA, on_disk, "pin matches evidence.schema.json");
+fn schema_tracks_dto() {
+    let schema: serde_json::Value =
+        serde_json::from_str(&evidence_schema()).expect("generated schema parses");
+    let claim = schema.pointer("/$defs/Claim").expect("Claim definition");
+
+    assert!(claim.pointer("/properties/backing").is_some(), "schema carries seam backing");
+    assert!(
+        claim.pointer("/properties/payload").is_none()
+            && claim.pointer("/properties/backing-path").is_none(),
+        "removed flattened backing is absent"
+    );
+    assert_ne!(
+        claim.get("additionalProperties"),
+        Some(&serde_json::Value::Bool(false)),
+        "open claim extras stay admitted"
+    );
+    assert_eq!(
+        claim.pointer("/properties/id/pattern").and_then(serde_json::Value::as_str),
+        Some("^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$")
+    );
+    assert_eq!(
+        claim.pointer("/if/properties/kind/enum"),
+        Some(&serde_json::json!(["requirement", "criterion", "example"]))
+    );
+    assert_eq!(claim.pointer("/then/required"), Some(&serde_json::json!(["id"])));
 }
 
 #[test]
