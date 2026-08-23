@@ -85,17 +85,10 @@ dependencies = ["source"]
 command = "cargo"
 args = ["build", "--locked", "--example", "runtime"]
 
-[tasks.profile]
-workspace = false
-command = "cargo"
-args = ["build", "--locked", "--example", "profile"]
-
-
 [tasks.cov]
 workspace = false
 script = "cargo llvm-cov nextest --workspace --all-features --summary-only"
 install_crate = "cargo-llvm-cov"
-
 
 [tasks.miri]
 script = '''

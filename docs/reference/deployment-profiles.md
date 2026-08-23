@@ -20,21 +20,11 @@ The host side of the seam is a backend type implementing `omnia::Backend` (conne
 
 [`src/main.rs`](../../src/main.rs) binds both storage hosts to `omnia_filesystem::Client`: a durable, network-free store rooted at `FILESYSTEM_ROOT` (default `.omnia/storage` under the invocation directory). One invocation directory is one project; isolation between projects is the filesystem root itself. Generations survive restart, and nothing writes the working tree — the `.` mount is read-only.
 
-## Project-id-keyed: one host, many projects
+## Project-id-keyed shared backings
 
-A multi-project deployment shares one backing and scopes every bucket and container under a project id. The engine's flat names make this a pure host wrapper — prefix the identifier at the seam, delegate the rest:
+A multi-project deployment can scope every bucket and container under a project id. This requires a genuinely shared backing: a command-mode process over in-memory defaults creates one fresh store and one project id, so it cannot demonstrate cross-project isolation or persistence.
 
-```rust
-impl WasiKeyValueCtx for ProjectStore {
-    fn open_bucket(&self, identifier: String) -> FutureResult<Arc<dyn Bucket>> {
-        self.keyvalue.open_bucket(self.scoped(&identifier))
-    }
-}
-```
-
-[`examples/profile.rs`](../../examples/profile.rs) is the worked example (`cargo make profile` builds it): the shipped runtime shape with `ProjectStore` as both storage hosts, scoping under `EMERY_PROJECT_ID` over the omnia in-memory defaults. The multi-project isolation proof runs in the root scenario suite ([`tests/specify.rs`](../../tests/specify.rs), `multi_project_isolation`): two project-scoped views over one shared store commit and `show` independent generations, with no unprefixed key ever written — and no engine change involved.
-
-The in-memory defaults are the demonstration backing; a real deployment keeps the wrapper and swaps the held clients for a remote backend.
+The `multi_project_isolation` scenario in [`tests/specify.rs`](../../tests/specify.rs) exercises the invariant directly: two project-scoped views over one shared scripted store commit and show independent generations, and no unprefixed key is written. A concrete deployment supplies its shared backend clients and rewrites identifiers at the `WasiKeyValueCtx` and `WasiBlobstoreCtx` boundary; that host-specific configuration does not belong in the engine.
 
 ## Remote backings
 

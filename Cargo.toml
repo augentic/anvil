@@ -67,10 +67,6 @@ crate-type = ["cdylib"]
 name = "runtime"
 path = "examples/runtime.rs"
 
-[[example]]
-name = "profile"
-path = "examples/profile.rs"
-
 [lints]
 workspace = true
 

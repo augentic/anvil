@@ -22,7 +22,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default. `emery-testkit` is the unpublished storage-double crate for native suites (`Memory`, `Namespaced`); do not grow it into a general helper crate.
 
-The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example. The `profile` example (`examples/profile.rs`) is the project-id-keyed [deployment profile](../reference/deployment-profiles.md): the shipped runtime shape with storage scoped per project over the in-memory defaults.
+The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests. It carries no production lifecycle authority and never enters the shipped guest. Do not add another mock adapter — extend this example.
 
 ## Deployment: the Wasm guest
 
