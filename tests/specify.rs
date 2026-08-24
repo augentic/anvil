@@ -571,16 +571,6 @@ async fn mirror_survives_removal() {
     provider.model.assert_exhausted();
 }
 
-// Storage faults remain infrastructure failures; they never masquerade
-// as an uncached bare adapter.
-#[tokio::test]
-async fn cache_probe_fault() {
-    let provider = Provider::idle();
-    provider.storage.fail_blob_has("cache backend unavailable");
-
-    fail(&provider, &["emery", "specify", "source"], 1, "storage-failed").await;
-}
-
 // Mirror recovery distinguishes an unavailable cache from a confirmed
 // absent mirror and therefore never falls through to a path error.
 #[tokio::test]

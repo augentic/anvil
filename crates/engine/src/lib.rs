@@ -1,16 +1,16 @@
 //! Emery's specification-generation engine.
 
 pub mod cli;
-pub mod extract;
-pub mod handler;
+mod extract;
+mod handler;
 pub mod home;
-pub mod resolve;
-pub mod show;
-pub mod sources;
+mod resolve;
+mod show;
+mod sources;
 mod spec;
-pub mod specify;
+mod specify;
 mod storage;
-pub mod synthesise;
+mod synthesise;
 
 // Generated from the link-checked synthesis corpus at build time.
 mod prose {

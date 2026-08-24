@@ -10,7 +10,7 @@ Every invocation runs in the emery (engine) guest through the shared typed comma
 
 Adapter references need no routes: a judgment over a non-empty embedded corpus declares the `list_docs` / `read_doc` function tools on the completion request, and the model's tool calls stream back to the adapter guest's own closure, which answers them in-process from the compiled-in docs (`emery_adapter::references`). Nothing binds an HTTP listener — the runtime invocation declares guests, mounts, and hosts only.
 
-The engine is versioned by the binary — the binary *contains* its engine, so no store entry, first-launch download, or version-skew window exists for it. Kernels never read the environment: paths are fixed constants relative to the named preopens (`ExecutionPaths::deployed()` — the same strings resolve against the wasm32 preopen table and the native invocation directory).
+The engine is versioned by the binary — the binary *contains* its engine, so no store entry, first-launch download, or version-skew window exists for it. Kernels never read the environment: paths are fixed constants relative to the named preopens (the `.` project mount — the same strings resolve against the wasm32 preopen table and the native invocation directory).
 
 ## Core crate dependency graph
 
@@ -35,7 +35,7 @@ All JSON output follows the shared envelope contract:
 
 - **Kebab-case keys** — `app-name`, `project-dir` (never `app_name` or `projectDir`)
 - **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure body is `ErrorBody`. There is no top-level envelope-version stamp.
-- **Kebab-case error discriminants** — `adapter-not-found`, `invalid-project`, `io` (never `missing_prerequisites`); skills and tests grep on the `error` / `code` fields, so renaming one is a breaking change.
+- **Kebab-case error discriminants** — `adapter-component-missing`, `spec-not-generated`, `io` (never `missing_prerequisites`); skills and tests grep on the `error` / `code` fields, so renaming one is a breaking change.
 
 The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent.
 
@@ -64,4 +64,4 @@ The pattern for a command operation:
 
 ## Public Rust API
 
-The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::project::Project` or `emery_error::Error`.
+The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::home::Home` or `emery_error::Error`.

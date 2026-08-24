@@ -10,7 +10,7 @@ use omnia_guest::{BlobStore, Model, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
-use crate::handler::{ExecutionPaths, Render};
+use crate::handler::Render;
 use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
 
@@ -91,10 +91,9 @@ impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Spe
             values,
             sources,
         } = input;
-        let paths = ExecutionPaths::deployed();
         let bindings = crate::sources::bindings(&adapters, &values, sources.as_deref())?;
 
-        let sets = extract_all(context.provider, &bindings, &paths).await?;
+        let sets = extract_all(context.provider, &bindings).await?;
         let rows = reconcile(&sets);
         let documents = synthesise(context.provider, &sets, &rows).await?;
 

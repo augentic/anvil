@@ -36,7 +36,7 @@ Operations live in each domain module's `handlers` submodule beside its kernels.
 
 ## The deployed layout (C5)
 
-Operations anchor at `ExecutionPaths::deployed()` inside `call`: paths are constants relative to the `.` preopen (the project-root mount — the invocation directory natively), and engine storage is named by the `Locations` key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Operations never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
+Operations anchor at the `.` preopen inside `call`: paths are constants relative to the project-root mount (the invocation directory natively; `emery_engine::handler::preopen_path` normalizes operator paths inside it), and engine storage is named by fixed key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Operations never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
 
 ## Output: `Render + Serialize`
 
