@@ -22,9 +22,6 @@ pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;
 pub use omnia_guest::model::{
-    Error, Format, McpGrant, Message, Reply, Request, Role, SchemaFormat, Tool,
+    Error, Format, Function, Message, Reply, Request, Role, SchemaFormat, Tool, ToolCall,
 };
 pub use operations::SourceAdapter;
-/// Runtime bindings used by [`source!`].
-#[cfg(target_arch = "wasm32")]
-pub use wasip3;

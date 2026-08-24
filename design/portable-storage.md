@@ -114,6 +114,8 @@ Those are the reviewable documents — and the whole generation; there is no `sh
 
 ### Layer 2 — read-only MCP resource
 
+> **Superseded.** The engine HTTP surface (the listener, this spec shelf, and the C3 refusal router) was later deleted outright: adapter references now ride the model session's tool closure, and review is the envelope plus `emery show`. This section stays as the design record.
+
 The pre-bound listener already serves MCP reference shelves only, with the typed C3 refusal (`crates/transport/src/http.rs`) rejecting everything else. A read-only resource exposing the current generation and its id fits that posture — reads were never what C3 fences — and serves the growing consumer that is not a human at a shell: IDEs and agents (the `plugins/emery/` skill included).
 
 ### Layer 3 — git projection

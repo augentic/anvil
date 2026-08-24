@@ -62,14 +62,14 @@ The composition-root failure mode is the essay that restates architecture and hi
 
 ```rust
 // BAD — 22-line //! deployment tour restating AGENTS.md, with the one
-// operational fact (MCP fault mapping) buried in the middle.
+// operational fact (the read-only project mount) buried in the middle.
 
 // GOOD
 //! The shipped `emery` executable: one `omnia::runtime!` invocation.
 
 // …inside the macro body:
-// Declined path / definitive miss → 404; fault on a claimed shelf → 500.
-routes: { http: [{ prefix: "/mcp/source/intent", guest: "source:intent" }] },
+// The invocation directory mounts read-only — nothing writes the tree.
+mounts: [{ name: ".", path: "." }],
 ```
 
 Doc comments describe what this is today. Version-history tables, dated bumps, commit hashes, and migration notes belong in git log — not in `///` blocks. Longer prose belongs in the standards docs.

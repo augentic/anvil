@@ -2,13 +2,12 @@
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
+        use std::collections::VecDeque;
         use std::future::Future;
-        use std::sync::Arc;
+        use std::sync::{Arc, Mutex};
 
         use omnia_filesystem::Client as Filesystem;
-        use omnia_testkit::model::Scripted;
         use omnia_wasi_blobstore::WasiBlobstore;
-        use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
@@ -19,7 +18,6 @@ cfg_if::cfg_if! {
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                    routes: {http: ["/mcp/emery/spec"]},
                 },
                 {
                     id: "source:source",
@@ -27,7 +25,6 @@ cfg_if::cfg_if! {
                         env!("CARGO_MANIFEST_DIR"),
                         "/target/wasm32-wasip2/release/examples/source.wasm",
                     ),
-                    routes: {http: ["/mcp/source/source"]},
                 },
             ],
             mounts: [
@@ -35,7 +32,6 @@ cfg_if::cfg_if! {
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
-                WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
                 WasiKeyValue: Filesystem,
@@ -48,8 +44,9 @@ cfg_if::cfg_if! {
             include_str!("../tests/specify/2-design.md"),
         ];
 
+        /// FIFO host-side model script over the fixed answers.
         #[derive(Clone, Debug)]
-        struct ScriptedModel(Scripted);
+        struct ScriptedModel(Arc<Mutex<VecDeque<&'static str>>>);
 
         impl omnia::Backend for ScriptedModel {
             type ConnectOptions = omnia::NoOptions;
@@ -57,15 +54,23 @@ cfg_if::cfg_if! {
             fn connect_with(
                 _options: omnia::NoOptions,
             ) -> impl Future<Output = anyhow::Result<Self>> {
-                std::future::ready(Ok(Self(Scripted::answers(ANSWERS))))
+                std::future::ready(Ok(Self(Arc::new(Mutex::new(ANSWERS.into())))))
             }
         }
 
         impl WasiModelCtx for ScriptedModel {
             fn complete(
-                &self, request: Request, tool_host: Arc<dyn ToolHost>,
+                &self, _request: Request, _tool_host: Arc<dyn ToolHost>,
             ) -> FutureResult<Answer> {
-                self.0.complete(request, tool_host)
+                let next = self.0.lock().expect("model script").pop_front();
+                Box::pin(async move {
+                    let answer = next.ok_or_else(|| anyhow::anyhow!("model script exhausted"))?;
+                    Ok(Answer {
+                        value: answer.into(),
+                        usage: None,
+                        transcript: None,
+                    })
+                })
             }
         }
     } else {

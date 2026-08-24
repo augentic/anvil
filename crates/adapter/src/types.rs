@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use omnia_guest::model::McpGrant;
+use crate::registry::Doc;
 
 mod source;
 
@@ -43,22 +43,29 @@ pub struct Context<'a> {
     pub adapter_id: &'a str,
     /// Guest `"."` preopen root.
     pub project_root: &'a Path,
-    /// Runtime-injected MCP references endpoint.
-    pub mcp_url: Option<String>,
+    /// Embedded reference documents served by the judgment's tool closure.
+    pub docs: &'static [Doc],
     /// Workspace lend, absent for inline values.
     pub lend: Option<String>,
 }
 
 impl<'a> Context<'a> {
-    /// Creates `"."` guest context with an injected references URL.
+    /// Creates `"."` guest context.
     #[must_use]
     pub fn guest(adapter_id: &'a str) -> Self {
         Self {
             adapter_id,
             project_root: Path::new("."),
-            mcp_url: mcp_url(adapter_id),
+            docs: &[],
             lend: Some(".".to_string()),
         }
+    }
+
+    /// Replaces the reference corpus the judgment's tool closure serves.
+    #[must_use]
+    pub const fn with_docs(mut self, docs: &'static [Doc]) -> Self {
+        self.docs = docs;
+        self
     }
 
     /// Replaces the judgment workspace lend with `path`.
@@ -74,51 +81,4 @@ impl<'a> Context<'a> {
         self.lend = None;
         self
     }
-
-    /// Returns the references grant, named without axis or version.
-    #[must_use]
-    pub fn grants(&self) -> Vec<McpGrant> {
-        let name = self.adapter_id.rsplit(':').next().unwrap_or(self.adapter_id);
-        let name = name.split_once('@').map_or(name, |(stem, _)| stem);
-        self.mcp_url
-            .as_deref()
-            .map(|url| McpGrant {
-                name: format!("{name}-references"),
-                tools: Vec::new(),
-                url: url.to_string(),
-            })
-            .into_iter()
-            .collect()
-    }
-}
-
-/// Derives the references URL from `MCP_URL_BASE`, then `HTTP_ADDR`.
-#[must_use]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "Context derives its shelf URL from the runtime-injected listener env; \
-              this is engine infrastructure, not app configuration"
-)]
-pub fn mcp_url(adapter_id: &str) -> Option<String> {
-    if let Ok(base) = std::env::var("MCP_URL_BASE") {
-        return mcp_url_with_base(&base, adapter_id);
-    }
-    mcp_url_for(std::env::var("HTTP_ADDR").ok().as_deref(), adapter_id)
-}
-
-/// Builds from `base`, replacing the axis separator and preserving the pin.
-#[must_use]
-pub fn mcp_url_with_base(base: &str, adapter_id: &str) -> Option<String> {
-    let base = base.trim_end_matches('/');
-    if base.is_empty() {
-        return None;
-    }
-    Some(format!("{base}/mcp/{}", adapter_id.replacen(':', "/", 1)))
-}
-
-/// Builds a loopback references URL from an `HTTP_ADDR`.
-#[must_use]
-pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
-    let port = addr?.rsplit_once(':')?.1.parse::<u16>().ok()?;
-    mcp_url_with_base(&format!("http://127.0.0.1:{port}"), adapter_id)
 }

@@ -1,9 +1,10 @@
 //! Schema-gated judgment calls, with optional bounded repair.
 
 use omnia_guest::Model;
-use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat, Tool};
+use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat};
 use serde::de::DeserializeOwned;
 
+use crate::references;
 use crate::types::{Context, Error};
 
 /// Maximum repairs after the initial answer.
@@ -17,7 +18,7 @@ pub const MAX_REPAIRS: usize = 2;
 pub async fn judgment<P: Model, T: DeserializeOwned>(
     model: &P, ctx: &Context<'_>, system: String, user: String, schema_name: &str, schema: &str,
 ) -> Result<T, Error> {
-    let reply = create(model, ctx, &system, user, schema_name, schema).await?;
+    let reply = complete(model, ctx, &system, user, schema_name, schema).await?;
     serde_json::from_str(&reply.answer)
         .map_err(|err| Error::Internal(format!("{schema_name} answer did not deserialize: {err}")))
 }
@@ -42,7 +43,7 @@ where
     let mut prompt = user.clone();
     let mut attempt = 0;
     loop {
-        let reply = create(model, ctx, &system, prompt, schema_name, schema).await?;
+        let reply = complete(model, ctx, &system, prompt, schema_name, schema).await?;
         match tail(&reply.answer) {
             Ok(value) => return Ok(value),
             Err(err @ Error::Internal(_)) if attempt < MAX_REPAIRS => {
@@ -54,9 +55,10 @@ where
     }
 }
 
-async fn create<P: Model>(
+async fn complete<P: Model>(
     model: &P, ctx: &Context<'_>, system: &str, user: String, schema_name: &str, schema: &str,
 ) -> Result<Reply, Error> {
+    let docs = ctx.docs;
     let builder = Request::builder()
         .system(system)
         .messages(vec![Message {
@@ -64,12 +66,18 @@ async fn create<P: Model>(
             content: user,
         }])
         .format(Format::Schema(SchemaFormat::builder().name(schema_name).schema(schema).build()))
-        .tools(ctx.grants().into_iter().map(Tool::Mcp).collect());
+        .tools(if docs.is_empty() { Vec::new() } else { references::tools() });
     let request = match ctx.lend.clone() {
         Some(lend) => builder.workspace(lend).build(),
         None => builder.build(),
     };
-    model.create(request).await.map_err(Error::from)
+    if docs.is_empty() {
+        return model.complete(request).await.map_err(Error::from);
+    }
+    model
+        .complete_with(request, |call| async move { references::answer(docs, &call) })
+        .await
+        .map_err(Error::from)
 }
 
 fn repair_prompt(user: &str, failed_answer: &str, err: &Error) -> String {
