@@ -1,5 +1,7 @@
 //! DTOs mirroring the WIT `source` records.
 
+use std::fmt;
+
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -60,6 +62,16 @@ pub enum Authority {
     Behaviour,
 }
 
+impl fmt::Display for Authority {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Intent => "intent",
+            Self::Documentation => "documentation",
+            Self::Behaviour => "behaviour",
+        })
+    }
+}
+
 /// Closed claim taxonomy; update the workflow contract and schema together.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -92,6 +104,27 @@ pub enum ClaimKind {
     Container,
     /// Leaf item.
     Leaf,
+}
+
+impl fmt::Display for ClaimKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Intent => "intent",
+            Self::Requirement => "requirement",
+            Self::Criterion => "criterion",
+            Self::Decision => "decision",
+            Self::Section => "section",
+            Self::Diagram => "diagram",
+            Self::Contract => "contract",
+            Self::Example => "example",
+            Self::Excerpt => "excerpt",
+            Self::Type => "type",
+            Self::Call => "call",
+            Self::Region => "region",
+            Self::Container => "container",
+            Self::Leaf => "leaf",
+        })
+    }
 }
 
 /// Claim backing.

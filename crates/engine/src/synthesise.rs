@@ -3,13 +3,13 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
-use emery_artifacts::spec::ast::{self, Status, Tag};
+use emery_adapter::types::{Authority, Claim, ClaimKind};
 use emery_error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Message, Request, Role};
 
 use crate::extract::SourceSet;
+use crate::spec::{self, Status, Tag};
 
 /// Validated synthesis output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,7 +45,7 @@ pub struct Contributor {
     /// The contributing binding key.
     pub source: String,
     /// The source's authority class.
-    pub authority: AuthorityClass,
+    pub authority: Authority,
     /// The claim's required `statement` extra.
     pub statement: String,
 }
@@ -151,7 +151,7 @@ pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
 ) -> Result<Documents, Error> {
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
-    let parsed = ast::parse(&spec)?;
+    let parsed = spec::parse(&spec)?;
     check_rows(&parsed, rows)?;
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
@@ -247,7 +247,7 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
 }
 
 // The model may not drop, reorder, or rewrite reconciliation rows.
-fn check_rows(parsed: &ast::Spec, rows: &[Row]) -> Result<(), Error> {
+fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     if parsed.requirements.len() != rows.len() {
         return Err(mismatch(format!(
             "expected {} requirement blocks, found {}",
@@ -305,10 +305,10 @@ fn normalise(statement: &str) -> String {
 }
 
 // Lower ranks outrank higher ranks.
-const fn rank(authority: AuthorityClass) -> u8 {
+const fn rank(authority: Authority) -> u8 {
     match authority {
-        AuthorityClass::Intent => 0,
-        AuthorityClass::Documentation => 1,
-        AuthorityClass::Behaviour => 2,
+        Authority::Intent => 0,
+        Authority::Documentation => 1,
+        Authority::Behaviour => 2,
     }
 }

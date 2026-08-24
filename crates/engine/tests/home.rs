@@ -1,7 +1,7 @@
 //! The output home's CAS concurrency invariant.
 //!
 //! Retained at crate level (testing.md "Crate integration"): two runs
-//! racing one pointer cannot be arranged through the CLI entry seam,
+//! racing one pointer cannot be arranged through the CLI entry point,
 //! which observes and commits inside a single `specify`. Everything
 //! else the home does — commit, read, pruning, corruption, re-mine
 //! diffs — is owned by the root `specify` scenarios.

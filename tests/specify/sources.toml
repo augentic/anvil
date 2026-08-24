@@ -1,7 +1,7 @@
 # sources.toml — operator-authored; the engine never writes this file.
 # Selected explicitly: `emery specify --sources`.
 
-# Table key is the seam binding key; the adapter is file-relative.
+# Table key is the binding key; the adapter is file-relative.
 [sources.greeting]
 adapter = "./source.wasm"
 

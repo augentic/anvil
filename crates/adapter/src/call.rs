@@ -4,7 +4,7 @@ use omnia_guest::Model;
 use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat, Tool};
 use serde::de::DeserializeOwned;
 
-use crate::seam::{Context, Error};
+use crate::types::{Context, Error};
 
 /// Maximum repairs after the initial answer.
 pub const MAX_REPAIRS: usize = 2;

@@ -46,7 +46,6 @@ omnia.workspace = true
 [dev-dependencies]
 anyhow.workspace = true
 emery-adapter.workspace = true
-emery-diagnostics.workspace = true
 emery-testkit.workspace = true
 omnia-testkit.workspace = true
 serde_json.workspace = true
@@ -170,16 +169,11 @@ verbose_file_reads = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.104"
-base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
-clap_complete = "4.6.9"
-futures = "0.3.33"
-proptest = "1.11.0"
 schemars = "1.2.2"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
-serde-saphyr = "1.0.1"
 serde_json = "1.0.151"
 sha2 = "0.11"
 strum = { version = "0.28", features = ["derive"] }
@@ -188,16 +182,11 @@ thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
 toml = "1.1.4"
 tower = "0.5.3"
-tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-wasip2 = "1.0.4"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow", "component-model-bytes"] }
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
 emery-adapter = { path = "crates/adapter" }
-emery-artifacts = { path = "crates/artifacts" }
-emery-diagnostics = { path = "crates/diagnostics" }
 emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
 emery-prose = { path = "crates/prose" }

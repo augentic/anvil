@@ -2,7 +2,7 @@
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::registry::Doc;
-use emery_adapter::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
+use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, references, repaired};
 use omnia_testkit::model::Harness;
 

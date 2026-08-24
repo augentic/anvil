@@ -19,7 +19,6 @@ type Blobs = BTreeMap<String, BTreeMap<String, Vec<u8>>>;
 pub struct Memory {
     state: Mutex<State>,
     blobs: Mutex<Blobs>,
-    blob_get_fault: Mutex<Option<String>>,
     blob_has_fault: Mutex<Option<String>>,
 }
 
@@ -61,11 +60,6 @@ impl Memory {
         );
     }
 
-    /// Makes the next blob read fail with `detail`.
-    pub fn fail_blob_get(&self, detail: &str) {
-        *self.blob_get_fault.lock().expect("blob get fault lock") = Some(detail.to_string());
-    }
-
     /// Makes the next blob existence probe fail with `detail`.
     pub fn fail_blob_has(&self, detail: &str) {
         *self.blob_has_fault.lock().expect("blob has fault lock") = Some(detail.to_string());
@@ -83,10 +77,6 @@ impl Memory {
             self.state.lock().expect("state lock").clone(),
             self.blobs.lock().expect("blob lock").clone(),
         )
-    }
-
-    fn take_blob_get_fault(&self) -> Option<anyhow::Error> {
-        self.blob_get_fault.lock().expect("blob get fault lock").take().map(anyhow::Error::msg)
     }
 
     fn take_blob_has_fault(&self) -> Option<anyhow::Error> {
@@ -166,9 +156,6 @@ impl BlobStore for Namespaced {
     fn get(
         &self, container: &str, name: &str,
     ) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
-        if let Some(err) = self.inner.take_blob_get_fault() {
-            return ready(Err(err));
-        }
         ready(Ok(self.inner.object(&self.scoped(container), name)))
     }
 
@@ -301,9 +288,6 @@ impl BlobStore for Memory {
     fn get(
         &self, container: &str, name: &str,
     ) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
-        if let Some(err) = self.take_blob_get_fault() {
-            return ready(Err(err));
-        }
         ready(Ok(self.object(container, name)))
     }
 

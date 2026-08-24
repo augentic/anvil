@@ -1,22 +1,40 @@
-doc-valid-idents = [
-  "GitHub",
-  "MiB",
-  "OAuth",
-  "OpenTelemetry",
-  "SemVer",
-  "WebAssembly",
-  "YAML",
-]
+doc-valid-idents = ["GitHub", "SemVer"]
 
 disallowed-methods = [
-  { path = "std::env::var", reason = "guests receive configuration through the provider seam" },
-  { path = "std::env::vars", reason = "guests receive configuration through the provider seam" },
-  { path = "std::env::var_os", reason = "guests receive configuration through the provider seam" },
+  { path = "std::env::var", reason = "guests receive configuration through the provider" },
+  { path = "std::env::vars", reason = "guests receive configuration through the provider" },
+  { path = "std::env::var_os", reason = "guests receive configuration through the provider" },
+  { path = "std::env::args", reason = "Omnia command routing owns argv" },
+  { path = "std::env::args_os", reason = "Omnia command routing owns argv" },
+  { path = "std::env::current_dir", reason = "guests use explicit named preopens" },
+  { path = "std::env::set_current_dir", reason = "guests use explicit named preopens" },
+  { path = "std::env::current_exe", reason = "guests have no host executable path" },
+  { path = "std::env::temp_dir", reason = "scratch storage requires an explicit capability" },
+
+  { path = "std::path::absolute", reason = "guest paths are anchored to named preopens" },
+
   { path = "std::time::SystemTime::now", reason = "wall-clock time is a host capability" },
   { path = "std::time::Instant::now", reason = "monotonic time is a host capability" },
+  { path = "std::time::SystemTime::elapsed", reason = "elapsed reads the wall clock internally" },
+  { path = "std::time::Instant::elapsed", reason = "elapsed reads the monotonic clock internally" },
+  { path = "std::process::exit", reason = "guest exits flow through the typed command contract" },
+  { path = "std::process::abort", reason = "guest failures return typed errors" },
+  { path = "std::thread::spawn", reason = "guests do not own host threads" },
+  { path = "std::thread::scope", reason = "guests do not own host threads" },
+  { path = "std::thread::sleep", reason = "blocking sleeps stall the guest executor" },
+  { path = "std::thread::park", reason = "blocking waits can stall an invocation indefinitely" },
+  { path = "std::thread::park_timeout", reason = "blocking waits stall the guest executor" },
+  { path = "std::thread::available_parallelism", reason = "host parallelism is not a guest capability" },
+  { path = "std::net::ToSocketAddrs::to_socket_addrs", reason = "network access uses linked host interfaces" },
 ]
 
 disallowed-types = [
   { path = "std::sync::OnceLock", reason = "global state does not survive the instance-per-request model" },
   { path = "std::sync::LazyLock", reason = "global state does not survive the instance-per-request model" },
+  { path = "std::sync::Once", reason = "global state does not survive the instance-per-request model" },
+  { path = "std::process::Command", reason = "WASI guests cannot spawn host processes" },
+  { path = "std::thread::Builder", reason = "guests do not own host threads" },
+  { path = "std::net::TcpStream", reason = "guests have no ambient socket capability" },
+  { path = "std::net::TcpListener", reason = "guests have no ambient socket capability" },
+  { path = "std::net::UdpSocket", reason = "guests have no ambient socket capability" },
 ]

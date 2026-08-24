@@ -11,8 +11,8 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use emery_adapter::seam::{Authority, ClaimKind, SourceContent};
-use emery_adapter::{DispatchError, seam};
+use emery_adapter::types::{Authority, ClaimKind, SourceContent};
+use emery_adapter::{DispatchError, types};
 use emery_testkit::{Memory, Namespaced};
 use serde_json::Value;
 use support::{Provider, claim, cli, cli_ok, evidence, requirement};
@@ -84,7 +84,7 @@ async fn gen_spec() {
     provider.model.assert_exhausted();
 }
 
-// `--sources` is the other specify authority: table keys become seam
+// `--sources` is the other specify authority: table keys become binding
 // keys, and a local adapter resolves relative to the file.
 #[tokio::test]
 async fn from_file() {
@@ -110,7 +110,7 @@ async fn from_file() {
     let spec = generation(&provider.storage, &id, "spec.md");
     assert!(
         String::from_utf8_lossy(&spec).contains("Sources: [greeting]"),
-        "the table key is the seam binding key"
+        "the table key is the binding key"
     );
     let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
     assert_eq!(shown.stdout, spec, "show renders the committed spec.md alone");
@@ -119,7 +119,7 @@ async fn from_file() {
 }
 
 // `--value` binds inline text under the adapter's name: no filesystem
-// lend reaches the seam, and a bare adapter needs no local component.
+// lend reaches extract, and a bare adapter needs no local component.
 #[tokio::test]
 async fn value_binding() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [intent]");
@@ -268,7 +268,7 @@ async fn remine_supersedes() {
 }
 
 // Two-requirement docs evidence with criteria covering both subjects.
-fn docs_evidence(greeting: &str, subject: &str, statement: &str) -> seam::Evidence {
+fn docs_evidence(greeting: &str, subject: &str, statement: &str) -> types::Evidence {
     evidence(
         Authority::Documentation,
         vec![
@@ -345,13 +345,13 @@ async fn extras_missing() {
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
-// A seam failure inside the adapter surfaces as one typed error.
+// An adapter call failure surfaces as one typed error.
 #[tokio::test]
 async fn extract_fails() {
     let mut provider = Provider::idle();
     provider.source.evidence.insert(
         "docs".to_string(),
-        Err(DispatchError::Seam(seam::Error::Internal("the adapter exploded".to_string()))),
+        Err(DispatchError::Call(types::Error::Internal("the adapter exploded".to_string()))),
     );
 
     fail(&provider, &["emery", "specify", "docs"], 1, "source-extract-failed").await;
@@ -503,8 +503,8 @@ async fn sources_file_refused() {
 
 // File-relative `path` entries anchor at the file's directory, fold
 // `.` and `..` lexically, and stay `.`-relative so the guest preopen
-// can open them; `value` entries lend nothing — all observed at the
-// seam the adapter receives.
+// can open them; `value` entries lend nothing — all observed on the
+// `SourceInput` the adapter receives.
 #[tokio::test]
 async fn binding_paths() {
     let dir = project_tempdir();
@@ -574,9 +574,9 @@ async fn mirror_survives_removal() {
 // Storage faults remain infrastructure failures; they never masquerade
 // as an uncached bare adapter.
 #[tokio::test]
-async fn cache_read_fault() {
+async fn cache_probe_fault() {
     let provider = Provider::idle();
-    provider.storage.fail_blob_get("cache backend unavailable");
+    provider.storage.fail_blob_has("cache backend unavailable");
 
     fail(&provider, &["emery", "specify", "source"], 1, "storage-failed").await;
 }

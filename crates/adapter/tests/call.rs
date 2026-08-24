@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use emery_adapter::seam::{Context, Error, mcp_url_for};
+use emery_adapter::types::{Context, Error, mcp_url_for};
 use emery_adapter::{Error as ModelError, Format, judgment};
 use omnia_testkit::model::{Harness, mcp_grants};
 use serde::Deserialize;
@@ -237,7 +237,7 @@ fn mcp_url_port_from_trigger() {
 // An injected base (D6) bypasses `HTTP_ADDR`; empty means no grant.
 #[test]
 fn mcp_url_base_preferred() {
-    use emery_adapter::seam::mcp_url_with_base;
+    use emery_adapter::types::mcp_url_with_base;
     assert_eq!(
         mcp_url_with_base("http://127.0.0.1:8080", "target:omnia").as_deref(),
         Some("http://127.0.0.1:8080/mcp/target/omnia")

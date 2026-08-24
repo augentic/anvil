@@ -50,11 +50,11 @@ The exit-code contract is part of the public interface for operators and skill w
 | `2`  | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors                                              |
 | `3`  | `EXIT_VERSION_TOO_OLD`   | Binary version is below an adapter's declared `emery` compatibility floor                                                      |
 
-Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI seam forwards its exit and the binary passes it through verbatim.
+Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
 
 ## Error handling
 
-Most commands use `emery_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, permission failures, runtime failures, and more.
+Most commands use `emery_error::Error`, a unified error enum with structured variants covering I/O, argument validation, adapter compatibility, and filesystem failures.
 
 The pattern for a command operation:
 

@@ -13,14 +13,13 @@ readme = "../../README.md"
 [dependencies]
 anyhow.workspace = true
 emery-adapter.workspace = true
-emery-artifacts.workspace = true
-emery-diagnostics.workspace = true
 emery-error.workspace = true
 omnia-guest.workspace = true
 semver.workspace = true
-strum.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
+strum.workspace = true
 toml.workspace = true
 
 [build-dependencies]

@@ -4,7 +4,7 @@
 use std::future::Future;
 
 use emery_adapter::registry::Doc;
-use emery_adapter::seam::{
+use emery_adapter::types::{
     Authority, Backing, Claim, ClaimKind, Context, Error, Evidence, SourceInput, SourceMetadata,
 };
 use emery_adapter::{Model, SourceAdapter};

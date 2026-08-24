@@ -11,7 +11,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use emery_adapter::seam::{Evidence, SourceInput, SourceMetadata};
+use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
 use emery_testkit::Memory;
 use emery_transport::command::Globals;
@@ -44,7 +44,7 @@ impl Source for Inert {
     }
 
     fn metadata(&self, _id: &str) -> SourceMetadata {
-        unreachable!("the plugin suite never dispatches the source seam")
+        unreachable!("the plugin suite never dispatches Source")
     }
 }
 
@@ -53,7 +53,7 @@ fn never_dispatched() -> Result<omnia_guest::model::Reply, omnia_guest::model::E
 }
 
 fn never_extracted() -> Result<Evidence, DispatchError> {
-    unreachable!("the plugin suite never dispatches the source seam")
+    unreachable!("the plugin suite never dispatches Source")
 }
 
 fn grammar() -> Grammar {

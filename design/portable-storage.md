@@ -1,4 +1,4 @@
-# Portable storage and the human seam
+# Portable storage and the review surface
 
 Status: **Landed** — executed as the discrete steps in [§7](#7-execution-steps); the generation-set shrink prerequisite, the omnia prerequisite, and steps 1–8 (step 4 landed before step 3) have landed. Each step landed independently with the journey test green. Remote-binding performance (risk 4) was deliberately descoped from step 8 and stays unconfirmed.
 
@@ -20,7 +20,7 @@ Goals:
 
 1. Engine state (generation store, pointer, component cache, locks) reachable only through storage capabilities; no `std::fs` against engine-owned state in guest code.
 2. The host binding chooses the backing. The shipped local binary defaults to a durable filesystem store under the invocation directory (generations survive restart the way `.emery/spec/` does today). That is store durability, not an unchanged working tree — `specify` no longer writing `spec.md` into the tree ([step 6](#7-execution-steps)) is an intentional operator-visible change.
-3. The human seam — review of `spec.md` / `design.md` — survives as a **verifiable, non-authoritative projection** of the store, via the `specify` envelope and `emery show` ([§4](#4-the-human-seam)). Generation is not repo-anchored (§4 standing fact 3); git enters at delivery, not here.
+3. The review surface — review of `spec.md` / `design.md` — survives as a **verifiable, non-authoritative projection** of the store, via the `specify` envelope and `emery show` ([§4](#4-the-review-surface)). Generation is not repo-anchored (§4 standing fact 3); git enters at delivery, not here.
 4. Net deletion where the backing permits it: `atomic.rs`, the litter half of `prune`, the `cache_dir()` mkdir in `main.rs`, the writable `.` mount, and `.emery/project.yaml` ([§5](#5-deleting-projectyaml)) all go.
 
 Non-goals:
@@ -48,14 +48,14 @@ Non-goals:
 ### 3.2 Authority model
 
 - The **keyvalue pointer is the single authority** for "what is the current generation". A read failure on the pointer is an error, never an empty result — exactly the posture `Home::current` already takes with `spec-home-corrupt`.
-- Generation blobs are **immutable and self-verifying**: `SpecSet::id()` is the digest of the documents' bytes, so any copy anywhere can be checked against the pointer. Projections ([§4](#4-the-human-seam)) are therefore never trusted, only verified.
+- Generation blobs are **immutable and self-verifying**: `SpecSet::id()` is the digest of the documents' bytes, so any copy anywhere can be checked against the pointer. Projections ([§4](#4-the-review-surface)) are therefore never trusted, only verified.
 - Multi-document commit needs no transaction: write the immutable blobs first, then CAS the one pointer key (absent → first id, or the outgoing id this run observed → incoming). A CAS conflict is a typed failure — two concurrent `specify` runs do not last-write-wins. Same ordering `Home::commit` already implements over the filesystem; the primitive changes from rename-of-`current` to `StateStore::cas`.
 
-### 3.3 The capability seam
+### 3.3 The capability boundary
 
-Follow the existing provider pattern (`omnia_guest::Model`, `emery_adapter::Source`; see the bare `Provider` in `src/lib.rs`): one engine-side storage capability trait pair, with wasm32 defaults over the `wasi:keyvalue` / `wasi:blobstore` imports and bare native impls so tests script storage in memory exactly as they script the model and the source seam today.
+Follow the existing provider pattern (`omnia_guest::Model`, `emery_adapter::Source`; see the bare `Provider` in `src/lib.rs`): one engine-side storage capability trait pair, with wasm32 defaults over the `wasi:keyvalue` / `wasi:blobstore` imports and bare native impls so tests script storage in memory exactly as they script the model and `Source` today.
 
-omnia-guest already ships this exact shape for storage: `omnia_guest::StateStore` and `omnia_guest::BlobStore` are pre-existing capability traits whose wasm32 defaults delegate to the `omnia-wasi-keyvalue` / `omnia-wasi-blobstore` imports. The engine seam consumes or mirrors those traits rather than inventing a new pair.
+omnia-guest already ships this exact shape for storage: `omnia_guest::StateStore` and `omnia_guest::BlobStore` are pre-existing capability traits whose wasm32 defaults delegate to the `omnia-wasi-keyvalue` / `omnia-wasi-blobstore` imports. The engine consumes or mirrors those traits rather than inventing a new pair.
 
 `StateStore` today is get / set / delete only; [§3.5](#35-omnia-work-this-design-requires) adds the `wasi:keyvalue/atomics` surface the pointer swap needs. Blind `set` is not the pointer primitive.
 
@@ -66,7 +66,7 @@ omnia-guest already ships this exact shape for storage: `omnia_guest::StateStore
 The `omnia::runtime!` invocation in `src/main.rs` grows `WasiKeyValue` / `WasiBlobstore` host entries beside `WasiHttp` / `WasiModel`, and the `mounts:` table shrinks (cache mount deleted; `.` drops to read-only in step 6, since `specify` stops writing the working tree). The shipped binary's default binding is a durable filesystem store under the invocation directory — `omnia-filesystem` for blobstore, plus the filesystem keyvalue backend this work adds ([§3.5](#35-omnia-work-this-design-requires)) — so a local restart still has `current` (goal 2). Stock `KeyValueDefault` is in-memory and is not the local default. Alternative bindings (project-id-keyed, remote) are deployment profiles, not engine changes.
 
 > [!NOTE]
-> `wasi-keyvalue` and `wasi-blobstore` are early-phase WASI proposals — WITs are unstable and stock wasmtime does not ship host implementations — but omnia already mitigates both halves. It vendors its own fork of each WIT (`omnia/crates/wasi-keyvalue/wit`, `omnia/crates/wasi-blobstore/wit`) and ships the host implementations (`WasiKeyValue` / `WasiBlobstore`, in-memory defaults) plus the guest capabilities (§3.3). `omnia-backends` already carries `omnia-filesystem` for wasi-blobstore (durable, network-free) as a one-line host swap; this work adds the matching filesystem keyvalue backend there. Upstream churn lands against the omnia fork as a versioned seam change, like the adapter WIT.
+> `wasi-keyvalue` and `wasi-blobstore` are early-phase WASI proposals — WITs are unstable and stock wasmtime does not ship host implementations — but omnia already mitigates both halves. It vendors its own fork of each WIT (`omnia/crates/wasi-keyvalue/wit`, `omnia/crates/wasi-blobstore/wit`) and ships the host implementations (`WasiKeyValue` / `WasiBlobstore`, in-memory defaults) plus the guest capabilities (§3.3). `omnia-backends` already carries `omnia-filesystem` for wasi-blobstore (durable, network-free) as a one-line host swap; this work adds the matching filesystem keyvalue backend there. Upstream churn lands against the omnia fork as a versioned contract change, like the adapter WIT.
 
 ### 3.5 Omnia work this design requires
 
@@ -76,7 +76,7 @@ Two omnia-side changes. They land in `augentic/omnia` / `augentic/omnia-backends
 
 2. **`cas` and `increment` on `omnia_guest::StateStore`.** The trait today cannot express the pointer swap or the locks row in §3.1. Add a one-shot `cas(key, expected: Option<&[u8]>, value)` that maps to `wasi:keyvalue/atomics` on wasm32 (`cas.new` + `swap`; `expected: None` is "key absent") and `increment` over `atomics.increment`. Native tests script both the same way they script `get` / `set`. Do not key the pointer into the blobstore as a workaround; `current` stays a keyvalue entry.
 
-## 4. The human seam
+## 4. The review surface
 
 The spec is a derived document. The loop this work preserves:
 
@@ -92,11 +92,11 @@ Durability is three scopes, not one:
 
 Three standing facts shrink the rest:
 
-1. **The filesystem is already read-only to humans.** The CLI contract forbids hand-editing anything under `.emery/`; every mutation routes through the CLI. The seam to preserve is *review* — read, never edit of the generated documents. Mutation is the loop above: sources in, `specify` again.
+1. **The filesystem is already read-only to humans.** The CLI contract forbids hand-editing anything under `.emery/`; every mutation routes through the CLI. The surface to preserve is *review* — read, never edit of the generated documents. Mutation is the loop above: sources in, `specify` again.
 2. **Every generation is self-verifying** (§3.2), so we can hand out any number of non-authoritative views without forking authority.
 3. **Generation is not repo-anchored.** When code generation returns (the `v1`-tagged loop), delivery creates a temporary checkout, generates code, adds the specs, commits, and raises a PR: the spec reaches a repo at delivery time, in a checkout the pipeline owns — never at generation time in whatever directory `specify` happened to run. Between generation and delivery, the store is the spec's only home, and the store backing carries the durability weight a git-tracked copy used to.
 
-The seam is delivered in layers over one authority. Layer 1 is part of this work's definition of done; layers 2–3 are follow-on deployment profiles.
+The review surface is delivered in layers over one authority. Layer 1 is part of this work's definition of done; layers 2–3 are follow-on deployment profiles.
 
 **Decision: `init` dies in the `show` PR (step 5), not earlier.** Deleting `init` ([§5](#5-deleting-projectyaml)) is the named deletion for `show`. Net live verbs: `specify` and `show`; `completions` stays auto-derived. That verb swap is one policy change in the same PR. The storage port (steps 1–4) does not need the project record gone — `specify` keeps loading `project.yaml` until the new input authority lands. Deleting `init` earlier would leave a one-verb valley whose only review path is the envelope, and would spend the named deletion before `show` exists.
 
@@ -126,7 +126,7 @@ This is the sketch of the actual delivery path when code generation returns: the
 
 It is not a twin of the generation store. The store is output (`spec.md`, `design.md`). `project.yaml` is a **sticky copy of `init`'s argv** — which adapters, under which key, workspace vs `--value`. That list is not re-homed into the generation — the generation is the two documents alone. Later runs take adapters from argv / `sources.toml` ([§5.2](#52-the-replacement-authority)).
 
-**Decision: the file is deleted**, not kept as a disk residue of this work. It dies with `init` in the `show` PR (step 5; [§4](#4-the-human-seam)), not as a storage-port prerequisite. This repo already gitignores `.emery/project.yaml`, so clone-and-specify from git alone is not current practice.
+**Decision: the file is deleted**, not kept as a disk residue of this work. It dies with `init` in the `show` PR (step 5; [§4](#4-the-review-surface)), not as a storage-port prerequisite. This repo already gitignores `.emery/project.yaml`, so clone-and-specify from git alone is not current practice.
 
 ### 5.1 Jobs to re-home or drop
 
@@ -149,7 +149,7 @@ One authority replaces the file: `specify`'s argv, optionally carried by an oper
 - `--upgrade` dies. Re-running `specify` re-ensures as a side effect of resolve, the way extract already re-resolves.
 - Local `.wasm` mirroring moves to the first `specify` (today that is `ensure` inside `init`).
 - Changing sources is a different argv. Intent text (`--value`) is passed every time unless the operator points at a file they own.
-- Deleting `init` is the named deletion for `show` ([§4](#4-the-human-seam)); both land in step 5.
+- Deleting `init` is the named deletion for `show` ([§4](#4-the-review-surface)); both land in step 5.
 
 This is the deletion-aligned shape: one generate verb, no project-config noun, no sticky file. Its stated cost — the adapter list is no longer remembered inside the tree — is removed by the file carrier below.
 
@@ -159,8 +159,8 @@ This is the deletion-aligned shape: one generate verb, no project-config noun, n
 - **The engine never writes it.** Mutation authority stays two-pole: engine state mutates only through the CLI; `sources.toml` mutates only in the operator's editor. The file is never read back between runs except when passed again.
 - **Mixing refuses typed.** Positional adapters (or `--value`) together with `--sources` is `Error::Argument` (exit 2). Merge/override semantics can be added later if a need shows up.
 - **TOML is deliberate.** Human-centric configuration files shift gradually to TOML — the idiomatic choice for Rust codebases — while engine-written artifacts stay YAML. Cost acknowledged: one new parse dependency beside `serde-saphyr`.
-- **Cargo's dependency-table convention names the actual source.** Each entry is a named table (`[sources.<key>]`) whose key becomes the seam's binding key (`input.key` in `wit/emery.wit`) — so one adapter can bind more than one root, which the resolved-adapter-name key cannot express. Exactly one location key per entry — `path`, `git`, `url`, or `value`; omitted means the workspace lend at `.`, the analog of Cargo's implicit registry when no location key is given. Two location keys refuse typed (`Error::Argument`, exit 2). `path` resolves relative to the file containing it, as Cargo resolves `path` dependencies relative to their `Cargo.toml`; the carrier and every resolved local path must remain relative to the project preopen `.`, with absolute or escaping paths refused typed. Cargo's machine-written source-ID string form (`git+https://…#rev`) is rejected: wrong precedent for a file the engine never writes.
-- **Remote sources are read, never downloaded.** `git` and `url` name a resource the model *reads* — there is no fetch leg, no source-content cache, and the no-download posture (ADR-0002 §2) holds outright. The mechanism is the seam extract already uses: the adapter's `create` grant grows a read-only view of the location, and the host binding maps location to mechanism — `github.com` to the GitHub MCP server, a Figma URL to Figma's, a plain document to a fetch of that one resource — the same way storage backings are host policy ([§3.4](#34-host-bindings)). Endpoints and credentials live in the host binding, never in this file. The grant is pinned to read-only toolsets as policy (the GitHub MCP server exposes write tools; granting them would hand the model mutation authority over the operator's GitHub — C3 one level up from the listener).
+- **Cargo's dependency-table convention names the actual source.** Each entry is a named table (`[sources.<key>]`) whose key becomes the binding key (`input.key` in `wit/emery.wit`) — so one adapter can bind more than one root, which the resolved-adapter-name key cannot express. Exactly one location key per entry — `path`, `git`, `url`, or `value`; omitted means the workspace lend at `.`, the analog of Cargo's implicit registry when no location key is given. Two location keys refuse typed (`Error::Argument`, exit 2). `path` resolves relative to the file containing it, as Cargo resolves `path` dependencies relative to their `Cargo.toml`; the carrier and every resolved local path must remain relative to the project preopen `.`, with absolute or escaping paths refused typed. Cargo's machine-written source-ID string form (`git+https://…#rev`) is rejected: wrong precedent for a file the engine never writes.
+- **Remote sources are read, never downloaded.** `git` and `url` name a resource the model *reads* — there is no fetch leg, no source-content cache, and the no-download posture (ADR-0002 §2) holds outright. The mechanism is the extract call already uses: the adapter's `create` grant grows a read-only view of the location, and the host binding maps location to mechanism — `github.com` to the GitHub MCP server, a Figma URL to Figma's, a plain document to a fetch of that one resource — the same way storage backings are host policy ([§3.4](#34-host-bindings)). Endpoints and credentials live in the host binding, never in this file. The grant is pinned to read-only toolsets as policy (the GitHub MCP server exposes write tools; granting them would hand the model mutation authority over the operator's GitHub — C3 one level up from the listener).
 - **`git` pins with a compact `@ref`; both remote keys are reserved, not implemented.** `git = "https://github.com/acme/api@v2.3.0"` — the `@` separator emery's adapter selectors already use; the ref is a tag, branch, or SHA, resolved to one commit before extract so claim anchors and the re-mine diff sit on an immutable revision; absent means the default branch, resolved the same way. No separate `tag`/`rev`/`branch` keys. `url` has no ref namespace and is a live read; digest pinning and verify-on-read come later, if at all. Until the read-view grant exists, both keys parse but refuse typed (`source-remote-unsupported`, in the mold of `adapter-github-uri-unsupported`) — reserving them keeps the file format stable across that future.
 
 Draft schema, to be refined:
@@ -228,13 +228,13 @@ Each step is one reviewable change: journey test green, `cargo make ci` green, d
 
 ```text
 omnia prerequisite ──┐
-step 1 (seam) ───────┴→ step 2 (host bindings) → step 4 (component cache) → step 3 (pointer) → step 5 (show + init; two repos)
+step 1 (storage) ────┴→ step 2 (host bindings) → step 4 (component cache) → step 3 (pointer) → step 5 (show + init; two repos)
                                                                                                 └→ step 6 → step 7 → step 8
 ```
 
 **Omnia prerequisite — filesystem keyvalue + `StateStore` atomics.** The two items in [§3.5](#35-omnia-work-this-design-requires), one PR each. Exit criterion: a host test proving the CAS semantics against the filesystem backend — absent-expected, stale-expected, and contention under the per-key lock. Runs in parallel with emery step 1. **Blocks emery step 2.**
 
-**Step 1 — the storage seam, filesystem-backed.** Introduce the engine storage capability traits (keyvalue + blobstore shapes, §3.3, `cas` included in the signature) following the existing `Source` provider pattern, and route `home.rs` and the resolve legs (`ensure::seed`, `ComponentMeta`, component-cache reads) through them, with a native filesystem implementation that preserves today's on-disk layout byte-for-byte. Pure refactor: no observable change, no WIT dependency yet. The journey test moves its assertions off filesystem paths (`.emery/spec/current`, `.emery-cache/…`) onto the scripted in-memory storage provider and the envelope — which also retires its `set_current_dir` global-state hack. Update `docs/standards/testing.md` for the boundary shift (engine state is observed through the storage provider and envelope, not the filesystem). Exit criterion: no `std::fs` against engine-owned state outside the native storage implementation.
+**Step 1 — the storage capabilities, filesystem-backed.** Introduce the engine storage capability traits (keyvalue + blobstore shapes, §3.3, `cas` included in the signature) following the existing `Source` provider pattern, and route `home.rs` and the resolve legs (`ensure::seed`, `ComponentMeta`, component-cache reads) through them, with a native filesystem implementation that preserves today's on-disk layout byte-for-byte. Pure refactor: no observable change, no WIT dependency yet. The journey test moves its assertions off filesystem paths (`.emery/spec/current`, `.emery-cache/…`) onto the scripted in-memory storage provider and the envelope — which also retires its `set_current_dir` global-state hack. Update `docs/standards/testing.md` for the boundary shift (engine state is observed through the storage provider and envelope, not the filesystem). Exit criterion: no `std::fs` against engine-owned state outside the native storage implementation.
 
 **Step 2 — omnia host bindings.** Wire the `WasiKeyValue` / `WasiBlobstore` host entries into `src/main.rs` over the §3.5 backends (`omnia-filesystem` + the new filesystem keyvalue), both roots at the invocation directory, and route the step-1 traits over the omnia guest capabilities (`StateStore` / `BlobStore`, including `cas`). The engine guest stops opening engine-state paths; the mounts table does not shrink yet (steps 4 and 6). Exit criterion: `init` → `specify` → process restart → `specify` still reports the re-mine diff (store durability, §4 scope 1).
 
@@ -248,11 +248,11 @@ step 1 (seam) ───────┴→ step 2 (host bindings) → step 4 (com
 
 **Step 7 — read-only MCP resource.** Serve the current generation and id on the existing listener (layer 2), beside the adapter shelves. The C3 refusal contract is untouched — a wire-contract test asserts mutating routes still refuse. The plugin skill may consume it.
 
-**Step 8 — deployment profiles.** Document alternative host bindings and exercise project-keyed isolation over one shared non-filesystem store. The root `multi_project_isolation` scenario gives two project-scoped views of one shared scripted store, then commits and shows independent generations without an engine change. A concrete host profile requires a genuinely shared backend; a command-mode process over in-memory defaults creates one fresh store and one project id and therefore cannot demonstrate the boundary. The Developer Guide records the host seam and available backends. Remote-binding performance remains `unconfirmed` until a remote backing is deployed and wall-clocked. Layer 3 (git projection) is scoped as its own design if wanted.
+**Step 8 — deployment profiles.** Document alternative host bindings and exercise project-keyed isolation over one shared non-filesystem store. The root `multi_project_isolation` scenario gives two project-scoped views of one shared scripted store, then commits and shows independent generations without an engine change. A concrete host profile requires a genuinely shared backend; a command-mode process over in-memory defaults creates one fresh store and one project id and therefore cannot demonstrate the boundary. The Developer Guide records the host binding and available backends. Remote-binding performance remains `unconfirmed` until a remote backing is deployed and wall-clocked. Layer 3 (git projection) is scoped as its own design if wanted.
 
 ## 8. Risks and open questions
 
-1. **WIT instability** (§3.4): upstream `wasi-keyvalue` / `wasi-blobstore` churn lands on us as seam maintenance. Mitigated: omnia already vendors and pins its fork of both WITs and owns the host implementations, so churn is absorbed there as a versioned seam change, as with the adapter WIT.
+1. **WIT instability** (§3.4): upstream `wasi-keyvalue` / `wasi-blobstore` churn lands on us as contract maintenance. Mitigated: omnia already vendors and pins its fork of both WITs and owns the host implementations, so churn is absorbed there as a versioned contract change, as with the adapter WIT.
 2. **Test surface shift**: the filesystem stops being a public observable boundary for engine state; the scripted storage provider and the envelope become the boundary. Handled in step 1.
 3. **Multi-operator ownership of a specification** ([§5.3](#53-the-gating-question)): sharing the binding list between operators — beyond one operator generating and teammates reviewing `emery show` output — is out of scope. If co-owned specifications become a feature, that is its own design; do not back into it via binding persistence (engine storage, implicit `sources.toml` discovery), each of which reintroduces a `project.yaml`-shaped residue.
 4. **Performance of remote bindings**: unconfirmed — and deliberately left so at step 8, which exercised the in-memory binding rather than deploying a networked backing. Measure when a remote binding is first deployed, before claiming anything.

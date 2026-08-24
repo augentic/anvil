@@ -2,9 +2,11 @@
 
 use std::path::Path;
 
-use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
+use emery_adapter::answers::claim_id_findings;
+use emery_adapter::types::{
+    Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
+};
 use emery_adapter::{DispatchError, Source};
-use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
 use omnia_guest::{BlobStore, StateStore};
 
@@ -15,11 +17,11 @@ use crate::sources::{BindingContent, SourceBinding};
 // On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
-) -> Result<seam::Evidence, Error> {
+) -> Result<emery_adapter::types::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
-        DispatchError::Seam(seam) => Error::Diag {
+        DispatchError::Call(failure) => Error::Diag {
             code: "source-extract-failed",
-            detail: format!("source `{id}`: {seam}"),
+            detail: format!("source `{id}`: {failure}"),
         },
         extras @ DispatchError::Extras { .. } => Error::Diag {
             code: "claim-extras-malformed",
@@ -36,7 +38,7 @@ pub struct SourceSet {
     /// The routed adapter identity (`source:<name>[@<version>]`).
     pub adapter: String,
     /// Claim-set authority class.
-    pub authority: AuthorityClass,
+    pub authority: Authority,
     /// The validated claims.
     pub claims: Vec<Claim>,
 }
@@ -48,7 +50,7 @@ pub struct SourceSet {
 ///
 /// # Errors
 ///
-/// Propagates ensure, resolution, seam, and [`validate_set`] failures.
+/// Propagates ensure, resolution, extract, and [`validate_set`] failures.
 pub async fn extract_all<P: Source + StateStore + BlobStore>(
     provider: &P, bindings: &[SourceBinding], paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
@@ -59,8 +61,8 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
             ensure::source(metadata::runner(provider), &selector, provider, paths).await?;
         let id = RoutedId::new(
             Axis::Source,
-            resolved.manifest.name.clone(),
-            resolved.manifest.version.clone(),
+            resolved.identity.name.clone(),
+            resolved.identity.version.clone(),
         )
         .to_string();
         let input = input_for(binding, paths)?;
@@ -68,8 +70,8 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
         let set = SourceSet {
             key: binding.key.clone(),
             adapter: id,
-            authority: authority(evidence.authority),
-            claims: evidence.claims.into_iter().map(claim).collect(),
+            authority: evidence.authority,
+            claims: evidence.claims,
         };
         validate_set(&set)?;
         sets.push(set);
@@ -120,7 +122,7 @@ pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
 ///
 /// Returns `claim-invalid` or `claim-extras-missing`.
 pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
-    let findings = validate_claims(&set.claims);
+    let findings = claim_id_findings(&set.claims);
     if !findings.is_empty() {
         return Err(Error::validation_failed(
             "claim-invalid",
@@ -141,45 +143,4 @@ pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
         }
     }
     Ok(())
-}
-
-const fn authority(seam: seam::Authority) -> AuthorityClass {
-    match seam {
-        seam::Authority::Intent => AuthorityClass::Intent,
-        seam::Authority::Documentation => AuthorityClass::Documentation,
-        seam::Authority::Behaviour => AuthorityClass::Behaviour,
-    }
-}
-
-// Extras cross the seam verbatim.
-fn claim(seam: seam::Claim) -> Claim {
-    let mut mapped = Claim::new(kind(seam.kind));
-    mapped.id = seam.id;
-    mapped.path = seam.path;
-    mapped.synopsis = seam.synopsis;
-    mapped.set_backing(seam.backing.map(|backing| match backing {
-        seam::Backing::Payload(payload) => emery_artifacts::evidence::Backing::Payload(payload),
-        seam::Backing::Path(path) => emery_artifacts::evidence::Backing::Path(path),
-    }));
-    mapped.extras = seam.extras;
-    mapped
-}
-
-const fn kind(seam: seam::ClaimKind) -> ClaimKind {
-    match seam {
-        seam::ClaimKind::Intent => ClaimKind::Intent,
-        seam::ClaimKind::Requirement => ClaimKind::Requirement,
-        seam::ClaimKind::Criterion => ClaimKind::Criterion,
-        seam::ClaimKind::Decision => ClaimKind::Decision,
-        seam::ClaimKind::Section => ClaimKind::Section,
-        seam::ClaimKind::Diagram => ClaimKind::Diagram,
-        seam::ClaimKind::Contract => ClaimKind::Contract,
-        seam::ClaimKind::Example => ClaimKind::Example,
-        seam::ClaimKind::Excerpt => ClaimKind::Excerpt,
-        seam::ClaimKind::Type => ClaimKind::Type,
-        seam::ClaimKind::Call => ClaimKind::Call,
-        seam::ClaimKind::Region => ClaimKind::Region,
-        seam::ClaimKind::Container => ClaimKind::Container,
-        seam::ClaimKind::Leaf => ClaimKind::Leaf,
-    }
 }

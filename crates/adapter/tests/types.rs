@@ -1,7 +1,7 @@
-//! Adapter seam tests.
+//! Adapter WIT type tests.
 
 use emery_adapter::Error as ModelError;
-use emery_adapter::seam::Error;
+use emery_adapter::types::Error;
 
 #[test]
 fn error_mapping() {

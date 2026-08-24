@@ -25,7 +25,7 @@ Look for:
    `show_registry` in `registry.rs`, which should be `registry::show`.
 4. Tests that violate the root-led integration policy: any `src`
    `#[cfg(test)]` test — or crate integration test — whose behavior is
-   reachable through the CLI or MCP entry seams and already owned (or
+   reachable through the CLI or MCP entry points and already owned (or
    ownable) by a root scenario in `tests/`.
 5. YAGNI — abstractions, flags, or generality with no current consumer.
 6. Latent bugs and footguns.
@@ -39,7 +39,7 @@ Rules of evidence:
 - "Unused / can be removed" claims require a search showing no callers,
   including prose (`docs/`, `AGENTS.md`, adapter repos where relevant).
 - Skip purely stylistic preferences with no standards backing.
-- If something might be a contract-locked seam rather than YAGNI, flag the
+- If something might be a contract-locked boundary rather than YAGNI, flag the
   uncertainty instead of asserting.
 
 Output: report only — make no edits. Rank findings by value. For each:

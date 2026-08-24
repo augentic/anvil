@@ -46,19 +46,18 @@ impl<R: metadata::Runner> Component<R> {
             );
         }
         let object = paths.locations().component_object(&name);
-        let component = blobs
-            .get(ADAPTERS_CONTAINER, &object)
+        let cached = blobs
+            .has(ADAPTERS_CONTAINER, &object)
             .await
-            .map_err(|err| storage::failed("reading the component cache", &err))?;
-        if matches!(selector, AdapterSelector::Bare { .. }) && component.is_none() {
+            .map_err(|err| storage::failed("probing the component cache", &err))?;
+        if matches!(selector, AdapterSelector::Bare { .. }) && !cached {
             let metadata = metadata::dispatch(&self.metadata, Axis::Source, &name, None)?;
             return source(&name, None, metadata, routed_origin(Axis::Source, &name, None));
         }
-        let Some(component) = component else {
+        if !cached {
             return Err(not_found(Axis::Source, &name, &object));
-        };
-        let metadata =
-            metadata::load(&self.metadata, blobs, &object, &component, Axis::Source, &name).await?;
+        }
+        let metadata = metadata::dispatch(&self.metadata, Axis::Source, &name, None)?;
         source(&name, None, metadata, cache_origin(&object))
     }
 }
@@ -102,7 +101,7 @@ pub fn source(
     let floor = parse_floor(emery_floor.as_deref(), name, &origin)?;
     check_requires_emery(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
     Ok(ResolvedSource {
-        manifest: SourceAdapter {
+        identity: SourceAdapter {
             name: name.to_string(),
             version,
             requires_emery: floor,

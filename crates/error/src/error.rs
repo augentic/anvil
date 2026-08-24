@@ -1,4 +1,4 @@
-//! Structured errors and YAML conversions.
+//! Structured workspace errors.
 
 use std::borrow::Cow;
 
@@ -18,9 +18,9 @@ pub enum Error {
     #[error("invalid argument {flag}: {detail}")]
     Argument { flag: &'static str, detail: String },
 
-    /// Payload-free validation failure routed to exit code 2.
+    /// Validation failure routed to exit code 2.
     ///
-    /// Findings are emitted separately; construct with [`Self::validation_failed`].
+    /// Construct with [`Self::validation_failed`].
     #[error("{code}: {detail}")]
     Validation { code: Cow<'static, str>, detail: String },
 
@@ -31,10 +31,6 @@ pub enum Error {
         "emery version {found} is older than the floor {required} required by adapter {adapter}; upgrade the CLI"
     )]
     AdapterCliTooOld { adapter: String, required: String, found: String },
-
-    /// A required artifact was not found at the expected path.
-    #[error("{kind} not found at {}", path.display())]
-    ArtifactNotFound { kind: &'static str, path: std::path::PathBuf },
 
     /// Filesystem failure with a `filesystem-<op>` error code.
     #[error("filesystem-{op}: {} ({source})", path.display())]
@@ -48,14 +44,6 @@ pub enum Error {
     /// An I/O error propagated from the standard library.
     #[error(transparent)]
     Io(#[from] std::io::Error),
-
-    /// A YAML deserialization error.
-    #[error(transparent)]
-    YamlDe(#[from] serde_saphyr::Error),
-
-    /// A YAML serialization error.
-    #[error(transparent)]
-    YamlSer(#[from] serde_saphyr::ser::Error),
 }
 
 impl Error {
@@ -87,14 +75,12 @@ impl Error {
             Self::Argument { .. } => Cow::Borrowed("argument"),
             Self::Validation { code, .. } => code.clone(),
             Self::AdapterCliTooOld { .. } => Cow::Borrowed("adapter-cli-too-old"),
-            Self::ArtifactNotFound { .. } => Cow::Borrowed("artifact-not-found"),
             Self::Filesystem { op, .. } => Cow::Owned(format!("filesystem-{op}")),
             Self::Io(_) => Cow::Borrowed("io"),
-            Self::YamlDe(_) | Self::YamlSer(_) => Cow::Borrowed("yaml"),
         }
     }
 
-    /// Build a payload-free validation failure for exit code 2.
+    /// Build a validation failure for exit code 2.
     ///
     /// `code` is stable; `rule` and `detail` form the rendered message.
     #[must_use]

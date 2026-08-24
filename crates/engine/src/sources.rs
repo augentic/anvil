@@ -208,7 +208,7 @@ fn split_value(entry: &str) -> Result<(&str, &str), Error> {
 }
 
 // The operator-authored schema: `[sources.<key>]` tables whose key is
-// the seam binding key, with exactly one optional location key.
+// the binding key, with exactly one optional location key.
 #[derive(Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SourcesFile {
