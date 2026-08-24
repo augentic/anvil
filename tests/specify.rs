@@ -341,7 +341,7 @@ async fn extras_missing() {
         .evidence
         .insert("docs".to_string(), Ok(evidence(Authority::Documentation, vec![bare])));
 
-    fail(&provider, &["emery", "specify", "docs"], 2, "claim-extras-missing").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "claim-extras-missing").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
@@ -354,7 +354,7 @@ async fn extract_fails() {
         Err(DispatchError::Call(types::Error::Internal("the adapter exploded".to_string()))),
     );
 
-    fail(&provider, &["emery", "specify", "docs"], 1, "source-extract-failed").await;
+    fail(&provider, &["emery", "specify", "docs"], 4, "source-extract-failed").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
@@ -365,7 +365,7 @@ async fn floor_too_new() {
     let mut provider = Provider::idle();
     provider.source.floors.insert("docs".to_string(), "99.0.0".to_string());
 
-    fail(&provider, &["emery", "specify", "docs"], 3, "adapter-cli-too-old").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "adapter-cli-too-old").await;
 }
 
 // A model answer outside the fail-closed spec AST is refused, one
@@ -383,7 +383,7 @@ async fn unparseable_answer() {
     ];
     for answer in answers {
         let provider = Provider::answering([answer]);
-        fail(&provider, &["emery", "specify", "docs"], 2, "spec-invalid").await;
+        fail(&provider, &["emery", "specify", "docs"], 1, "spec-invalid").await;
         assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
     }
 }
@@ -409,7 +409,7 @@ async fn dishonest_answer() {
     ];
     for answer in answers {
         let provider = Provider::answering([answer.as_str()]);
-        fail(&provider, &["emery", "specify", "docs"], 2, "spec-provenance-mismatch").await;
+        fail(&provider, &["emery", "specify", "docs"], 1, "spec-provenance-mismatch").await;
         assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
     }
 }
@@ -429,7 +429,7 @@ fn two_blocks(heading: &str, id: &str, sources: &str, status: &str) -> String {
 async fn empty_design() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
     let provider = Provider::answering([spec_answer.as_str(), "   "]);
-    fail(&provider, &["emery", "specify", "docs"], 2, "design-empty").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "design-empty").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
@@ -437,7 +437,7 @@ async fn empty_design() {
 #[tokio::test]
 async fn model_fails() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "docs"], 1, "synthesis-model-failed").await;
+    fail(&provider, &["emery", "specify", "docs"], 4, "synthesis-model-failed").await;
 }
 
 // The operator-owned `sources.toml` parses fail-closed: every
@@ -451,10 +451,10 @@ async fn sources_file_refused() {
             1,
             "sources-toml-malformed",
         ),
-        ("", 2, "specify-source-required"),
+        ("", 1, "specify-source-required"),
         (
             "[sources.docs]\nadapter = \"documentation\"\npath = \"docs\"\nvalue = \"text\"\n",
-            2,
+            1,
             "argument",
         ),
         (
@@ -469,11 +469,11 @@ async fn sources_file_refused() {
         ),
         (
             "[sources.upstream]\nadapter = \"documentation\"\ngit = \"git+https://github.com/acme/api#deadbeef\"\n",
-            2,
+            1,
             "argument",
         ),
-        ("[sources.docs]\nadapter = \"documentation\"\npath = \"../../outside\"\n", 2, "argument"),
-        ("[sources.local]\nadapter = \"/tmp/source.wasm\"\n", 2, "argument"),
+        ("[sources.docs]\nadapter = \"documentation\"\npath = \"../../outside\"\n", 1, "argument"),
+        ("[sources.local]\nadapter = \"/tmp/source.wasm\"\n", 1, "argument"),
     ];
     for (body, exit, code) in cases {
         let dir = project_tempdir();
@@ -490,14 +490,14 @@ async fn sources_file_refused() {
     fail(
         &provider,
         &["emery", "specify", "--sources", "nonexistent/sources.toml"],
-        1,
+        3,
         "filesystem-read",
     )
     .await;
 
     // Host-absolute and escaping paths never cross into the guest namespace.
     for path in ["/nonexistent/sources.toml", "../sources.toml"] {
-        fail(&provider, &["emery", "specify", "--sources", path], 2, "argument").await;
+        fail(&provider, &["emery", "specify", "--sources", path], 1, "argument").await;
     }
 }
 
@@ -578,16 +578,16 @@ async fn mirror_probe_fault() {
     let provider = Provider::idle();
     provider.storage.fail_blob_has("cache backend unavailable");
 
-    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "storage-failed").await;
+    fail(&provider, &["emery", "specify", "./missing.wasm"], 3, "storage-failed").await;
 }
 
 // A path that is not a `.wasm` component file refuses typed.
 #[tokio::test]
 async fn component_missing() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "adapter-component-missing").await;
+    fail(&provider, &["emery", "specify", "./missing.wasm"], 2, "adapter-component-missing").await;
     for path in ["/tmp/missing.wasm", "../missing.wasm"] {
-        fail(&provider, &["emery", "specify", path], 2, "argument").await;
+        fail(&provider, &["emery", "specify", path], 1, "argument").await;
     }
 }
 
@@ -644,7 +644,7 @@ async fn package_ref_refused() {
 async fn corrupt_pointer() {
     let provider = Provider::idle();
     provider.storage.insert_state("spec/current", b"0123456789abcdef\n");
-    fail(&provider, &["emery", "show", "spec"], 1, "spec-home-corrupt").await;
+    fail(&provider, &["emery", "show", "spec"], 3, "spec-home-corrupt").await;
 }
 
 // One shared store, two project-scoped views: multi-project isolation
