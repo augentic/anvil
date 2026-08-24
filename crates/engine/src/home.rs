@@ -6,6 +6,7 @@ use emery_artifacts::spec::ast;
 use emery_error::Error;
 use omnia_guest::{BlobStore, CasError, StateStore};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 
 use crate::storage;
 
@@ -45,15 +46,25 @@ impl SpecSet {
     /// Returns the SHA-256 generation id over length-prefixed names and bodies.
     #[must_use]
     pub fn id(&self) -> String {
-        let mut hasher = emery_diagnostics::digest::Hasher::new();
+        let mut hasher = Sha256::new();
         for (name, body) in self.files() {
-            hasher.update(&(name.len() as u64).to_be_bytes());
+            hasher.update((name.len() as u64).to_be_bytes());
             hasher.update(name.as_bytes());
-            hasher.update(&(body.len() as u64).to_be_bytes());
+            hasher.update((body.len() as u64).to_be_bytes());
             hasher.update(body.as_bytes());
         }
-        hasher.finalize_hex()
+        hex_lower(&hasher.finalize())
     }
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len().saturating_mul(2));
+    for &byte in bytes {
+        out.push(char::from(DIGITS[usize::from(byte >> 4)]));
+        out.push(char::from(DIGITS[usize::from(byte & 0x0f)]));
+    }
+    out
 }
 
 /// A generation named by the current pointer.

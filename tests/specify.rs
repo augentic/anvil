@@ -574,9 +574,9 @@ async fn mirror_survives_removal() {
 // Storage faults remain infrastructure failures; they never masquerade
 // as an uncached bare adapter.
 #[tokio::test]
-async fn cache_read_fault() {
+async fn cache_probe_fault() {
     let provider = Provider::idle();
-    provider.storage.fail_blob_get("cache backend unavailable");
+    provider.storage.fail_blob_has("cache backend unavailable");
 
     fail(&provider, &["emery", "specify", "source"], 1, "storage-failed").await;
 }

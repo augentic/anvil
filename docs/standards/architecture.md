@@ -10,7 +10,7 @@ The authoritative leaf → root crate graph (with per-crate roles) lives in [AGE
 
 There is no lint engine or `Check` substrate. Repo consistency is the mdBook links gate (`cargo make links`).
 
-`artifacts` is the lifecycle-free leaf carrying the artifact types and parsers the engine layer reads, alongside `diagnostics` and `error` at the bottom. It depends on none of the engine crates nor anything named lint, so artifact types cannot reach workflow lifecycle. The neutral `Diagnostic` substrate lives in the `diagnostics` crate, so every check producer mints findings without depending on anything named `lint`.
+`artifacts` is the lifecycle-free leaf carrying the artifact types and parsers the engine layer reads, alongside `error` at the bottom. It depends on none of the engine crates nor anything named lint, so artifact types cannot reach workflow lifecycle.
 
 ### Engineering standards live in the adapters
 
@@ -32,7 +32,7 @@ The root `emery` package carries the Omnia deployment unit under `src/`: the gue
 
 ## Domain modules of note
 
-- **`crates/engine/src/resolve/`** — source-adapter resolution over the typed `AdapterSelector`: the `resolver::Component` kernel (read-only re-resolution) and the `ensure` kernels (the provisioning leg, one component, no manifest). Operations call them over the provider's metadata dispatch (`metadata::runner` closes over the `Source` capability — the WIT `metadata` import on wasm32, a scripted mock natively). `Component` keeps its injected `Runner`. Non-identity metadata is cached against the component digest.
+- **`crates/engine/src/resolve/`** — source-adapter resolution over the typed `AdapterSelector`: the `resolver::Component` kernel (read-only re-resolution) and the `ensure` kernels (the provisioning leg, one component, no manifest). Operations call them over the provider's metadata dispatch (`metadata::runner` closes over the `Source` capability — the WIT `metadata` import on wasm32, a scripted mock natively). `Component` keeps its injected `Runner`.
 - **`crates/artifacts/src/evidence.rs`** — the typed Evidence `Claim` wire shapes (mirroring the WIT `evidence` / `claim` records) and deterministic claim validation (`validate_claims`: dotted-kebab ids, the per-kind id requirement). The engine's extract leg maps those findings onto the payload-free `Error::Validation { code, detail }` so the CLI exits with code 2 (`Exit::ValidationFailed`) with the specific discriminant as the wire `error`.
 
 The lenient v1 module trees in `artifacts` (spec parsers, provenance, the task/decision/leads validators) were deleted at the Phase 3 spine cut and are documented at tag `v1`.
