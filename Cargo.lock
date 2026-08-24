@@ -1268,9 +1268,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.4.18"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "839c0e8a181239723652be9062bb56ca5bf5f64011f73b623f6f4fc59086a228"
+checksum = "ef8e5e5a340588f4452631496976cf8636d4a7ecf600239fdc27615d2530bc16"
 dependencies = [
  "atomic-waker",
  "bytes",
@@ -5136,7 +5136,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 [[package]]
 name = "wrpc-introspect"
 version = "0.7.0"
-source = "git+https://github.com/bytecodealliance/wrpc#d2233d8c70f812a3848cd4783c756ae63fceeadd"
+source = "git+https://github.com/bytecodealliance/wrpc#1b182e762e9e11a32df671ab52303eede2bd3c27"
 dependencies = [
  "wit-parser 0.251.0",
 ]
@@ -5144,7 +5144,7 @@ dependencies = [
 [[package]]
 name = "wrpc-transport"
 version = "0.29.0"
-source = "git+https://github.com/bytecodealliance/wrpc#d2233d8c70f812a3848cd4783c756ae63fceeadd"
+source = "git+https://github.com/bytecodealliance/wrpc#1b182e762e9e11a32df671ab52303eede2bd3c27"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5161,7 +5161,7 @@ dependencies = [
 [[package]]
 name = "wrpc-wasmtime"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wrpc#d2233d8c70f812a3848cd4783c756ae63fceeadd"
+source = "git+https://github.com/bytecodealliance/wrpc#1b182e762e9e11a32df671ab52303eede2bd3c27"
 dependencies = [
  "anyhow",
  "bytes",
