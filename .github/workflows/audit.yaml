@@ -9,10 +9,6 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  issues: write
-
 jobs:
   audit:
     uses: augentic/.github/.github/workflows/audit.yaml@main
