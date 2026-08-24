@@ -12,7 +12,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The fast rung is **root product integration plus retained crate contracts**: `cargo make test` drives the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/shelf.rs`, `tests/plugin.rs`) through the in-process command router and HTTP listener over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage capabilities) — engine orchestration without a built component — alongside the surviving crate suites (the adapter SDK, error, prose, and the CLI-impractical engine invariants). It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
+The fast rung is **root product integration plus retained crate contracts**: `cargo make test` drives the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`) through the in-process command router over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage capabilities) — engine orchestration without a built component — alongside the surviving crate suites (the adapter SDK, error, prose, and the CLI-impractical engine invariants). It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
 
 Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage capabilities (design/portable-storage.md steps 1–2), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities — the `wasi:keyvalue`/`wasi:blobstore` imports in deployment, bound host-side to the durable `omnia-filesystem` store — and the native suites script them with `emery_testkit` (`Memory`, `Namespaced`). No suite changes the process working directory, and no suite asserts an on-disk layout — the backing is host policy, exercised on the live rung, not in tests. Operator-supplied inputs (a local `.wasm` component, a `sources.toml`) stay real files in a `tempfile::TempDir`.
 
@@ -26,13 +26,12 @@ Capability doubles live in `emery-testkit`: the FIFO request-recording `Scripted
 
 ## Root-led policy
 
-The root package's `tests/` directory is the default home for every behavior an operator or MCP client can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry points — `emery_transport::command::router` for CLI argv, `emery_transport::http::listener` for the MCP shelf — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents, shelf replies.
+The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_transport::command::router` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
 
 Root suites are organized by operator story, one auto-discovered test binary per verb-level narrative:
 
 - `tests/specify.rs` — the `specify` → `show` product arc: bindings (argv, `--value`, `--sources`), extraction and the extras gate, reconciliation and synthesis outcomes, the generation home (commit, pruning, corruption), re-mine diffs, and multi-project isolation.
 - `tests/command.rs` — the CLI wire contract: the route budget, deleted verbs, help/version/completions, argv normalization, argument failures, exit codes, and the text/JSON channel shape.
-- `tests/shelf.rs` — the MCP review surface: the post-`specify` shelf read flow, resource/tool parity, the empty store, method gating, unknown resources, and the C3 typed HTTP refusal.
 - `tests/plugin.rs` — plugin-rule mentions against the shipped grammar: live verbs and flags, and that every shipped skill is named by the always-applied rule.
 
 Shared scenario plumbing lives in the dir form `tests/support/mod.rs` (invisible to auto-discovery), declared per binary with `mod support;`. Fixtures are root-local under `tests/<binary>/` and embedded with `include_str!`. Root binaries are gated `#![cfg(not(target_arch = "wasm32"))]`.
@@ -43,11 +42,11 @@ If a function needs unit tests, it belongs in a workspace crate, not the binary 
 
 ## The three layers — root owns the product
 
-Every behavior gets a home in exactly one of three layers. Decide the layer **before** writing the test; duplicating an assertion across layers is a defect, not extra safety. The standing bias is **root first, fewer crate tests, near-zero unit tests**: root scenarios own every CLI- or MCP-reachable behavior, crate suites own independently useful library contracts, and the unit layer is reserved for what integration genuinely cannot reach.
+Every behavior gets a home in exactly one of three layers. Decide the layer **before** writing the test; duplicating an assertion across layers is a defect, not extra safety. The standing bias is **root first, fewer crate tests, near-zero unit tests**: root scenarios own every CLI-reachable behavior, crate suites own independently useful library contracts, and the unit layer is reserved for what integration genuinely cannot reach.
 
 | Layer                        | Location                                                            | Required when                                                                                                                                                                                                                                                        | Forbidden when                                                                                                                                                                                     |
 | ---------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Root product integration** | root `tests/` (`specify.rs`, `command.rs`, `shelf.rs`, `plugin.rs`) | The behavior is reachable through CLI argv or the MCP listener and observable at a public boundary — exit code, stdout/stderr, the JSON envelope, scripted storage, a shelf reply. This is the default and covers the large majority                                   | The behavior is a library contract with no product projection, or arranging it through the entry points needs private state no CLI input can produce                                                  |
+| **Root product integration** | root `tests/` (`specify.rs`, `command.rs`, `plugin.rs`) | The behavior is reachable through CLI argv and observable at a public boundary — exit code, stdout/stderr, the JSON envelope, scripted storage. This is the default and covers the large majority                                   | The behavior is a library contract with no product projection, or arranging it through the entry points needs private state no CLI input can produce                                                  |
 | **Crate integration**        | `crates/<name>/tests/`                                              | The crate's public API is an independent contract (the published adapter SDK, error display, the prose walker), **or** the behavior is a product invariant impractical to arrange through the entry points (e.g. a CAS race)             | The same observable behavior is already asserted through a root scenario; if a root test exists, the crate test must cover a *different* edge, not re-derive the happy path in-process               |
 | **Kernel unit**              | `#[cfg(test)] mod tests` (or a sibling `tests.rs`) next to the code | The branch is genuinely unreachable through the CLI (an error variant no flag can trigger, a defensive guard), **or** the behavior is a dense private parse/projection matrix whose integration port would be a case-per-cell explosion                                 | The behavior is reachable through the binary or a retained crate contract and an integration test already covers it — or could, without a matrix explosion                                            |
 
@@ -68,14 +67,14 @@ Applied to every existing (or proposed) test, one bucket per behavior cluster �
 - **Re-home** — product-reachable behavior lands in a root scenario, arranged through the entry points.
 - **Keep** — an independent library contract (crate integration) or a genuinely unreachable defensive branch (unit), carrying a one-line comment naming which clause it survives under.
 
-**Re-home is not a 1:1 port.** Re-homed coverage is a scenario contract: arrange through the real entry (CLI argv, a shelf request, a temp file), act once, and assert at the public boundary — exit code, JSON `error` discriminant, storage contents, shelf reply — never private struct fields re-exposed for the test. A small number of representative scenarios replaces the matrix; the dense edges either stay collapsed in their owning crate or are dropped as redundant.
+**Re-home is not a 1:1 port.** Re-homed coverage is a scenario contract: arrange through the real entry (CLI argv, a temp file), act once, and assert at the public boundary — exit code, JSON `error` discriminant, storage contents — never private struct fields re-exposed for the test. A small number of representative scenarios replaces the matrix; the dense edges either stay collapsed in their owning crate or are dropped as redundant.
 
 ### Reaching the behavior: design against the entry points
 
 Before writing a test below the root, decide whether a root scenario can reach the behavior. Ask three questions, then check visibility:
 
-1. **Reachable?** Does some CLI input or shelf request (with scripted capabilities) actually run this code?
-2. **Observable?** Does its effect surface at a public boundary — exit code, stdout/stderr, the JSON envelope, scripted storage, a shelf reply?
+1. **Reachable?** Does some CLI input (with scripted capabilities) actually run this code?
+2. **Observable?** Does its effect surface at a public boundary — exit code, stdout/stderr, the JSON envelope, scripted storage?
 3. **Affordable?** Can you construct the input and observe the effect through that surface without a case-per-cell explosion or compiling a mock per case?
 
 - **Reachable + observable + affordable** → write the root scenario against the **existing** entry points. No new API; this is the default and covers the large majority.
@@ -97,14 +96,14 @@ Root scenarios exercise engine and transport code from the root package, so the 
 
 ## Assertion ownership
 
-- A behavior reducible to a CLI result, shelf reply, storage predicate, crate API, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its surface.
+- A behavior reducible to a CLI result, storage predicate, crate API, validator, or compiler is a **hard assertion**. It executes automatically on the rung that owns its surface.
 - Product orchestration belongs to the root suites; independent library contracts belong to their crates. Name the surface an assertion owns before writing it.
 
 ## Test naming
 
 Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 25-char cap below counts the bare `fn` identifier, not the module path.
 
-- Drop tokens the binary name or enclosing module already supplies: in `shelf.rs`, write `empty_store_hints`, not `shelf_empty_store_hints_at_specify`.
+- Drop tokens the binary name or enclosing module already supplies: in `command.rs`, write `unknown_verb_refuses`, not `command_unknown_verb_refuses_typed`.
 - Group a cluster that shares a subject under a nested `mod <subject>` rather than repeating the subject as a prefix.
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the `//` requirement comment above the `fn`, not the identifier.

@@ -916,14 +916,12 @@ dependencies = [
  "omnia-filesystem",
  "omnia-guest",
  "omnia-wasi-blobstore",
- "omnia-wasi-http",
  "omnia-wasi-keyvalue",
  "omnia-wasi-model",
  "omnia-wasi-otel",
  "serde_json",
  "tempfile",
  "tokio",
- "tower",
  "wasip3",
 ]
 
@@ -933,14 +931,12 @@ version = "0.38.0"
 dependencies = [
  "emery-testkit",
  "omnia-guest",
- "omnia-wasi-http",
  "schemars",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
- "wasip3",
  "wit-bindgen 0.60.0",
 ]
 

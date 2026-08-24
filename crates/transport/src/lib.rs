@@ -1,4 +1,3 @@
-//! Command and HTTP transport for Emery.
+//! Command transport for Emery.
 
 pub mod command;
-pub mod http;

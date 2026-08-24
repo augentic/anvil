@@ -2,22 +2,44 @@
 
 use std::path::Path;
 
-use emery_adapter::types::{Context, Error, mcp_url_for};
-use emery_adapter::{Error as ModelError, Format, judgment};
-use emery_testkit::{Scripted, mcp_grants};
+use emery_adapter::registry::Doc;
+use emery_adapter::types::{Context, Error};
+use emery_adapter::{Error as ModelError, Format, ToolCall, judgment};
+use emery_testkit::{Scripted, function_tools};
 use serde::Deserialize;
+use serde_json::json;
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 struct Answer {
     done: bool,
 }
 
-fn ctx<'a>(mcp_url: Option<&str>, root: &'a Path) -> Context<'a> {
+// Sorted by path: the registry lookup is a binary search.
+const DOCS: &[Doc] = &[
+    Doc {
+        path: "prompts/extract.md",
+        body: "EXTRACT",
+    },
+    Doc {
+        path: "references/depth.md",
+        body: "DEPTH",
+    },
+];
+
+fn ctx<'a>(docs: &'static [Doc], root: &'a Path) -> Context<'a> {
     Context {
         adapter_id: "target:contracts",
         project_root: root,
-        mcp_url: mcp_url.map(str::to_owned),
+        docs,
         lend: Some(".".to_string()),
+    }
+}
+
+fn call(name: &str, arguments: &serde_json::Value) -> ToolCall {
+    ToolCall {
+        id: format!("call-{name}"),
+        name: name.to_string(),
+        arguments: arguments.to_string(),
     }
 }
 
@@ -27,7 +49,7 @@ async fn assembles_and_parses() {
 
     let answer: Answer = judgment(
         &model,
-        &ctx(Some("http://references/mcp"), Path::new(".")),
+        &ctx(DOCS, Path::new(".")),
         "SYSTEM".to_string(),
         "USER".to_string(),
         "probe",
@@ -54,29 +76,77 @@ async fn assembles_and_parses() {
         Some("."),
         "every judgment leg lends the context's workspace path"
     );
-    let grants = mcp_grants(request);
-    assert_eq!(grants.len(), 1);
-    assert_eq!(grants[0].name, "contracts-references", "grant named after the adapter");
-    assert_eq!(grants[0].url, "http://references/mcp");
+    let names: Vec<&str> =
+        function_tools(request).into_iter().map(|tool| tool.name.as_str()).collect();
+    assert_eq!(names, ["list_docs", "read_doc"], "a docs-carrying judgment declares the tools");
 }
 
-// Missing MCP resolution is grant-free, not an error.
+// A docs-free judgment declares no tools and stays single-shot.
 #[tokio::test]
-async fn no_mcp_no_grant() {
+async fn no_docs_no_tools() {
     let model = Scripted::answering([r#"{"done":true}"#]);
 
     let _: Answer = judgment(
         &model,
-        &ctx(None, Path::new(".")),
+        &ctx(&[], Path::new(".")),
         String::new(),
         "USER".to_string(),
         "probe",
         "{}",
     )
     .await
-    .expect("grant-free leg succeeds");
+    .expect("tool-free leg succeeds");
 
     assert!(model.requests()[0].tools.is_empty());
+    assert!(model.exchanges().is_empty());
+}
+
+// The closure answers reference tool calls from the embedded corpus:
+// canonical JSON objects on success, repairable messages otherwise.
+#[tokio::test]
+async fn closure_answers_reference_calls() {
+    let model = Scripted::answering([r#"{"done":true}"#]).calling(
+        0,
+        [
+            call("list_docs", &json!({})),
+            call("read_doc", &json!({"path": "references/depth.md"})),
+            call("read_doc", &json!({"path": "references/missing.md"})),
+            call("resolve", &json!({})),
+        ],
+    );
+
+    let answer: Answer = judgment(
+        &model,
+        &ctx(DOCS, Path::new(".")),
+        "SYSTEM".to_string(),
+        "USER".to_string(),
+        "probe",
+        "{}",
+    )
+    .await
+    .expect("the reply follows the answered calls");
+    assert_eq!(answer, Answer { done: true });
+
+    let exchanges = model.exchanges();
+    assert_eq!(exchanges.len(), 4);
+    assert_eq!(
+        exchanges[0].1,
+        Ok(json!({"paths": ["prompts/extract.md", "references/depth.md"]}).to_string())
+    );
+    assert_eq!(
+        exchanges[1].1,
+        Ok(json!({"path": "references/depth.md", "body": "DEPTH"}).to_string())
+    );
+    assert!(
+        exchanges[2].1.as_ref().is_err_and(|err| err.contains("references/missing.md")),
+        "an unembedded path is a repairable error: {:?}",
+        exchanges[2].1
+    );
+    assert!(
+        exchanges[3].1.as_ref().is_err_and(|err| err.contains("unknown tool")),
+        "an undeclared tool is a repairable error: {:?}",
+        exchanges[3].1
+    );
 }
 
 #[tokio::test]
@@ -88,7 +158,7 @@ async fn error_mapping() {
             usage: None,
         }),
     ]);
-    let context = ctx(None, Path::new("."));
+    let context = ctx(&[], Path::new("."));
 
     let invalid: Result<Answer, Error> =
         judgment(&model, &context, String::new(), "a".to_string(), "probe", "{}").await;
@@ -126,7 +196,7 @@ mod repaired {
 
         let answer = repaired(
             &model,
-            &ctx(None, Path::new(".")),
+            &ctx(&[], Path::new(".")),
             "SYSTEM".to_string(),
             "USER".to_string(),
             "probe",
@@ -153,7 +223,7 @@ mod repaired {
 
         let result: Result<Answer, Error> = repaired(
             &model,
-            &ctx(None, Path::new(".")),
+            &ctx(&[], Path::new(".")),
             String::new(),
             "USER".to_string(),
             "probe",
@@ -187,7 +257,7 @@ mod repaired {
 
         let result: Result<Answer, Error> = repaired(
             &model,
-            &ctx(None, Path::new(".")),
+            &ctx(&[], Path::new(".")),
             String::new(),
             "USER".to_string(),
             "probe",
@@ -198,77 +268,36 @@ mod repaired {
         assert!(matches!(result, Err(Error::InvalidRequest(_))));
         assert_eq!(model.requests().len(), 1, "a model failure is never replayed");
     }
-}
 
-// Routing preserves the version pin; grant names strip axis and pin.
-#[test]
-fn mcp_url_mirrors_routed_id() {
-    let addr = Some("127.0.0.1:8080");
-    assert_eq!(
-        mcp_url_for(addr, "target:omnia").as_deref(),
-        Some("http://127.0.0.1:8080/mcp/target/omnia")
-    );
-    assert_eq!(
-        mcp_url_for(addr, "source:typescript").as_deref(),
-        Some("http://127.0.0.1:8080/mcp/source/typescript")
-    );
-    assert_eq!(
-        mcp_url_for(addr, "target:omnia@1.2.3").as_deref(),
-        Some("http://127.0.0.1:8080/mcp/target/omnia@1.2.3")
-    );
-}
+    // Every repair turn re-declares the reference tools, so the model
+    // can keep pulling while it corrects the answer.
+    #[tokio::test]
+    async fn repair_keeps_tools() {
+        let model = Scripted::answering([r#"{"done":false}"#, r#"{"done":true}"#]);
 
-// Any bind form supplies the port, but the connect host is IPv4 loopback.
-// Invalid addresses yield no URL rather than guessing a port.
-#[test]
-fn mcp_url_port_from_trigger() {
-    for (addr, expected) in [
-        (Some("127.0.0.1:49213"), Some("http://127.0.0.1:49213/mcp/target/omnia")),
-        (Some("0.0.0.0:8080"), Some("http://127.0.0.1:8080/mcp/target/omnia")),
-        (Some("[::1]:9000"), Some("http://127.0.0.1:9000/mcp/target/omnia")),
-        (Some("garbage"), None),
-        (Some("host:notaport"), None),
-        (None, None),
-    ] {
-        assert_eq!(mcp_url_for(addr, "target:omnia").as_deref(), expected, "addr: {addr:?}");
+        let _ = repaired(
+            &model,
+            &ctx(DOCS, Path::new(".")),
+            String::new(),
+            "USER".to_string(),
+            "probe",
+            "{}",
+            tail,
+        )
+        .await
+        .expect("repaired answer passes the tail");
+
+        for request in model.requests() {
+            assert_eq!(function_tools(&request).len(), 2, "both turns declare the tools");
+        }
     }
-}
-
-// An injected base (D6) bypasses `HTTP_ADDR`; empty means no grant.
-#[test]
-fn mcp_url_base_preferred() {
-    use emery_adapter::types::mcp_url_with_base;
-    assert_eq!(
-        mcp_url_with_base("http://127.0.0.1:8080", "target:omnia").as_deref(),
-        Some("http://127.0.0.1:8080/mcp/target/omnia")
-    );
-    assert_eq!(
-        mcp_url_with_base("http://127.0.0.1:8080/", "target:omnia@1.2.3").as_deref(),
-        Some("http://127.0.0.1:8080/mcp/target/omnia@1.2.3")
-    );
-    assert_eq!(mcp_url_with_base("", "target:omnia"), None);
-}
-
-#[test]
-fn pinned_grant_strips() {
-    let url = mcp_url_for(Some("127.0.0.1:8080"), "target:contracts@1.0.0");
-    let context = Context {
-        adapter_id: "target:contracts@1.0.0",
-        project_root: Path::new("."),
-        mcp_url: url,
-        lend: Some(".".to_string()),
-    };
-    let grants = context.grants();
-    assert_eq!(grants.len(), 1);
-    assert_eq!(grants[0].name, "contracts-references");
-    assert_eq!(grants[0].url, "http://127.0.0.1:8080/mcp/target/contracts@1.0.0");
 }
 
 // A prepared workspace replaces the default `"."` lend.
 #[tokio::test]
 async fn lending_overrides_lend() {
     let model = Scripted::answering([r#"{"done":true}"#]);
-    let context = ctx(None, Path::new(".")).lending("/emery-workspaces/ws-1");
+    let context = ctx(&[], Path::new(".")).lending("/emery-workspaces/ws-1");
 
     let _: Answer = judgment(&model, &context, String::new(), "USER".to_string(), "probe", "{}")
         .await
@@ -280,7 +309,7 @@ async fn lending_overrides_lend() {
 #[tokio::test]
 async fn value_omits_workspace() {
     let model = Scripted::answering([r#"{"done":true}"#]);
-    let context = ctx(None, Path::new(".")).without_lend();
+    let context = ctx(&[], Path::new(".")).without_lend();
 
     let _: Answer = judgment(&model, &context, String::new(), "USER".to_string(), "probe", "{}")
         .await

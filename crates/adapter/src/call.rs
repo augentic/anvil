@@ -1,9 +1,10 @@
 //! Schema-gated judgment calls, with optional bounded repair.
 
 use omnia_guest::Model;
-use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat, Tool};
+use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat};
 use serde::de::DeserializeOwned;
 
+use crate::references;
 use crate::types::{Context, Error};
 
 /// Maximum repairs after the initial answer.
@@ -57,6 +58,7 @@ where
 async fn complete<P: Model>(
     model: &P, ctx: &Context<'_>, system: &str, user: String, schema_name: &str, schema: &str,
 ) -> Result<Reply, Error> {
+    let docs = ctx.docs;
     let builder = Request::builder()
         .system(system)
         .messages(vec![Message {
@@ -64,12 +66,18 @@ async fn complete<P: Model>(
             content: user,
         }])
         .format(Format::Schema(SchemaFormat::builder().name(schema_name).schema(schema).build()))
-        .tools(ctx.grants().into_iter().map(Tool::Mcp).collect());
+        .tools(if docs.is_empty() { Vec::new() } else { references::tools() });
     let request = match ctx.lend.clone() {
         Some(lend) => builder.workspace(lend).build(),
         None => builder.build(),
     };
-    model.complete(request).await.map_err(Error::from)
+    if docs.is_empty() {
+        return model.complete(request).await.map_err(Error::from);
+    }
+    model
+        .complete_with(request, |call| async move { references::answer(docs, &call) })
+        .await
+        .map_err(Error::from)
 }
 
 fn repair_prompt(user: &str, failed_answer: &str, err: &Error) -> String {

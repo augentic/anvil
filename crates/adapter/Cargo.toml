@@ -21,8 +21,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-omnia-wasi-http.workspace = true
-wasip3.workspace = true
 wit-bindgen.workspace = true
 
 [dev-dependencies]

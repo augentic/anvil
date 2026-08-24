@@ -8,7 +8,6 @@ cfg_if::cfg_if! {
 
         use omnia_filesystem::Client as Filesystem;
         use omnia_wasi_blobstore::WasiBlobstore;
-        use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
@@ -19,7 +18,6 @@ cfg_if::cfg_if! {
                 {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                    routes: {http: ["/mcp/emery/spec"]},
                 },
                 {
                     id: "source:source",
@@ -27,7 +25,6 @@ cfg_if::cfg_if! {
                         env!("CARGO_MANIFEST_DIR"),
                         "/target/wasm32-wasip2/release/examples/source.wasm",
                     ),
-                    routes: {http: ["/mcp/source/source"]},
                 },
             ],
             mounts: [
@@ -35,7 +32,6 @@ cfg_if::cfg_if! {
             ],
             dispatch: ["emery:adapter/source@0.1.0"],
             hosts: {
-                WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
                 WasiKeyValue: Filesystem,

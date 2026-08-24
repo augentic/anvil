@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::future::{Future, ready};
 use std::sync::{Arc, Mutex};
 
-pub use model::{Scripted, mcp_grants};
+pub use model::{Exchange, Scripted, function_tools};
 use omnia_guest::{BlobStore, CasError, ContainerMetadata, ObjectMetadata, StateStore};
 
 type State = BTreeMap<String, Vec<u8>>;
