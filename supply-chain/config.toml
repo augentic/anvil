@@ -70,10 +70,6 @@ criteria = "safe-to-deploy"
 version = "0.1.6"
 criteria = "safe-to-deploy"
 
-[[exemptions.annotate-snippets]]
-version = "0.12.16"
-criteria = "safe-to-deploy"
-
 [[exemptions.autocfg]]
 version = "1.5.1"
 criteria = "safe-to-deploy"
@@ -88,14 +84,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.axum-macros]]
 version = "0.5.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.base16ct]]
-version = "1.0.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.base64]]
-version = "0.23.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.base64ct]]
@@ -258,10 +246,6 @@ criteria = "safe-to-deploy"
 version = "0.2.9"
 criteria = "safe-to-deploy"
 
-[[exemptions.encoding_rs_io]]
-version = "0.1.8"
-criteria = "safe-to-deploy"
-
 [[exemptions.fancy-regex]]
 version = "0.19.0"
 criteria = "safe-to-deploy"
@@ -348,10 +332,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.gimli]]
 version = "0.33.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.granit-parser]]
-version = "1.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.h2]]
@@ -654,10 +634,6 @@ criteria = "safe-to-deploy"
 version = "0.14.4"
 criteria = "safe-to-deploy"
 
-[[exemptions.quick-error]]
-version = "1.2.3"
-criteria = "safe-to-deploy"
-
 [[exemptions.quinn]]
 version = "0.11.11"
 criteria = "safe-to-deploy"
@@ -758,10 +734,6 @@ criteria = "safe-to-deploy"
 version = "0.103.15"
 criteria = "safe-to-deploy"
 
-[[exemptions.rusty-fork]]
-version = "0.3.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.same-file]]
 version = "1.0.6"
 criteria = "safe-to-deploy"
@@ -792,10 +764,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.serde]]
 version = "1.0.229"
-criteria = "safe-to-deploy"
-
-[[exemptions.serde-saphyr]]
-version = "1.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.serde_core]]
@@ -1012,10 +980,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.vsimd]]
 version = "0.8.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.wait-timeout]]
-version = "0.2.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.walkdir]]
