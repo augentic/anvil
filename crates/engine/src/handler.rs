@@ -103,8 +103,8 @@ pub trait Render: Serialize {
 ///
 /// # Errors
 ///
-/// Returns [`Error::Argument`] for an absolute path or a relative path
-/// that escapes above the project root.
+/// Returns `argument` for an absolute path or a relative path that
+/// escapes above the project root.
 pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Error> {
     if path.is_absolute() {
         return Err(outside_project(path, argument));
@@ -124,11 +124,12 @@ pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Erro
 }
 
 fn outside_project(path: &Path, flag: &'static str) -> Error {
-    classify(&Legacy::Argument {
-        flag,
-        detail: format!(
-            "path `{}` must be relative to the project preopen `.` and must not escape it",
+    bad_request(
+        "argument",
+        format!(
+            "invalid argument {flag}: path `{}` must be relative to the project preopen `.` and \
+             must not escape it",
             path.display()
         ),
-    })
+    )
 }
