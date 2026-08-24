@@ -3,8 +3,8 @@
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::registry::Doc;
 use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{Model, SourceAdapter, references, repaired};
-use omnia_testkit::model::Harness;
+use emery_adapter::{Model, SourceAdapter, repaired};
+use emery_testkit::Scripted;
 
 const DOCS: &[Doc] = &[Doc {
     path: "prompts/extract.md",
@@ -43,13 +43,13 @@ impl SourceAdapter for Probe {
 
 #[tokio::test]
 async fn source_dispatch() {
-    let model = Harness::answering([
+    let model = Scripted::answering([
         r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim"}]}"#,
     ]);
     let ctx = Context {
         adapter_id: "source:probe",
         project_root: std::path::Path::new("."),
-        mcp_url: None,
+        docs: DOCS,
         lend: Some(".".to_string()),
     };
 
@@ -70,13 +70,4 @@ fn fn_pointer_coercion() {
     let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
     assert_eq!(metadata(), SourceMetadata { emery_floor: None });
     assert_eq!(docs().len(), 1);
-}
-
-#[test]
-fn server_name() {
-    let first = references::server_name("captures");
-    assert_eq!(first, "captures-references");
-    // Interning reuses the allocation.
-    assert!(std::ptr::eq(first, references::server_name("captures")));
-    assert_eq!(references::server_name("some-adapter"), "some-adapter-references");
 }

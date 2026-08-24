@@ -27,14 +27,14 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 
 ### Rust (the workspace at the repo root)
 
-- Format with `cargo fmt`
-- Lint with `cargo clippy -- -D warnings`
-- Run the full suite with `cargo make ci`
+- Format with `make fmt`
+- Lint with `make lint`
+- Run the full suite with `make ci`
 
 ### Docs and skill wrappers
 
 - Keep `/emery:*` skill bodies ultrathin invoke-and-relay — body style is guidance in [`docs/standards/cli-contract.md`](docs/standards/cli-contract.md)
-- `cargo make links` must pass before submitting a pull request that touches docs. See [Quality gates](docs/contributing/quality-gates.md#consistency-links).
+- `make links` must pass before submitting a pull request that touches docs. See [Quality gates](docs/contributing/quality-gates.md#consistency-links).
 - Use kebab-case for file names, change names, and adapter identifiers
 - Generation behavior belongs in guest orchestrations or adapter prompts, not in skill bodies
 
@@ -95,12 +95,12 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 1. Create a feature branch off of `main`.
 2. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against `main`.
-3. Run checks: `cargo make links` for the Developer Guide; `make ci` (`cargo make ci`) for the full gate.
+3. Run checks: `make links` for the Developer Guide; `make ci` for the full gate.
 4. Accept the Developer's Certificate of Origin on all commits (see above).
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that cover your change, written against the public boundaries: root product scenarios under `tests/` (the default — argv or shelf request in, envelope/exit/storage out), with crate integration tests under `crates/*/tests/` only for independent library contracts. The placement rules live in [testing standards](docs/standards/testing.md) — read the triage buckets there before adding a test. Do not add a new `src` `#[cfg(test)]` module without a one-line Keep or Collapse reason from that document; the default home for every test is the root scenario layer. For skill-wrapper or docs changes, run `cargo make links` (and, for wrapper changes, manually verify the skill in a target project).
+Normally, all pull requests must include tests that cover your change, written against the public boundaries: root product scenarios under `tests/` (the default — argv in, envelope/exit/storage out), with crate integration tests under `crates/*/tests/` only for independent library contracts. The placement rules live in [testing standards](docs/standards/testing.md) — read the triage buckets there before adding a test. Do not add a new `src` `#[cfg(test)]` module without a one-line Keep or Collapse reason from that document; the default home for every test is the root scenario layer. For skill-wrapper or docs changes, run `make links` (and, for wrapper changes, manually verify the skill in a target project).
 
 ## Conduct
 

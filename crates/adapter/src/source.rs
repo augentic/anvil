@@ -330,16 +330,17 @@ pub async fn dispatch_extract<A: crate::SourceAdapter>(
     id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {
     let input = crate::types::SourceInput::from(input);
-    let ctx = source_ctx(&id, &input);
+    let ctx = source_ctx::<A>(&id, &input);
     A::extract(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
 }
 
-fn source_ctx<'a>(id: &'a str, input: &'a crate::types::SourceInput) -> crate::types::Context<'a> {
+fn source_ctx<'a, A: crate::SourceAdapter>(
+    id: &'a str, input: &'a crate::types::SourceInput,
+) -> crate::types::Context<'a> {
+    let ctx = crate::types::Context::guest(id).with_docs(A::docs());
     match &input.content {
-        crate::types::SourceContent::Workspace(view) => {
-            crate::types::Context::guest(id).lending(view.root.clone())
-        }
-        crate::types::SourceContent::Value(_) => crate::types::Context::guest(id).without_lend(),
+        crate::types::SourceContent::Workspace(view) => ctx.lending(view.root.clone()),
+        crate::types::SourceContent::Value(_) => ctx.without_lend(),
     }
 }
 
@@ -366,29 +367,6 @@ macro_rules! source {
                 input: $crate::source::Input,
             ) -> Result<$crate::source::Evidence, $crate::source::Error> {
                 $crate::source::dispatch_extract::<$adapter>(id, input).await
-            }
-        }
-
-        struct HttpGuest;
-        $crate::wasip3::http::service::export!(HttpGuest);
-
-        impl $crate::wasip3::exports::http::handler::Guest for HttpGuest {
-            async fn handle(
-                request: $crate::wasip3::http::types::Request,
-            ) -> Result<
-                $crate::wasip3::http::types::Response,
-                $crate::wasip3::http::types::ErrorCode,
-            > {
-                let (name, version) = <$adapter as $crate::SourceAdapter>::IDENTITY
-                    .split_once('@')
-                    .expect("IDENTITY is name@version");
-                $crate::references::serve(
-                    name,
-                    version,
-                    <$adapter as $crate::SourceAdapter>::docs(),
-                    request,
-                )
-                .await
             }
         }
     };

@@ -1,137 +1,72 @@
-//! Shared MCP server for adapter reference documents.
+//! Reference tools answered by the judgment's tool closure.
+//!
+//! Judgments over a non-empty [`Doc`] corpus declare these function tools
+//! and answer the model's calls in-process, from the caller's own task —
+//! no HTTP shelf, no MCP callback.
 
-use omnia_guest::mcp::{
-    CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
-};
+use omnia_guest::model::{Function, Tool, ToolCall};
 use serde_json::{Value, json};
 
 use crate::registry::{self, Doc};
 
-/// Returns an interned `<name>-references`.
-///
-/// # Panics
-///
-/// Panics if the intern table lock is poisoned.
+/// The reference tools declared for a docs-carrying judgment.
 #[must_use]
-pub fn server_name(name: &'static str) -> &'static str {
-    static NAMES: std::sync::Mutex<std::collections::BTreeMap<&'static str, &'static str>> =
-        std::sync::Mutex::new(std::collections::BTreeMap::new());
-    NAMES
-        .lock()
-        .expect("server-name intern table is never poisoned")
-        .entry(name)
-        .or_insert_with(|| Box::leak(format!("{name}-references").into_boxed_str()))
+pub fn tools() -> Vec<Tool> {
+    vec![
+        Tool::Function(
+            Function::builder()
+                .name("list_docs")
+                .description("List every reference document path this adapter embeds.")
+                .parameters(json!({ "type": "object", "properties": {} }).to_string())
+                .build(),
+        ),
+        Tool::Function(
+            Function::builder()
+                .name("read_doc")
+                .description("Read one embedded reference document in full by its path.")
+                .parameters(
+                    json!({
+                        "type": "object",
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                                "description": "Adapter-relative document path, \
+                                                e.g. `prompts/build.md`."
+                            }
+                        },
+                        "required": ["path"]
+                    })
+                    .to_string(),
+                )
+                .build(),
+        ),
+    ]
 }
 
-/// MCP server backed by embedded prose.
-#[derive(Clone, Copy, Debug)]
-pub struct References {
-    /// MCP server name.
-    pub server_name: &'static str,
-    /// Adapter version.
-    pub version: &'static str,
-    /// Embedded docs, sorted by path.
-    pub docs: &'static [Doc],
-}
-
-#[cfg(target_arch = "wasm32")]
-impl References {
-    /// Serves one references request.
-    ///
-    /// # Errors
-    ///
-    /// Returns errors from the HTTP router.
-    pub async fn serve(
-        self, request: wasip3::http::types::Request,
-    ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-        omnia_wasi_http::serve(omnia_guest::mcp::router(self), request).await
-    }
-}
-
-/// Serves an adapter references request.
+/// Answers one reference tool call over the embedded `docs`.
 ///
 /// # Errors
 ///
-/// Returns errors from [`References::serve`].
-#[cfg(target_arch = "wasm32")]
-pub async fn serve(
-    name: &'static str, version: &'static str, docs: &'static [Doc],
-    request: wasip3::http::types::Request,
-) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-    References {
-        server_name: server_name(name),
-        version,
-        docs,
-    }
-    .serve(request)
-    .await
-}
-
-impl McpServer for References {
-    fn info(&self) -> Implementation {
-        Implementation::new(self.server_name, self.version)
-    }
-
-    fn tools(&self) -> Vec<Tool> {
-        vec![
-            Tool::new(
-                "list_docs",
-                "List every reference document path this adapter embeds.",
-                json!({ "type": "object", "properties": {} }),
-            ),
-            Tool::new(
-                "read_doc",
-                "Read one embedded reference document in full by its path.",
-                json!({
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "string",
-                            "description": "Adapter-relative document path, e.g. `prompts/build.md`."
-                        }
-                    },
-                    "required": ["path"]
-                }),
-            ),
-        ]
-    }
-
-    fn call_tool(&self, name: &str, arguments: &Value) -> Result<CallToolResult, McpError> {
-        match name {
-            "list_docs" => {
-                let paths: Vec<&str> = self.docs.iter().map(|doc| doc.path).collect();
-                Ok(CallToolResult::text(json!(paths).to_string()))
-            }
-            "read_doc" => {
-                let path = arguments.get("path").and_then(Value::as_str).unwrap_or_default();
-                registry::resolve(self.docs, path).map_or_else(
-                    || Err(McpError::resource_not_found(path)),
-                    |body| Ok(CallToolResult::text(body)),
-                )
-            }
-            other => Err(McpError::unknown_tool(other)),
+/// Returns a repairable message for an unknown tool, malformed
+/// arguments, or an unembedded path.
+pub fn answer(docs: &[Doc], call: &ToolCall) -> Result<String, String> {
+    match call.name.as_str() {
+        "list_docs" => {
+            let paths: Vec<&str> = docs.iter().map(|doc| doc.path).collect();
+            Ok(json!({ "paths": paths }).to_string())
         }
-    }
-
-    fn resources(&self) -> Vec<Resource> {
-        self.docs
-            .iter()
-            .map(|doc| {
-                Resource::new(
-                    format!("doc://{}", doc.path),
-                    doc.path,
-                    "Embedded adapter reference document.",
-                    "text/markdown",
-                )
-            })
-            .collect()
-    }
-
-    fn read_resource(&self, uri: &str) -> Result<ResourceContents, McpError> {
-        let path = uri.strip_prefix("doc://").unwrap_or(uri);
-        registry::resolve(self.docs, path).map_or_else(
-            || Err(McpError::resource_not_found(uri)),
-            |body| Ok(ResourceContents::text(uri, "text/markdown", body)),
-        )
+        "read_doc" => {
+            let arguments: Value = serde_json::from_str(&call.arguments)
+                .map_err(|err| format!("read_doc arguments are not a JSON object: {err}"))?;
+            let path = arguments
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "read_doc requires a string `path` argument".to_string())?;
+            registry::resolve(docs, path).map_or_else(
+                || Err(format!("document `{path}` is not embedded in this adapter")),
+                |body| Ok(json!({ "path": path, "body": body }).to_string()),
+            )
+        }
+        other => Err(format!("unknown tool `{other}`")),
     }
 }

@@ -1,6 +1,6 @@
 //! Source extraction and fail-closed claim validation.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use emery_adapter::answers::claim_id_findings;
 use emery_adapter::types::{
@@ -8,10 +8,10 @@ use emery_adapter::types::{
 };
 use emery_adapter::{DispatchError, Source};
 use emery_error::Error;
-use omnia_guest::{BlobStore, StateStore};
+use omnia_guest::BlobStore;
 
-use crate::handler::{ExecutionPaths, preopen_path};
-use crate::resolve::{AdapterSelector, Axis, RoutedId, ensure, metadata};
+use crate::handler::preopen_path;
+use crate::resolve::{self, AdapterSelector};
 use crate::sources::{BindingContent, SourceBinding};
 
 // On wasm32, the routed id selects the exporting guest through Omnia.
@@ -43,29 +43,22 @@ pub struct SourceSet {
     pub claims: Vec<Claim>,
 }
 
-/// Ensures, extracts, and validates every source binding.
+/// Resolves, extracts, and validates every source binding.
 ///
-/// Ensure runs here — a local component mirrors into the cache on the
-/// first `specify` that names it.
+/// Resolution mirrors a local component into the cache on the first
+/// `specify` that names it.
 ///
 /// # Errors
 ///
-/// Propagates ensure, resolution, extract, and [`validate_set`] failures.
-pub async fn extract_all<P: Source + StateStore + BlobStore>(
-    provider: &P, bindings: &[SourceBinding], paths: &ExecutionPaths,
+/// Propagates resolution, extract, and [`validate_set`] failures.
+pub async fn extract_all<P: Source + BlobStore>(
+    provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
     for binding in bindings {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let resolved =
-            ensure::source(metadata::runner(provider), &selector, provider, paths).await?;
-        let id = RoutedId::new(
-            Axis::Source,
-            resolved.identity.name.clone(),
-            resolved.identity.version.clone(),
-        )
-        .to_string();
-        let input = input_for(binding, paths)?;
+        let id = resolve::source(provider, &selector).await?;
+        let input = input_for(binding)?;
         let evidence = dispatch(provider, &id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
@@ -81,18 +74,18 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
 
 // `.` spans the project preopen, including `.emery/`, until guest
 // capability profiles can exclude the output home.
-fn input_for(binding: &SourceBinding, paths: &ExecutionPaths) -> Result<SourceInput, Error> {
+fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
             let relative = preopen_path(Path::new(relative), "source path")?;
-            let joined = if relative == Path::new(".") {
-                paths.project_root().to_path_buf()
+            let root = if relative == Path::new(".") {
+                PathBuf::from(".")
             } else {
-                paths.project_root().join(&relative)
+                Path::new(".").join(&relative)
             };
             SourceContent::Workspace(SourceWorkspace {
                 id: binding.key.clone(),
-                root: joined.display().to_string(),
+                root: root.display().to_string(),
             })
         }
         BindingContent::Value(value) => SourceContent::Value(value.clone()),

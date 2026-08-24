@@ -186,7 +186,7 @@ async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<Str
             content: user.to_string(),
         }])
         .build();
-    let reply = model.create(request).await.map_err(|err| Error::Diag {
+    let reply = model.complete(request).await.map_err(|err| Error::Diag {
         code: "synthesis-model-failed",
         detail: err.to_string(),
     })?;

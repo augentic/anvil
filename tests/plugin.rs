@@ -1,8 +1,8 @@
 //! Plugin-rule mentions against the shipped CLI surface.
 //!
 //! The always-applied Cursor rule may only name live verbs, flags, and
-//! shipped skills — a cross-cutting product contract, not a transport
-//! library one.
+//! shipped skills — a cross-cutting product contract, not an
+//! engine-internal one.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -14,11 +14,9 @@ use std::sync::Arc;
 use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
 use emery_testkit::Memory;
-use emery_transport::command::Globals;
-use omnia_guest::api::command::Router;
 use omnia_guest::api::invoke::Invoker;
 
-type Grammar = Router<Inert, Globals>;
+type Grammar = emery_engine::cli::Cli<Inert>;
 
 // Capabilities are never dispatched; the suite only inspects the grammar.
 #[derive(Clone, Debug, Default)]
@@ -29,9 +27,19 @@ struct Inert {
 emery_testkit::scripted_storage!(Inert, storage);
 
 impl omnia_guest::Model for Inert {
-    fn create(
+    fn complete(
         &self, _request: omnia_guest::model::Request,
     ) -> impl Future<Output = Result<omnia_guest::model::Reply, omnia_guest::model::Error>> {
+        std::future::ready(never_dispatched())
+    }
+
+    fn complete_with<H, F>(
+        &self, _request: omnia_guest::model::Request, _handler: H,
+    ) -> impl Future<Output = Result<omnia_guest::model::Reply, omnia_guest::model::Error>> + Send
+    where
+        H: FnMut(omnia_guest::model::ToolCall) -> F + Send,
+        F: Future<Output = Result<String, String>> + Send,
+    {
         std::future::ready(never_dispatched())
     }
 }
@@ -57,7 +65,7 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
 }
 
 fn grammar() -> Grammar {
-    emery_transport::command::router(Invoker::new("emery", Inert::default())).expect("router")
+    emery_engine::cli::router(Invoker::new("emery", Inert::default())).expect("router")
 }
 
 // Global flags do not appear in route-specific help.

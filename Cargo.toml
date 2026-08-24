@@ -25,19 +25,15 @@ omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-filesystem.workspace = true
 omnia-wasi-blobstore.workspace = true
-omnia-wasi-http.workspace = true
 omnia-wasi-keyvalue.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-anyhow.workspace = true
 cfg-if.workspace = true
 emery-adapter.workspace = true
-emery-error.workspace = true
-emery-transport.workspace = true
+emery-engine.workspace = true
 omnia-guest.workspace = true
-omnia-wasi-http.workspace = true
 wasip3.workspace = true
 
 [build-dependencies]
@@ -47,15 +43,13 @@ omnia.workspace = true
 anyhow.workspace = true
 emery-adapter.workspace = true
 emery-testkit.workspace = true
-omnia-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-emery-transport.workspace = true
+emery-engine.workspace = true
 omnia-guest.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
-tower.workspace = true
 
 [[example]]
 name = "source"
@@ -181,8 +175,7 @@ tempfile = "3.27.0"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
 toml = "1.1.4"
-tower = "0.5.3"
-wasip3 = { version = "0.7.0", features = ["http-compat"] }
+wasip3 = "0.7.0"
 wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow", "component-model-bytes"] }
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
@@ -191,15 +184,12 @@ emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
 emery-prose = { path = "crates/prose" }
 emery-testkit = { path = "crates/testkit" }
-emery-transport = { path = "crates/transport" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
-omnia-testkit = "0.35.0"
 omnia-wasi-blobstore = "0.35.0"
-omnia-wasi-http = "0.35.0"
 omnia-wasi-keyvalue = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
@@ -212,9 +202,7 @@ omnia = { git = "https://github.com/augentic/omnia" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia" }
-omnia-testkit = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-keyvalue = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
@@ -222,8 +210,6 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
-# omnia-testkit = { path = "../omnia/crates/testkit" }
-# omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 

@@ -1,14 +1,12 @@
-//! Scripted in-memory `StateStore` / `BlobStore` doubles for native tests.
+//! Scripted `Model` / `StateStore` / `BlobStore` doubles for native tests.
 
-#![allow(
-    clippy::missing_panics_doc,
-    reason = "Mutex poison is a harness bug; every lock site is expect"
-)]
+mod model;
 
 use std::collections::BTreeMap;
 use std::future::{Future, ready};
 use std::sync::{Arc, Mutex};
 
+pub use model::{Exchange, Scripted, function_tools};
 use omnia_guest::{BlobStore, CasError, ContainerMetadata, ObjectMetadata, StateStore};
 
 type State = BTreeMap<String, Vec<u8>>;
@@ -24,16 +22,28 @@ pub struct Memory {
 
 impl Memory {
     /// Returns the state value at `key`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn state(&self, key: &str) -> Option<Vec<u8>> {
         self.state.lock().expect("state lock").get(key).cloned()
     }
 
     /// Returns stored object bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn object(&self, container: &str, name: &str) -> Option<Vec<u8>> {
         self.blobs.lock().expect("blob lock").get(container)?.get(name).cloned()
     }
 
     /// Returns sorted object names in `container`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn objects(&self, container: &str) -> Vec<String> {
         self.blobs
             .lock()
@@ -44,11 +54,19 @@ impl Memory {
     }
 
     /// Seeds a state entry.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn insert_state(&self, key: &str, bytes: &[u8]) {
         drop(self.state.lock().expect("state lock").insert(key.to_string(), bytes.to_vec()));
     }
 
     /// Seeds an object.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn insert_object(&self, container: &str, name: &str, bytes: &[u8]) {
         drop(
             self.blobs
@@ -61,17 +79,29 @@ impl Memory {
     }
 
     /// Makes the next blob existence probe fail with `detail`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn fail_blob_has(&self, detail: &str) {
         *self.blob_has_fault.lock().expect("blob has fault lock") = Some(detail.to_string());
     }
 
     /// Returns whether storage is empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn is_empty(&self) -> bool {
         self.state.lock().expect("state lock").is_empty()
             && self.blobs.lock().expect("blob lock").values().all(BTreeMap::is_empty)
     }
 
     /// Returns a snapshot for byte-stability comparisons.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     pub fn snapshot(&self) -> (State, Blobs) {
         (
             self.state.lock().expect("state lock").clone(),
@@ -115,6 +145,9 @@ impl StateStore for Namespaced {
         ready(Ok(self.inner.state(&self.scoped(key))))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned, or if `ttl_secs` is `Some` (the engine never sets a TTL).
     fn set(
         &self, key: &str, value: &[u8], ttl_secs: Option<u64>,
     ) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
@@ -124,11 +157,17 @@ impl StateStore for Namespaced {
         ready(Ok(previous))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn delete(&self, key: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
         drop(self.inner.state.lock().expect("state lock").remove(&self.scoped(key)));
         ready(Ok(()))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn cas(
         &self, key: &str, expected: Option<&[u8]>, value: &[u8],
     ) -> impl Future<Output = Result<(), CasError>> + Send {
@@ -166,6 +205,9 @@ impl BlobStore for Namespaced {
         ready(Ok(()))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn delete(
         &self, container: &str, name: &str,
     ) -> impl Future<Output = anyhow::Result<()>> + Send {
@@ -248,6 +290,9 @@ impl StateStore for Memory {
         ready(Ok(self.state(key)))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned, or if `ttl_secs` is `Some` (the engine never sets a TTL).
     fn set(
         &self, key: &str, value: &[u8], ttl_secs: Option<u64>,
     ) -> impl Future<Output = anyhow::Result<Option<Vec<u8>>>> + Send {
@@ -257,11 +302,17 @@ impl StateStore for Memory {
         ready(Ok(previous))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn delete(&self, key: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
         drop(self.state.lock().expect("state lock").remove(key));
         ready(Ok(()))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn cas(
         &self, key: &str, expected: Option<&[u8]>, value: &[u8],
     ) -> impl Future<Output = Result<(), CasError>> + Send {
@@ -298,6 +349,9 @@ impl BlobStore for Memory {
         ready(Ok(()))
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn delete(
         &self, container: &str, name: &str,
     ) -> impl Future<Output = anyhow::Result<()>> + Send {
