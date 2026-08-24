@@ -30,7 +30,7 @@ Artifact authority is unchanged in spirit: when authoritative inputs are incompl
 Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_error::`, `emery_engine::`, …). The root package and `emery-testkit` stay `publish = false`.
 
 ```text
-error        # leaf — thiserror + serde-saphyr only
+error        # leaf — thiserror only
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import wrappers; bare natively so tests script Source), WIT types, embedded prose registry
 engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP surface (read-only MCP spec shelf + C3 refusal)

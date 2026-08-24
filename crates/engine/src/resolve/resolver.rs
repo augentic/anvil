@@ -101,7 +101,7 @@ pub fn source(
     let floor = parse_floor(emery_floor.as_deref(), name, &origin)?;
     check_requires_emery(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
     Ok(ResolvedSource {
-        manifest: SourceAdapter {
+        identity: SourceAdapter {
             name: name.to_string(),
             version,
             requires_emery: floor,

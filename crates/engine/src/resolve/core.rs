@@ -28,15 +28,6 @@ pub enum Axis {
 }
 
 impl Axis {
-    /// Returns the deployment and prose directory segment.
-    #[must_use]
-    pub const fn dir_segment(self) -> &'static str {
-        match self {
-            Self::Source => "sources",
-            Self::Target => "targets",
-        }
-    }
-
     /// Returns the routed-id prefix.
     #[must_use]
     pub const fn prefix(self) -> &'static str {
@@ -71,7 +62,7 @@ pub struct SourceAdapter {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSource {
     /// Resolved identity and metadata.
-    pub manifest: SourceAdapter,
+    pub identity: SourceAdapter,
     /// Deployment-neutral implementation origin.
     pub origin: Origin,
 }

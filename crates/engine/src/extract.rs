@@ -61,8 +61,8 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
             ensure::source(metadata::runner(provider), &selector, provider, paths).await?;
         let id = RoutedId::new(
             Axis::Source,
-            resolved.manifest.name.clone(),
-            resolved.manifest.version.clone(),
+            resolved.identity.name.clone(),
+            resolved.identity.version.clone(),
         )
         .to_string();
         let input = input_for(binding, paths)?;

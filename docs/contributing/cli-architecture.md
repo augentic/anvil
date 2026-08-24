@@ -54,7 +54,7 @@ Guest commands inherit the same contract: `omnia_guest::api::command` projects p
 
 ## Error handling
 
-Most commands use `emery_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, permission failures, runtime failures, and more.
+Most commands use `emery_error::Error`, a unified error enum with structured variants covering I/O, argument validation, adapter compatibility, and filesystem failures.
 
 The pattern for a command operation:
 
