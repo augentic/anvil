@@ -191,21 +191,13 @@ impl From<&Outcome> for HandleBody {
 
 ## Errors
 
-`emery_error::Error` variants are **structured**, not `Variant(String)` catch-alls. The kebab-case identifier in `#[error("…")]` (and in `Error::Diag.code`) is part of the public contract that skills and tests grep for; treat any rename as a breaking change.
+Engine operations return `emery_engine::handler::Error`, an alias of `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct via `bad_request` / `not_found` / `server_error` / `bad_gateway` with a kebab `code` and a description. The kebab `code` is the public wire contract that skills and tests grep for; treat any rename as a breaking change.
 
-**Diag-first error policy.** New diagnostic sites use `Error::Diag { code: "<kebab>", detail: format!(…) }`. Promote to a typed `Error::*` variant **only** when:
+**Class on a direct match.** Pick the Omnia variant that matches the failure: operator or input refusals are `BadRequest` (exit 1), missing resources are `NotFound` (exit 2), upstream or model failures are `BadGateway` (exit 4). Anything else — I/O, storage, leftover conversions — is `ServerError` (exit 3). Do not invent new kebab codes or new exit slots. See [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes).
 
-1. A test or skill destructures the variant's payload, **or**
-2. The variant routes to a non-default `Exit` slot (validation / argument / version-too-old — see [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes)), **or**
-3. Three or more call sites share the variant's exact shape.
+**Hint lookup.** Long-form recovery hints live in `cli.rs` (`hint` on `adapter-cli-too-old` / `specify-source-required` / `spec-not-generated`). Adding a new hint extends that lookup, not the error type.
 
-The kebab `code` is the wire contract; the Rust variant is for callers that pattern-match. Adding a typed variant for a one-site diagnostic doubles the `variant_str` table for no functional gain. When in doubt, stay on `Diag`.
-
-A dedicated typed variant remains correct for entries that already meet the criteria above (`Error::Argument`, `Error::Validation`, `Error::Filesystem`, …). Typed variants must carry data the *wire* exposes; payloads that only round-trip into `detail` belong on `Error::Diag`.
-
-**Hint colocation.** Long-form recovery hints live on the error, not on the renderer. `Error::hint(&self) -> Option<&'static str>` is the single hint surface; `ErrorBody::render_text` calls it. Adding a new hint means extending `Error::hint`, not the renderer.
-
-`unwrap()` and `expect()` are reserved for invariants the type system can't express (e.g. "this enum variant covers `Status::value_variants()`"). Always include a justification string in `expect`. User-facing errors must surface as `Error::*` variants, not panics.
+`unwrap()` and `expect()` are reserved for invariants the type system can't express (e.g. "this enum variant covers `Status::value_variants()`"). Always include a justification string in `expect`. User-facing errors must surface as an Omnia `Error` with a kebab `code`, not panics.
 
 ## `#[non_exhaustive]`
 

@@ -14,7 +14,7 @@ The engine is versioned by the binary — the binary *contains* its engine, so n
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). The headline shape: `error` is the leaf; `engine` owns the domain and the `specify` / `show` operations (shared plumbing in `emery_engine::handler`, resolution in `emery_engine::resolve`) plus the CLI surface (`emery_engine::cli`: the typed command route inventory, clap grammar carried on the operation inputs, projector, and exit contract); the root package's `src/main.rs` owns the native deployment policy inline and its wasm32 lib declares the bare model provider (superseding ADR-0013's WIT-backed `Provider` — paths and adapter dispatch are structural, not provider capabilities); the root binary is one `omnia::runtime!` invocation embedding the engine bytes. Architecture standards beyond the graph (the `.emery/` layout boundary, WASI carve-outs) live in [architecture.md](../standards/architecture.md).
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). The headline shape: `adapter` is the publishing leaf; `engine` aliases `omnia_guest::Error` as `emery_engine::handler::Error`, owns the domain and the `specify` / `show` operations (shared plumbing in `emery_engine::handler`, resolution in `emery_engine::resolve`) plus the CLI surface (`emery_engine::cli`: the typed command route inventory, clap grammar carried on the operation inputs, projector, and exit contract); the root package's `src/main.rs` owns the native deployment policy inline and its wasm32 lib declares the bare model provider (superseding ADR-0013's WIT-backed `Provider` — paths and adapter dispatch are structural, not provider capabilities); the root binary is one `omnia::runtime!` invocation embedding the engine bytes. Architecture standards beyond the graph (the `.emery/` layout boundary, WASI carve-outs) live in [architecture.md](../standards/architecture.md).
 
 ## Dispatch pattern
 
@@ -43,25 +43,26 @@ The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the 
 
 The exit-code contract is part of the public interface for operators and skill wrappers; `exit_code(&Error)` in `crates/engine/src/cli.rs` is the single source of truth:
 
-| Code | Constant                 | Meaning                                                                                                                        |
-| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `0`  | `EXIT_SUCCESS`           | Operation completed successfully                                                                                               |
-| `1`  | `EXIT_GENERIC_FAILURE`   | I/O error, parse error, or any unclassified failure                                                                            |
-| `2`  | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors                                              |
-| `3`  | `EXIT_VERSION_TOO_OLD`   | Binary version is below an adapter's declared `emery` compatibility floor                                                      |
+| Code | Variant          | Meaning                                                                                                                        |
+| ---- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | `EXIT_SUCCESS`   | Operation completed successfully                                                                                               |
+| `1`  | `BadRequest`     | Operator or input refusal (`argument`, `specify-source-required`, `adapter-cli-too-old`, extract/synthesis validation, …)       |
+| `2`  | `NotFound`       | Missing resource (`spec-not-generated`, `adapter-component-missing`). Clap usage and unknown-verb also exit 2 (framework).      |
+| `3`  | `ServerError`    | Unclassified default: I/O, storage, `spec-home-corrupt`, leftover conversions                                                  |
+| `4`  | `BadGateway`     | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`, `claim-extras-malformed`)                         |
 
 Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
 
 ## Error handling
 
-Most commands use `emery_error::Error`, a unified error enum with structured variants covering I/O, argument validation, adapter compatibility, and filesystem failures.
+Commands return `emery_engine::handler::Error` (`omnia_guest::Error`). Construct the Omnia class that matches: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`.
 
 The pattern for a command operation:
 
-1. Call into a library crate function that returns `Result<T, emery_error::Error>`
+1. Call into a library crate function that returns `Result<T, emery_engine::handler::Error>`
 2. Return a typed body implementing `Serialize + Render`
-3. Let the command or HTTP projector render success or apply the shared error contract
+3. Let the command projector render success or apply the shared error contract
 
 ## Public Rust API
 
-The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::home::Home` or `emery_error::Error`.
+The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::home::Home` or `emery_engine::handler::Error`.

@@ -27,12 +27,11 @@ Artifact authority is unchanged in spirit: when authoritative inputs are incompl
 
 ## The Rust workspace
 
-Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_error::`, `emery_engine::`, …). The root package and `emery-testkit` stay `publish = false`.
+Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_adapter::`, `emery_engine::`, …). The root package and `emery-testkit` stay `publish = false`.
 
 ```text
-error        # leaf — thiserror only
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import wrappers; bare natively so tests script Source), WIT types, embedded prose registry + the reference tool closure (list_docs / read_doc over the embedded docs)
-engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (resolve + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (selector parsing, local-component mirroring, the adapter floor gate) and emery_engine::handler (preopen-relative path normalization, Render, Error); plus the CLI surface (emery_engine::cli — the typed command router over Invoker: specify + show + completions, clap grammar carried on the operation inputs, output projection, the exit contract)
+engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (resolve + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (selector parsing, local-component mirroring, the adapter floor gate) and emery_engine::handler (preopen-relative path normalization, Render, Error alias of omnia_guest::Error); plus the CLI surface (emery_engine::cli — the typed command router over Invoker: specify + show + completions, clap grammar carried on the operation inputs, output projection, the exit contract)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 testkit      # unpublished — scripted capability doubles for native tests: the FIFO request-recording `Scripted` model plus the StateStore/BlobStore pair (`Memory`, `Namespaced`); not a production crate
 emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind the generation and component-cache state to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
@@ -56,16 +55,17 @@ docs/              Developer Guide (mdBook; reference + contributing + standards
 | Code | Name | When |
 | ---- | ------------------------ | ------------------------------------------------------------------ |
 | 0 | `EXIT_SUCCESS` | Command succeeded. |
-| 1 | `EXIT_GENERIC_FAILURE` | Any `Error` variant not listed below (I/O, YAML, `spec-not-generated`, …). |
-| 2 | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`. |
-| 3 | `EXIT_VERSION_TOO_OLD` | `Error::AdapterCliTooOld` — an adapter's declared `emery` floor is newer than the binary. |
+| 1 | `BadRequest` | Operator or input refusal (`argument`, `specify-source-required`, `adapter-cli-too-old`, extract/synthesis validation, …). |
+| 2 | `NotFound` | Missing resource (`spec-not-generated`, `adapter-component-missing`). Clap usage and unknown-verb also exit 2 (framework). |
+| 3 | `ServerError` | Unclassified default: I/O, storage, `spec-home-corrupt`, leftover conversions. |
+| 4 | `BadGateway` | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`, `claim-extras-malformed`). |
 
 ## Testing philosophy
 
 Emery strictly enforces a **root-led integration posture** (DWN-style):
 
 - The root `tests/` scenario suites are the default home for every CLI-reachable behavior: `tests/specify.rs` (the `specify` → `show` product arc), `tests/command.rs` (the CLI wire contract), and `tests/plugin.rs` (plugin-rule mentions vs the shipped grammar) drive the in-process command router over scripted capabilities (`tests/support/mod.rs`) and read like usage documentation.
-- Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, error, prose) or product invariants impractical to arrange through the entry points; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
+- Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, prose) or product invariants impractical to arrange through the entry points; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
 - Default to deletion; do not widen public APIs to test private kernels. `make cov` (workspace-wide) is the brake; `CRATE=emery-<crate> make cov-crate` audits one leaf contract.
 - One fast rung: the native suites (`make test`, per push) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 

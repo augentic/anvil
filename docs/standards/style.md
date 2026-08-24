@@ -15,7 +15,7 @@ The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module
 
 ## Error variants budgeted by recovery, not source
 
-If two variants of an error enum collapse to the same `Diag` code, exit code, or human action, they should be one variant with a `kind: …` discriminator, not two. Per-field `///` docs on `pub` structs whose names are self-evident (`path: PathBuf`, `source: io::Error`) are forbidden — keep variant-level docs only.
+If two variants of an error enum collapse to the same kebab `code`, Omnia class, or human action, they should be one variant with a `kind: …` discriminator, not two. Per-field `///` docs on `pub` structs whose names are self-evident (`path: PathBuf`, `source: io::Error`) are forbidden — keep variant-level docs only.
 
 ```rust
 // BAD — three variants, one exit code, one recovery path.

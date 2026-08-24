@@ -51,7 +51,7 @@ The success body names the committed generation and its reviewable set:
 
 `diff` is the re-mine diff against the superseded generation (ADR-0010): the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
-`emery specify` with no source fails with `error: "specify-source-required"` (exit 2); mixing `--sources` with positional adapters or `--value`, or naming an absolute or project-escaping local path, fails with `error: "argument"` (exit 2). `--sources` without a value explicitly selects the project-relative `sources.toml`. A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"`. Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 2.
+`emery specify` with no source fails with `error: "specify-source-required"` (exit 1); mixing `--sources` with positional adapters or `--value`, or naming an absolute or project-escaping local path, fails with `error: "argument"` (exit 1). `--sources` without a value explicitly selects the project-relative `sources.toml`. A GitHub URL binding fails with `error: "adapter-github-uri-unsupported"`. Validation refusals from the extract or synthesis gates (`claim-extras-missing`, `spec-invalid`, `spec-provenance-mismatch`) exit 1.
 
 ### `emery show <spec|design>`
 
@@ -65,7 +65,7 @@ The success body wraps the document with its generation id; text mode is the doc
 }
 ```
 
-Before any generation is committed the verb fails with `error: "spec-not-generated"` (exit 1); a pointer naming missing documents fails with `error: "spec-home-corrupt"` (exit 1).
+Before any generation is committed the verb fails with `error: "spec-not-generated"` (exit 2); a pointer naming missing documents fails with `error: "spec-home-corrupt"` (exit 3).
 
 ### `emery completions <shell>`
 
@@ -79,7 +79,7 @@ Every failing verb emits the same flat `ErrorBody` on stderr:
 {
   "error": "specify-source-required",
   "message": "specify-source-required: emery specify requires at least one source: …",
-  "exit-code": 2
+  "exit-code": 1
 }
 ```
 

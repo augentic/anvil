@@ -14,8 +14,8 @@ Never hand-edit `.emery/` state (the component cache, the generation store); nev
 
 ## Verb tree
 
-- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `2` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `2` with `argument`.
-- `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `1`).
+- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `1` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `argument`.
+- `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `2`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
 ## JSON envelope
@@ -34,16 +34,17 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 ## Exit codes
 
-The CLI uses a four-slot exit-code table. The authoritative definition (variants and the mapping from `Error::*` types) lives in [`AGENTS.md`](../../AGENTS.md#exit-codes). Summary for skills:
+The CLI uses the Omnia 1:1 exit map. The authoritative definition lives in [`AGENTS.md`](../../AGENTS.md#exit-codes). Summary for skills:
 
 | Code | Name | Skills see it on |
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
-| `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
-| `2` | `EXIT_VALIDATION_FAILED` | Validation errors, argument errors, clap usage errors. |
-| `3` | `EXIT_VERSION_TOO_OLD` | `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `emery` compatibility floor is newer than this binary; tell the operator to update the installed binary through its install channel. |
+| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `argument`, `adapter-cli-too-old`, extract/synthesis validation). Parse the top-level `error` discriminant; on `adapter-cli-too-old`, tell the operator to update the installed binary through its install channel. |
+| `2` | `NotFound` | Missing resource (`spec-not-generated`, `adapter-component-missing`). Clap usage and unknown-verb also exit 2 (framework). |
+| `3` | `ServerError` | Unclassified default: I/O, storage, `spec-home-corrupt`. |
+| `4` | `BadGateway` | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`). |
 
-Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
+Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four Omnia variants, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 
 ## Cross-references
 
