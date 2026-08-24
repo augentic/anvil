@@ -1,8 +1,6 @@
 //! Fail-closed `spec.md` AST.
 
-use emery_error::Error as Legacy;
-
-use crate::handler::{Error, classify};
+use crate::handler::{Error, bad_request};
 
 /// Markdown heading prefix opening a requirement block.
 pub const HEADING: &str = "### Requirement:";
@@ -117,11 +115,13 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
             requirements,
         })
     } else {
-        Err(classify(&Legacy::validation_failed(
+        Err(bad_request(
             "spec-invalid",
-            "`spec.md` must parse under the fail-closed spec AST",
-            findings.join("; "),
-        )))
+            format!(
+                "spec-invalid: `spec.md` must parse under the fail-closed spec AST: {}",
+                findings.join("; ")
+            ),
+        ))
     }
 }
 
@@ -432,8 +432,8 @@ Status: unknown
         ];
         for (text, fragment) in cases {
             let err = parse(text).expect_err(fragment);
-            let message = err.to_string();
-            assert!(message.contains("spec-invalid"), "typed code for {fragment}: {message}");
+            assert_eq!(err.code(), "spec-invalid", "typed code for {fragment}");
+            let message = err.description();
             assert!(message.contains(fragment), "expected `{fragment}` in: {message}");
         }
     }
