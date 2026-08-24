@@ -9,10 +9,6 @@ use std::path::{Path, PathBuf};
 /// # Panics
 ///
 /// Panics on any failure so the build stops.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "build-script crate; cargo communicates CARGO_MANIFEST_DIR and OUT_DIR through the env"
-)]
 pub fn emit(tree: &str) {
     let manifest_dir =
         PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR"));

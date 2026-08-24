@@ -10,11 +10,11 @@ Every invocation runs in the emery (engine) guest through the shared typed comma
 
 Adapter references need no routes: a judgment over a non-empty embedded corpus declares the `list_docs` / `read_doc` function tools on the completion request, and the model's tool calls stream back to the adapter guest's own closure, which answers them in-process from the compiled-in docs (`emery_adapter::references`). Nothing binds an HTTP listener — the runtime invocation declares guests, mounts, and hosts only.
 
-The engine is versioned by the binary — the binary *contains* its engine, so no store entry, first-launch download, or version-skew window exists for it. Kernels never read the environment: paths are fixed constants relative to the named preopens (`ExecutionPaths::deployed()` — the same strings resolve against the wasm32 preopen table and the native invocation directory).
+The engine is versioned by the binary — the binary *contains* its engine, so no store entry, first-launch download, or version-skew window exists for it. Kernels never read the environment: paths are fixed constants relative to the named preopens (the `.` project mount — the same strings resolve against the wasm32 preopen table and the native invocation directory).
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). The headline shape: `error` is the leaf; `engine` owns the domain and the `specify` / `show` operations (shared plumbing in `emery_engine::handler`, resolution in `emery_engine::resolve`); `transport` owns the typed command route inventory, clap args, explicit conversions, projectors, and exit contract; the root package's `src/main.rs` owns the native deployment policy inline and its wasm32 lib declares the bare model provider (superseding ADR-0013's WIT-backed `Provider` — paths and adapter dispatch are structural, not provider capabilities); the root binary is one `omnia::runtime!` invocation embedding the engine bytes. Architecture standards beyond the graph (the `.emery/` layout boundary, WASI carve-outs) live in [architecture.md](../standards/architecture.md).
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). The headline shape: `error` is the leaf; `engine` owns the domain and the `specify` / `show` operations (shared plumbing in `emery_engine::handler`, resolution in `emery_engine::resolve`) plus the CLI surface (`emery_engine::cli`: the typed command route inventory, clap grammar carried on the operation inputs, projector, and exit contract); the root package's `src/main.rs` owns the native deployment policy inline and its wasm32 lib declares the bare model provider (superseding ADR-0013's WIT-backed `Provider` — paths and adapter dispatch are structural, not provider capabilities); the root binary is one `omnia::runtime!` invocation embedding the engine bytes. Architecture standards beyond the graph (the `.emery/` layout boundary, WASI carve-outs) live in [architecture.md](../standards/architecture.md).
 
 ## Dispatch pattern
 
@@ -27,7 +27,7 @@ src/main.rs   →  omnia::runtime! (command mode; embedded engine bytes, static 
 
 The deployment projects nothing out of argv: no pre-boot fact depends on the parsed grammar — the invocation directory is the project root, and everything else, displays and rejections included, renders in the guest.
 
-The operator grammar is assembled in `crates/transport/src/command.rs` from concrete leaf `Args` and transport-neutral `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, invocation, and the WASI last mile (`execute_wasi`: argv, telemetry init/flush, output channels, exact exit). The WASI shim only constructs the provider and hands the assembled router to that adapter. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The operator grammar is assembled in `crates/engine/src/cli.rs` directly over the `Operation` types: each operation's `Input` derives `clap::Args`, so the grammar and the operation input are one type and route decoding is infallible by construction. `omnia_guest::api::command` owns clap behavior, completions, inventory, invocation, and the WASI last mile (`execute_wasi`: argv, telemetry init/flush, output channels, exact exit). The WASI shim only constructs the provider and hands the assembled router to that adapter. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
 ## JSON envelope contract
 
@@ -35,13 +35,13 @@ All JSON output follows the shared envelope contract:
 
 - **Kebab-case keys** — `app-name`, `project-dir` (never `app_name` or `projectDir`)
 - **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure body is `ErrorBody`. There is no top-level envelope-version stamp.
-- **Kebab-case error discriminants** — `adapter-not-found`, `invalid-project`, `io` (never `missing_prerequisites`); skills and tests grep on the `error` / `code` fields, so renaming one is a breaking change.
+- **Kebab-case error discriminants** — `adapter-component-missing`, `spec-not-generated`, `io` (never `missing_prerequisites`); skills and tests grep on the `error` / `code` fields, so renaming one is a breaking change.
 
 The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent.
 
 ## Exit codes
 
-The exit-code contract is part of the public interface for operators and skill wrappers; `Exit::from(&Error)` in `crates/transport/src/command/output.rs` is the single source of truth:
+The exit-code contract is part of the public interface for operators and skill wrappers; `exit_code(&Error)` in `crates/engine/src/cli.rs` is the single source of truth:
 
 | Code | Constant                 | Meaning                                                                                                                        |
 | ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -64,4 +64,4 @@ The pattern for a command operation:
 
 ## Public Rust API
 
-The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::project::Project` or `emery_error::Error`.
+The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::home::Home` or `emery_error::Error`.

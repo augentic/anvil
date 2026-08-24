@@ -1,7 +1,9 @@
-# Shared Rust workspace tasks. 
+# Shared Rust workspace tasks.
+# Local copy in each repo until this file is published from
+# augentic/.github (git::…/mise/rust.toml?ref=…). Keep the copies identical.
 
 # -------------------------------------
-# CI Checks (emery composition)
+# Composition
 # -------------------------------------
 
 [check]
@@ -9,8 +11,12 @@ description = "Pre-commit subset: fmt, lint, test, test-docs, doc"
 depends = ["fmt", "lint", "test", "test-docs", "doc"]
 
 [ci]
-description = "Full local gate: check + links + vet + deny"
+description = "Full local rust gate: check + vet + deny"
 depends = ["check", "vet", "deny"]
+
+# -------------------------------------
+# Leaves
+# -------------------------------------
 
 [fmt]
 description = "nightly rustfmt --all (writes)"
@@ -35,40 +41,53 @@ description = "cargo test --doc --workspace"
 run = "cargo test --doc --workspace --all-features"
 
 [vet]
-description = "Verify cargo-vet inputs"
+description = "Verify cargo-vet inputs (check-only)"
 run = "cargo vet --locked"
-
-[miri]
-description = "nightly miri nextest (advisory; not part of ci)"
-run = '''
-cargo +nightly miri setup
-cargo +nightly miri nextest run --workspace --no-tests=pass
-'''
-
-# -------------------------------------
-# Advisory Checks (omnia composition)
-# -------------------------------------
-
-[audit]
-description = "cargo audit (advisory; not part of ci)"
-run = "cargo audit"
 
 [deny]
 description = "cargo deny --workspace check"
 run = "cargo deny --workspace check"
 
-[outdated]
-description = "cargo outdated (advisory; not part of ci)"
-run = "cargo outdated --depth 1"
+[clean]
+description = "cargo clean"
+run = "cargo clean"
 
 # -------------------------------------
-# Helpers
+# Advisory / helpers (not part of ci)
 # -------------------------------------
+
+[audit]
+description = "cargo audit"
+run = "cargo audit"
+
+[outdated]
+description = "cargo outdated"
+run = "cargo outdated --workspace --depth 1"
+
+[deps]
+description = "nightly cargo udeps"
+run = "cargo +nightly udeps --workspace --all-targets"
+
+[miri]
+description = "nightly miri nextest"
+run = '''
+cargo +nightly miri setup
+cargo +nightly miri nextest run --workspace --no-tests=pass
+'''
 
 [vetgen]
-description = "Regenerate cargo-vet inputs"
+description = "Regenerate cargo-vet inputs, then verify"
 run = '''
 cargo vet regenerate imports
 cargo vet regenerate exemptions
 cargo vet regenerate unpublished
+cargo vet --locked
 '''
+
+[cov]
+description = "llvm-cov nextest summary (workspace)"
+run = "cargo llvm-cov nextest --workspace --all-features --summary-only"
+
+[cov-crate]
+description = "llvm-cov nextest summary for $CRATE"
+run = "cargo llvm-cov nextest -p ${CRATE} --summary-only"

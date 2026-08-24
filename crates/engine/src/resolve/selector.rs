@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 
 use emery_error::Error;
 
-use crate::handler::preopen_path;
-
 /// An operator-supplied adapter reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterSelector {
@@ -17,22 +15,17 @@ pub enum AdapterSelector {
     /// Exact package reference (`emery:omnia@1.0.0`; `omnia@1.0.0`
     /// is sugar for the `emery` namespace).
     Package {
-        /// Registry namespace (`emery` for first-party adapters).
-        namespace: String,
         /// Kebab-case adapter name.
         name: String,
         /// Mandatory exact SemVer pin.
         version: semver::Version,
     },
-    /// Local component file path (recorded as `file://…`).
+    /// Local component file path.
     Component {
         /// Supplied path, anchored at the project directory when relative.
         path: PathBuf,
     },
 }
-
-/// Package namespace for first-party adapters.
-pub const FIRST_PARTY_NAMESPACE: &str = "emery";
 
 impl AdapterSelector {
     /// Parses an adapter argument without filesystem access.
@@ -68,7 +61,6 @@ impl AdapterSelector {
                     name: name.to_string(),
                 },
                 |version| Self::Package {
-                    namespace: FIRST_PARTY_NAMESPACE.to_string(),
                     name: name.to_string(),
                     version,
                 },
@@ -92,15 +84,6 @@ impl AdapterSelector {
         }
     }
 
-    /// Derives a name from a recorded value, echoing malformed values.
-    #[must_use]
-    pub fn recorded_name(value: &str) -> String {
-        Self::parse(value)
-            .ok()
-            .and_then(|selector| selector.name().ok())
-            .unwrap_or_else(|| value.to_string())
-    }
-
     /// Returns the exact package pin, if present.
     #[must_use]
     pub const fn version(&self) -> Option<&semver::Version> {
@@ -108,51 +91,6 @@ impl AdapterSelector {
             Self::Package { version, .. } => Some(version),
             Self::Bare { .. } | Self::Component { .. } => None,
         }
-    }
-
-    /// Returns the canonical wire form.
-    #[must_use]
-    pub fn wire_value(&self) -> String {
-        match self {
-            Self::Bare { name } => name.clone(),
-            Self::Package {
-                namespace,
-                name,
-                version,
-            } => format!("{namespace}:{name}@{version}"),
-            Self::Component { path } => format!("file://{}", path.display()),
-        }
-    }
-}
-
-impl std::fmt::Display for AdapterSelector {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.wire_value())
-    }
-}
-
-/// Anchors and canonicalizes a component path.
-///
-/// WASI may forbid `realpath` outside preopens; an existing anchored
-/// path is therefore accepted when canonicalization fails.
-///
-/// # Errors
-///
-/// Returns `adapter-canonicalize-failed` when the path does not exist.
-pub fn canonicalize_component(path: &Path, project_dir: &Path) -> Result<PathBuf, Error> {
-    let relative = preopen_path(path, "<adapter>")?;
-    let absolute = project_dir.join(relative);
-    match std::fs::canonicalize(&absolute) {
-        Ok(canonical) => Ok(canonical),
-        Err(_) if absolute.is_file() => Ok(absolute),
-        Err(err) => Err(Error::Diag {
-            code: "adapter-canonicalize-failed",
-            detail: format!(
-                "failed to canonicalize local adapter `{}` at {}: {err}",
-                path.display(),
-                absolute.display()
-            ),
-        }),
     }
 }
 
@@ -194,7 +132,6 @@ fn parse_validated_package(
         ),
     })?;
     Ok(AdapterSelector::Package {
-        namespace: namespace.to_string(),
         name: name.to_string(),
         version,
     })

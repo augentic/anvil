@@ -25,7 +25,7 @@ Opens at [http://localhost:3000](http://localhost:3000) by default and live-relo
 mdbook build docs   # from the repo root
 ```
 
-Output lands in `docs/book/html/` (the CI deploy step points Cloudflare Pages at that path). The same build runs [`mdbook-linkcheck2`](https://github.com/marxin/mdbook-linkcheck2) via `[output.linkcheck2]` in [`book.toml`](book.toml) — relative links must resolve; web links are not a CI predicate. Local shorthand: `cargo make links`.
+Output lands in `docs/book/html/` (the CI deploy step points Cloudflare Pages at that path). The same build runs [`mdbook-linkcheck2`](https://github.com/marxin/mdbook-linkcheck2) via `[output.linkcheck2]` in [`book.toml`](book.toml) — relative links must resolve; web links are not a CI predicate. Local shorthand: `make links`.
 
 ## Custom theme and diagrams
 

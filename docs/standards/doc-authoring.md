@@ -282,7 +282,7 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 
 ### CLI verb template
 
-Each `### emery <group> <verb>` section on a CLI reference page carries these elements, in order (verify every fact against `crates/transport/src/command/` and `Exit::from` in `output.rs`):
+Each `### emery <group> <verb>` section on a CLI reference page carries these elements, in order (verify every fact against `crates/engine/src/cli.rs` and its `exit_code` table):
 
 1. **Role line** — one sentence naming what the verb does and who invokes it (skill, loop, or operator).
 2. **Synopsis fence** — a `bash` fence with the full argument/flag grammar.
@@ -320,7 +320,7 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 
 [`mdbook-linkcheck2`](https://github.com/marxin/mdbook-linkcheck2) runs as an mdBook backend (`[output.linkcheck2]` in [`book.toml`](../book.toml)) and validates every relative link in the Developer Guide. Web links are skipped (`follow-web-links = false`); out-of-tree workspace targets are allowed (`traverse-parent-directories = true`).
 
-Run `cargo make links` (or `mdbook build docs`) locally. If the gate fails on a new ref, retarget the link to a real file — preferably a chapter listed in `SUMMARY.md`, or a concrete path under `crates/` / `plugins/` / the repo root. Directory hrefs and chapters missing from `SUMMARY.md` fail the build.
+Run `make links` (or `mdbook build docs`) locally. If the gate fails on a new ref, retarget the link to a real file — preferably a chapter listed in `SUMMARY.md`, or a concrete path under `crates/` / `plugins/` / the repo root. Directory hrefs and chapters missing from `SUMMARY.md` fail the build.
 
 ## RFC citations
 
