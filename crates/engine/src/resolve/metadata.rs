@@ -31,7 +31,7 @@ pub trait Runner: Fn(&Request<'_>) -> Result<Metadata, Error> + Send + Sync {}
 
 impl<F: Fn(&Request<'_>) -> Result<Metadata, Error> + Send + Sync> Runner for F {}
 
-/// Creates metadata dispatch over the provider's source seam.
+/// Creates metadata dispatch over the provider's `Source` capability.
 ///
 /// Target requests return `adapter-axis-removed`.
 pub fn runner<P: emery_adapter::Source>(provider: &P) -> impl Runner + '_ {

@@ -31,15 +31,15 @@ Pre-1.0 SemVer follows Omnia's convention: **minor may be breaking**; patches re
 
 ## Three release shapes
 
-Every release chooses exactly one shape; the order prevents adapters shipping against unpublished seam changes:
+Every release chooses exactly one shape; the order prevents adapters shipping against unpublished WIT / contract changes:
 
 | Shape | Trigger | Order |
 | ----- | ------- | ----- |
 | **WIT-breaking** | `package emery:adapter@…` moves | 1) engine release branch + publish WIT 2) engine publish 3) adapters bump pin + train release 4) announce hard-cut / re-init when product policy requires it |
 | **Host-only** | CLI / lifecycle / engine guest; `emery:adapter` WIT unchanged | engine cut → publish; adapters unchanged unless the floor must rise |
-| **Adapter-only** | prompts, rules, target behavior; seam unchanged | adapters cut → publish; engine unchanged |
+| **Adapter-only** | prompts, rules, target behavior; WIT unchanged | adapters cut → publish; engine unchanged |
 
-Never release adapters against an unpublished WIT or an unreleased engine commit that changed the seam.
+Never release adapters against an unpublished WIT or an unreleased engine commit that changed the contract.
 
 Each release's notes entry in `RELEASES.md` includes a short compatibility row:
 

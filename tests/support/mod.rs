@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use emery_adapter::seam::{
+use emery_adapter::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
 use emery_adapter::{DispatchError, Source};
@@ -22,10 +22,10 @@ use serde_json::Value;
 /// The default scripted requirement statement.
 pub const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 
-/// Dispatched `(routed id, input)` pairs, in seam order.
+/// Dispatched `(routed id, input)` pairs, in call order.
 pub type Recorded = Vec<(String, SourceInput)>;
 
-/// Scripted source seam: per-key evidence, per-adapter floors, and a
+/// Scripted `Source`: per-key evidence, per-adapter floors, and a
 /// record of every dispatch. An unscripted key answers the greeting
 /// requirement as documentation evidence.
 #[derive(Clone, Debug, Default)]
@@ -34,7 +34,7 @@ pub struct SourceScript {
     pub evidence: BTreeMap<String, Result<Evidence, DispatchError>>,
     /// `emery` floors keyed by adapter name.
     pub floors: BTreeMap<String, String>,
-    /// Every extract dispatch, recorded for seam assertions.
+    /// Every extract dispatch, recorded for call assertions.
     pub calls: Arc<Mutex<Recorded>>,
 }
 
@@ -67,7 +67,7 @@ pub const fn evidence(authority: Authority, claims: Vec<Claim>) -> Evidence {
 pub struct Provider<S = Memory> {
     /// FIFO-scripted model answers.
     pub model: Harness<Scripted>,
-    /// The scripted source seam.
+    /// The scripted `Source`.
     pub source: SourceScript,
     /// The scripted storage pair.
     pub storage: Arc<S>,

@@ -7,7 +7,7 @@ use emery_error::Error;
 use super::core::Axis;
 use super::selector::AdapterSelector;
 
-/// An adapter identity used for seam dispatch.
+/// An adapter identity used for dispatch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoutedId {
     /// Adapter axis (`source` / `target`).

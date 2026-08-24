@@ -6,7 +6,7 @@ Emery is being rebuilt as a **spec generator**. The v1 delivery engine — the `
 git worktree add ../emery-v1 v1
 ```
 
-This guide documents what ships **today**: the `emery` CLI's reduced surface (the `specify` spec generator plus the `show` read verb), the source-adapter seam, and the contributor standards for the Rust workspace.
+This guide documents what ships **today**: the `emery` CLI's reduced surface (the `specify` spec generator plus the `show` read verb), the source-adapter contract, and the contributor standards for the Rust workspace.
 
 ## Guide structure
 

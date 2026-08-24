@@ -3,7 +3,7 @@
 use schemars::generate::SchemaSettings;
 use serde_json::{Value, json};
 
-use crate::seam::{ClaimKind, Error, Evidence};
+use crate::types::{ClaimKind, Error, Evidence};
 
 /// Schema for `extract` answers.
 ///

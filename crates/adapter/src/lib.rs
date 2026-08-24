@@ -10,7 +10,7 @@ mod identity;
 mod operations;
 pub mod references;
 pub mod registry;
-pub mod seam;
+pub mod types;
 
 #[cfg(target_arch = "wasm32")]
 pub mod source;

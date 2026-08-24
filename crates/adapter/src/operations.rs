@@ -5,7 +5,7 @@ use std::future::Future;
 use omnia_guest::Model;
 
 use crate::registry::Doc;
-use crate::seam::{Context, Error, Evidence, SourceInput, SourceMetadata};
+use crate::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
 
 /// Contract implemented by source adapters.
 ///

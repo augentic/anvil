@@ -23,16 +23,16 @@ mod generated {
 pub use generated::exports::emery::adapter::source::*;
 pub use generated::*;
 
-impl From<crate::seam::SourceMetadata> for AdapterMetadata {
-    fn from(metadata: crate::seam::SourceMetadata) -> Self {
+impl From<crate::types::SourceMetadata> for AdapterMetadata {
+    fn from(metadata: crate::types::SourceMetadata) -> Self {
         Self {
             emery_floor: metadata.emery_floor,
         }
     }
 }
 
-impl From<crate::seam::SourceWorkspace> for Workspace {
-    fn from(view: crate::seam::SourceWorkspace) -> Self {
+impl From<crate::types::SourceWorkspace> for Workspace {
+    fn from(view: crate::types::SourceWorkspace) -> Self {
         Self {
             id: view.id,
             root: view.root,
@@ -40,7 +40,7 @@ impl From<crate::seam::SourceWorkspace> for Workspace {
     }
 }
 
-impl From<Workspace> for crate::seam::SourceWorkspace {
+impl From<Workspace> for crate::types::SourceWorkspace {
     fn from(view: Workspace) -> Self {
         Self {
             id: view.id,
@@ -49,16 +49,16 @@ impl From<Workspace> for crate::seam::SourceWorkspace {
     }
 }
 
-impl From<crate::seam::SourceContent> for Content {
-    fn from(content: crate::seam::SourceContent) -> Self {
+impl From<crate::types::SourceContent> for Content {
+    fn from(content: crate::types::SourceContent) -> Self {
         match content {
-            crate::seam::SourceContent::Workspace(view) => Self::Workspace(view.into()),
-            crate::seam::SourceContent::Value(value) => Self::Value(value),
+            crate::types::SourceContent::Workspace(view) => Self::Workspace(view.into()),
+            crate::types::SourceContent::Value(value) => Self::Value(value),
         }
     }
 }
 
-impl From<Content> for crate::seam::SourceContent {
+impl From<Content> for crate::types::SourceContent {
     fn from(content: Content) -> Self {
         match content {
             Content::Workspace(view) => Self::Workspace(view.into()),
@@ -67,8 +67,8 @@ impl From<Content> for crate::seam::SourceContent {
     }
 }
 
-impl From<crate::seam::SourceInput> for Input {
-    fn from(input: crate::seam::SourceInput) -> Self {
+impl From<crate::types::SourceInput> for Input {
+    fn from(input: crate::types::SourceInput) -> Self {
         Self {
             key: input.key,
             content: input.content.into(),
@@ -76,7 +76,7 @@ impl From<crate::seam::SourceInput> for Input {
     }
 }
 
-impl From<Input> for crate::seam::SourceInput {
+impl From<Input> for crate::types::SourceInput {
     fn from(input: Input) -> Self {
         Self {
             key: input.key,
@@ -85,48 +85,48 @@ impl From<Input> for crate::seam::SourceInput {
     }
 }
 
-impl From<crate::seam::Authority> for Authority {
-    fn from(authority: crate::seam::Authority) -> Self {
+impl From<crate::types::Authority> for Authority {
+    fn from(authority: crate::types::Authority) -> Self {
         match authority {
-            crate::seam::Authority::Intent => Self::Intent,
-            crate::seam::Authority::Documentation => Self::Documentation,
-            crate::seam::Authority::Behaviour => Self::Behaviour,
+            crate::types::Authority::Intent => Self::Intent,
+            crate::types::Authority::Documentation => Self::Documentation,
+            crate::types::Authority::Behaviour => Self::Behaviour,
         }
     }
 }
 
-impl From<crate::seam::ClaimKind> for ClaimKind {
-    fn from(kind: crate::seam::ClaimKind) -> Self {
+impl From<crate::types::ClaimKind> for ClaimKind {
+    fn from(kind: crate::types::ClaimKind) -> Self {
         match kind {
-            crate::seam::ClaimKind::Intent => Self::Intent,
-            crate::seam::ClaimKind::Requirement => Self::Requirement,
-            crate::seam::ClaimKind::Criterion => Self::Criterion,
-            crate::seam::ClaimKind::Decision => Self::Decision,
-            crate::seam::ClaimKind::Section => Self::Section,
-            crate::seam::ClaimKind::Diagram => Self::Diagram,
-            crate::seam::ClaimKind::Contract => Self::Contract,
-            crate::seam::ClaimKind::Example => Self::Example,
-            crate::seam::ClaimKind::Excerpt => Self::Excerpt,
-            crate::seam::ClaimKind::Type => Self::Type,
-            crate::seam::ClaimKind::Call => Self::Call,
-            crate::seam::ClaimKind::Region => Self::Region,
-            crate::seam::ClaimKind::Container => Self::Container,
-            crate::seam::ClaimKind::Leaf => Self::Leaf,
+            crate::types::ClaimKind::Intent => Self::Intent,
+            crate::types::ClaimKind::Requirement => Self::Requirement,
+            crate::types::ClaimKind::Criterion => Self::Criterion,
+            crate::types::ClaimKind::Decision => Self::Decision,
+            crate::types::ClaimKind::Section => Self::Section,
+            crate::types::ClaimKind::Diagram => Self::Diagram,
+            crate::types::ClaimKind::Contract => Self::Contract,
+            crate::types::ClaimKind::Example => Self::Example,
+            crate::types::ClaimKind::Excerpt => Self::Excerpt,
+            crate::types::ClaimKind::Type => Self::Type,
+            crate::types::ClaimKind::Call => Self::Call,
+            crate::types::ClaimKind::Region => Self::Region,
+            crate::types::ClaimKind::Container => Self::Container,
+            crate::types::ClaimKind::Leaf => Self::Leaf,
         }
     }
 }
 
-impl From<crate::seam::Backing> for Backing {
-    fn from(backing: crate::seam::Backing) -> Self {
+impl From<crate::types::Backing> for Backing {
+    fn from(backing: crate::types::Backing) -> Self {
         match backing {
-            crate::seam::Backing::Payload(payload) => Self::Payload(payload),
-            crate::seam::Backing::Path(path) => Self::Path(path),
+            crate::types::Backing::Payload(payload) => Self::Payload(payload),
+            crate::types::Backing::Path(path) => Self::Path(path),
         }
     }
 }
 
-impl From<crate::seam::Claim> for Claim {
-    fn from(claim: crate::seam::Claim) -> Self {
+impl From<crate::types::Claim> for Claim {
+    fn from(claim: crate::types::Claim) -> Self {
         // Open body fields ride the wire as canonical JSON text (A8);
         // `serde_json::Value` always encodes.
         let extras =
@@ -142,8 +142,8 @@ impl From<crate::seam::Claim> for Claim {
     }
 }
 
-impl From<crate::seam::Evidence> for Evidence {
-    fn from(evidence: crate::seam::Evidence) -> Self {
+impl From<crate::types::Evidence> for Evidence {
+    fn from(evidence: crate::types::Evidence) -> Self {
         Self {
             authority: evidence.authority.into(),
             claims: evidence.claims.into_iter().map(Into::into).collect(),
@@ -151,27 +151,27 @@ impl From<crate::seam::Evidence> for Evidence {
     }
 }
 
-impl From<crate::seam::Error> for Error {
-    fn from(error: crate::seam::Error) -> Self {
+impl From<crate::types::Error> for Error {
+    fn from(error: crate::types::Error) -> Self {
         match error {
-            crate::seam::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
-            crate::seam::Error::Io(detail) => Self::Io(detail),
-            crate::seam::Error::Internal(detail) => Self::Internal(detail),
+            crate::types::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
+            crate::types::Error::Io(detail) => Self::Io(detail),
+            crate::types::Error::Internal(detail) => Self::Internal(detail),
         }
     }
 }
 
-/// Seam-typed wrappers for source WIT imports.
+/// Typed wrappers for source WIT imports.
 pub mod import {
     use super::generated::emery::adapter::source as wire;
     use crate::dispatch::DispatchError;
-    use crate::seam;
+    use crate::types;
 
     /// Returns resolve-time metadata for `id`.
     #[must_use]
-    pub fn metadata(id: &str) -> seam::SourceMetadata {
+    pub fn metadata(id: &str) -> types::SourceMetadata {
         let record = wire::metadata(id);
-        seam::SourceMetadata {
+        types::SourceMetadata {
             emery_floor: record.emery_floor,
         }
     }
@@ -183,18 +183,18 @@ pub mod import {
     ///
     /// # Errors
     ///
-    /// Returns the seam failure or A8 extras refusal.
+    /// Returns the adapter call failure or A8 extras refusal.
     pub async fn extract(
-        id: &str, input: &seam::SourceInput,
-    ) -> Result<seam::Evidence, DispatchError> {
+        id: &str, input: &types::SourceInput,
+    ) -> Result<types::Evidence, DispatchError> {
         let answer = wire::extract(id.to_string(), input.clone().into())
             .await
-            .map_err(|err| DispatchError::Seam(err.into()))?;
+            .map_err(|err| DispatchError::Call(err.into()))?;
         answer.try_into()
     }
 
-    impl From<seam::SourceWorkspace> for wire::Workspace {
-        fn from(view: seam::SourceWorkspace) -> Self {
+    impl From<types::SourceWorkspace> for wire::Workspace {
+        fn from(view: types::SourceWorkspace) -> Self {
             Self {
                 id: view.id,
                 root: view.root,
@@ -202,17 +202,17 @@ pub mod import {
         }
     }
 
-    impl From<seam::SourceContent> for wire::Content {
-        fn from(content: seam::SourceContent) -> Self {
+    impl From<types::SourceContent> for wire::Content {
+        fn from(content: types::SourceContent) -> Self {
             match content {
-                seam::SourceContent::Workspace(view) => Self::Workspace(view.into()),
-                seam::SourceContent::Value(value) => Self::Value(value),
+                types::SourceContent::Workspace(view) => Self::Workspace(view.into()),
+                types::SourceContent::Value(value) => Self::Value(value),
             }
         }
     }
 
-    impl From<seam::SourceInput> for wire::Input {
-        fn from(input: seam::SourceInput) -> Self {
+    impl From<types::SourceInput> for wire::Input {
+        fn from(input: types::SourceInput) -> Self {
             Self {
                 key: input.key,
                 content: input.content.into(),
@@ -220,7 +220,7 @@ pub mod import {
         }
     }
 
-    impl From<wire::Error> for seam::Error {
+    impl From<wire::Error> for types::Error {
         fn from(error: wire::Error) -> Self {
             match error {
                 wire::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
@@ -230,7 +230,7 @@ pub mod import {
         }
     }
 
-    impl From<wire::Authority> for seam::Authority {
+    impl From<wire::Authority> for types::Authority {
         fn from(authority: wire::Authority) -> Self {
             match authority {
                 wire::Authority::Intent => Self::Intent,
@@ -240,7 +240,7 @@ pub mod import {
         }
     }
 
-    impl From<wire::ClaimKind> for seam::ClaimKind {
+    impl From<wire::ClaimKind> for types::ClaimKind {
         fn from(kind: wire::ClaimKind) -> Self {
             match kind {
                 wire::ClaimKind::Intent => Self::Intent,
@@ -261,7 +261,7 @@ pub mod import {
         }
     }
 
-    impl From<wire::Backing> for seam::Backing {
+    impl From<wire::Backing> for types::Backing {
         fn from(backing: wire::Backing) -> Self {
             match backing {
                 wire::Backing::Payload(payload) => Self::Payload(payload),
@@ -270,7 +270,7 @@ pub mod import {
         }
     }
 
-    impl TryFrom<wire::Claim> for seam::Claim {
+    impl TryFrom<wire::Claim> for types::Claim {
         type Error = DispatchError;
 
         fn try_from(claim: wire::Claim) -> Result<Self, DispatchError> {
@@ -299,7 +299,7 @@ pub mod import {
         }
     }
 
-    impl TryFrom<wire::Evidence> for seam::Evidence {
+    impl TryFrom<wire::Evidence> for types::Evidence {
         type Error = DispatchError;
 
         fn try_from(evidence: wire::Evidence) -> Result<Self, DispatchError> {
@@ -329,17 +329,17 @@ pub fn dispatch_metadata<A: crate::SourceAdapter>() -> AdapterMetadata {
 pub async fn dispatch_extract<A: crate::SourceAdapter>(
     id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {
-    let input = crate::seam::SourceInput::from(input);
+    let input = crate::types::SourceInput::from(input);
     let ctx = source_ctx(&id, &input);
     A::extract(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
 }
 
-fn source_ctx<'a>(id: &'a str, input: &'a crate::seam::SourceInput) -> crate::seam::Context<'a> {
+fn source_ctx<'a>(id: &'a str, input: &'a crate::types::SourceInput) -> crate::types::Context<'a> {
     match &input.content {
-        crate::seam::SourceContent::Workspace(view) => {
-            crate::seam::Context::guest(id).lending(view.root.clone())
+        crate::types::SourceContent::Workspace(view) => {
+            crate::types::Context::guest(id).lending(view.root.clone())
         }
-        crate::seam::SourceContent::Value(_) => crate::seam::Context::guest(id).without_lend(),
+        crate::types::SourceContent::Value(_) => crate::types::Context::guest(id).without_lend(),
     }
 }
 

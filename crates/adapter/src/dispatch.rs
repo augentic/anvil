@@ -1,17 +1,17 @@
-//! Source-seam dispatch, shaped like [`omnia_guest::Model`].
+//! Source-capability dispatch, shaped like [`omnia_guest::Model`].
 //!
 //! Wasm defaults call WIT imports; native signatures support scripted tests.
 
 use std::future::Future;
 
-use crate::seam::{Evidence, SourceInput, SourceMetadata};
+use crate::types::{Evidence, SourceInput, SourceMetadata};
 
 /// Source import dispatch failure.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum DispatchError {
-    /// Seam operation failure.
+    /// Adapter call failure.
     #[error(transparent)]
-    Seam(#[from] crate::seam::Error),
+    Call(#[from] crate::types::Error),
     /// Non-canonical JSON in an open extra (A8).
     #[error("extra `{key}` is not canonical JSON ({detail}): {encoded}")]
     Extras {
@@ -24,7 +24,7 @@ pub enum DispatchError {
     },
 }
 
-/// Import-side source dispatch over the `emery:adapter/source` seam.
+/// Import-side source dispatch over the `emery:adapter/source` contract.
 ///
 /// Adapters implement the export-side [`crate::SourceAdapter`] instead.
 pub trait Source: Send + Sync {

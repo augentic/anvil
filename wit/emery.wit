@@ -1,7 +1,7 @@
 /// The `emery:adapter` contract (ADR-0008): one source axis, two
 /// operations. Adapter guests export the `source` interface plus
 /// `wasi:http/incoming-handler` (compiled-in references over MCP). No
-/// resource types cross the seam: dispatch carries plain values,
+/// resource types cross the contract: dispatch carries plain values,
 /// routed by each call's `adapter-id` first argument.
 package emery:adapter@0.1.0;
 
@@ -29,7 +29,7 @@ interface types {
 ///
 /// Extract's return is the specification IR (A8/A16, ADR-0009 §3):
 /// the engine fails closed when a claim kind's required extras are
-/// absent, and every open extra crosses the seam verbatim.
+/// absent, and every open extra crosses the contract verbatim.
 interface source {
   use types.{ adapter-id, error };
 
@@ -119,7 +119,7 @@ interface source {
     /// Open per-kind body fields the closed record does not model
     /// (`statement`, `criterion`, `replay-digest`, …), carried as
     /// `(key, value)` pairs where each value is the field's canonical
-    /// JSON encoding. Synthesis reads these verbatim (A8) — the seam
+    /// JSON encoding. Synthesis reads these verbatim (A8) — the contract
     /// must conserve them.
     extras: list<tuple<string, string>>,
   }

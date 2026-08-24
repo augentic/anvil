@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use emery_adapter::seam::{self, SourceContent, SourceInput, SourceWorkspace};
+use emery_adapter::types::{self, SourceContent, SourceInput, SourceWorkspace};
 use emery_adapter::{DispatchError, Source};
 use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
@@ -15,11 +15,11 @@ use crate::sources::{BindingContent, SourceBinding};
 // On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
-) -> Result<seam::Evidence, Error> {
+) -> Result<types::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
-        DispatchError::Seam(seam) => Error::Diag {
+        DispatchError::Call(failure) => Error::Diag {
             code: "source-extract-failed",
-            detail: format!("source `{id}`: {seam}"),
+            detail: format!("source `{id}`: {failure}"),
         },
         extras @ DispatchError::Extras { .. } => Error::Diag {
             code: "claim-extras-malformed",
@@ -48,7 +48,7 @@ pub struct SourceSet {
 ///
 /// # Errors
 ///
-/// Propagates ensure, resolution, seam, and [`validate_set`] failures.
+/// Propagates ensure, resolution, extract, and [`validate_set`] failures.
 pub async fn extract_all<P: Source + StateStore + BlobStore>(
     provider: &P, bindings: &[SourceBinding], paths: &ExecutionPaths,
 ) -> Result<Vec<SourceSet>, Error> {
@@ -143,43 +143,43 @@ pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
     Ok(())
 }
 
-const fn authority(seam: seam::Authority) -> AuthorityClass {
-    match seam {
-        seam::Authority::Intent => AuthorityClass::Intent,
-        seam::Authority::Documentation => AuthorityClass::Documentation,
-        seam::Authority::Behaviour => AuthorityClass::Behaviour,
+const fn authority(record: types::Authority) -> AuthorityClass {
+    match record {
+        types::Authority::Intent => AuthorityClass::Intent,
+        types::Authority::Documentation => AuthorityClass::Documentation,
+        types::Authority::Behaviour => AuthorityClass::Behaviour,
     }
 }
 
-// Extras cross the seam verbatim.
-fn claim(seam: seam::Claim) -> Claim {
-    let mut mapped = Claim::new(kind(seam.kind));
-    mapped.id = seam.id;
-    mapped.path = seam.path;
-    mapped.synopsis = seam.synopsis;
-    mapped.set_backing(seam.backing.map(|backing| match backing {
-        seam::Backing::Payload(payload) => emery_artifacts::evidence::Backing::Payload(payload),
-        seam::Backing::Path(path) => emery_artifacts::evidence::Backing::Path(path),
+// Extras cross the contract verbatim.
+fn claim(record: types::Claim) -> Claim {
+    let mut mapped = Claim::new(kind(record.kind));
+    mapped.id = record.id;
+    mapped.path = record.path;
+    mapped.synopsis = record.synopsis;
+    mapped.set_backing(record.backing.map(|backing| match backing {
+        types::Backing::Payload(payload) => emery_artifacts::evidence::Backing::Payload(payload),
+        types::Backing::Path(path) => emery_artifacts::evidence::Backing::Path(path),
     }));
-    mapped.extras = seam.extras;
+    mapped.extras = record.extras;
     mapped
 }
 
-const fn kind(seam: seam::ClaimKind) -> ClaimKind {
-    match seam {
-        seam::ClaimKind::Intent => ClaimKind::Intent,
-        seam::ClaimKind::Requirement => ClaimKind::Requirement,
-        seam::ClaimKind::Criterion => ClaimKind::Criterion,
-        seam::ClaimKind::Decision => ClaimKind::Decision,
-        seam::ClaimKind::Section => ClaimKind::Section,
-        seam::ClaimKind::Diagram => ClaimKind::Diagram,
-        seam::ClaimKind::Contract => ClaimKind::Contract,
-        seam::ClaimKind::Example => ClaimKind::Example,
-        seam::ClaimKind::Excerpt => ClaimKind::Excerpt,
-        seam::ClaimKind::Type => ClaimKind::Type,
-        seam::ClaimKind::Call => ClaimKind::Call,
-        seam::ClaimKind::Region => ClaimKind::Region,
-        seam::ClaimKind::Container => ClaimKind::Container,
-        seam::ClaimKind::Leaf => ClaimKind::Leaf,
+const fn kind(record: types::ClaimKind) -> ClaimKind {
+    match record {
+        types::ClaimKind::Intent => ClaimKind::Intent,
+        types::ClaimKind::Requirement => ClaimKind::Requirement,
+        types::ClaimKind::Criterion => ClaimKind::Criterion,
+        types::ClaimKind::Decision => ClaimKind::Decision,
+        types::ClaimKind::Section => ClaimKind::Section,
+        types::ClaimKind::Diagram => ClaimKind::Diagram,
+        types::ClaimKind::Contract => ClaimKind::Contract,
+        types::ClaimKind::Example => ClaimKind::Example,
+        types::ClaimKind::Excerpt => ClaimKind::Excerpt,
+        types::ClaimKind::Type => ClaimKind::Type,
+        types::ClaimKind::Call => ClaimKind::Call,
+        types::ClaimKind::Region => ClaimKind::Region,
+        types::ClaimKind::Container => ClaimKind::Container,
+        types::ClaimKind::Leaf => ClaimKind::Leaf,
     }
 }

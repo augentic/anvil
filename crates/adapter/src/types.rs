@@ -96,7 +96,7 @@ impl<'a> Context<'a> {
 #[must_use]
 #[expect(
     clippy::disallowed_methods,
-    reason = "the seam derives its shelf URL from the runtime-injected listener env; \
+    reason = "Context derives its shelf URL from the runtime-injected listener env; \
               this is engine infrastructure, not app configuration"
 )]
 pub fn mcp_url(adapter_id: &str) -> Option<String> {

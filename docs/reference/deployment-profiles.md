@@ -2,7 +2,7 @@
 
 How the `emery` runtime binds engine storage, and how deployments other than the shipped local binary swap that binding without touching engine code. A profile is host policy: one `omnia::runtime!` invocation choosing what backs the `wasi:keyvalue` / `wasi:blobstore` capability imports. The engine ships fixed key and container formulas and never learns which backing it runs over.
 
-## The seam
+## The storage boundary
 
 Engine state — the generation store, the `current` pointer, and the component cache — is reachable only through the storage capabilities (`omnia_guest::StateStore` / `BlobStore` on the guest side). The names the engine uses are flat, deployment-neutral formulas:
 
@@ -12,7 +12,7 @@ Engine state — the generation store, the `current` pointer, and the component 
 | Generation documents | blobstore container `spec` | `generations/<id>/<doc>.md` |
 | Component cache | blobstore container `adapters` | `<name>.wasm` |
 
-The host side of the seam is a backend type implementing `omnia::Backend` (connection options from the environment) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the seam exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
+The host side of the boundary is a backend type implementing `omnia::Backend` (connection options from the environment) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the boundary exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
 
 Package pins dispatch to statically admitted guests and do not imply a stored component. Dynamic resolution is deferred; its eventual artifact identity and integrity model must bind the resolved digest to the component the host executes rather than add an engine-owned mutable sidecar.
 

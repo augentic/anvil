@@ -1,7 +1,7 @@
 //! Evidence answer tests.
 
 use emery_adapter::answers::{evidence_schema, parse_evidence, validate_evidence};
-use emery_adapter::seam::{Authority, Backing, ClaimKind, Error};
+use emery_adapter::types::{Authority, Backing, ClaimKind, Error};
 
 #[test]
 fn schema_tracks_dto() {
@@ -9,7 +9,7 @@ fn schema_tracks_dto() {
         serde_json::from_str(&evidence_schema()).expect("generated schema parses");
     let claim = schema.pointer("/$defs/Claim").expect("Claim definition");
 
-    assert!(claim.pointer("/properties/backing").is_some(), "schema carries seam backing");
+    assert!(claim.pointer("/properties/backing").is_some(), "schema carries claim backing");
     assert!(
         claim.pointer("/properties/payload").is_none()
             && claim.pointer("/properties/backing-path").is_none(),
