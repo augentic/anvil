@@ -2,7 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use emery_error::Error;
+use emery_error::Error as Legacy;
+
+use crate::handler::{Error, classify};
 
 /// An operator-supplied adapter reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,22 +37,22 @@ impl AdapterSelector {
     /// Returns typed errors for malformed values, GitHub URLs, or invalid pins.
     pub fn parse(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
-            return Err(Error::Diag {
+            return Err(classify(&Legacy::Diag {
                 code: "adapter-arg-malformed",
                 detail:
                     "<adapter> must be non-empty and must not have leading or trailing whitespace"
                         .to_string(),
-            });
+            }));
         }
         if is_github_url(value) {
-            return Err(Error::Diag {
+            return Err(classify(&Legacy::Diag {
                 code: "adapter-github-uri-unsupported",
                 detail: format!(
                     "GitHub adapter URIs are not supported (`{value}`): a source checkout \
                      does not yield a usable adapter artifact. Pin a published component \
                      (`emery:<name>@<semver>`) or point at a local `.wasm` component file"
                 ),
-            });
+            }));
         }
         if let Some(package) = recognize_package(value) {
             return package;
@@ -111,25 +113,29 @@ fn recognize_package(value: &str) -> Option<Result<AdapterSelector, Error>> {
 fn parse_validated_package(
     namespace: &str, rest: &str, original: &str,
 ) -> Result<AdapterSelector, Error> {
-    let (name, version) = rest.split_once('@').ok_or_else(|| Error::Diag {
-        code: "adapter-package-ref-version-required",
-        detail: format!(
-            "adapter package reference `{original}` must pin an exact SemVer version (`{namespace}:<name>@<version>`); there is no branch or tag defaulting"
-        ),
+    let (name, version) = rest.split_once('@').ok_or_else(|| {
+        classify(&Legacy::Diag {
+            code: "adapter-package-ref-version-required",
+            detail: format!(
+                "adapter package reference `{original}` must pin an exact SemVer version (`{namespace}:<name>@<version>`); there is no branch or tag defaulting"
+            ),
+        })
     })?;
     if name.is_empty() {
-        return Err(Error::Diag {
+        return Err(classify(&Legacy::Diag {
             code: "adapter-package-ref-malformed",
             detail: format!(
                 "adapter package reference `{original}` is missing a package name before `@`"
             ),
-        });
+        }));
     }
-    let version = semver::Version::parse(version).map_err(|err| Error::Diag {
-        code: "adapter-package-ref-version-required",
-        detail: format!(
-            "adapter package reference `{original}` must pin an exact SemVer version, not `{version}`: {err}"
-        ),
+    let version = semver::Version::parse(version).map_err(|err| {
+        classify(&Legacy::Diag {
+            code: "adapter-package-ref-version-required",
+            detail: format!(
+                "adapter package reference `{original}` must pin an exact SemVer version, not `{version}`: {err}"
+            ),
+        })
     })?;
     Ok(AdapterSelector::Package {
         name: name.to_string(),
@@ -168,9 +174,11 @@ fn is_first_party_name(name: &str) -> bool {
 ///
 /// Returns `adapter-dir-name-unresolved` for an unusable stem.
 pub fn name_from_component(path: &Path) -> Result<String, Error> {
-    let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| Error::Diag {
-        code: "adapter-dir-name-unresolved",
-        detail: format!("cannot derive adapter name from {}", path.display()),
+    let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
+        classify(&Legacy::Diag {
+            code: "adapter-dir-name-unresolved",
+            detail: format!("cannot derive adapter name from {}", path.display()),
+        })
     })?;
     let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
     Ok(stem.replace('_', "-"))

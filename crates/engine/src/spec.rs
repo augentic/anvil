@@ -1,6 +1,8 @@
 //! Fail-closed `spec.md` AST.
 
-use emery_error::Error;
+use emery_error::Error as Legacy;
+
+use crate::handler::{Error, classify};
 
 /// Markdown heading prefix opening a requirement block.
 pub const HEADING: &str = "### Requirement:";
@@ -115,11 +117,11 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
             requirements,
         })
     } else {
-        Err(Error::validation_failed(
+        Err(classify(&Legacy::validation_failed(
             "spec-invalid",
             "`spec.md` must parse under the fail-closed spec AST",
             findings.join("; "),
-        ))
+        )))
     }
 }
 

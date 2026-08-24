@@ -2,11 +2,12 @@
 
 use std::collections::BTreeMap;
 
-use emery_error::Error;
+use emery_error::Error as Legacy;
 use omnia_guest::{BlobStore, CasError, StateStore};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+use crate::handler::{Error, classify};
 use crate::{spec, storage};
 
 /// Blobstore container for spec generations.
@@ -201,13 +202,13 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         match self.store.cas(CURRENT_KEY, observed.pointer.as_deref(), value.as_bytes()).await {
             Ok(()) => {}
             Err(CasError::Conflict(_)) => {
-                return Err(Error::Diag {
+                return Err(classify(&Legacy::Diag {
                     code: "spec-pointer-conflict",
                     detail: "a concurrent `emery specify` committed first and swapped the \
                              generation pointer; re-run `emery specify` to commit against the \
                              new current generation"
                         .to_string(),
-                });
+                }));
             }
             Err(CasError::Store(message)) => {
                 return Err(storage::failed(
@@ -241,13 +242,13 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
                 .await
                 .map_err(|err| storage::failed("probing a generation document", &err))?;
             if !present {
-                return Err(Error::Diag {
+                return Err(classify(&Legacy::Diag {
                     code: "spec-home-corrupt",
                     detail: format!(
                         "the generation pointer names `{id}` but `{name}` is missing; re-run \
                          `emery specify` to commit a fresh generation"
                     ),
-                });
+                }));
             }
         }
         Ok(Some(Committed { id }))
@@ -265,14 +266,14 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
             return Ok(None);
         };
         let Some((_, set)) = self.load(&committed.id).await else {
-            return Err(Error::Diag {
+            return Err(classify(&Legacy::Diag {
                 code: "spec-home-corrupt",
                 detail: format!(
                     "the generation pointer names `{}` but its documents cannot be read; re-run \
                      `emery specify` to commit a fresh generation",
                     committed.id
                 ),
-            });
+            }));
         };
         Ok(Some((committed, set)))
     }

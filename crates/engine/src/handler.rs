@@ -4,33 +4,65 @@
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
+use emery_error::Error as Legacy;
 use serde::Serialize;
 
-/// Operation error type: the workspace taxonomy.
-pub type Error = emery_error::Error;
+/// Operation error type: Omnia's protocol error.
+pub type Error = omnia_guest::Error;
+
+/// A `BadRequest` with a kebab `code`.
+pub fn bad_request(code: &'static str, description: impl Into<String>) -> Error {
+    Error::BadRequest {
+        code: code.to_string(),
+        description: description.into(),
+    }
+}
+
+/// A `NotFound` with a kebab `code`.
+pub fn not_found(code: &'static str, description: impl Into<String>) -> Error {
+    Error::NotFound {
+        code: code.to_string(),
+        description: description.into(),
+    }
+}
+
+/// A `ServerError` with a kebab `code`.
+pub fn server_error(code: &'static str, description: impl Into<String>) -> Error {
+    Error::ServerError {
+        code: code.to_string(),
+        description: description.into(),
+    }
+}
+
+/// A `BadGateway` with a kebab `code`.
+pub fn bad_gateway(code: &'static str, description: impl Into<String>) -> Error {
+    Error::BadGateway {
+        code: code.to_string(),
+        description: description.into(),
+    }
+}
 
 /// Maps a workspace error onto the Omnia protocol class and kebab code.
 ///
-/// The description is [`Error`]'s display so text-mode stderr stays the same.
-pub fn classify(err: &Error) -> omnia_guest::Error {
+/// The description is the legacy display so text-mode stderr stays the same.
+pub fn classify(err: &Legacy) -> Error {
     let description = err.to_string();
     match err {
-        Error::Argument { .. } | Error::Validation { .. } | Error::AdapterCliTooOld { .. } => {
-            omnia_guest::Error::BadRequest {
+        Legacy::Argument { .. } | Legacy::Validation { .. } | Legacy::AdapterCliTooOld { .. } => {
+            Error::BadRequest {
                 code: err.variant_str().into_owned(),
                 description,
             }
         }
-        Error::Filesystem { .. } | Error::Io(_) => omnia_guest::Error::ServerError {
+        Legacy::Filesystem { .. } | Legacy::Io(_) => Error::ServerError {
             code: err.variant_str().into_owned(),
             description,
         },
-        Error::Diag { code, .. } => classify_diag(code, description),
+        Legacy::Diag { code, .. } => classify_diag(code, description),
     }
 }
 
-fn classify_diag(code: &'static str, description: String) -> omnia_guest::Error {
-    let owned = code.to_string();
+fn classify_diag(code: &'static str, description: String) -> Error {
     match code {
         "argument"
         | "specify-source-required"
@@ -48,24 +80,12 @@ fn classify_diag(code: &'static str, description: String) -> omnia_guest::Error 
         | "adapter-package-ref-malformed"
         | "adapter-dir-name-unresolved"
         | "sources-toml-malformed"
-        | "source-remote-unsupported" => omnia_guest::Error::BadRequest {
-            code: owned,
-            description,
-        },
-        "spec-not-generated" | "adapter-component-missing" => omnia_guest::Error::NotFound {
-            code: owned,
-            description,
-        },
+        | "source-remote-unsupported" => bad_request(code, description),
+        "spec-not-generated" | "adapter-component-missing" => not_found(code, description),
         "source-extract-failed" | "claim-extras-malformed" | "synthesis-model-failed" => {
-            omnia_guest::Error::BadGateway {
-                code: owned,
-                description,
-            }
+            bad_gateway(code, description)
         }
-        _ => omnia_guest::Error::ServerError {
-            code: owned,
-            description,
-        },
+        _ => server_error(code, description),
     }
 }
 
@@ -104,11 +124,11 @@ pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Erro
 }
 
 fn outside_project(path: &Path, flag: &'static str) -> Error {
-    Error::Argument {
+    classify(&Legacy::Argument {
         flag,
         detail: format!(
             "path `{}` must be relative to the project preopen `.` and must not escape it",
             path.display()
         ),
-    }
+    })
 }

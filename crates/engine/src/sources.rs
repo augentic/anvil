@@ -6,9 +6,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use emery_error::Error;
+use emery_error::Error as Legacy;
 
-use crate::handler::preopen_path;
+use crate::handler::{Error, classify, preopen_path};
 use crate::resolve::AdapterSelector;
 
 /// A source binding for one run.
@@ -44,12 +44,12 @@ pub fn bindings(
     match sources {
         Some(path) => {
             if !adapters.is_empty() || !values.is_empty() {
-                return Err(Error::Argument {
+                return Err(classify(&Legacy::Argument {
                     flag: "--sources",
                     detail: "cannot be combined with positional `<adapter>` or `--value` \
                              bindings; the file carries the whole binding list"
                         .to_string(),
-                });
+                }));
             }
             from_file(&preopen_path(Path::new(path), "--sources")?)
         }
@@ -93,14 +93,18 @@ fn from_argv(adapters: &[String], values: &[String]) -> Result<Vec<SourceBinding
 // The operator-owned file carrier: parsed fail-closed, never written
 // by the engine, and only ever reached through an explicit path.
 fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
-    let raw = std::fs::read_to_string(path).map_err(|source| Error::Filesystem {
-        op: "read",
-        path: path.to_path_buf(),
-        source,
+    let raw = std::fs::read_to_string(path).map_err(|source| {
+        classify(&Legacy::Filesystem {
+            op: "read",
+            path: path.to_path_buf(),
+            source,
+        })
     })?;
-    let file: SourcesFile = toml::from_str(&raw).map_err(|err| Error::Diag {
-        code: "sources-toml-malformed",
-        detail: format!("{}: {err}", path.display()),
+    let file: SourcesFile = toml::from_str(&raw).map_err(|err| {
+        classify(&Legacy::Diag {
+            code: "sources-toml-malformed",
+            detail: format!("{}: {err}", path.display()),
+        })
     })?;
     if file.sources.is_empty() {
         return Err(source_required());
@@ -120,31 +124,31 @@ fn binding(key: &str, entry: &SourceEntry, base: &Path) -> Result<SourceBinding,
     let locations =
         [entry.path.is_some(), entry.git.is_some(), entry.url.is_some(), entry.value.is_some()];
     if locations.iter().filter(|present| **present).count() > 1 {
-        return Err(Error::Argument {
+        return Err(classify(&Legacy::Argument {
             flag: "--sources",
             detail: format!(
                 "source `{key}` names more than one of `path`, `git`, `url`, `value`; exactly \
                  one location key is allowed (omitted means the workspace lend at `.`)"
             ),
-        });
+        }));
     }
     if let Some(remote) = entry.git.as_deref().or(entry.url.as_deref()) {
         if remote.starts_with("git+") {
-            return Err(Error::Argument {
+            return Err(classify(&Legacy::Argument {
                 flag: "--sources",
                 detail: format!(
                     "source `{key}` uses Cargo's machine-written source-id form (`git+…`); \
                      write the plain URL with an optional `@ref` suffix"
                 ),
-            });
+            }));
         }
-        return Err(Error::Diag {
+        return Err(classify(&Legacy::Diag {
             code: "source-remote-unsupported",
             detail: format!(
                 "source `{key}` names a remote location (`git` / `url`); remote read views are \
                  reserved and not yet supported — bind a local `path` or inline `value`"
             ),
-        });
+        }));
     }
     let content = match (&entry.path, &entry.value) {
         (Some(relative), None) => {
@@ -178,21 +182,21 @@ fn resolved(base: &Path, relative: &Path) -> Result<PathBuf, Error> {
 }
 
 fn source_required() -> Error {
-    Error::validation_failed(
+    classify(&Legacy::validation_failed(
         "specify-source-required",
         "emery specify requires at least one source",
         "pass `<adapter>` (package reference or local component path) and/or `--value \
          <adapter>=<text>`, or select an operator-owned file with `--sources [<path>]`",
-    )
+    ))
 }
 
 fn push_unique(bindings: &mut Vec<SourceBinding>, binding: SourceBinding) -> Result<(), Error> {
     if bindings.iter().any(|existing| existing.key == binding.key) {
-        return Err(Error::validation_failed(
+        return Err(classify(&Legacy::validation_failed(
             "specify-source-duplicate",
             "each source binds once",
             format!("source `{}` is bound twice", binding.key),
-        ));
+        )));
     }
     bindings.push(binding);
     Ok(())
@@ -200,10 +204,10 @@ fn push_unique(bindings: &mut Vec<SourceBinding>, binding: SourceBinding) -> Res
 
 fn split_value(entry: &str) -> Result<(&str, &str), Error> {
     entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
-        Error::Argument {
+        classify(&Legacy::Argument {
             flag: "--value",
             detail: format!("expected `<adapter>=<text>`, got `{entry}`"),
-        }
+        })
     })
 }
 

@@ -14,7 +14,7 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::{BlobStore, Model, StateStore};
 use serde::Serialize;
 
-use crate::handler::{Error, Render, classify};
+use crate::handler::{Error, Render, server_error};
 use crate::show::{Show, ShowInput};
 use crate::specify::{Specify, SpecifyInput};
 
@@ -117,23 +117,27 @@ fn emit<T: Serialize>(
 ) -> Result<(), Error> {
     match format {
         Format::Json => {
-            serde_json::to_writer_pretty(&mut *writer, payload).map_err(|err| Error::Diag {
-                code: "json-serialize-failed",
-                detail: format!("failed to serialize JSON response: {err}"),
+            serde_json::to_writer_pretty(&mut *writer, payload).map_err(|err| {
+                server_error(
+                    "json-serialize-failed",
+                    format!("failed to serialize JSON response: {err}"),
+                )
             })?;
-            writeln!(writer).map_err(Error::Io)
+            writeln!(writer).map_err(|err| server_error("io", err.to_string()))
         }
-        Format::Text => render_text(writer, payload).map_err(Error::Io),
+        Format::Text => {
+            render_text(writer, payload).map_err(|err| server_error("io", err.to_string()))
+        }
     }
 }
 
 /// The failure-code authority: the Omnia 1:1 exit map.
 fn exit_code(error: &Error) -> u8 {
-    match classify(error) {
-        omnia_guest::Error::BadRequest { .. } => 1,
-        omnia_guest::Error::NotFound { .. } => 2,
-        omnia_guest::Error::ServerError { .. } => 3,
-        omnia_guest::Error::BadGateway { .. } => 4,
+    match error {
+        Error::BadRequest { .. } => 1,
+        Error::NotFound { .. } => 2,
+        Error::ServerError { .. } => 3,
+        Error::BadGateway { .. } => 4,
     }
 }
 
@@ -150,12 +154,11 @@ struct ErrorBody {
 
 impl From<&Error> for ErrorBody {
     fn from(err: &Error) -> Self {
-        let classified = classify(err);
         Self {
-            error: classified.code(),
-            message: classified.description(),
+            error: err.code(),
+            message: err.description(),
             exit_code: exit_code(err),
-            hint: hint(&classified.code()),
+            hint: hint(&err.code()),
         }
     }
 }
