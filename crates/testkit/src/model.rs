@@ -112,13 +112,13 @@ impl Scripted {
 }
 
 impl Model for Scripted {
-    // A single-shot completion has no handler; scripting tool calls on
-    // its turn is a harness bug.
     /// # Panics
     ///
     /// Panics if the turn has scripted tool calls (those require `complete_with`).
     fn complete(&self, request: Request) -> impl Future<Output = Result<Reply, Error>> + Send {
         let turn = self.next(request);
+        // A single-shot completion has no handler; scripting tool calls on
+        // its turn is a harness bug.
         assert!(turn.calls.is_empty(), "scripted tool calls require complete_with");
         ready(turn.result)
     }
