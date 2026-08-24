@@ -14,7 +14,7 @@ use crate::handler::Render;
 use crate::home::Home;
 
 /// The reviewable documents of one generation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "kebab-case")]
 pub enum Document {
     /// The behavioural specification document.
@@ -33,10 +33,14 @@ impl Document {
 }
 
 /// Input for `emery show`.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+///
+/// The input doubles as the verb's clap surface; field docs are its
+/// `--help` text.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, clap::Args)]
 #[serde(rename_all = "kebab-case")]
 pub struct ShowInput {
-    /// Which reviewable document to print.
+    /// Reviewable document of the current generation.
+    #[arg(value_enum)]
     pub document: Document,
 }
 

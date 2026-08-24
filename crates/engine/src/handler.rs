@@ -5,7 +5,7 @@ mod output;
 mod paths;
 
 pub use locations::{ADAPTERS_CONTAINER, Locations};
-pub use output::Render;
+pub(crate) use output::Render;
 pub use paths::ExecutionPaths;
 pub(crate) use paths::preopen_path;
 

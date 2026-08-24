@@ -282,7 +282,7 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 
 ### CLI verb template
 
-Each `### emery <group> <verb>` section on a CLI reference page carries these elements, in order (verify every fact against `crates/transport/src/command/` and `Exit::from` in `output.rs`):
+Each `### emery <group> <verb>` section on a CLI reference page carries these elements, in order (verify every fact against `crates/engine/src/cli.rs` and its `exit_code` table):
 
 1. **Role line** — one sentence naming what the verb does and who invokes it (skill, loop, or operator).
 2. **Synopsis fence** — a `bash` fence with the full argument/flag grammar.

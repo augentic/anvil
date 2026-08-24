@@ -15,17 +15,22 @@ use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
 
 /// Input for `emery specify` — the run's source bindings.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+///
+/// The input doubles as the verb's clap surface; field docs are its
+/// `--help` text.
+#[derive(Debug, Default, Clone, Serialize, Deserialize, clap::Args)]
 #[serde(rename_all = "kebab-case")]
 pub struct SpecifyInput {
-    /// Source adapters bound as workspace-backed sources.
+    /// Workspace-backed source adapters or local component paths.
     #[serde(default)]
     pub adapters: Vec<String>,
-    /// Value-backed source bindings, each `<adapter>=<text>`.
+    /// Bind an inline source as `<adapter>=<text>`; repeatable.
     #[serde(default)]
+    #[arg(long = "value")]
     pub values: Vec<String>,
-    /// Path of an operator-owned `sources.toml` carrying the bindings.
+    /// Operator-owned binding list; defaults to sources.toml.
     #[serde(default)]
+    #[arg(long, num_args = 0..=1, default_missing_value = "sources.toml")]
     pub sources: Option<String>,
 }
 

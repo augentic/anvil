@@ -26,7 +26,7 @@ Capability doubles live in `emery-testkit`: the FIFO request-recording `Scripted
 
 ## Root-led policy
 
-The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_transport::command::router` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
+The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_engine::cli::router` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
 
 Root suites are organized by operator story, one auto-discovered test binary per verb-level narrative:
 

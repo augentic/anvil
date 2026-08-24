@@ -1,8 +1,8 @@
 //! Plugin-rule mentions against the shipped CLI surface.
 //!
 //! The always-applied Cursor rule may only name live verbs, flags, and
-//! shipped skills — a cross-cutting product contract, not a transport
-//! library one.
+//! shipped skills — a cross-cutting product contract, not an
+//! engine-internal one.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -14,11 +14,9 @@ use std::sync::Arc;
 use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
 use emery_testkit::Memory;
-use emery_transport::command::Globals;
-use omnia_guest::api::command::Router;
 use omnia_guest::api::invoke::Invoker;
 
-type Grammar = Router<Inert, Globals>;
+type Grammar = emery_engine::cli::Cli<Inert>;
 
 // Capabilities are never dispatched; the suite only inspects the grammar.
 #[derive(Clone, Debug, Default)]
@@ -67,7 +65,7 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
 }
 
 fn grammar() -> Grammar {
-    emery_transport::command::router(Invoker::new("emery", Inert::default())).expect("router")
+    emery_engine::cli::router(Invoker::new("emery", Inert::default())).expect("router")
 }
 
 // Global flags do not appear in route-specific help.

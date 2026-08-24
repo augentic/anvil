@@ -104,13 +104,13 @@ The codebase optimises for short reading over short writing. Concretely:
 - **Cross-module redundancy**: `WorkspaceBranchPreparationFailed` inside `Error` reads as `Error::WorkspaceBranchPreparationFailed` — drop the `Workspace` prefix when every variant in the cluster already operates on a workspace. Clippy's `module_name_repetitions` catches the in-module cases; cross-module redundancy is on you and reviewers.
 - **One-variant enums** are dead overhead. Drop the variant or the enum. If the type's name already discriminates, the enum adds nothing.
 - **Field prefixes**: a struct named `RegistryAmendmentArgs` does not carry `proposed_` on every field — the struct name already says "proposal".
-- **Comment redundancy**: don't paraphrase a `match` arm's variant in a `// …` comment when the variant's doc-comment already explains it. The same rule applies to `Exit::code()`'s inline comments mirroring variant docs.
+- **Comment redundancy**: don't paraphrase a `match` arm's variant in a `// …` comment when the variant's doc-comment already explains it.
 
 Reviewers catch the density caps (see [Comments](#comments)) and the 25-character identifier cap (see [Naming](#naming)). Clippy's `module_name_repetitions` catches the in-module restatement cases.
 
 ## Format dispatch
 
-Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector (`EmeryProjector` in `crates/transport/src/command.rs`) owns format dispatch through the internal `emit` function in `crates/transport/src/command/output.rs`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/engine/src/cli.rs` owns format dispatch through the internal `emit` function in the same module. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -127,7 +127,7 @@ Text mode renders through the body's `emery_engine::handler::Render` impl (`fn r
 
 ## One emit path
 
-Success bodies and failures leave operations as typed values. The projectors in `crates/transport` render those values at the command or HTTP boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to `crates/transport/src/command/output.rs`.
+Success bodies and failures leave operations as typed values. The command projector in `emery_engine::cli` renders those values at the command boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to `crates/engine/src/cli.rs`.
 
 ## DTOs
 

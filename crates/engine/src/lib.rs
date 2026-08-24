@@ -1,5 +1,6 @@
 //! Emery's specification-generation engine.
 
+pub mod cli;
 pub mod extract;
 pub mod handler;
 pub mod home;

@@ -32,8 +32,7 @@ Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `us
 ```text
 error        # leaf — thiserror only
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import wrappers; bare natively so tests script Source), WIT types, embedded prose registry + the reference tool closure (list_docs / read_doc over the embedded docs)
-engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
-transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract
+engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error); plus the CLI surface (emery_engine::cli — the typed command router over Invoker: specify + show + completions, clap grammar carried on the operation inputs, output projection, the exit contract)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 testkit      # unpublished — scripted capability doubles for native tests: the FIFO request-recording `Scripted` model plus the StateStore/BlobStore pair (`Memory`, `Namespaced`); not a production crate
 emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind the generation and component-cache state to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
@@ -52,7 +51,7 @@ docs/              Developer Guide (mdBook; reference + contributing + standards
 
 ### Exit codes
 
-`Exit::from(&Error)` in [`crates/transport/src/command/output.rs`](./crates/transport/src/command/output.rs) is the single source of truth.
+`exit_code(&Error)` in [`crates/engine/src/cli.rs`](./crates/engine/src/cli.rs) is the single source of truth.
 
 | Code | Name | When |
 | ---- | ------------------------ | ------------------------------------------------------------------ |

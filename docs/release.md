@@ -111,7 +111,7 @@ cargo binstall --git https://github.com/augentic/emery emery@<version>
 cargo install --git https://github.com/augentic/emery --locked
 ```
 
-Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-tap` when publishing a new host release. Subsequent updates use the same installation channel. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
+Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-tap` when publishing a new host release. Subsequent updates use the same installation channel. Guest-owned verbs additionally need `cursor-sdk-bridge` on `PATH` (or `CURSOR_SDK_BRIDGE_BIN`) and `CURSOR_API_KEY` at run time — the `omnia-cursor` model backend spawns the bridge; the engine guest ships inside the binary, so replacing the binary replaces the engine with it. Install the bridge from the [sdk-bridge releases](https://github.com/cursor/sdk-bridge/releases).
 
 ## Adding a new target triple
 

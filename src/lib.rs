@@ -2,7 +2,7 @@
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        use emery_transport::command;
+        use emery_engine::cli;
         use omnia_guest::api::invoke::Invoker;
 
         // The bare provider uses imported model and source capabilities.
@@ -20,7 +20,7 @@ cfg_if::cfg_if! {
 
         impl wasip3::exports::cli::run::Guest for Cli {
             async fn run() -> Result<(), ()> {
-                let router = command::router(Invoker::new("emery", Provider)).map_err(drop)?;
+                let router = cli::router(Invoker::new("emery", Provider)).map_err(drop)?;
                 omnia_guest::api::command::execute_wasi(&router).await
             }
         }

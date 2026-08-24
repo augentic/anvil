@@ -6,7 +6,7 @@ The contract every command operation obeys: how a command becomes an `omnia_gues
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
-- **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). Command routing reaches it through an exhaustive `TryFrom<Args>`.
+- **`Input`** is a flat serde DTO that doubles as the verb's clap surface: it derives `clap::Args` alongside `Serialize`/`Deserialize` (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields; parsers and defaults ride `#[arg]` attributes). The router registers the operation directly over its input, so route decoding is infallible by construction.
 - **`call(input, context)`** anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = emery_engine::handler::Error`** — an alias of the workspace taxonomy (`emery_error::Error`).
 
@@ -44,7 +44,7 @@ Operations never write to stdout. Each returns a typed body implementing `Serial
 
 ## Errors and their projections
 
-`emery_engine::handler::Error` is the workspace `emery_error::Error` taxonomy. The command `EmeryProjector` in `crates/transport/src/command.rs` owns the taxonomy → exit projection and builds the JSON error body from it. `Exit` stays in `crates/transport` — there is no second exit table. Do not reintroduce a report-carrying failure wrapper until a gate verb needs one.
+`emery_engine::handler::Error` is the workspace `emery_error::Error` taxonomy. The command projector in `crates/engine/src/cli.rs` owns the taxonomy → exit projection and builds the JSON error body from it. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not reintroduce a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
@@ -57,27 +57,27 @@ The four-slot CLI exit-code table is fixed:
 | 2    | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
 | 3    | `EXIT_VERSION_TOO_OLD`   | `Error::AdapterCliTooOld` (`adapter-cli-too-old` in JSON)                 |
 
-`Exit::from(&Error)` in [`crates/transport/src/command/output.rs`](../../crates/transport/src/command/output.rs) is the single source of truth. `EmeryProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes.
+`exit_code(&Error)` in [`crates/engine/src/cli.rs`](../../crates/engine/src/cli.rs) is the single source of truth. The command projector uses it for every terminal operation failure. Do not invent new exit codes.
 
-## The transport crate (`crates/transport`)
+## The CLI module (`emery_engine::cli`)
 
-`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the Emery command projector, and the fixed exit contract. There is no HTTP surface: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router.
+`crates/engine/src/cli.rs` is the whole CLI surface: the `Globals` type, the reusable `omnia_guest::api::command` route assembly, the Emery command projector, and the fixed exit contract. There is no HTTP surface: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router.
 
-`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`.
+There is no separate `*Args` layer: each operation `Input` derives `clap::Args` and registers directly (`run::<Input, Operation>()`), so grammar/input drift cannot exist and route decoding is infallible. Field parsers (closed `ValueEnum`s, repeatable flags, defaults) live on the input's `#[arg]` attributes. Global flags (`--format`) stay in `Globals`, not operation `Input`. A module-level layering rule replaces the old crate boundary: `cli` imports operation types and the error taxonomy only, never domain kernels.
 
-## Dispatch contract (`command.rs`)
+## Dispatch contract (`cli.rs`)
 
-The reusable command route table lives in `crates/transport/src/command.rs`. `command::router` binds a provider-carrying `Invoker` into the static grammar and returns the executable `Router`; `Router::execute` runs one argv under the framework's `command` span (selected route path plus exit code) and returns the buffered response. Wire-contract suites and the native journey rung call the same `command::router` and assert on the buffered channels.
+The reusable command route table lives in `crates/engine/src/cli.rs`. `cli::router` binds a provider-carrying `Invoker` into the static grammar and returns the executable `Router`; `Router::execute` runs one argv under the framework's `command` span (selected route path plus exit code) and returns the buffered response. Wire-contract suites and the native journey rung call the same `cli::router` and assert on the buffered channels.
 
 On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, assembles that router over its provider, and hands it to `omnia_guest::api::command::execute_wasi` — the WASI last mile that reads argv, initializes and flushes guest telemetry, writes both channels, and exits with the exact status. Every path runs the same grammar and command `EmeryProjector`.
 
 Target discipline per leaf arm:
 
-1. Parse global flags and the selected leaf's concrete `Args`.
-2. Convert `Args` through its explicit `TryFrom` implementation and invoke the typed operation.
-3. Project success, operation failure, or conversion failure through `EmeryProjector`; provisioning routes return the standard argument refusal and completions remain synthetic router behavior.
+1. Parse global flags and the selected leaf's `Input` — the input is its own clap surface.
+2. Invoke the typed operation directly over the parsed input.
+3. Project success or operation failure through the command projector; completions remain synthetic router behavior.
 
-Never put domain logic in `transport` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `cli` or a shim's route match. Manual `Input { … }` construction in a route arm is a shape defect. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Gotcha — the only version floor is per adapter
 

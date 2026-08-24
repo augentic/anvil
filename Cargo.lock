@@ -908,9 +908,8 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "emery-adapter",
- "emery-error",
+ "emery-engine",
  "emery-testkit",
- "emery-transport",
  "omnia",
  "omnia-cursor",
  "omnia-filesystem",
@@ -945,6 +944,7 @@ name = "emery-engine"
 version = "0.38.0"
 dependencies = [
  "anyhow",
+ "clap",
  "emery-adapter",
  "emery-error",
  "emery-prose",
@@ -979,20 +979,6 @@ version = "0.38.0"
 dependencies = [
  "anyhow",
  "omnia-guest",
-]
-
-[[package]]
-name = "emery-transport"
-version = "0.38.0"
-dependencies = [
- "clap",
- "emery-adapter",
- "emery-engine",
- "emery-error",
- "omnia-guest",
- "serde",
- "serde_json",
- "strum",
 ]
 
 [[package]]
