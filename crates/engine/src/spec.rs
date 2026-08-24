@@ -319,6 +319,9 @@ fn trim_edges(lines: &[String]) -> String {
     lines[start..end].join("\n")
 }
 
+// Collapse (dense private parse matrix): fail-closed spec AST edges
+// are a closed (markdown → Spec / spec-invalid) table; a root port
+// would be one synthesis fixture per grammar finding.
 #[cfg(test)]
 mod tests {
     use super::{Status, Tag, parse};
