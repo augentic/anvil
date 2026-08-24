@@ -33,7 +33,7 @@ emery --version
 
 ## Developing Emery (contributors)
 
-The repository root is a Rust workspace producing the `emery` binary. The root `Makefile` forwards every goal to [cargo-make](Makefile.toml).
+The repository root is a Rust workspace producing the `emery` binary. The root `Makefile` forwards every goal to [mise](mise.toml).
 
 ```bash
 make test    # native integration suite

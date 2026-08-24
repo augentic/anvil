@@ -140,7 +140,7 @@ Eval is a public-contract **host** binary (spawns the shipped `emery` CLI). It s
 
 `std::env::args()` in eval is already fine: adapters' deny-list does not include `args`.
 
-**Done when:** the three expects are gone and `cargo make lint` in emery-adapters is clean.
+**Done when:** the three expects are gone and `make lint` in emery-adapters is clean.
 
 ---
 
@@ -199,4 +199,4 @@ Independent, cheapest first:
 2. **S1** then **E4** — narrow `crates/clippy.toml`, drop `emit()` expect (or delete `emit()` only if S1 is rejected).
 3. Leave **E5**, **E6**, **W1**, **W2** unless you are changing colour policy, generated bindings, or duplicate-crate policy.
 
-Verify each with `cargo make lint` in the repo you touched (`cargo make ci` before commit).
+Verify each with `make lint` in the repo you touched (`make ci` before commit).

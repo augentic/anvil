@@ -8,7 +8,7 @@ Deployment crate (`name = "emery"`) at the repo root. [`src/main.rs`](../../src/
 
 The authoritative leaf → root crate graph (with per-crate roles) lives in [AGENTS.md](../../AGENTS.md). Headline shape: `error` is the leaf; `engine` owns the domain operations (`specify`, `show`, adapter resolution) and the typed command routing (`emery_engine::cli`); the root package's `src/main.rs` owns native deployment policy inline and its wasm32 lib is the one provider (the component contract is the only production boundary, ADR-0002). The journey's mock source lives in the `source` example, not a workspace crate.
 
-There is no lint engine or `Check` substrate. Repo consistency is the mdBook links gate (`cargo make links`).
+There is no lint engine or `Check` substrate. Repo consistency is the mdBook links gate (`make links`).
 
 `error` is the leaf. Evidence claim types live in the adapter SDK (the WIT-shaped DTOs); the fail-closed `spec.md` parser lives in `engine`. Neither depends on anything named lint.
 
@@ -65,11 +65,11 @@ Rust stable per `rust-toolchain.toml` (channel `stable`, components `clippy`, `r
 cargo +nightly fmt --all
 ```
 
-`cargo make fmt` does this for you.
+`make fmt` does this for you.
 
 ## Supply chain
 
-`cargo-vet` and `cargo-deny` gate `cargo make ci`; `cargo-audit`, `cargo-outdated`, and `cargo-udeps` are advisory tasks run on demand (`cargo make audit` / `outdated` / `deps`). The vet task is check-only (`cargo vet --locked`) — regeneration is deliberately not part of the gate, since regenerating exemptions before checking would auto-exempt anything unaudited. When a new dependency lands:
+`cargo-vet` and `cargo-deny` gate `make ci`; `cargo-audit`, `cargo-outdated`, and `cargo-udeps` are advisory tasks run on demand (`make audit` / `outdated` / `deps`). The vet task is check-only (`cargo vet --locked`) — regeneration is deliberately not part of the gate, since regenerating exemptions before checking would auto-exempt anything unaudited. When a new dependency lands:
 
 1. Add it to `[workspace.dependencies]` in the root `Cargo.toml` with a major-version pin (e.g. `serde = { version = "1", features = ["derive"] }`). Per-crate `Cargo.toml` references it as `serde.workspace = true`.
 2. Run `cargo vet regenerate imports`, `cargo vet regenerate exemptions`, and `cargo vet regenerate unpublished`; review the `supply-chain/` diff, then commit it.

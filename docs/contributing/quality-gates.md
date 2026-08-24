@@ -4,13 +4,13 @@ Emery proves engine correctness from this repository alone. The placement rules 
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, the test suites, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native suites inside it are led by the root scenario binaries (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`), which drive the in-process command router over scripted capabilities — the whole product arc from argv to committed storage, plus the CLI wire contract and the plugin-rule grammar check. The surviving crate suites prove independent library contracts and the CLI-impractical engine invariants.
+`make ci` owns formatting, lints, schemas, the test suites, and the mdBook links gate (Developer Guide link integrity, `make links`). The native suites inside it are led by the root scenario binaries (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`), which drive the in-process command router over scripted capabilities — the whole product arc from argv to committed storage, plus the CLI wire contract and the plugin-rule grammar check. The surviving crate suites prove independent library contracts and the CLI-impractical engine invariants.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
 ## The WASM boundary
 
-No test builds or spawns the mock source component. The `source` and `runtime` examples remain for local component-shape work (`cargo make source` / `cargo make runtime`). Run those when a change crosses a WIT, dispatch, hosting, or preopen boundary.
+No test builds or spawns the mock source component. The `source` and `runtime` examples remain for local component-shape work (`make source` / `make runtime`). Run those when a change crosses a WIT, dispatch, hosting, or preopen boundary.
 
 ## Placement decision
 
@@ -31,16 +31,16 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 
 ## Consistency (links)
 
-Repo invariants that are cheap to enforce in CI and expensive to notice later. Developer Guide link integrity is the mdBook build (`mdbook-linkcheck2` via [`docs/book.toml`](../book.toml)); it runs inside `cargo make ci`. Docs house style is **not** a CI predicate; ultrathin skill body style is guidance in [`docs/standards/cli-contract.md`](../standards/cli-contract.md).
+Repo invariants that are cheap to enforce in CI and expensive to notice later. Developer Guide link integrity is the mdBook build (`mdbook-linkcheck2` via [`docs/book.toml`](../book.toml)); it runs inside `make ci`. Docs house style is **not** a CI predicate; ultrathin skill body style is guidance in [`docs/standards/cli-contract.md`](../standards/cli-contract.md).
 
 ```bash
-cargo make links              # Developer Guide link integrity (mdbook build)
-cargo make ci                 # the full gate (includes links)
-cargo make check              # the pre-commit subset
+make links              # Developer Guide link integrity (mdbook build)
+make ci                 # the full gate (includes links)
+make check              # the pre-commit subset
 ```
 
-| Invariant                      | Owner                                                                                                                   | When it runs                         |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| Developer Guide link integrity | `mdbook-linkcheck2` over [`docs/book.toml`](../book.toml) — `cargo make links` locally, the `links` job in CI per push   | Every `cargo make ci` and every push |
+| Invariant                      | Owner                                                                                                          | When it runs                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Developer Guide link integrity | `mdbook-linkcheck2` over [`docs/book.toml`](../book.toml) — `make links` locally, the `links` job in CI per push | Every `make ci` and every push |
 
 Every relative link in the Developer Guide must resolve. Web links are skipped (`follow-web-links = false`); links that leave `docs/` (for example into `crates/` or `AGENTS.md`) are allowed (`traverse-parent-directories = true`). Chapters referenced as in-book targets must appear in `SUMMARY.md`; prefer file hrefs over bare directory paths.

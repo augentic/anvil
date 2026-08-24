@@ -4,7 +4,7 @@ Root-led integration posture: the bulk of Emery's product coverage lives in the 
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --workspace --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly.
+Use `make test` rather than `cargo test`. It runs `cargo nextest run --locked --workspace --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
@@ -12,7 +12,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 Emery is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `emery-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The fast rung is **root product integration plus retained crate contracts**: `cargo make test` drives the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`) through the in-process command router over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage capabilities) — engine orchestration without a built component — alongside the surviving crate suites (the adapter SDK, error, prose, and the CLI-impractical engine invariants). It runs on every push as part of `cargo make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
+The fast rung is **root product integration plus retained crate contracts**: `make test` drives the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`) through the in-process command router over a provider that scripts every capability (`Model`, `Source`, and the `StateStore`/`BlobStore` storage capabilities) — engine orchestration without a built component — alongside the surviving crate suites (the adapter SDK, error, prose, and the CLI-impractical engine invariants). It runs on every push as part of `make ci`. The v1 prompt-evaluation and wasm-example rungs are archived at tag `v1`. No test builds or spawns the mock source component.
 
 Engine state is observed **through the storage provider and the success envelope, not the filesystem**: since the storage capabilities (design/portable-storage.md steps 1–2), engine-owned state (the output home, the project record, the component cache) is written through the `omnia_guest::StateStore`/`BlobStore` capabilities — the `wasi:keyvalue`/`wasi:blobstore` imports in deployment, bound host-side to the durable `omnia-filesystem` store — and the native suites script them with `emery_testkit` (`Memory`, `Namespaced`). No suite changes the process working directory, and no suite asserts an on-disk layout — the backing is host policy, exercised on the live rung, not in tests. Operator-supplied inputs (a local `.wasm` component, a `sources.toml`) stay real files in a `tempfile::TempDir`.
 
@@ -88,8 +88,8 @@ Before writing a test below the root, decide whether a root scenario can reach t
 `cargo llvm-cov` line/region coverage on still-live code is the safety net — not edge-matrix preservation. Before and after a reduction, run the coverage gate:
 
 ```bash
-cargo make cov                       # workspace-wide: cargo llvm-cov nextest --workspace --summary-only
-CRATE=emery-<crate> cargo make cov-crate   # focused: cargo llvm-cov nextest -p <package> --summary-only
+make cov                       # workspace-wide: cargo llvm-cov nextest --workspace --summary-only
+CRATE=emery-<crate> make cov-crate   # focused: cargo llvm-cov nextest -p <package> --summary-only
 ```
 
 Root scenarios exercise engine and transport code from the root package, so the workspace-wide run is the default gate for re-homing; the focused form audits a leaf crate's own contract suite. A `TOTAL` drop on lines that are still live means real coverage was lost: backfill it with a root scenario (preferred) or revert that specific deletion. A reduction lands only when coverage holds (a pure collapse of redundant cases is coverage-neutral by construction). Use `cargo llvm-cov nextest` (not bare `cargo test`/`cargo llvm-cov`): nextest's process isolation is what makes the CWD/env-mutating suites pass, and it is the runner CI uses.
