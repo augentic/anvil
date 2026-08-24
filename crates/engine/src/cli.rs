@@ -132,7 +132,7 @@ fn emit<T: Serialize>(
 }
 
 /// The failure-code authority: the Omnia 1:1 exit map.
-fn exit_code(error: &Error) -> u8 {
+const fn exit_code(error: &Error) -> u8 {
     match error {
         Error::BadRequest { .. } => 1,
         Error::NotFound { .. } => 2,
@@ -165,7 +165,7 @@ impl From<&Error> for ErrorBody {
 
 /// Renders command-failure bytes and their exit code.
 ///
-/// Rendering failures become a plain ServerError line (exit 3).
+/// Rendering failures become a plain `ServerError` line (exit 3).
 fn failure(format: Format, error: &Error) -> CommandResponse {
     let body = ErrorBody::from(error);
     let mut stderr = Vec::new();

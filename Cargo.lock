@@ -946,7 +946,6 @@ dependencies = [
  "anyhow",
  "clap",
  "emery-adapter",
- "emery-error",
  "emery-prose",
  "emery-testkit",
  "omnia-guest",
@@ -957,13 +956,6 @@ dependencies = [
  "strum",
  "tokio",
  "toml",
-]
-
-[[package]]
-name = "emery-error"
-version = "0.38.0"
-dependencies = [
- "thiserror 2.0.20",
 ]
 
 [[package]]

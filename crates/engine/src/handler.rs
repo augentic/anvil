@@ -4,7 +4,6 @@
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
-use emery_error::Error as Legacy;
 use serde::Serialize;
 
 /// Operation error type: Omnia's protocol error.
@@ -39,56 +38,6 @@ pub fn bad_gateway(code: &'static str, description: impl Into<String>) -> Error 
     Error::BadGateway {
         code: code.to_string(),
         description: description.into(),
-    }
-}
-
-/// Maps a workspace error onto the Omnia protocol class and kebab code.
-///
-/// The description is the legacy display so text-mode stderr stays the same.
-/// Held unused after the last call-site remap; Stage 6 deletes the bridge.
-#[expect(dead_code, reason = "last classify call sites remapped; Stage 6 deletes the bridge")]
-pub fn classify(err: &Legacy) -> Error {
-    let description = err.to_string();
-    match err {
-        Legacy::Argument { .. } | Legacy::Validation { .. } | Legacy::AdapterCliTooOld { .. } => {
-            Error::BadRequest {
-                code: err.variant_str().into_owned(),
-                description,
-            }
-        }
-        Legacy::Filesystem { .. } | Legacy::Io(_) => Error::ServerError {
-            code: err.variant_str().into_owned(),
-            description,
-        },
-        Legacy::Diag { code, .. } => classify_diag(code, description),
-    }
-}
-
-#[expect(dead_code, reason = "held with classify until Stage 6")]
-fn classify_diag(code: &'static str, description: String) -> Error {
-    match code {
-        "argument"
-        | "specify-source-required"
-        | "specify-source-duplicate"
-        | "claim-invalid"
-        | "claim-extras-missing"
-        | "spec-invalid"
-        | "spec-provenance-mismatch"
-        | "design-empty"
-        | "adapter-floor-malformed"
-        | "adapter-cli-too-old"
-        | "adapter-arg-malformed"
-        | "adapter-github-uri-unsupported"
-        | "adapter-package-ref-version-required"
-        | "adapter-package-ref-malformed"
-        | "adapter-dir-name-unresolved"
-        | "sources-toml-malformed"
-        | "source-remote-unsupported" => bad_request(code, description),
-        "spec-not-generated" | "adapter-component-missing" => not_found(code, description),
-        "source-extract-failed" | "claim-extras-malformed" | "synthesis-model-failed" => {
-            bad_gateway(code, description)
-        }
-        _ => server_error(code, description),
     }
 }
 

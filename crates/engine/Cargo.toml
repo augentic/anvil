@@ -14,7 +14,6 @@ readme = "../../README.md"
 anyhow.workspace = true
 clap.workspace = true
 emery-adapter.workspace = true
-emery-error.workspace = true
 omnia-guest.workspace = true
 semver.workspace = true
 serde.workspace = true

@@ -248,7 +248,7 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
 // The model may not drop, reorder, or rewrite reconciliation rows.
 fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     if parsed.requirements.len() != rows.len() {
-        return Err(mismatch(format!(
+        return Err(mismatch(&format!(
             "expected {} requirement blocks, found {}",
             rows.len(),
             parsed.requirements.len()
@@ -256,23 +256,23 @@ fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     }
     for (requirement, row) in parsed.requirements.iter().zip(rows) {
         if requirement.id != row.id {
-            return Err(mismatch(format!("expected `{}`, found `{}`", row.id, requirement.id)));
+            return Err(mismatch(&format!("expected `{}`, found `{}`", row.id, requirement.id)));
         }
         // Headings are reconciliation and re-mine-diff identity.
         if requirement.name != row.subject {
-            return Err(mismatch(format!(
+            return Err(mismatch(&format!(
                 "`{}` must head its subject `{}`, found `{}`",
                 row.id, row.subject, requirement.name
             )));
         }
         if requirement.status != row.status || requirement.tag != row.tag {
-            return Err(mismatch(format!(
+            return Err(mismatch(&format!(
                 "`{}` must carry `Status: {}` and its mirroring tag",
                 row.id, row.status
             )));
         }
         if requirement.sources != row.sources {
-            return Err(mismatch(format!(
+            return Err(mismatch(&format!(
                 "`{}` must cite `Sources: [{}]`",
                 row.id,
                 row.sources.join(", ")
@@ -282,7 +282,7 @@ fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     Ok(())
 }
 
-fn mismatch(detail: String) -> Error {
+fn mismatch(detail: &str) -> Error {
     bad_request(
         "spec-provenance-mismatch",
         format!(
