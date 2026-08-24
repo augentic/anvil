@@ -45,6 +45,8 @@ pub fn bad_gateway(code: &'static str, description: impl Into<String>) -> Error 
 /// Maps a workspace error onto the Omnia protocol class and kebab code.
 ///
 /// The description is the legacy display so text-mode stderr stays the same.
+/// Held unused after the last call-site remap; Stage 6 deletes the bridge.
+#[expect(dead_code, reason = "last classify call sites remapped; Stage 6 deletes the bridge")]
 pub fn classify(err: &Legacy) -> Error {
     let description = err.to_string();
     match err {
@@ -62,6 +64,7 @@ pub fn classify(err: &Legacy) -> Error {
     }
 }
 
+#[expect(dead_code, reason = "held with classify until Stage 6")]
 fn classify_diag(code: &'static str, description: String) -> Error {
     match code {
         "argument"
