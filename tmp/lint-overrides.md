@@ -4,7 +4,7 @@ Working notes from a full-repo scan of `#[expect]` / `#![allow]` (and workspace-
 
 House posture (`docs/standards/coding-standards.md`): site-local suppressions are `#[expect(<lint>, reason = "…")]` at the smallest scope; module-root suppressions stay `#![allow(<lint>, reason = "…")]`. Refactor first; a suppression is the leftover when a refactor is infeasible.
 
-Scan date: 2026-08-25. Nine site-level suppressions (six emery, three emery-adapters) plus one workspace-level clippy allow in each repo. No other `#[allow]` / `#[expect]` in `.rs` sources.
+Scan date: 2026-08-25. Six site-level suppressions (three emery, three emery-adapters) plus one workspace-level clippy allow in each repo. No other `#[allow]` / `#[expect]` in `.rs` sources.
 
 ---
 
@@ -14,9 +14,6 @@ Scan date: 2026-08-25. Nine site-level suppressions (six emery, three emery-adap
 
 | ID | File | Form | Lint(s) | Recommendation |
 | --- | --- | --- | --- | --- |
-| E1 | `crates/error/src/error.rs` | `#[expect]` | `missing_docs` | Do now — field docs |
-| E2 | `crates/testkit/src/lib.rs` | `#![allow]` (crate root) | `clippy::missing_panics_doc` | Do now — document panics |
-| E3 | `build.rs` (repo root) | `#![allow]` | `clippy::disallowed_methods`, `clippy::disallowed_types` | Do now — likely vestigial, try deleting |
 | E4 | `crates/prose/src/lib.rs` | `#[expect]` | `clippy::disallowed_methods` | After config split (S1); otherwise relocates |
 | E5 | `crates/engine/src/cli.rs` | `#[expect]` | `clippy::disallowed_methods` | Keep unless product change |
 | E6 | `crates/adapter/src/source.rs` | `#![allow]` (inner `generated` module) | `missing_docs`, `unsafe_code`, `clippy::pedantic`, `clippy::nursery` | Keep — generated-code fence |
@@ -45,80 +42,7 @@ Related cargo-deny policy (not rustc/clippy attributes): both repos' `deny.toml`
 | S1 | Narrow emery `crates/clippy.toml` guest deny-list so host crates under `crates/` do not inherit it | E4 (and possibly cleaner prose/testkit story) |
 | S2 | Move emery-adapters guest deny-list off the repo-root `clippy.toml` onto `sources/` | A1, A2, A3 |
 
-Five of the nine site overrides exist because the guest deny-list is scoped by directory, not by target.
-
----
-
-## E1 — `Error` field docs (`missing_docs`)
-
-**File:** `crates/error/src/error.rs`
-
-```rust
-#[expect(missing_docs, reason = "variant-level docs cover self-explanatory error fields")]
-pub enum Error {
-```
-
-**Why it fires:** `missing_docs` is workspace-warn. Variant-level `///` exists; **fields** of public struct variants (`code`, `detail`, `flag`, `adapter`, `required`, `found`, `op`, `path`, `source`) and the `Io` tuple field are undocumented.
-
-**Remove by:** add a one-line `///` on every field. No behaviour change.
-
-**Fields to document:**
-
-- `Diag`: `code`, `detail`
-- `Argument`: `flag`, `detail`
-- `Validation`: `code`, `detail`
-- `AdapterCliTooOld`: `adapter`, `required`, `found`
-- `Filesystem`: `op`, `path`, `source`
-- `Io`: the wrapped `std::io::Error`
-
-**Done when:** the `#[expect]` is gone and `cargo make lint` is clean.
-
----
-
-## E2 — testkit crate-root `missing_panics_doc`
-
-**File:** `crates/testkit/src/lib.rs`
-
-```rust
-#![allow(
-    clippy::missing_panics_doc,
-    reason = "Mutex poison is a harness bug; every lock site is expect"
-)]
-```
-
-**Why it fires:** almost every public `Memory` / `Namespaced` method (and several `Scripted` methods in `crates/testkit/src/model.rs`) does `lock().expect(...)`. Mutex poison is treated as a harness bug. Only `Scripted::calling` already has a `# Panics` section (and that section documents the index panic, not the lock).
-
-**Remove by (pick one):**
-
-1. Add `# Panics` on each public method that locks — “panics if a lock is poisoned (a prior holder panicked).” Smallest change, matches house docs posture.
-2. Extract a private `lock()` helper. `missing_panics_doc` looks at the public function body; a private helper may hide the `expect` from the lint. Slightly dodgey; prefer (1) unless the doc noise is unacceptable.
-3. Switch to `parking_lot::Mutex` (no poison). Dependency change for an unpublished test crate; probably not worth it.
-
-**Done when:** the crate-root `#![allow]` is gone and clippy is clean on `emery-testkit`.
-
----
-
-## E3 — root `build.rs` guest deny-list allow (likely vestigial)
-
-**File:** `build.rs`
-
-```rust
-#![allow(
-    clippy::disallowed_methods,
-    clippy::disallowed_types,
-    reason = "host-side build script; the wasm32 guest deny-list does not apply"
-)]
-```
-
-**Why it exists:** the script uses `std::process::Command` and env (`OUT_DIR`, `PROFILE`, `CARGO_CFG_TARGET_ARCH`, …). The comment assumes the wasm32 guest deny-list applies.
-
-**Why it is probably a no-op:** Clippy loads `clippy.toml` from the package directory and parents. The deny-list lives in `crates/clippy.toml`. The root package (`emery`) uses the repo-root `clippy.toml`, which is only `doc-valid-idents`. `crates/clippy.toml` is a child, not a parent.
-
-**Remove by:** delete the `#![allow]` and run clippy on the root package (`cargo clippy --all-targets --all-features -- -D warnings` from the emery root, or `cargo make lint`). If it stays green, the allow was vestigial.
-
-**If it fails:** the deny-list is reaching the root package somehow (e.g. `CLIPPY_CONF_DIR`). Then either keep a documented allow or split config (S1) so host scripts are out of scope.
-
-**Done when:** the `#![allow]` is gone, or a comment records why clippy still requires it.
+Four of the six site overrides exist because the guest deny-list is scoped by directory, not by target.
 
 ---
 
@@ -271,11 +195,8 @@ Eval is a public-contract **host** binary (spawns the shipped `emery` CLI). It s
 
 Independent, cheapest first:
 
-1. **E1** — field-doc `Error`, drop `missing_docs` expect.
-2. **E3** — delete root `build.rs` `#![allow]` if clippy stays clean.
-3. **E2** — `# Panics` on testkit public lock sites, drop crate-root allow.
-4. **S2** then **A1–A3** — adapters deny-list onto `sources/`, delete eval expects. Lives in emery-adapters.
-5. **S1** then **E4** — narrow `crates/clippy.toml`, drop `emit()` expect (or delete `emit()` only if S1 is rejected).
-6. Leave **E5**, **E6**, **W1**, **W2** unless you are changing colour policy, generated bindings, or duplicate-crate policy.
+1. **S2** then **A1–A3** — adapters deny-list onto `sources/`, delete eval expects. Lives in emery-adapters.
+2. **S1** then **E4** — narrow `crates/clippy.toml`, drop `emit()` expect (or delete `emit()` only if S1 is rejected).
+3. Leave **E5**, **E6**, **W1**, **W2** unless you are changing colour policy, generated bindings, or duplicate-crate policy.
 
 Verify each with `cargo make lint` in the repo you touched (`cargo make ci` before commit).

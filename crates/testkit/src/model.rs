@@ -62,7 +62,8 @@ impl Scripted {
     ///
     /// # Panics
     ///
-    /// Panics when no turn is scripted at `index`.
+    /// Panics when no turn is scripted at `index`, or if a lock is
+    /// poisoned (a prior holder panicked).
     #[must_use]
     pub fn calling(self, index: usize, calls: impl IntoIterator<Item = ToolCall>) -> Self {
         let mut script = self.script.lock().expect("script lock");
@@ -72,18 +73,30 @@ impl Scripted {
     }
 
     /// Returns every request in call order.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     #[must_use]
     pub fn requests(&self) -> Vec<Request> {
         self.requests.lock().expect("requests lock").clone()
     }
 
     /// Returns every handler exchange in call order.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     #[must_use]
     pub fn exchanges(&self) -> Vec<Exchange> {
         self.exchanges.lock().expect("exchanges lock").clone()
     }
 
     /// Asserts that every scripted result was consumed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned, or if any scripted result remains.
     pub fn assert_exhausted(&self) {
         let left = self.script.lock().expect("script lock").len();
         assert_eq!(left, 0, "model script has {left} unconsumed result(s)");
@@ -101,12 +114,18 @@ impl Scripted {
 impl Model for Scripted {
     // A single-shot completion has no handler; scripting tool calls on
     // its turn is a harness bug.
+    /// # Panics
+    ///
+    /// Panics if the turn has scripted tool calls (those require `complete_with`).
     fn complete(&self, request: Request) -> impl Future<Output = Result<Reply, Error>> + Send {
         let turn = self.next(request);
         assert!(turn.calls.is_empty(), "scripted tool calls require complete_with");
         ready(turn.result)
     }
 
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
     fn complete_with<H, F>(
         &self, request: Request, mut handler: H,
     ) -> impl Future<Output = Result<Reply, Error>> + Send

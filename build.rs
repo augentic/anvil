@@ -1,12 +1,5 @@
 //! Builds and embeds the wasm32 engine component.
 
-// Build scripts are host-side, and Cargo's build protocol requires environment access.
-#![allow(
-    clippy::disallowed_methods,
-    clippy::disallowed_types,
-    reason = "host-side build script; the wasm32 guest deny-list does not apply"
-)]
-
 use std::path::PathBuf;
 use std::process::Command;
 
