@@ -21,10 +21,6 @@ includes = ["mise-rust.toml"]
 # Emery overrides
 # -------------------------------------
 
-[tasks.ci]
-description = "Full local gate: check + links + vet + deny"
-depends = ["check", "links", "vet", "deny"]
-
 [tasks.links]
 description = "mdbook build docs (linkcheck)"
 run = "mdbook build docs"
