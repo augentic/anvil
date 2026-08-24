@@ -2,13 +2,12 @@
 
 use std::collections::BTreeMap;
 
-use emery_artifacts::spec::ast;
 use emery_error::Error;
 use omnia_guest::{BlobStore, CasError, StateStore};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::storage;
+use crate::{spec, storage};
 
 /// Blobstore container for spec generations.
 pub const SPEC_CONTAINER: &str = "spec";
@@ -124,7 +123,7 @@ impl Diff {
             .map(|((name, _), _)| (*name).to_string())
             .collect();
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
-        if let (Ok(old), Ok(new)) = (ast::parse(&outgoing.spec), ast::parse(&incoming.spec)) {
+        if let (Ok(old), Ok(new)) = (spec::parse(&outgoing.spec), spec::parse(&incoming.spec)) {
             let old = subjects(&old);
             let new = subjects(&new);
             for (subject, block) in &new {
@@ -159,12 +158,12 @@ impl Diff {
     }
 }
 
-fn subjects(spec: &ast::Spec) -> BTreeMap<&str, &ast::Requirement> {
+fn subjects(spec: &spec::Spec) -> BTreeMap<&str, &spec::Requirement> {
     spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
 }
 
 // Positional ids do not define requirement identity.
-fn same_block(old: &ast::Requirement, new: &ast::Requirement) -> bool {
+fn same_block(old: &spec::Requirement, new: &spec::Requirement) -> bool {
     old.status == new.status
         && old.tag == new.tag
         && old.sources == new.sources

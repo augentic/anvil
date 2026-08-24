@@ -966,24 +966,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "emery-artifacts"
-version = "0.38.0"
-dependencies = [
- "emery-error",
- "schemars",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum",
-]
-
-[[package]]
 name = "emery-engine"
 version = "0.38.0"
 dependencies = [
  "anyhow",
  "emery-adapter",
- "emery-artifacts",
  "emery-error",
  "emery-prose",
  "emery-testkit",
@@ -1026,7 +1013,6 @@ version = "0.38.0"
 dependencies = [
  "clap",
  "emery-adapter",
- "emery-artifacts",
  "emery-engine",
  "emery-error",
  "omnia-guest",

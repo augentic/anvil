@@ -31,9 +31,8 @@ Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `us
 
 ```text
 error        # leaf — thiserror + serde-saphyr only
-artifacts    # artifact types + parsers (evidence, spec); no engine deps
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import wrappers; bare natively so tests script Source), WIT types, embedded prose registry
-engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
+engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP surface (read-only MCP spec shelf + C3 refusal)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 testkit      # unpublished — scripted StateStore/BlobStore doubles (`Memory`, `Namespaced`) for native tests; not a production crate
@@ -67,7 +66,7 @@ docs/              Developer Guide (mdBook; reference + contributing + standards
 Emery strictly enforces a **root-led integration posture** (DWN-style):
 
 - The root `tests/` scenario suites are the default home for every CLI- or MCP-reachable behavior: `tests/specify.rs` (the `specify` → `show` product arc), `tests/command.rs` (the CLI wire contract), `tests/shelf.rs` (the MCP spec shelf and the C3 refusal), and `tests/plugin.rs` (plugin-rule mentions vs the shipped grammar) drive the in-process command router and HTTP listener over scripted capabilities (`tests/support/mod.rs`) and read like usage documentation.
-- Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, artifacts, error, prose) or product invariants impractical to arrange through the entry points; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
+- Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, error, prose) or product invariants impractical to arrange through the entry points; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
 - Default to deletion; do not widen public APIs to test private kernels. `cargo make cov` (workspace-wide) is the brake; `CRATE=emery-<crate> cargo make cov-crate` audits one leaf contract.
 - One fast rung: the native suites (`cargo make test`, per push) over scripted `Model` + `Source` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 

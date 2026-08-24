@@ -3,7 +3,7 @@
 use schemars::generate::SchemaSettings;
 use serde_json::{Value, json};
 
-use crate::types::{ClaimKind, Error, Evidence};
+use crate::types::{Claim, ClaimKind, Error, Evidence};
 
 /// Schema for `extract` answers.
 ///
@@ -65,8 +65,7 @@ pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
     serde_json::from_str(answer)
 }
 
-// The schema accepts strings; enforce grammar here because this leaf
-// cannot depend on `emery_artifacts`.
+// The schema accepts strings; enforce the claim-id grammar in code.
 const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
 fn is_kebab(value: &str) -> bool {
@@ -90,14 +89,11 @@ fn enforce(operation: &str, findings: &[String]) -> Result<(), Error> {
     )))
 }
 
-/// Enforces required dotted-kebab claim IDs.
-///
-/// # Errors
-///
-/// Returns [`Error::Internal`] with one finding per violation.
-pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
+/// Findings for dotted-kebab claim ids and required-id kinds.
+#[must_use]
+pub fn claim_id_findings(claims: &[Claim]) -> Vec<String> {
     let mut findings = Vec::new();
-    for (index, claim) in evidence.claims.iter().enumerate() {
+    for (index, claim) in claims.iter().enumerate() {
         match &claim.id {
             Some(id) if !is_dotted_kebab(id) => {
                 findings.push(format!(
@@ -114,7 +110,16 @@ pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
             _ => {}
         }
     }
-    enforce("extract", &findings)
+    findings
+}
+
+/// Enforces required dotted-kebab claim IDs.
+///
+/// # Errors
+///
+/// Returns [`Error::Internal`] with one finding per violation.
+pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
+    enforce("extract", &claim_id_findings(&evidence.claims))
 }
 
 /// Parses and validates an evidence answer for [`crate::repaired`].

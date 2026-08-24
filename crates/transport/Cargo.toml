@@ -11,9 +11,8 @@ keywords = ["emery", "transport"]
 readme = "../../README.md"
 
 [dependencies]
-emery-adapter.workspace = true
-emery-artifacts.workspace = true
 clap.workspace = true
+emery-adapter.workspace = true
 emery-engine.workspace = true
 emery-error.workspace = true
 omnia-guest.workspace = true

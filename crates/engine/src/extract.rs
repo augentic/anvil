@@ -2,9 +2,11 @@
 
 use std::path::Path;
 
-use emery_adapter::types::{self, SourceContent, SourceInput, SourceWorkspace};
+use emery_adapter::answers::claim_id_findings;
+use emery_adapter::types::{
+    Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
+};
 use emery_adapter::{DispatchError, Source};
-use emery_artifacts::evidence::{AuthorityClass, Claim, ClaimKind, validate_claims};
 use emery_error::Error;
 use omnia_guest::{BlobStore, StateStore};
 
@@ -15,7 +17,7 @@ use crate::sources::{BindingContent, SourceBinding};
 // On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
-) -> Result<types::Evidence, Error> {
+) -> Result<emery_adapter::types::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
         DispatchError::Call(failure) => Error::Diag {
             code: "source-extract-failed",
@@ -36,7 +38,7 @@ pub struct SourceSet {
     /// The routed adapter identity (`source:<name>[@<version>]`).
     pub adapter: String,
     /// Claim-set authority class.
-    pub authority: AuthorityClass,
+    pub authority: Authority,
     /// The validated claims.
     pub claims: Vec<Claim>,
 }
@@ -68,8 +70,8 @@ pub async fn extract_all<P: Source + StateStore + BlobStore>(
         let set = SourceSet {
             key: binding.key.clone(),
             adapter: id,
-            authority: authority(evidence.authority),
-            claims: evidence.claims.into_iter().map(claim).collect(),
+            authority: evidence.authority,
+            claims: evidence.claims,
         };
         validate_set(&set)?;
         sets.push(set);
@@ -120,7 +122,7 @@ pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
 ///
 /// Returns `claim-invalid` or `claim-extras-missing`.
 pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
-    let findings = validate_claims(&set.claims);
+    let findings = claim_id_findings(&set.claims);
     if !findings.is_empty() {
         return Err(Error::validation_failed(
             "claim-invalid",
@@ -141,45 +143,4 @@ pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
         }
     }
     Ok(())
-}
-
-const fn authority(record: types::Authority) -> AuthorityClass {
-    match record {
-        types::Authority::Intent => AuthorityClass::Intent,
-        types::Authority::Documentation => AuthorityClass::Documentation,
-        types::Authority::Behaviour => AuthorityClass::Behaviour,
-    }
-}
-
-// Extras cross the contract verbatim.
-fn claim(record: types::Claim) -> Claim {
-    let mut mapped = Claim::new(kind(record.kind));
-    mapped.id = record.id;
-    mapped.path = record.path;
-    mapped.synopsis = record.synopsis;
-    mapped.set_backing(record.backing.map(|backing| match backing {
-        types::Backing::Payload(payload) => emery_artifacts::evidence::Backing::Payload(payload),
-        types::Backing::Path(path) => emery_artifacts::evidence::Backing::Path(path),
-    }));
-    mapped.extras = record.extras;
-    mapped
-}
-
-const fn kind(record: types::ClaimKind) -> ClaimKind {
-    match record {
-        types::ClaimKind::Intent => ClaimKind::Intent,
-        types::ClaimKind::Requirement => ClaimKind::Requirement,
-        types::ClaimKind::Criterion => ClaimKind::Criterion,
-        types::ClaimKind::Decision => ClaimKind::Decision,
-        types::ClaimKind::Section => ClaimKind::Section,
-        types::ClaimKind::Diagram => ClaimKind::Diagram,
-        types::ClaimKind::Contract => ClaimKind::Contract,
-        types::ClaimKind::Example => ClaimKind::Example,
-        types::ClaimKind::Excerpt => ClaimKind::Excerpt,
-        types::ClaimKind::Type => ClaimKind::Type,
-        types::ClaimKind::Call => ClaimKind::Call,
-        types::ClaimKind::Region => ClaimKind::Region,
-        types::ClaimKind::Container => ClaimKind::Container,
-        types::ClaimKind::Leaf => ClaimKind::Leaf,
-    }
 }

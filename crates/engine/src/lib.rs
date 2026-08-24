@@ -6,6 +6,7 @@ pub mod home;
 pub mod resolve;
 pub mod show;
 pub mod sources;
+mod spec;
 pub mod specify;
 mod storage;
 pub mod synthesise;

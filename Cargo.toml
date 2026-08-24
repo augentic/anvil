@@ -193,7 +193,6 @@ wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow",
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
 emery-adapter = { path = "crates/adapter" }
-emery-artifacts = { path = "crates/artifacts" }
 emery-engine = { path = "crates/engine" }
 emery-error = { path = "crates/error" }
 emery-prose = { path = "crates/prose" }
