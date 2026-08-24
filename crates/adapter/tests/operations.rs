@@ -4,7 +4,7 @@ use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::registry::Doc;
 use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, references, repaired};
-use omnia_testkit::model::Harness;
+use emery_testkit::Scripted;
 
 const DOCS: &[Doc] = &[Doc {
     path: "prompts/extract.md",
@@ -43,7 +43,7 @@ impl SourceAdapter for Probe {
 
 #[tokio::test]
 async fn source_dispatch() {
-    let model = Harness::answering([
+    let model = Scripted::answering([
         r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim"}]}"#,
     ]);
     let ctx = Context {

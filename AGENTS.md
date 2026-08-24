@@ -35,7 +35,7 @@ adapter      # the adapter SDK — the SourceAdapter operations trait (extract +
 engine       # the spec generator — per-run source bindings (argv + sources.toml loaders), specify + show operations, extract leg (ensure + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (resolver::Component, ensure, metadata::runner) and emery_engine::handler (preopen-relative ExecutionPaths/Locations, Render, Error)
 transport    # typed command router over Invoker: specify + show + completions, exhaustive TryFrom conversions, projectors, exit contract, HTTP surface (read-only MCP spec shelf + C3 refusal)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
-testkit      # unpublished — scripted StateStore/BlobStore doubles (`Memory`, `Namespaced`) for native tests; not a production crate
+testkit      # unpublished — scripted capability doubles for native tests: the FIFO request-recording `Scripted` model plus the StateStore/BlobStore pair (`Memory`, `Namespaced`); not a production crate
 emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run, spec shelf + HTTP refusal) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, and the wasi:keyvalue/wasi:blobstore hosts bind the generation and component-cache state to the durable omnia-filesystem store (default `.omnia/storage`); adapter guests are declared in the runtime invocation; dynamic resolution is deferred)
 ```
 

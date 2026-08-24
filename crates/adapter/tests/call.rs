@@ -4,7 +4,7 @@ use std::path::Path;
 
 use emery_adapter::types::{Context, Error, mcp_url_for};
 use emery_adapter::{Error as ModelError, Format, judgment};
-use omnia_testkit::model::{Harness, mcp_grants};
+use emery_testkit::{Scripted, mcp_grants};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -23,7 +23,7 @@ fn ctx<'a>(mcp_url: Option<&str>, root: &'a Path) -> Context<'a> {
 
 #[tokio::test]
 async fn assembles_and_parses() {
-    let model = Harness::answering([r#"{"done":true}"#]);
+    let model = Scripted::answering([r#"{"done":true}"#]);
 
     let answer: Answer = judgment(
         &model,
@@ -63,7 +63,7 @@ async fn assembles_and_parses() {
 // Missing MCP resolution is grant-free, not an error.
 #[tokio::test]
 async fn no_mcp_no_grant() {
-    let model = Harness::answering([r#"{"done":true}"#]);
+    let model = Scripted::answering([r#"{"done":true}"#]);
 
     let _: Answer = judgment(
         &model,
@@ -81,7 +81,7 @@ async fn no_mcp_no_grant() {
 
 #[tokio::test]
 async fn error_mapping() {
-    let model = Harness::scripted([
+    let model = Scripted::new([
         Err(ModelError::InvalidRequest("messages must not be empty".to_string())),
         Ok(emery_adapter::Reply {
             answer: "this is not json".to_string(),
@@ -122,7 +122,7 @@ mod repaired {
 
     #[tokio::test]
     async fn repairs_tail_failure() {
-        let model = Harness::answering([r#"{"done":false}"#, r#"{"done":true}"#]);
+        let model = Scripted::answering([r#"{"done":false}"#, r#"{"done":true}"#]);
 
         let answer = repaired(
             &model,
@@ -149,7 +149,7 @@ mod repaired {
     // Repair prompts rebuild from the original request rather than nesting.
     #[tokio::test]
     async fn budget_exhausted() {
-        let model = Harness::answering([r#"{"done":false}"#; 1 + MAX_REPAIRS]);
+        let model = Scripted::answering([r#"{"done":false}"#; 1 + MAX_REPAIRS]);
 
         let result: Result<Answer, Error> = repaired(
             &model,
@@ -181,7 +181,7 @@ mod repaired {
     // Model failures are not replayed because the request is unchanged.
     #[tokio::test]
     async fn model_failure_not_retried() {
-        let model = Harness::scripted([Err(ModelError::InvalidRequest(
+        let model = Scripted::new([Err(ModelError::InvalidRequest(
             "messages must not be empty".to_string(),
         ))]);
 
@@ -267,7 +267,7 @@ fn pinned_grant_strips() {
 // A prepared workspace replaces the default `"."` lend.
 #[tokio::test]
 async fn lending_overrides_lend() {
-    let model = Harness::answering([r#"{"done":true}"#]);
+    let model = Scripted::answering([r#"{"done":true}"#]);
     let context = ctx(None, Path::new(".")).lending("/emery-workspaces/ws-1");
 
     let _: Answer = judgment(&model, &context, String::new(), "USER".to_string(), "probe", "{}")
@@ -279,7 +279,7 @@ async fn lending_overrides_lend() {
 
 #[tokio::test]
 async fn value_omits_workspace() {
-    let model = Harness::answering([r#"{"done":true}"#]);
+    let model = Scripted::answering([r#"{"done":true}"#]);
     let context = ctx(None, Path::new(".")).without_lend();
 
     let _: Answer = judgment(&model, &context, String::new(), "USER".to_string(), "probe", "{}")

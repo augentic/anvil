@@ -10,13 +10,12 @@ use emery_adapter::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
 use emery_adapter::{DispatchError, Source};
-use emery_testkit::Memory;
+use emery_testkit::{Memory, Scripted};
 use emery_transport::command;
 use omnia_guest::api::command::{CommandResponse, Router};
 use omnia_guest::api::invoke::Invoker;
-use omnia_guest::model::{Error, Reply, Request};
+use omnia_guest::model::{Error, Reply, Request, ToolCall};
 use omnia_guest::{BlobStore, Model, StateStore};
-use omnia_testkit::model::{Harness, Scripted};
 use serde_json::Value;
 
 /// The default scripted requirement statement.
@@ -66,7 +65,7 @@ pub const fn evidence(authority: Authority, claims: Vec<Claim>) -> Evidence {
 #[derive(Debug)]
 pub struct Provider<S = Memory> {
     /// FIFO-scripted model answers.
-    pub model: Harness<Scripted>,
+    pub model: Scripted,
     /// The scripted `Source`.
     pub source: SourceScript,
     /// The scripted storage pair.
@@ -89,7 +88,7 @@ impl<S> Provider<S> {
     /// A provider answering `answers` over `storage`.
     pub fn over<T: Into<String>>(storage: Arc<S>, answers: impl IntoIterator<Item = T>) -> Self {
         Self {
-            model: Harness::answering(answers),
+            model: Scripted::answering(answers),
             source: SourceScript::default(),
             storage,
         }
@@ -110,8 +109,18 @@ emery_testkit::scripted_storage!(Provider<Memory>, storage);
 emery_testkit::scripted_storage!(Provider<emery_testkit::Namespaced>, storage);
 
 impl<S: Send + Sync + 'static> Model for Provider<S> {
-    async fn create(&self, request: Request) -> Result<Reply, Error> {
-        self.model.create(request).await
+    async fn complete(&self, request: Request) -> Result<Reply, Error> {
+        self.model.complete(request).await
+    }
+
+    fn complete_with<H, F>(
+        &self, request: Request, handler: H,
+    ) -> impl Future<Output = Result<Reply, Error>> + Send
+    where
+        H: FnMut(ToolCall) -> F + Send,
+        F: Future<Output = Result<String, String>> + Send,
+    {
+        self.model.complete_with(request, handler)
     }
 }
 

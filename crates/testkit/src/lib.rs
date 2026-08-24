@@ -1,14 +1,17 @@
-//! Scripted in-memory `StateStore` / `BlobStore` doubles for native tests.
+//! Scripted `Model` / `StateStore` / `BlobStore` doubles for native tests.
 
 #![allow(
     clippy::missing_panics_doc,
     reason = "Mutex poison is a harness bug; every lock site is expect"
 )]
 
+mod model;
+
 use std::collections::BTreeMap;
 use std::future::{Future, ready};
 use std::sync::{Arc, Mutex};
 
+pub use model::{Scripted, mcp_grants};
 use omnia_guest::{BlobStore, CasError, ContainerMetadata, ObjectMetadata, StateStore};
 
 type State = BTreeMap<String, Vec<u8>>;

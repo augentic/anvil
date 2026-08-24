@@ -29,9 +29,19 @@ struct Inert {
 emery_testkit::scripted_storage!(Inert, storage);
 
 impl omnia_guest::Model for Inert {
-    fn create(
+    fn complete(
         &self, _request: omnia_guest::model::Request,
     ) -> impl Future<Output = Result<omnia_guest::model::Reply, omnia_guest::model::Error>> {
+        std::future::ready(never_dispatched())
+    }
+
+    fn complete_with<H, F>(
+        &self, _request: omnia_guest::model::Request, _handler: H,
+    ) -> impl Future<Output = Result<omnia_guest::model::Reply, omnia_guest::model::Error>> + Send
+    where
+        H: FnMut(omnia_guest::model::ToolCall) -> F + Send,
+        F: Future<Output = Result<String, String>> + Send,
+    {
         std::future::ready(never_dispatched())
     }
 }

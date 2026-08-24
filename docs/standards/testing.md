@@ -22,7 +22,7 @@ The `source` and `runtime` examples remain the in-tree component-shape fixture; 
 
 The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests (`source:source`). Do not add another mock adapter, mock model, or mock-adapter copy — extend the example. The root suites' scripted `Source` (`tests/support/mod.rs`) is a capability double, not an adapter: it never parses a workspace and carries no extraction behavior beyond the scenario's scripted evidence.
 
-Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script and the request-recording `Harness` (a native `Model` implementation the root suites script directly). Storage doubles live in `emery-testkit` until that capability moves upstream. Scenario doubles — the scripted `Source` and the shared provider — live in the root package's `tests/support/mod.rs`. Suites own only scenario content and assertions.
+Capability doubles live in `emery-testkit`: the FIFO request-recording `Scripted` model (a native `Model` implementation the root suites script directly) and the scripted storage pair (`Memory`, `Namespaced`). Scenario doubles — the scripted `Source` and the shared provider — live in the root package's `tests/support/mod.rs`. Suites own only scenario content and assertions.
 
 ## Root-led policy
 

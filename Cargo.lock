@@ -125,7 +125,7 @@ checksum = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -154,6 +154,8 @@ dependencies = [
  "http",
  "http-body",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "itoa",
  "matchit",
  "memchr",
@@ -165,6 +167,7 @@ dependencies = [
  "serde_path_to_error",
  "serde_urlencoded",
  "sync_wrapper",
+ "tokio",
  "tower",
  "tower-layer",
  "tower-service",
@@ -431,7 +434,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -862,7 +865,7 @@ checksum = "c6232dd377dcc64799954cbd3a9bb882e9cdc1308ccd87b1c098f1fb2eaf82a8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -912,7 +915,6 @@ dependencies = [
  "omnia-cursor",
  "omnia-filesystem",
  "omnia-guest",
- "omnia-testkit",
  "omnia-wasi-blobstore",
  "omnia-wasi-http",
  "omnia-wasi-keyvalue",
@@ -929,8 +931,8 @@ dependencies = [
 name = "emery-adapter"
 version = "0.38.0"
 dependencies = [
+ "emery-testkit",
  "omnia-guest",
- "omnia-testkit",
  "omnia-wasi-http",
  "schemars",
  "serde",
@@ -1187,7 +1189,7 @@ checksum = "9fb9654ba8355388abeb8dcb4fc62f511300867002afc858860463bdd9fe0c44"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -2093,7 +2095,7 @@ dependencies = [
 [[package]]
 name = "omnia"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2127,12 +2129,21 @@ dependencies = [
 [[package]]
 name = "omnia-cursor"
 version = "0.29.0"
-source = "git+https://github.com/augentic/omnia-backends#94aa7eae192babb686b01ff98a172a89313288a1"
+source = "git+https://github.com/augentic/omnia-backends#c4457d24b3dfcca6fac4508af179e89eae7a5a24"
 dependencies = [
  "anyhow",
+ "axum",
+ "bytes",
  "fromenv",
+ "getrandom 0.3.4",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "omnia",
  "omnia-wasi-model",
+ "prost",
+ "prost-types",
  "serde",
  "serde_json",
  "tempfile",
@@ -2143,7 +2154,7 @@ dependencies = [
 [[package]]
 name = "omnia-filesystem"
 version = "0.29.0"
-source = "git+https://github.com/augentic/omnia-backends#94aa7eae192babb686b01ff98a172a89313288a1"
+source = "git+https://github.com/augentic/omnia-backends#c4457d24b3dfcca6fac4508af179e89eae7a5a24"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2159,7 +2170,7 @@ dependencies = [
 [[package]]
 name = "omnia-guest"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "axum",
@@ -2168,6 +2179,7 @@ dependencies = [
  "chrono",
  "clap",
  "clap_complete",
+ "futures",
  "http",
  "http-body",
  "omnia-guest-macros",
@@ -2196,48 +2208,27 @@ dependencies = [
 [[package]]
 name = "omnia-guest-macros"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
 name = "omnia-host-macros"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
-]
-
-[[package]]
-name = "omnia-testkit"
-version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
-dependencies = [
- "anyhow",
- "bytes",
- "futures",
- "http",
- "http-body-util",
- "omnia",
- "omnia-guest",
- "omnia-wasi-model",
- "serde",
- "serde_json",
- "tokio",
- "wasmtime",
- "wasmtime-wasi",
- "wasmtime-wasi-http",
+ "syn 3.0.4",
 ]
 
 [[package]]
 name = "omnia-wasi-blobstore"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2253,7 +2244,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-config"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "omnia",
@@ -2266,7 +2257,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-docstore"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2282,7 +2273,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-http"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "axum",
@@ -2312,7 +2303,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-identity"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2329,7 +2320,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-keyvalue"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2347,7 +2338,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-messaging"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "futures",
@@ -2363,7 +2354,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-model"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "cap-primitives",
@@ -2384,7 +2375,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-otel"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "futures",
@@ -2405,7 +2396,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-sql"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2423,7 +2414,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-websocket"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#bb547bfeef205fd29b945334bafe88a8b27d7255"
+source = "git+https://github.com/augentic/omnia#0d039749b4362ca0b563f0cea9e43f586022d3c6"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2938,7 +2929,7 @@ checksum = "92ecd8964f8453721699a1ed72037b0db49ce2f5a5138486ee89bed6f67cdf3a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -3288,7 +3279,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -3366,7 +3357,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -3377,7 +3368,7 @@ checksum = "f852137cce035d6a4df67ccce505ff6b3e9fd3a10e3e52b24dc71e650bb1a9bd"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -3588,9 +3579,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.3"
+version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53e9bae58849f64dfa4f5d5ae372c8341f7305f82a3868709269343628b659a3"
+checksum = "e6275cddf4610d1775e6d1fe9469b2e77d0f39fd98fb7450901b821e0c53649f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3709,7 +3700,7 @@ checksum = "bc04cd3e1236dd4a98afca4569f2deb3f120e5422a4023be2cb683f8486292af"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -3770,7 +3761,7 @@ checksum = "78773a2a397f451582ce068015985c33193cf6dea8b74d2a639fe457b2f07b0e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
@@ -5305,7 +5296,7 @@ checksum = "34df6fc39dbd26ddc9c10e6a2984476e13acce22e64e4487636ef494369225da"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.3",
+ "syn 3.0.4",
 ]
 
 [[package]]
