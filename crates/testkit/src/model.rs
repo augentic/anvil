@@ -17,10 +17,11 @@ struct Turn {
     result: Result<Reply, Error>,
 }
 
-/// A FIFO model script of successes and typed failures, recording
-/// every request for prompt and tool assertions. A turn may carry
-/// scripted tool calls: `complete_with` feeds them to the handler and
-/// records each exchange before the turn's result returns.
+/// A FIFO model script recording every request.
+///
+/// Each turn is a success or a typed failure and may carry scripted
+/// tool calls: `complete_with` feeds them to the handler and records
+/// each exchange before the turn's result returns.
 #[derive(Clone, Debug)]
 pub struct Scripted {
     script: Arc<Mutex<VecDeque<Turn>>>,
@@ -64,11 +65,9 @@ impl Scripted {
     /// Panics when no turn is scripted at `index`.
     #[must_use]
     pub fn calling(self, index: usize, calls: impl IntoIterator<Item = ToolCall>) -> Self {
-        {
-            let mut script = self.script.lock().expect("script lock");
-            let turn = script.get_mut(index).expect("a scripted turn at the call index");
-            turn.calls.extend(calls);
-        }
+        let mut script = self.script.lock().expect("script lock");
+        script.get_mut(index).expect("a scripted turn at the call index").calls.extend(calls);
+        drop(script);
         self
     }
 
