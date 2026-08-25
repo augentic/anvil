@@ -6,8 +6,7 @@ mod selector;
 use std::path::Path;
 
 use emery_adapter::Source;
-use emery_error::Error;
-use omnia_guest::BlobStore;
+use omnia_guest::{BlobStore, Error, bad_request, not_found, server_error};
 pub use selector::AdapterSelector;
 
 use crate::handler::preopen_path;
@@ -69,19 +68,16 @@ async fn mirror<B: BlobStore>(path: &Path, blobs: &B) -> Result<(), Error> {
 // Re-seeding replaces the entry; world validation stays a dispatch concern.
 async fn seed<B: BlobStore>(original: &Path, relative: &Path, blobs: &B) -> Result<(), Error> {
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
-        return Err(Error::Diag {
-            code: "adapter-component-missing",
-            detail: format!(
-                "adapter `{}` did not resolve to a `.wasm` component file at {} (an adapter \
-                 is a single WebAssembly component)",
-                original.display(),
-                relative.display()
-            ),
-        });
+        return Err(not_found!(
+            "adapter `{}` did not resolve to a `.wasm` component file at {} (an adapter is a \
+             single WebAssembly component)",
+            original.display(),
+            relative.display()
+        ));
     }
     let name = selector::name_from_component(relative)?;
     // Source reads use the workspace; mirrors use the storage capability.
-    let bytes = std::fs::read(relative)?;
+    let bytes = std::fs::read(relative).map_err(|err| server_error!(err))?;
     blobs
         .put(ADAPTERS_CONTAINER, &object(&name), &bytes)
         .await
@@ -96,13 +92,9 @@ fn parse_floor(
         return Ok(None);
     };
     semver::Version::parse(floor).map(Some).map_err(|err| {
-        Error::validation_failed(
-            "adapter-floor-malformed",
-            "an adapter's metadata answer declares a semver `emery-floor`",
-            format!(
-                "adapter `{name}` ({id}) declares `emery-floor: {floor}`, which is not an \
-                 exact semver: {err}"
-            ),
+        bad_request!(
+            "an adapter's metadata answer declares a semver `emery-floor`: adapter `{name}` \
+             ({id}) declares `emery-floor: {floor}`, which is not an exact semver: {err}",
         )
     })
 }
@@ -118,10 +110,12 @@ fn check_floor(
         return Ok(());
     };
     if current_version < *floor {
-        return Err(Error::AdapterCliTooOld {
-            adapter: format!("{name} ({id})"),
-            required: floor.to_string(),
-            found: current.to_string(),
+        return Err(Error::BadRequest {
+            code: "adapter-cli-too-old".into(),
+            description: format!(
+                "emery version {current} is older than the floor {floor} required by adapter \
+                 {name} ({id}); upgrade the CLI"
+            ),
         });
     }
     Ok(())

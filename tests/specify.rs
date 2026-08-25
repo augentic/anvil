@@ -341,7 +341,7 @@ async fn extras_missing() {
         .evidence
         .insert("docs".to_string(), Ok(evidence(Authority::Documentation, vec![bare])));
 
-    fail(&provider, &["emery", "specify", "docs"], 2, "claim-extras-missing").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
@@ -354,7 +354,7 @@ async fn extract_fails() {
         Err(DispatchError::Call(types::Error::Internal("the adapter exploded".to_string()))),
     );
 
-    fail(&provider, &["emery", "specify", "docs"], 1, "source-extract-failed").await;
+    fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
@@ -365,7 +365,7 @@ async fn floor_too_new() {
     let mut provider = Provider::idle();
     provider.source.floors.insert("docs".to_string(), "99.0.0".to_string());
 
-    fail(&provider, &["emery", "specify", "docs"], 3, "adapter-cli-too-old").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "adapter-cli-too-old").await;
 }
 
 // A model answer outside the fail-closed spec AST is refused, one
@@ -383,7 +383,7 @@ async fn unparseable_answer() {
     ];
     for answer in answers {
         let provider = Provider::answering([answer]);
-        fail(&provider, &["emery", "specify", "docs"], 2, "spec-invalid").await;
+        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
         assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
     }
 }
@@ -409,7 +409,7 @@ async fn dishonest_answer() {
     ];
     for answer in answers {
         let provider = Provider::answering([answer.as_str()]);
-        fail(&provider, &["emery", "specify", "docs"], 2, "spec-provenance-mismatch").await;
+        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
         assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
     }
 }
@@ -429,7 +429,7 @@ fn two_blocks(heading: &str, id: &str, sources: &str, status: &str) -> String {
 async fn empty_design() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
     let provider = Provider::answering([spec_answer.as_str(), "   "]);
-    fail(&provider, &["emery", "specify", "docs"], 2, "design-empty").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
     assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
 }
 
@@ -437,51 +437,71 @@ async fn empty_design() {
 #[tokio::test]
 async fn model_fails() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "docs"], 1, "synthesis-model-failed").await;
+    fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
 }
 
 // The operator-owned `sources.toml` parses fail-closed: every
 // malformed carrier refuses typed before anything commits.
 #[tokio::test]
 async fn sources_file_refused() {
-    let cases: &[(&str, u8, &str)] = &[
-        ("not toml [", 1, "sources-toml-malformed"),
+    let cases: &[(&str, u8, &str, &str)] = &[
+        ("not toml [", 1, "bad_request", "TOML parse error"),
         (
             "[sources.docs]\nadapter = \"documentation\"\nbranch = \"main\"\n",
             1,
-            "sources-toml-malformed",
+            "bad_request",
+            "unknown field `branch`",
         ),
-        ("", 2, "specify-source-required"),
+        ("", 1, "specify-source-required", ""),
         (
             "[sources.docs]\nadapter = \"documentation\"\npath = \"docs\"\nvalue = \"text\"\n",
-            2,
-            "argument",
+            1,
+            "bad_request",
+            "more than one of `path`",
         ),
         (
             "[sources.upstream]\nadapter = \"documentation\"\ngit = \"https://github.com/acme/api@v2\"\n",
             1,
-            "source-remote-unsupported",
+            "bad_request",
+            "remote location",
         ),
         (
             "[sources.upstream]\nadapter = \"documentation\"\nurl = \"https://example.com/openapi.yaml\"\n",
             1,
-            "source-remote-unsupported",
+            "bad_request",
+            "remote location",
         ),
         (
             "[sources.upstream]\nadapter = \"documentation\"\ngit = \"git+https://github.com/acme/api#deadbeef\"\n",
-            2,
-            "argument",
+            1,
+            "bad_request",
+            "source-id form",
         ),
-        ("[sources.docs]\nadapter = \"documentation\"\npath = \"../../outside\"\n", 2, "argument"),
-        ("[sources.local]\nadapter = \"/tmp/source.wasm\"\n", 2, "argument"),
+        (
+            "[sources.docs]\nadapter = \"documentation\"\npath = \"../../outside\"\n",
+            1,
+            "bad_request",
+            "../../outside",
+        ),
+        (
+            "[sources.local]\nadapter = \"/tmp/source.wasm\"\n",
+            1,
+            "bad_request",
+            "`/tmp/source.wasm`",
+        ),
     ];
-    for (body, exit, code) in cases {
+    for (body, exit, code, fragment) in cases {
         let dir = project_tempdir();
         let path = dir.path().join("sources.toml");
         fs::write(&path, body).expect("write sources.toml");
         let path = project_arg(&path);
         let provider = Provider::idle();
-        fail(&provider, &["emery", "specify", "--sources", &path], *exit, code).await;
+        let envelope =
+            fail(&provider, &["emery", "specify", "--sources", &path], *exit, code).await;
+        if !fragment.is_empty() {
+            let message = envelope["message"].as_str().unwrap_or("");
+            assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
+        }
         assert!(provider.storage.is_empty(), "a refused run writes nothing: {code}");
     }
 
@@ -490,14 +510,14 @@ async fn sources_file_refused() {
     fail(
         &provider,
         &["emery", "specify", "--sources", "nonexistent/sources.toml"],
-        1,
-        "filesystem-read",
+        3,
+        "server_error",
     )
     .await;
 
     // Host-absolute and escaping paths never cross into the guest namespace.
     for path in ["/nonexistent/sources.toml", "../sources.toml"] {
-        fail(&provider, &["emery", "specify", "--sources", path], 2, "argument").await;
+        fail(&provider, &["emery", "specify", "--sources", path], 1, "bad_request").await;
     }
 }
 
@@ -578,16 +598,16 @@ async fn mirror_probe_fault() {
     let provider = Provider::idle();
     provider.storage.fail_blob_has("cache backend unavailable");
 
-    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "storage-failed").await;
+    fail(&provider, &["emery", "specify", "./missing.wasm"], 3, "server_error").await;
 }
 
 // A path that is not a `.wasm` component file refuses typed.
 #[tokio::test]
 async fn component_missing() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "./missing.wasm"], 1, "adapter-component-missing").await;
+    fail(&provider, &["emery", "specify", "./missing.wasm"], 2, "not_found").await;
     for path in ["/tmp/missing.wasm", "../missing.wasm"] {
-        fail(&provider, &["emery", "specify", path], 2, "argument").await;
+        fail(&provider, &["emery", "specify", path], 1, "bad_request").await;
     }
 }
 
@@ -595,13 +615,7 @@ async fn component_missing() {
 #[tokio::test]
 async fn github_refused() {
     let provider = Provider::idle();
-    fail(
-        &provider,
-        &["emery", "specify", "https://github.com/acme/api"],
-        1,
-        "adapter-github-uri-unsupported",
-    )
-    .await;
+    fail(&provider, &["emery", "specify", "https://github.com/acme/api"], 1, "bad_request").await;
 }
 
 // An exact package pin (`emery:<name>@<semver>` or the first-party
@@ -627,14 +641,16 @@ async fn package_pin() {
 #[tokio::test]
 async fn package_ref_refused() {
     let cases: &[(&str, &str)] = &[
-        ("emery:demo", "adapter-package-ref-version-required"),
-        ("emery:demo@main", "adapter-package-ref-version-required"),
-        ("emery:@1.2.0", "adapter-package-ref-malformed"),
+        ("emery:demo", "must pin an exact SemVer"),
+        ("emery:demo@main", "not `main`"),
+        ("emery:@1.2.0", "missing a package name"),
     ];
-    for (reference, code) in cases {
+    for (reference, fragment) in cases {
         let provider = Provider::idle();
-        fail(&provider, &["emery", "specify", reference], 1, code).await;
-        assert!(provider.storage.is_empty(), "a refused run writes nothing: {code}");
+        let envelope = fail(&provider, &["emery", "specify", reference], 1, "bad_request").await;
+        let message = envelope["message"].as_str().unwrap_or("");
+        assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
+        assert!(provider.storage.is_empty(), "a refused run writes nothing: {reference}");
     }
 }
 
@@ -644,7 +660,7 @@ async fn package_ref_refused() {
 async fn corrupt_pointer() {
     let provider = Provider::idle();
     provider.storage.insert_state("spec/current", b"0123456789abcdef\n");
-    fail(&provider, &["emery", "show", "spec"], 1, "spec-home-corrupt").await;
+    fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
 }
 
 // One shared store, two project-scoped views: multi-project isolation
@@ -716,7 +732,7 @@ fn project_pointer(shared: &Memory, project: &str) -> String {
 }
 
 // Runs `argv` in JSON mode and asserts the typed failure envelope.
-async fn fail(provider: &Provider, argv: &[&str], exit: u8, code: &str) {
+async fn fail(provider: &Provider, argv: &[&str], exit: u8, code: &str) -> Value {
     let mut json = vec!["emery", "--format", "json"];
     json.extend(argv.iter().skip(1).copied());
     let resp = cli(provider, &json).await;
@@ -724,4 +740,5 @@ async fn fail(provider: &Provider, argv: &[&str], exit: u8, code: &str) {
     let envelope: Value = serde_json::from_slice(&resp.stderr).expect("one JSON envelope");
     assert_eq!(envelope["error"], code, "{envelope}");
     assert_eq!(envelope["exit-code"], exit, "{envelope}");
+    envelope
 }

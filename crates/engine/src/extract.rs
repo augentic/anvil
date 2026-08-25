@@ -7,8 +7,7 @@ use emery_adapter::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
 use emery_adapter::{DispatchError, Source};
-use emery_error::Error;
-use omnia_guest::BlobStore;
+use omnia_guest::{BlobStore, Error, bad_gateway, bad_request};
 
 use crate::handler::preopen_path;
 use crate::resolve::{self, AdapterSelector};
@@ -19,14 +18,8 @@ async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
 ) -> Result<emery_adapter::types::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
-        DispatchError::Call(failure) => Error::Diag {
-            code: "source-extract-failed",
-            detail: format!("source `{id}`: {failure}"),
-        },
-        extras @ DispatchError::Extras { .. } => Error::Diag {
-            code: "claim-extras-malformed",
-            detail: format!("source `{id}` {extras}"),
-        },
+        DispatchError::Call(failure) => bad_gateway!("source `{id}`: {failure}",),
+        extras @ DispatchError::Extras { .. } => bad_gateway!("source `{id}` {extras}",),
     })
 }
 
@@ -113,24 +106,24 @@ pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
 ///
 /// # Errors
 ///
-/// Returns `claim-invalid` or `claim-extras-missing`.
+/// Returns a `BadRequest` when claim grammar or required extras fail.
 pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
     let findings = claim_id_findings(&set.claims);
     if !findings.is_empty() {
-        return Err(Error::validation_failed(
-            "claim-invalid",
-            format!("source `{}` returned an invalid claim set", set.key),
-            findings.join("; "),
+        return Err(bad_request!(
+            "source `{}` returned an invalid claim set: {}",
+            set.key,
+            findings.join("; ")
         ));
     }
     for claim in &set.claims {
         for key in required_extras(claim.kind) {
             if !claim.extras.contains_key(*key) {
                 let label = claim.id.clone().unwrap_or_else(|| claim.kind.to_string());
-                return Err(Error::validation_failed(
-                    "claim-extras-missing",
-                    "required per-kind extras are absent (A8 fail-closed)",
-                    format!("source `{}` claim `{label}` is missing `{key}`", set.key),
+                return Err(bad_request!(
+                    "required per-kind extras are absent (A8 fail-closed): source `{}` claim \
+                     `{label}` is missing `{key}`",
+                    set.key
                 ));
             }
         }

@@ -9,26 +9,20 @@ The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module
 ```rust
 // crates/engine/src/resolve/resolver.rs
 // BAD: AdapterResolverComponent GOOD: Component
-// crates/engine/src/resolve/ensure.rs
-// BAD: ResolveEnsureError       GOOD: Error
 ```
 
-## Error variants budgeted by recovery, not source
+## Engine failures are Omnia errors
 
-If two variants of an error enum collapse to the same `Diag` code, exit code, or human action, they should be one variant with a `kind: …` discriminator, not two. Per-field `///` docs on `pub` structs whose names are self-evident (`path: PathBuf`, `source: io::Error`) are forbidden — keep variant-level docs only.
+Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `adapter-cli-too-old`, and `spec-not-generated`. The adapter WIT seam (`emery_adapter::types::Error`) is a different contract — do not replace it with Omnia errors.
 
 ```rust
-// BAD — three variants, one exit code, one recovery path.
+// BAD — a house error type, even if it later maps to Omnia.
 enum Error {
     ReadProject  { path: PathBuf, source: io::Error },
     ReadRegistry { path: PathBuf, source: io::Error },
-    ReadPlan     { path: PathBuf, source: io::Error },
 }
-// GOOD
-enum Error {
-    /// Failed to read a managed file under `.emery/`.
-    Read { kind: ReadKind, path: PathBuf, source: io::Error },
-}
+// GOOD — Omnia class via the crate-root macro.
+omnia_guest::server_error!("{} ({source})", path.display())
 ```
 
 ## One body per command, no wrapper newtype

@@ -1,7 +1,6 @@
 //! The CLI surface: command grammar, output projection, and the exit
 //! contract. `exit_code` is the failure-code authority.
 
-use std::borrow::Cow;
 use std::convert::Infallible;
 use std::io::Write;
 
@@ -12,10 +11,10 @@ use omnia_guest::api::command::{
     BuildError, CommandResponse, Completions, Outcome, Projector, Router, RouterBuilder, run,
 };
 use omnia_guest::api::invoke::Invoker;
-use omnia_guest::{BlobStore, Model, StateStore};
+use omnia_guest::{BlobStore, Error, Model, StateStore, server_error};
 use serde::Serialize;
 
-use crate::handler::{Error, Render};
+use crate::handler::Render;
 use crate::show::{Show, ShowInput};
 use crate::specify::{Specify, SpecifyInput};
 
@@ -65,14 +64,14 @@ where
             ["specify"],
             run::<SpecifyInput, Specify>()
                 .about("Generate spec.md and design.md from the named sources")
-                .long_about("Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources [<path>]`; omitting the path explicitly selects `sources.toml`. Mixing the file carrier with argv bindings refuses typed (exit 2). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 2).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff.")
+                .long_about("Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources [<path>]`; omitting the path explicitly selects `sources.toml`. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff.")
                 .project_with(EmeryProjector),
         )
         .route(
             ["show"],
             run::<ShowInput, Show>()
                 .about("Print a reviewable document of the current generation to stdout")
-                .long_about("Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 1).")
+                .long_about("Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 2).")
                 .project_with(EmeryProjector),
         )
         .build()
@@ -118,22 +117,21 @@ fn emit<T: Serialize>(
 ) -> Result<(), Error> {
     match format {
         Format::Json => {
-            serde_json::to_writer_pretty(&mut *writer, payload).map_err(|err| Error::Diag {
-                code: "json-serialize-failed",
-                detail: format!("failed to serialize JSON response: {err}"),
-            })?;
-            writeln!(writer).map_err(Error::Io)
+            serde_json::to_writer_pretty(&mut *writer, payload)
+                .map_err(|err| server_error!("failed to serialize JSON response: {err}",))?;
+            writeln!(writer).map_err(|err| server_error!(err))
         }
-        Format::Text => render_text(writer, payload).map_err(Error::Io),
+        Format::Text => render_text(writer, payload).map_err(|err| server_error!(err)),
     }
 }
 
-/// The failure-code authority: the fixed four-slot CLI exit contract.
+/// The failure-code authority: the Omnia 1:1 exit map.
 const fn exit_code(error: &Error) -> u8 {
     match error {
-        Error::AdapterCliTooOld { .. } => 3,
-        Error::Validation { .. } | Error::Argument { .. } => 2,
-        _ => 1,
+        Error::BadRequest { .. } => 1,
+        Error::NotFound { .. } => 2,
+        Error::ServerError { .. } => 3,
+        Error::BadGateway { .. } => 4,
     }
 }
 
@@ -141,7 +139,7 @@ const fn exit_code(error: &Error) -> u8 {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct ErrorBody {
-    error: Cow<'static, str>,
+    error: String,
     message: String,
     exit_code: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -151,23 +149,38 @@ struct ErrorBody {
 impl From<&Error> for ErrorBody {
     fn from(err: &Error) -> Self {
         Self {
-            error: err.variant_str(),
-            message: err.to_string(),
+            error: err.code(),
+            message: err.description(),
             exit_code: exit_code(err),
-            hint: err.hint(),
+            hint: hint(&err.code()),
         }
     }
 }
 
 /// Renders command-failure bytes and their exit code.
 ///
-/// Rendering failures become a plain exit-1 line.
+/// Rendering failures become a plain `ServerError` line (exit 3).
 fn failure(format: Format, error: &Error) -> CommandResponse {
     let body = ErrorBody::from(error);
     let mut stderr = Vec::new();
     match emit(&mut stderr, format, &body, write_error_text) {
         Ok(()) => CommandResponse::failure(stderr, exit_code(error)),
-        Err(fallback) => CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 1),
+        Err(fallback) => CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 3),
+    }
+}
+
+fn hint(code: &str) -> Option<&'static str> {
+    match code {
+        "adapter-cli-too-old" => Some(
+            "update the installed binary through its install channel: `brew upgrade emery`, or `cargo install --git https://github.com/augentic/emery --locked`",
+        ),
+        "specify-source-required" => Some(
+            "`emery specify <adapter>...` generates the spec over the sources named on the invocation; there is no persisted binding list",
+        ),
+        "spec-not-generated" => {
+            Some("run `emery specify <adapter>...` to commit a generation, then re-run show")
+        }
+        _ => None,
     }
 }
 

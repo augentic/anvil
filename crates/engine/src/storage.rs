@@ -1,9 +1,8 @@
 //! Storage-capability error shaping.
 
-/// Maps a storage failure to the stable `storage-failed` error.
-pub fn failed(action: &str, err: &anyhow::Error) -> emery_error::Error {
-    emery_error::Error::Diag {
-        code: "storage-failed",
-        detail: format!("{action}: {err:#}"),
-    }
+use omnia_guest::{Error, server_error};
+
+/// Maps a storage failure to a `ServerError`.
+pub fn failed(action: &str, err: &anyhow::Error) -> Error {
+    server_error!("storage-failed: {action}: {err:#}",)
 }

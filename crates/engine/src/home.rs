@@ -2,8 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use emery_error::Error;
-use omnia_guest::{BlobStore, CasError, StateStore};
+use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -187,7 +186,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     ///
     /// # Errors
     ///
-    /// Returns `spec-pointer-conflict` if the observation is stale.
+    /// Fails if the observation is stale.
     /// Propagates write, swap, and prune failures.
     pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
         let id = set.id();
@@ -201,13 +200,10 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         match self.store.cas(CURRENT_KEY, observed.pointer.as_deref(), value.as_bytes()).await {
             Ok(()) => {}
             Err(CasError::Conflict(_)) => {
-                return Err(Error::Diag {
-                    code: "spec-pointer-conflict",
-                    detail: "a concurrent `emery specify` committed first and swapped the \
-                             generation pointer; re-run `emery specify` to commit against the \
-                             new current generation"
-                        .to_string(),
-                });
+                return Err(server_error!(
+                    "a concurrent `emery specify` committed first and swapped the generation \
+                     pointer; re-run `emery specify` to commit against the new current generation"
+                ));
             }
             Err(CasError::Store(message)) => {
                 return Err(storage::failed(
@@ -224,7 +220,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     ///
     /// # Errors
     ///
-    /// Returns `spec-home-corrupt` for a dangling or incomplete generation.
+    /// Fails closed for a dangling or incomplete generation.
     /// Propagates read failures.
     pub async fn current(&self) -> Result<Option<Committed>, Error> {
         let raw = StateStore::get(self.store, CURRENT_KEY)
@@ -241,13 +237,10 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
                 .await
                 .map_err(|err| storage::failed("probing a generation document", &err))?;
             if !present {
-                return Err(Error::Diag {
-                    code: "spec-home-corrupt",
-                    detail: format!(
-                        "the generation pointer names `{id}` but `{name}` is missing; re-run \
-                         `emery specify` to commit a fresh generation"
-                    ),
-                });
+                return Err(server_error!(
+                    "the generation pointer names `{id}` but `{name}` is missing; re-run \
+                     `emery specify` to commit a fresh generation",
+                ));
             }
         }
         Ok(Some(Committed { id }))
@@ -258,21 +251,18 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     ///
     /// # Errors
     ///
-    /// Returns `spec-home-corrupt` for a dangling, incomplete, or
-    /// unreadable generation. Propagates read failures.
+    /// Fails closed for a dangling, incomplete, or unreadable
+    /// generation. Propagates read failures.
     pub async fn current_set(&self) -> Result<Option<(Committed, SpecSet)>, Error> {
         let Some(committed) = self.current().await? else {
             return Ok(None);
         };
         let Some((_, set)) = self.load(&committed.id).await else {
-            return Err(Error::Diag {
-                code: "spec-home-corrupt",
-                detail: format!(
-                    "the generation pointer names `{}` but its documents cannot be read; re-run \
-                     `emery specify` to commit a fresh generation",
-                    committed.id
-                ),
-            });
+            return Err(server_error!(
+                "the generation pointer names `{}` but its documents cannot be read; re-run \
+                 `emery specify` to commit a fresh generation",
+                committed.id
+            ));
         };
         Ok(Some((committed, set)))
     }

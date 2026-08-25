@@ -4,9 +4,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use emery_adapter::types::{Authority, Claim, ClaimKind};
-use emery_error::Error;
-use omnia_guest::Model;
 use omnia_guest::model::{Message, Request, Role};
+use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
 use crate::extract::SourceSet;
 use crate::spec::{self, Status, Tag};
@@ -155,10 +154,8 @@ pub async fn synthesise<M: Model>(
     check_rows(&parsed, rows)?;
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
-        return Err(Error::validation_failed(
-            "design-empty",
-            "`design.md` must carry the rebuild design",
-            "the model answered an empty document",
+        return Err(bad_request!(
+            "`design.md` must carry the rebuild design: the model answered an empty document"
         ));
     }
     Ok(Documents { spec, design })
@@ -186,10 +183,7 @@ async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<Str
             content: user.to_string(),
         }])
         .build();
-    let reply = model.complete(request).await.map_err(|err| Error::Diag {
-        code: "synthesis-model-failed",
-        detail: err.to_string(),
-    })?;
+    let reply = model.complete(request).await.map_err(|err| bad_gateway!(err))?;
     Ok(reply.answer)
 }
 
@@ -249,7 +243,7 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
 // The model may not drop, reorder, or rewrite reconciliation rows.
 fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     if parsed.requirements.len() != rows.len() {
-        return Err(mismatch(format!(
+        return Err(mismatch(&format!(
             "expected {} requirement blocks, found {}",
             rows.len(),
             parsed.requirements.len()
@@ -257,23 +251,23 @@ fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     }
     for (requirement, row) in parsed.requirements.iter().zip(rows) {
         if requirement.id != row.id {
-            return Err(mismatch(format!("expected `{}`, found `{}`", row.id, requirement.id)));
+            return Err(mismatch(&format!("expected `{}`, found `{}`", row.id, requirement.id)));
         }
         // Headings are reconciliation and re-mine-diff identity.
         if requirement.name != row.subject {
-            return Err(mismatch(format!(
+            return Err(mismatch(&format!(
                 "`{}` must head its subject `{}`, found `{}`",
                 row.id, row.subject, requirement.name
             )));
         }
         if requirement.status != row.status || requirement.tag != row.tag {
-            return Err(mismatch(format!(
+            return Err(mismatch(&format!(
                 "`{}` must carry `Status: {}` and its mirroring tag",
                 row.id, row.status
             )));
         }
         if requirement.sources != row.sources {
-            return Err(mismatch(format!(
+            return Err(mismatch(&format!(
                 "`{}` must cite `Sources: [{}]`",
                 row.id,
                 row.sources.join(", ")
@@ -283,12 +277,8 @@ fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
     Ok(())
 }
 
-fn mismatch(detail: String) -> Error {
-    Error::validation_failed(
-        "spec-provenance-mismatch",
-        "the model answer must render every reconciliation row verbatim",
-        detail,
-    )
+fn mismatch(detail: &str) -> Error {
+    bad_request!("the model answer must render every reconciliation row verbatim: {detail}",)
 }
 
 // The extract gate guarantees this extra exists.

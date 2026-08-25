@@ -1,13 +1,11 @@
-//! Transport-neutral command plumbing: the operation error alias,
-//! text-mode rendering, and preopen-relative path normalization.
+//! Transport-neutral command plumbing: text-mode rendering and
+//! preopen-relative path normalization.
 
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
+use omnia_guest::{Error, bad_request};
 use serde::Serialize;
-
-/// Operation error type: the workspace taxonomy.
-pub type Error = emery_error::Error;
 
 /// Human-readable rendering for a serializable command body.
 pub trait Render: Serialize {
@@ -23,8 +21,8 @@ pub trait Render: Serialize {
 ///
 /// # Errors
 ///
-/// Returns [`Error::Argument`] for an absolute path or a relative path
-/// that escapes above the project root.
+/// Returns a `BadRequest` for an absolute path or a relative path that
+/// escapes above the project root.
 pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Error> {
     if path.is_absolute() {
         return Err(outside_project(path, argument));
@@ -44,11 +42,9 @@ pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Erro
 }
 
 fn outside_project(path: &Path, flag: &'static str) -> Error {
-    Error::Argument {
-        flag,
-        detail: format!(
-            "path `{}` must be relative to the project preopen `.` and must not escape it",
-            path.display()
-        ),
-    }
+    bad_request!(
+        "invalid argument {flag}: path `{}` must be relative to the project preopen `.` and \
+         must not escape it",
+        path.display()
+    )
 }

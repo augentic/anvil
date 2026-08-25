@@ -79,7 +79,7 @@ impl Render for SpecifyBody {
 pub struct Specify;
 
 impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Specify {
-    type Error = crate::handler::Error;
+    type Error = omnia_guest::Error;
     type Input = SpecifyInput;
     type Output = SpecifyBody;
 

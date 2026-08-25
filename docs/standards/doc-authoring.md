@@ -287,7 +287,7 @@ Each `### emery <group> <verb>` section on a CLI reference page carries these el
 1. **Role line** — one sentence naming what the verb does and who invokes it (skill, loop, or operator).
 2. **Synopsis fence** — a `bash` fence with the full argument/flag grammar.
 3. **Arguments/flags table** — omit when the verb takes nothing beyond `<name>` and `--format`.
-4. **Exit codes line** — `0` plus the non-zero codes the verb can produce, naming their kebab-case error discriminants.
+4. **Exit codes line** — `0` plus the non-zero codes the verb can produce, naming the three kebab recovery discriminants and the snake_case Omnia defaults.
 5. **JSON output** — one line linking the verb's envelope in [CLI output shapes](../reference/cli-output-shapes.md); inline only when the body is trivial.
 6. **Behaviour prose** — everything else, after the mechanical elements. Orchestration internals belong in explanation pages; link rather than retell.
 

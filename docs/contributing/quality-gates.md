@@ -17,7 +17,7 @@ No test builds or spawns the mock source component. The `source` and `runtime` e
 When adding coverage, the default write path is a root product scenario — a crate test is the exception, and a `src` unit test the last resort:
 
 1. Put every CLI-reachable behavior in the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`). The `source` and `runtime` examples are not a test rung.
-2. Put an independently useful library contract (the adapter SDK, error display, the prose walker) in that crate's integration suite; the same holds for a product invariant impractical to arrange through the entry points.
+2. Put an independently useful library contract (the adapter SDK, the prose walker) in that crate's integration suite; the same holds for a product invariant impractical to arrange through the entry points.
 3. Put a private dense matrix in a kernel unit test only when integration is impractical.
 4. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 

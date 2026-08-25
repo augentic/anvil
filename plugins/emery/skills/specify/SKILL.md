@@ -10,7 +10,7 @@ argument-hint: <adapter>
 
 ## Invocation
 
-1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling. Install the latest prebuilt release via Homebrew, or from source; an adapter whose declared floor outruns the installed binary fails typed later (`adapter-cli-too-old`, exit 3) with the same reinstall command as its hint:
+1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling. Install the latest prebuilt release via Homebrew, or from source; an adapter whose declared floor outruns the installed binary fails typed later (`adapter-cli-too-old`, exit 1) with the same reinstall command as its hint:
 
 ```bash
 brew tap augentic/tap
@@ -20,7 +20,7 @@ brew install emery
 
 Then run `emery --version --quiet` and stop on failure.
 
-2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a binding file selects it instead with `--sources [<path>]`; omit the value only for the project-relative `sources.toml`. Never combine the file carrier with positional adapters or `--value` (mixing fails typed, exit 2). Local paths must stay relative to the project and must not escape it.
+2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a binding file selects it instead with `--sources [<path>]`; omit the value only for the project-relative `sources.toml`. Never combine the file carrier with positional adapters or `--value` (mixing fails typed, exit 1). Local paths must stay relative to the project and must not escape it.
 3. **Invoke**:
 
 ```bash
