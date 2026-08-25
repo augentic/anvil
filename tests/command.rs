@@ -90,7 +90,6 @@ async fn specify_default_sources_path() {
     let response = cli(&provider, &["emery", "specify", "--sources"]).await;
     assert_eq!(response.exit, 3);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("filesystem-read"), "{stderr}");
     assert!(stderr.contains("sources.toml"), "{stderr}");
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
@@ -104,7 +103,7 @@ async fn specify_mixed_sources() {
         &["emery", "specify", "docs", "--sources", "sources.toml"][..],
         &["emery", "specify", "--value", "intent=text", "--sources", "sources.toml"][..],
     ] {
-        fail(&provider, argv, 1, "argument").await;
+        fail(&provider, argv, 1, "bad_request").await;
     }
 
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
@@ -119,7 +118,7 @@ async fn specify_duplicate_source() {
         &["emery", "specify", "docs", "docs"][..],
         &["emery", "specify", "docs", "--value", "docs=inline text"][..],
     ] {
-        fail(&provider, argv, 1, "specify-source-duplicate").await;
+        fail(&provider, argv, 1, "bad_request").await;
     }
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
@@ -128,7 +127,7 @@ async fn specify_duplicate_source() {
 #[tokio::test]
 async fn specify_malformed_value() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "--value", "no-equals"], 1, "argument").await;
+    fail(&provider, &["emery", "specify", "--value", "no-equals"], 1, "bad_request").await;
 }
 
 // The read verb fails typed before any generation is committed.

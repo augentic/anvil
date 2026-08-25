@@ -17,7 +17,7 @@ Text output is the document body alone — a deliberate exception to the result-
 
 There is no working-tree copy to edit. Changing the specification means changing a *source* — the intent text, the workspace the adapters extract, or the adapter list — and re-running [`emery specify`](specify.md).
 
-Before any generation is committed the verb fails typed with `spec-not-generated` (exit `2`). A pointer naming a missing or unreadable generation fails closed with `spec-home-corrupt` (exit `3`) — corruption is never an empty result.
+Before any generation is committed the verb fails typed with `spec-not-generated` (exit `2`). A pointer naming a missing or unreadable generation fails closed with `server_error` (exit `3`) — corruption is never an empty result.
 
 ## Options
 

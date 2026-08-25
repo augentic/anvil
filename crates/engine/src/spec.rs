@@ -1,6 +1,6 @@
 //! Fail-closed `spec.md` AST.
 
-use omnia_guest::Error;
+use omnia_guest::{Error, bad_request};
 
 /// Markdown heading prefix opening a requirement block.
 pub const HEADING: &str = "### Requirement:";
@@ -73,7 +73,7 @@ pub struct Requirement {
 ///
 /// # Errors
 ///
-/// Returns one `spec-invalid` error aggregating all grammar findings.
+/// Returns one `BadRequest` aggregating all grammar findings.
 pub fn parse(text: &str) -> Result<Spec, Error> {
     let mut findings: Vec<String> = Vec::new();
     let mut requirements: Vec<Requirement> = Vec::new();
@@ -115,13 +115,10 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
             requirements,
         })
     } else {
-        Err(Error::BadRequest {
-            code: "spec-invalid".into(),
-            description: format!(
-                "spec-invalid: `spec.md` must parse under the fail-closed spec AST: {}",
-                findings.join("; ")
-            ),
-        })
+        Err(bad_request!(
+            "`spec.md` must parse under the fail-closed spec AST: {}",
+            findings.join("; ")
+        ))
     }
 }
 
@@ -322,7 +319,7 @@ fn trim_edges(lines: &[String]) -> String {
 }
 
 // Collapse (dense private parse matrix): fail-closed spec AST edges
-// are a closed (markdown → Spec / spec-invalid) table; a root port
+// are a closed (markdown → Spec / BadRequest) table; a root port
 // would be one synthesis fixture per grammar finding.
 #[cfg(test)]
 mod tests {
@@ -432,7 +429,7 @@ Status: unknown
         ];
         for (text, fragment) in cases {
             let err = parse(text).expect_err(fragment);
-            assert_eq!(err.code(), "spec-invalid", "typed code for {fragment}");
+            assert_eq!(err.code(), "bad_request", "typed code for {fragment}");
             let message = err.description();
             assert!(message.contains(fragment), "expected `{fragment}` in: {message}");
         }

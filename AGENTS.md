@@ -55,10 +55,12 @@ docs/              Developer Guide (mdBook; reference + contributing + standards
 | Code | Name | When |
 | ---- | ------------------------ | ------------------------------------------------------------------ |
 | 0 | `EXIT_SUCCESS` | Command succeeded. |
-| 1 | `BadRequest` | Operator or input refusal (`argument`, `specify-source-required`, `adapter-cli-too-old`, extract/synthesis validation, …). |
-| 2 | `NotFound` | Missing resource (`spec-not-generated`, `adapter-component-missing`). Clap usage and unknown-verb also exit 2 (framework). |
-| 3 | `ServerError` | Unclassified default: I/O, storage, `spec-home-corrupt`, leftover conversions. |
-| 4 | `BadGateway` | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`, `claim-extras-malformed`). |
+| 1 | `BadRequest` | Operator or input refusal. The `error` field is `specify-source-required`, `adapter-cli-too-old`, or the Omnia default `bad_request`. |
+| 2 | `NotFound` | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework). |
+| 3 | `ServerError` | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error`. |
+| 4 | `BadGateway` | Upstream or model failure. The `error` field is the Omnia default `bad_gateway`. |
+
+Omnia default codes are snake_case (`bad_request`, `not_found`, `server_error`, `bad_gateway`). The three recovery discriminants stay kebab-case so skills can branch on them.
 
 ## Testing philosophy
 
@@ -90,7 +92,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Adapter admission is static.** `emery specify <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a project-relative local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache on the first `specify` that names it; extract dispatch beyond the declared set fails at dispatch. There is no download path (ADR-0002 §2), and GitHub URLs are refused (`adapter-github-uri-unsupported`).
+- **Adapter admission is static.** `emery specify <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a project-relative local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache on the first `specify` that names it; extract dispatch beyond the declared set fails at dispatch. There is no download path (ADR-0002 §2), and GitHub URLs are refused.
 - Never hand-edit `.emery/` state (the component cache, the generation store); never `mkdir -p .emery/...`. Route through the CLI. The binding list is per-run input — argv or an operator-owned `sources.toml` named by `--sources`; the engine never writes or discovers it.
 - `make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means regenerating with a fresh `emery specify`.

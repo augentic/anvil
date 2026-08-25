@@ -35,7 +35,7 @@ All JSON output follows the shared envelope contract:
 
 - **Kebab-case keys** — `app-name`, `project-dir` (never `app_name` or `projectDir`)
 - **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure body is `ErrorBody`. There is no top-level envelope-version stamp.
-- **Kebab-case error discriminants** — `adapter-component-missing`, `spec-not-generated`, `io` (never `missing_prerequisites`); skills and tests grep on the `error` / `code` fields, so renaming one is a breaking change.
+- **Error discriminants** — the three kebab recovery codes (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`) plus the four snake_case Omnia defaults (`bad_request`, `not_found`, `server_error`, `bad_gateway`); skills and tests grep on the `error` field, so renaming one is a breaking change.
 
 The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent.
 
@@ -43,13 +43,13 @@ The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the 
 
 The exit-code contract is part of the public interface for operators and skill wrappers; `exit_code` in `crates/engine/src/cli.rs` maps `omnia_guest::Error` variants and is the single source of truth:
 
-| Code | Variant          | Meaning                                                                                                                        |
-| ---- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `0`  | `EXIT_SUCCESS`   | Operation completed successfully                                                                                               |
-| `1`  | `BadRequest`     | Operator or input refusal (`argument`, `specify-source-required`, `adapter-cli-too-old`, extract/synthesis validation, …)       |
-| `2`  | `NotFound`       | Missing resource (`spec-not-generated`, `adapter-component-missing`). Clap usage and unknown-verb also exit 2 (framework).      |
-| `3`  | `ServerError`    | Unclassified default: I/O, storage, `spec-home-corrupt`, leftover conversions                                                  |
-| `4`  | `BadGateway`     | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`, `claim-extras-malformed`)                         |
+| Code | Variant          | Meaning                                                                                                                                        |
+| ---- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | `EXIT_SUCCESS`   | Operation completed successfully                                                                                                               |
+| `1`  | `BadRequest`     | Operator or input refusal. The `error` field is `specify-source-required`, `adapter-cli-too-old`, or the Omnia default `bad_request`.           |
+| `2`  | `NotFound`       | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework). |
+| `3`  | `ServerError`    | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error`.                               |
+| `4`  | `BadGateway`     | Upstream or model failure. The `error` field is the Omnia default `bad_gateway`.                                                                |
 
 Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
 

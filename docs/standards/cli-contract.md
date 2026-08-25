@@ -14,13 +14,13 @@ Never hand-edit `.emery/` state (the component cache, the generation store); nev
 
 ## Verb tree
 
-- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `1` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `argument`.
+- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `1` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
 - `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `2`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
 ## JSON envelope
 
-Every CLI verb that skills consume emits a stable **flat body**: the command-specific fields at the top level of a single JSON object. On success the body is exactly that — there is no `ok` discriminant, no `data` wrapper around the payload, and no top-level envelope-version stamp. On failure the flat object carries three top-level keys: `error` (a kebab-case discriminant string), `message` (a humanised one-liner), and `exit-code` (the integer the binary returns). Skills invoked with `--format json` parse the body and branch on the `error` field rather than on stdout text.
+Every CLI verb that skills consume emits a stable **flat body**: the command-specific fields at the top level of a single JSON object. On success the body is exactly that — there is no `ok` discriminant, no `data` wrapper around the payload, and no top-level envelope-version stamp. On failure the flat object carries three top-level keys: `error` (a discriminant string: kebab-case for the three recovery codes, snake_case for Omnia defaults), `message` (a humanised one-liner), and `exit-code` (the integer the binary returns). Skills invoked with `--format json` parse the body and branch on the `error` field rather than on stdout text.
 
 Stream roles are part of the contract: the semantic result body (text or JSON) is stdout; the failure body and live host tracing are stderr. In text mode the failure body's `error:` line renders in ANSI red so it stands out from the surrounding tracing; `NO_COLOR` (any non-empty value), a missing `TERM`, and `TERM=dumb` all disable it, and the JSON envelope never carries styling. Host tracing is selected by the reserved host log flags, peeled from argv before the guest sees it: bare invocations default to INFO progress, `--quiet` turns tracing off, and `--debug` adds backend debug tracing (both flags win over any ambient `RUST_LOG`). Skills follow the plugin rule's tracing contract and relay the semantic result once without repeating tracing lines.
 
@@ -39,14 +39,14 @@ The CLI uses the Omnia 1:1 exit map. The authoritative definition lives in [`AGE
 | Code | Name | Skills see it on |
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
-| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `argument`, `adapter-cli-too-old`, extract/synthesis validation). Parse the top-level `error` discriminant; on `adapter-cli-too-old`, tell the operator to update the installed binary through its install channel. |
-| `2` | `NotFound` | Missing resource (`spec-not-generated`, `adapter-component-missing`). Clap usage and unknown-verb also exit 2 (framework). |
-| `3` | `ServerError` | Unclassified default: I/O, storage, `spec-home-corrupt`. |
-| `4` | `BadGateway` | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`). |
+| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `adapter-cli-too-old`, or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `adapter-cli-too-old`, tell the operator to update the installed binary through its install channel. |
+| `2` | `NotFound` | Missing resource (`spec-not-generated`, or the Omnia default `not_found`). Clap usage and unknown-verb also exit 2 (framework). |
+| `3` | `ServerError` | Unclassified default: I/O, storage (`server_error`). |
+| `4` | `BadGateway` | Upstream or model failure (`bad_gateway`). |
 
-Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four Omnia variants, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
+Skills should branch on the exit code first (success vs failure class) and on the three kebab recovery discriminants second (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`). Other failures share the Omnia snake_case default for that class (`bad_request`, `not_found`, `server_error`, `bad_gateway`). New exit codes are not invented by skills or the CLI.
 
 ## Cross-references
 
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
-- [`AGENTS.md`](../../AGENTS.md) — authoritative source for exit codes, Omnia error classes, kebab `error` discriminants, and CLI architecture.
+- [`AGENTS.md`](../../AGENTS.md) — authoritative source for exit codes, Omnia error classes, `error` discriminants, and CLI architecture.

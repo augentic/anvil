@@ -4,7 +4,7 @@
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
-use omnia_guest::Error;
+use omnia_guest::{Error, bad_request};
 use serde::Serialize;
 
 /// Human-readable rendering for a serializable command body.
@@ -21,7 +21,7 @@ pub trait Render: Serialize {
 ///
 /// # Errors
 ///
-/// Returns `argument` for an absolute path or a relative path that
+/// Returns a `BadRequest` for an absolute path or a relative path that
 /// escapes above the project root.
 pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Error> {
     if path.is_absolute() {
@@ -42,12 +42,9 @@ pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Erro
 }
 
 fn outside_project(path: &Path, flag: &'static str) -> Error {
-    Error::BadRequest {
-        code: "argument".into(),
-        description: format!(
-            "invalid argument {flag}: path `{}` must be relative to the project preopen `.` and \
-             must not escape it",
-            path.display()
-        ),
-    }
+    bad_request!(
+        "invalid argument {flag}: path `{}` must be relative to the project preopen `.` and \
+         must not escape it",
+        path.display()
+    )
 }

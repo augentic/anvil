@@ -6,7 +6,7 @@ mod selector;
 use std::path::Path;
 
 use emery_adapter::Source;
-use omnia_guest::{BlobStore, Error};
+use omnia_guest::{BlobStore, Error, bad_request, not_found, server_error};
 pub use selector::AdapterSelector;
 
 use crate::handler::preopen_path;
@@ -68,22 +68,16 @@ async fn mirror<B: BlobStore>(path: &Path, blobs: &B) -> Result<(), Error> {
 // Re-seeding replaces the entry; world validation stays a dispatch concern.
 async fn seed<B: BlobStore>(original: &Path, relative: &Path, blobs: &B) -> Result<(), Error> {
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
-        return Err(Error::NotFound {
-            code: "adapter-component-missing".into(),
-            description: format!(
-                "adapter-component-missing: adapter `{}` did not resolve to a `.wasm` component \
-                 file at {} (an adapter is a single WebAssembly component)",
-                original.display(),
-                relative.display()
-            ),
-        });
+        return Err(not_found!(
+            "adapter `{}` did not resolve to a `.wasm` component file at {} (an adapter is a \
+             single WebAssembly component)",
+            original.display(),
+            relative.display()
+        ));
     }
     let name = selector::name_from_component(relative)?;
     // Source reads use the workspace; mirrors use the storage capability.
-    let bytes = std::fs::read(relative).map_err(|err| Error::ServerError {
-        code: "io".into(),
-        description: err.to_string(),
-    })?;
+    let bytes = std::fs::read(relative).map_err(|err| server_error!(err))?;
     blobs
         .put(ADAPTERS_CONTAINER, &object(&name), &bytes)
         .await
@@ -97,13 +91,11 @@ fn parse_floor(
     let Some(floor) = floor else {
         return Ok(None);
     };
-    semver::Version::parse(floor).map(Some).map_err(|err| Error::BadRequest {
-        code: "adapter-floor-malformed".into(),
-        description: format!(
-            "adapter-floor-malformed: an adapter's metadata answer declares a semver \
-                 `emery-floor`: adapter `{name}` ({id}) declares `emery-floor: {floor}`, \
-                 which is not an exact semver: {err}"
-        ),
+    semver::Version::parse(floor).map(Some).map_err(|err| {
+        bad_request!(
+            "an adapter's metadata answer declares a semver `emery-floor`: adapter `{name}` \
+             ({id}) declares `emery-floor: {floor}`, which is not an exact semver: {err}",
+        )
     })
 }
 

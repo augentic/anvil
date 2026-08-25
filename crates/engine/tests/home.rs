@@ -30,7 +30,7 @@ async fn concurrent_commit_conflicts() {
         .commit(&set("# Spec loser\n"), &stale)
         .await
         .expect_err("a stale observation must never last-write-wins over the swapped pointer");
-    assert_eq!(err.code(), "spec-pointer-conflict", "typed failure");
+    assert_eq!(err.code(), "server_error", "typed failure");
     assert!(
         err.description().contains("concurrent `emery specify`"),
         "typed failure: {}",

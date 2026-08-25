@@ -11,7 +11,7 @@ use omnia_guest::api::command::{
     BuildError, CommandResponse, Completions, Outcome, Projector, Router, RouterBuilder, run,
 };
 use omnia_guest::api::invoke::Invoker;
-use omnia_guest::{BlobStore, Error, Model, StateStore};
+use omnia_guest::{BlobStore, Error, Model, StateStore, server_error};
 use serde::Serialize;
 
 use crate::handler::Render;
@@ -117,21 +117,11 @@ fn emit<T: Serialize>(
 ) -> Result<(), Error> {
     match format {
         Format::Json => {
-            serde_json::to_writer_pretty(&mut *writer, payload).map_err(|err| {
-                Error::ServerError {
-                    code: "json-serialize-failed".into(),
-                    description: format!("failed to serialize JSON response: {err}"),
-                }
-            })?;
-            writeln!(writer).map_err(|err| Error::ServerError {
-                code: "io".into(),
-                description: err.to_string(),
-            })
+            serde_json::to_writer_pretty(&mut *writer, payload)
+                .map_err(|err| server_error!("failed to serialize JSON response: {err}",))?;
+            writeln!(writer).map_err(|err| server_error!(err))
         }
-        Format::Text => render_text(writer, payload).map_err(|err| Error::ServerError {
-            code: "io".into(),
-            description: err.to_string(),
-        }),
+        Format::Text => render_text(writer, payload).map_err(|err| server_error!(err)),
     }
 }
 

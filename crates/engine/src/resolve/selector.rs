@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use omnia_guest::Error;
+use omnia_guest::{Error, bad_request};
 
 /// An operator-supplied adapter reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,23 +35,16 @@ impl AdapterSelector {
     /// Returns typed errors for malformed values, GitHub URLs, or invalid pins.
     pub fn parse(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
-            return Err(Error::BadRequest {
-                code: "adapter-arg-malformed".into(),
-                description: "adapter-arg-malformed: <adapter> must be non-empty and must not \
-                              have leading or trailing whitespace"
-                    .into(),
-            });
+            return Err(bad_request!(
+                "<adapter> must be non-empty and must not have leading or trailing whitespace"
+            ));
         }
         if is_github_url(value) {
-            return Err(Error::BadRequest {
-                code: "adapter-github-uri-unsupported".into(),
-                description: format!(
-                    "adapter-github-uri-unsupported: GitHub adapter URIs are not supported \
-                     (`{value}`): a source checkout does not yield a usable adapter artifact. \
-                     Pin a published component (`emery:<name>@<semver>`) or point at a local \
-                     `.wasm` component file"
-                ),
-            });
+            return Err(bad_request!(
+                "GitHub adapter URIs are not supported (`{value}`): a source checkout does not \
+                 yield a usable adapter artifact. Pin a published component \
+                 (`emery:<name>@<semver>`) or point at a local `.wasm` component file",
+            ));
         }
         if let Some(package) = recognize_package(value) {
             return package;
@@ -77,7 +70,7 @@ impl AdapterSelector {
     ///
     /// # Errors
     ///
-    /// Returns `adapter-dir-name-unresolved` for an unusable component stem.
+    /// Returns a `BadRequest` for an unusable component stem.
     pub fn name(&self) -> Result<String, Error> {
         match self {
             Self::Bare { name } | Self::Package { name, .. } => Ok(name.clone()),
@@ -112,29 +105,22 @@ fn recognize_package(value: &str) -> Option<Result<AdapterSelector, Error>> {
 fn parse_validated_package(
     namespace: &str, rest: &str, original: &str,
 ) -> Result<AdapterSelector, Error> {
-    let (name, version) = rest.split_once('@').ok_or_else(|| Error::BadRequest {
-        code: "adapter-package-ref-version-required".into(),
-        description: format!(
-            "adapter-package-ref-version-required: adapter package reference `{original}` \
-                 must pin an exact SemVer version (`{namespace}:<name>@<version>`); there is no \
-                 branch or tag defaulting"
-        ),
+    let (name, version) = rest.split_once('@').ok_or_else(|| {
+        bad_request!(
+            "adapter package reference `{original}` must pin an exact SemVer version \
+             (`{namespace}:<name>@<version>`); there is no branch or tag defaulting",
+        )
     })?;
     if name.is_empty() {
-        return Err(Error::BadRequest {
-            code: "adapter-package-ref-malformed".into(),
-            description: format!(
-                "adapter-package-ref-malformed: adapter package reference `{original}` is \
-                 missing a package name before `@`"
-            ),
-        });
+        return Err(bad_request!(
+            "adapter package reference `{original}` is missing a package name before `@`",
+        ));
     }
-    let version = semver::Version::parse(version).map_err(|err| Error::BadRequest {
-        code: "adapter-package-ref-version-required".into(),
-        description: format!(
-            "adapter-package-ref-version-required: adapter package reference `{original}` \
-                 must pin an exact SemVer version, not `{version}`: {err}"
-        ),
+    let version = semver::Version::parse(version).map_err(|err| {
+        bad_request!(
+            "adapter package reference `{original}` must pin an exact SemVer version, not \
+             `{version}`: {err}",
+        )
     })?;
     Ok(AdapterSelector::Package {
         name: name.to_string(),
@@ -171,16 +157,12 @@ fn is_first_party_name(name: &str) -> bool {
 ///
 /// # Errors
 ///
-/// Returns `adapter-dir-name-unresolved` for an unusable stem.
+/// Returns a `BadRequest` for an unusable stem.
 pub fn name_from_component(path: &Path) -> Result<String, Error> {
-    let stem =
-        path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| Error::BadRequest {
-            code: "adapter-dir-name-unresolved".into(),
-            description: format!(
-                "adapter-dir-name-unresolved: cannot derive adapter name from {}",
-                path.display()
-            ),
-        })?;
+    let stem = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .ok_or_else(|| bad_request!("cannot derive adapter name from {}", path.display()))?;
     let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
     Ok(stem.replace('_', "-"))
 }
