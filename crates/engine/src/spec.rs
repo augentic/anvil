@@ -1,6 +1,6 @@
 //! Fail-closed `spec.md` AST.
 
-use crate::handler::{Error, bad_request};
+use omnia_guest::Error;
 
 /// Markdown heading prefix opening a requirement block.
 pub const HEADING: &str = "### Requirement:";
@@ -115,13 +115,13 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
             requirements,
         })
     } else {
-        Err(bad_request(
-            "spec-invalid",
-            format!(
+        Err(Error::BadRequest {
+            code: "spec-invalid".into(),
+            description: format!(
                 "spec-invalid: `spec.md` must parse under the fail-closed spec AST: {}",
                 findings.join("; ")
             ),
-        ))
+        })
     }
 }
 

@@ -191,7 +191,7 @@ impl From<&Outcome> for HandleBody {
 
 ## Errors
 
-Engine operations return `emery_engine::handler::Error`, an alias of `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct via `bad_request` / `not_found` / `server_error` / `bad_gateway` with a kebab `code` and a description. The kebab `code` is the public wire contract that skills and tests grep for; treat any rename as a breaking change.
+Engine operations return `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct the matching variant with a kebab `code` and a description. The kebab `code` is the public wire contract that skills and tests grep for; treat any rename as a breaking change. Do not introduce a house error type or constructor wrappers.
 
 **Class on a direct match.** Pick the Omnia variant that matches the failure: operator or input refusals are `BadRequest` (exit 1), missing resources are `NotFound` (exit 2), upstream or model failures are `BadGateway` (exit 4). Anything else — I/O, storage, leftover conversions — is `ServerError` (exit 3). Do not invent new kebab codes or new exit slots. See [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes).
 

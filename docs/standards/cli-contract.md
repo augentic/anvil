@@ -49,4 +49,4 @@ Skills should branch on the exit code first (success vs failure class) and on th
 ## Cross-references
 
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
-- [`AGENTS.md`](../../AGENTS.md) — authoritative source for exit codes, error variants, and CLI architecture.
+- [`AGENTS.md`](../../AGENTS.md) — authoritative source for exit codes, Omnia error classes, kebab `error` discriminants, and CLI architecture.

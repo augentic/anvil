@@ -1,45 +1,11 @@
-//! Transport-neutral command plumbing: the operation error alias,
-//! text-mode rendering, and preopen-relative path normalization.
+//! Transport-neutral command plumbing: text-mode rendering and
+//! preopen-relative path normalization.
 
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
+use omnia_guest::Error;
 use serde::Serialize;
-
-/// Operation error type: Omnia's protocol error.
-pub type Error = omnia_guest::Error;
-
-/// A `BadRequest` with a kebab `code`.
-pub fn bad_request(code: &'static str, description: impl Into<String>) -> Error {
-    Error::BadRequest {
-        code: code.to_string(),
-        description: description.into(),
-    }
-}
-
-/// A `NotFound` with a kebab `code`.
-pub fn not_found(code: &'static str, description: impl Into<String>) -> Error {
-    Error::NotFound {
-        code: code.to_string(),
-        description: description.into(),
-    }
-}
-
-/// A `ServerError` with a kebab `code`.
-pub fn server_error(code: &'static str, description: impl Into<String>) -> Error {
-    Error::ServerError {
-        code: code.to_string(),
-        description: description.into(),
-    }
-}
-
-/// A `BadGateway` with a kebab `code`.
-pub fn bad_gateway(code: &'static str, description: impl Into<String>) -> Error {
-    Error::BadGateway {
-        code: code.to_string(),
-        description: description.into(),
-    }
-}
 
 /// Human-readable rendering for a serializable command body.
 pub trait Render: Serialize {
@@ -76,12 +42,12 @@ pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Erro
 }
 
 fn outside_project(path: &Path, flag: &'static str) -> Error {
-    bad_request(
-        "argument",
-        format!(
+    Error::BadRequest {
+        code: "argument".into(),
+        description: format!(
             "invalid argument {flag}: path `{}` must be relative to the project preopen `.` and \
              must not escape it",
             path.display()
         ),
-    )
+    }
 }

@@ -2,11 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use omnia_guest::{BlobStore, CasError, StateStore};
+use omnia_guest::{BlobStore, CasError, Error, StateStore};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::handler::{Error, server_error};
 use crate::{spec, storage};
 
 /// Blobstore container for spec generations.
@@ -201,12 +200,13 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         match self.store.cas(CURRENT_KEY, observed.pointer.as_deref(), value.as_bytes()).await {
             Ok(()) => {}
             Err(CasError::Conflict(_)) => {
-                return Err(server_error(
-                    "spec-pointer-conflict",
-                    "spec-pointer-conflict: a concurrent `emery specify` committed first and \
-                     swapped the generation pointer; re-run `emery specify` to commit against \
-                     the new current generation",
-                ));
+                return Err(Error::ServerError {
+                    code: "spec-pointer-conflict".into(),
+                    description: "spec-pointer-conflict: a concurrent `emery specify` committed \
+                                  first and swapped the generation pointer; re-run `emery \
+                                  specify` to commit against the new current generation"
+                        .into(),
+                });
             }
             Err(CasError::Store(message)) => {
                 return Err(storage::failed(
@@ -240,13 +240,13 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
                 .await
                 .map_err(|err| storage::failed("probing a generation document", &err))?;
             if !present {
-                return Err(server_error(
-                    "spec-home-corrupt",
-                    format!(
+                return Err(Error::ServerError {
+                    code: "spec-home-corrupt".into(),
+                    description: format!(
                         "spec-home-corrupt: the generation pointer names `{id}` but `{name}` is \
                          missing; re-run `emery specify` to commit a fresh generation"
                     ),
-                ));
+                });
             }
         }
         Ok(Some(Committed { id }))
@@ -264,14 +264,14 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
             return Ok(None);
         };
         let Some((_, set)) = self.load(&committed.id).await else {
-            return Err(server_error(
-                "spec-home-corrupt",
-                format!(
+            return Err(Error::ServerError {
+                code: "spec-home-corrupt".into(),
+                description: format!(
                     "spec-home-corrupt: the generation pointer names `{}` but its documents \
                      cannot be read; re-run `emery specify` to commit a fresh generation",
                     committed.id
                 ),
-            ));
+            });
         };
         Ok(Some((committed, set)))
     }

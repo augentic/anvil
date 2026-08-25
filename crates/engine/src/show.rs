@@ -6,10 +6,10 @@ use std::io::Write;
 use omnia_guest::api::Provider;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
-use omnia_guest::{BlobStore, StateStore};
+use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Render, not_found};
+use crate::handler::Render;
 use crate::home::Home;
 
 /// The reviewable documents of one generation.
@@ -69,7 +69,7 @@ impl Render for ShowBody {
 pub struct Show;
 
 impl<P: Provider + StateStore + BlobStore> Operation<P> for Show {
-    type Error = crate::handler::Error;
+    type Error = Error;
     type Input = ShowInput;
     type Output = ShowBody;
 
@@ -78,10 +78,11 @@ impl<P: Provider + StateStore + BlobStore> Operation<P> for Show {
     ) -> Result<Self::Output, Self::Error> {
         let home = Home::new(context.provider);
         let Some((committed, set)) = home.current_set().await? else {
-            return Err(not_found(
-                "spec-not-generated",
-                "spec-not-generated: no specification generation has been committed",
-            ));
+            return Err(Error::NotFound {
+                code: "spec-not-generated".into(),
+                description: "spec-not-generated: no specification generation has been committed"
+                    .into(),
+            });
         };
         let body = match input.document {
             Document::Spec => set.spec,

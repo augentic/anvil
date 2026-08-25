@@ -4,11 +4,10 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use emery_adapter::types::{Authority, Claim, ClaimKind};
-use omnia_guest::Model;
 use omnia_guest::model::{Message, Request, Role};
+use omnia_guest::{Error, Model};
 
 use crate::extract::SourceSet;
-use crate::handler::{Error, bad_gateway, bad_request};
 use crate::spec::{self, Status, Tag};
 
 /// Validated synthesis output.
@@ -155,11 +154,12 @@ pub async fn synthesise<M: Model>(
     check_rows(&parsed, rows)?;
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
-        return Err(bad_request(
-            "design-empty",
-            "design-empty: `design.md` must carry the rebuild design: the model answered an empty \
-             document",
-        ));
+        return Err(Error::BadRequest {
+            code: "design-empty".into(),
+            description: "design-empty: `design.md` must carry the rebuild design: the model \
+                          answered an empty document"
+                .into(),
+        });
     }
     Ok(Documents { spec, design })
 }
@@ -186,8 +186,9 @@ async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<Str
             content: user.to_string(),
         }])
         .build();
-    let reply = model.complete(request).await.map_err(|err| {
-        bad_gateway("synthesis-model-failed", format!("synthesis-model-failed: {err}"))
+    let reply = model.complete(request).await.map_err(|err| Error::BadGateway {
+        code: "synthesis-model-failed".into(),
+        description: format!("synthesis-model-failed: {err}"),
     })?;
     Ok(reply.answer)
 }
@@ -283,13 +284,13 @@ fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
 }
 
 fn mismatch(detail: &str) -> Error {
-    bad_request(
-        "spec-provenance-mismatch",
-        format!(
+    Error::BadRequest {
+        code: "spec-provenance-mismatch".into(),
+        description: format!(
             "spec-provenance-mismatch: the model answer must render every reconciliation row \
              verbatim: {detail}"
         ),
-    )
+    }
 }
 
 // The extract gate guarantees this extra exists.

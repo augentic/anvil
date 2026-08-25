@@ -8,14 +8,14 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 
 - **`Input`** is a flat serde DTO that doubles as the verb's clap surface: it derives `clap::Args` alongside `Serialize`/`Deserialize` (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields; parsers and defaults ride `#[arg]` attributes). The router registers the operation directly over its input, so route decoding is infallible by construction.
 - **`call(input, context)`** anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
-- **`type Error = emery_engine::handler::Error`** — an alias of `omnia_guest::Error`.
+- **`type Error = omnia_guest::Error`** — operations return Omnia's protocol error; do not introduce a house error type.
 
 Deterministic operations bind `P: Provider` only unless their kernel issues model judgments, in which case they additionally bind `Model` — the one capability the provider still carries. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
 
 ```rust
 // GOOD — deterministic kernel. Model-using operations stay `async fn call`.
 impl<P: Provider> Operation<P> for Frob {
-    type Error = crate::handler::Error;
+    type Error = omnia_guest::Error;
     type Input = FrobInput;
     type Output = FrobBody;
 
@@ -26,7 +26,7 @@ impl<P: Provider> Operation<P> for Frob {
     }
 }
 
-fn frob(input: FrobInput) -> Result<FrobBody, crate::handler::Error> {
+fn frob(input: FrobInput) -> Result<FrobBody, omnia_guest::Error> {
     let outcome = some_crate::do_work(&input)?;
     Ok(FrobBody::from(&outcome))
 }
@@ -44,7 +44,7 @@ Operations never write to stdout. Each returns a typed body implementing `Serial
 
 ## Errors and their projections
 
-`emery_engine::handler::Error` is an alias of `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the JSON error body from `code()` / `description()`. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not reintroduce a report-carrying failure wrapper until a gate verb needs one.
+Operations return `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the JSON error body from `code()` / `description()`. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
@@ -58,13 +58,13 @@ The Omnia 1:1 exit map is fixed:
 | 3    | `ServerError`   | Unclassified default: I/O, storage, `spec-home-corrupt`, leftover conversions                                                 |
 | 4    | `BadGateway`    | Upstream or model failure (`source-extract-failed`, `synthesis-model-failed`, `claim-extras-malformed`)                       |
 
-`exit_code(&Error)` in [`crates/engine/src/cli.rs`](../../crates/engine/src/cli.rs) is the single source of truth. The command projector uses it for every terminal operation failure. Do not invent new exit codes.
+`exit_code` in [`crates/engine/src/cli.rs`](../../crates/engine/src/cli.rs) maps `omnia_guest::Error` variants and is the single source of truth. The command projector uses it for every terminal operation failure. Do not invent new exit codes.
 
 ## The CLI module (`emery_engine::cli`)
 
 `crates/engine/src/cli.rs` is the whole CLI surface: the `Globals` type, the reusable `omnia_guest::api::command` route assembly, the Emery command projector, and the fixed exit contract. There is no HTTP surface: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router.
 
-There is no separate `*Args` layer: each operation `Input` derives `clap::Args` and registers directly (`run::<Input, Operation>()`), so grammar/input drift cannot exist and route decoding is infallible. Field parsers (closed `ValueEnum`s, repeatable flags, defaults) live on the input's `#[arg]` attributes. Global flags (`--format`) stay in `Globals`, not operation `Input`. A module-level layering rule replaces the old crate boundary: `cli` imports operation types and the error alias only, never domain kernels.
+There is no separate `*Args` layer: each operation `Input` derives `clap::Args` and registers directly (`run::<Input, Operation>()`), so grammar/input drift cannot exist and route decoding is infallible. Field parsers (closed `ValueEnum`s, repeatable flags, defaults) live on the input's `#[arg]` attributes. Global flags (`--format`) stay in `Globals`, not operation `Input`. A module-level layering rule replaces the old crate boundary: `cli` imports operation types and `omnia_guest::Error` only, never domain kernels.
 
 ## Dispatch contract (`cli.rs`)
 
