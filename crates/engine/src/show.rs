@@ -3,9 +3,7 @@
 
 use std::io::Write;
 
-use omnia_guest::api::Provider;
-use omnia_guest::api::invoke::CallContext;
-use omnia_guest::api::operation::Operation;
+use omnia_guest::api::{Context, Handler};
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
@@ -64,18 +62,11 @@ impl Render for ShowBody {
     }
 }
 
-/// The `show` operation route.
-#[derive(Clone, Copy, Debug)]
-pub struct Show;
-
-impl<P: Provider + StateStore + BlobStore> Operation<P> for Show {
+impl<P: StateStore + BlobStore> Handler<P> for ShowInput {
     type Error = Error;
-    type Input = ShowInput;
     type Output = ShowBody;
 
-    async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
         let home = Home::new(context.provider);
         let Some((committed, set)) = home.current_set().await? else {
             return Err(Error::NotFound {
@@ -84,13 +75,13 @@ impl<P: Provider + StateStore + BlobStore> Operation<P> for Show {
                     .into(),
             });
         };
-        let body = match input.document {
+        let body = match self.document {
             Document::Spec => set.spec,
             Document::Design => set.design,
         };
         Ok(ShowBody {
             generation: committed.id,
-            document: input.document.label(),
+            document: self.document.label(),
             body,
         })
     }

@@ -10,10 +10,8 @@ use emery_adapter::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
 use emery_adapter::{DispatchError, Source};
-use emery_engine::cli;
+use emery_engine::cli::{self, CommandResponse};
 use emery_testkit::{Memory, Scripted};
-use omnia_guest::api::command::CommandResponse;
-use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Error, Reply, Request, ToolCall};
 use omnia_guest::{BlobStore, Model, StateStore};
 use serde_json::Value;
@@ -153,7 +151,7 @@ where
     S: Send + Sync + 'static,
     Provider<S>: StateStore + BlobStore,
 {
-    cli::router(Invoker::new("emery", provider.clone())).expect("command grammar")
+    cli::router(provider.clone())
 }
 
 /// Runs one CLI invocation in-process, returning the raw response.
