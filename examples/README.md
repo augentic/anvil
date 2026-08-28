@@ -4,7 +4,7 @@ Static host for the mock source adapter: `specify` extracts a deterministic gree
 
 ## Prerequisites
 
-- [cursor-sdk-bridge](https://github.com/cursor/sdk-bridge). See [below](#installing-cursor-sdk-bridge) for installation instructions.
+- [cursor-sdk-bridge](https://github.com/cursor/sdk-bridge). See [below](#installing-cursor-sdk-bridge) for installation.
 - `CURSOR_API_KEY`
 
 ## Build and run
