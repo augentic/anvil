@@ -19,37 +19,29 @@ depends = ["check", "vet", "deny"]
 # -------------------------------------
 
 [fmt]
-description = "nightly rustfmt --all (writes)"
 run = "cargo +nightly fmt --all"
 
 [lint]
-description = "clippy --workspace under -D warnings"
 run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 
 [doc]
-description = "cargo doc --no-deps under -Dwarnings"
 env = { RUSTDOCFLAGS = "-Dwarnings" }
 run = "cargo doc --no-deps --workspace --all-features --locked"
 
 [test]
-description = "nextest workspace run under -Dwarnings"
 env = { RUSTFLAGS = "-Dwarnings" }
 run = "cargo nextest run --locked --workspace --all-features --no-tests=pass"
 
 [test-docs]
-description = "cargo test --doc --workspace"
 run = "cargo test --doc --workspace --all-features"
 
 [vet]
-description = "Verify cargo-vet inputs (check-only)"
 run = "cargo vet --locked"
 
 [deny]
-description = "cargo deny --workspace check"
 run = "cargo deny --workspace check"
 
 [clean]
-description = "cargo clean"
 run = "cargo clean"
 
 # -------------------------------------
@@ -57,19 +49,15 @@ run = "cargo clean"
 # -------------------------------------
 
 [audit]
-description = "cargo audit"
 run = "cargo audit"
 
 [outdated]
-description = "cargo outdated"
 run = "cargo outdated --workspace --depth 1"
 
 [deps]
-description = "nightly cargo udeps"
 run = "cargo +nightly udeps --workspace --all-targets"
 
 [miri]
-description = "nightly miri nextest"
 run = '''
 cargo +nightly miri setup
 cargo +nightly miri nextest run --workspace --no-tests=pass
@@ -85,9 +73,4 @@ cargo vet --locked
 '''
 
 [cov]
-description = "llvm-cov nextest summary (workspace)"
 run = "cargo llvm-cov nextest --workspace --all-features --summary-only"
-
-[cov-crate]
-description = "llvm-cov nextest summary for $CRATE"
-run = "cargo llvm-cov nextest -p ${CRATE} --summary-only"
