@@ -198,20 +198,22 @@ omnia-cursor = "0.29.0"
 omnia-filesystem = "0.29.0"
 
 [patch.crates-io]
-omnia = { git = "https://github.com/augentic/omnia" }
-omnia-guest = { git = "https://github.com/augentic/omnia" }
-omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
-omnia-host-macros = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-keyvalue = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
-# omnia = { path = "../omnia/crates/omnia" }
-# omnia-guest = { path = "../omnia/crates/omnia-guest" }
-# omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-# omnia-host-macros = { path = "../omnia/crates/host-macros" }
-# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
-# omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
+# omnia = { git = "https://github.com/augentic/omnia" }
+# omnia-guest = { git = "https://github.com/augentic/omnia" }
+# omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
+# omnia-host-macros = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-keyvalue = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
+omnia = { path = "../omnia/crates/omnia" }
+omnia-guest = { path = "../omnia/crates/omnia-guest" }
+omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+omnia-host-macros = { path = "../omnia/crates/host-macros" }
+omnia-wasi-blobstore = { path = "../omnia/crates/wasi-blobstore" }
+omnia-wasi-keyvalue = { path = "../omnia/crates/wasi-keyvalue" }
+omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
 omnia-filesystem = { git = "https://github.com/augentic/omnia-backends" }

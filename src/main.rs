@@ -22,7 +22,7 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: "." },
             ],
-            dispatch: ["emery:adapter/source@0.1.0"],
+            plugins: ["emery:adapter/source@0.1.0"],
             hosts: {
                 WasiOtel: OtelDefault,
                 WasiModel: Cursor,
