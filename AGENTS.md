@@ -8,15 +8,15 @@
 
 A Rust workspace at the repository root producing the `emery` runtime binary, plus one Cursor plugin (`plugins/emery/` carrying the `/emery:specify` skill wrapper). The live CLI grammar is three verbs:
 
-- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator (ADR-0008 §3, ADR-0009): resolve the sources named on the invocation (mirroring a project-relative local `.wasm` into the project cache), extract each binding over the `Source` capability, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--config` without a value explicitly selects `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback (a deliberate reversal of the ADR-0010 never-discover posture) — never merged with argv bindings. The binding list is per-run input, never persisted; a re-run reports the re-mine diff against the superseded generation in the success envelope — never persisted (ADR-0010).
+- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator: resolve the sources named on the invocation (mirroring a project-relative local `.wasm` into the project cache), extract each binding over the `Source` capability, reconcile under authority precedence, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--config` without a value explicitly selects `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback — never merged with argv bindings. The binding list is per-run input, never persisted; a re-run reports the re-mine diff against the superseded generation in the success envelope — never persisted.
 - `emery show <spec|design>` — print a reviewable document of the current generation to stdout; text mode is the document body alone, and the generation id rides the JSON envelope.
 - `emery completions <shell>` — auto-derived from the clap surface.
 
-Deleted verbs are deleted from the grammar, not hidden — there are no compatibility aliases or deprecated stubs. The HTTP surface is deleted outright — no listener, no MCP shelves — so C3 (no unauthenticated HTTP ingress, ADR-0002) is satisfied by absence rather than refusal. Adapter references reach the model through the completion session's tool closure (`list_docs` / `read_doc`, answered in-process from the embedded corpus), and the committed generation is reviewed over `emery show`.
+Deleted verbs are deleted from the grammar, not hidden — there are no compatibility aliases or deprecated stubs. The HTTP surface is deleted outright — no listener, no MCP shelves — so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than refusal. Adapter references reach the model through the completion session's tool closure (`list_docs` / `read_doc`, answered in-process from the embedded corpus), and the committed generation is reviewed over `emery show`.
 
 ## Vocabulary
 
-- **source adapter** — input role: one WebAssembly component exporting the WIT `source-adapter` world (`extract` + `metadata`; no manifest file). `extract` takes a typed `SourceInput` (`key`, workspace-or-value) and returns an Evidence document of typed claims — the spec IR (A8/A16; required extras are fail-closed engine-side, ADR-0009 §3). Survey, leads, and the target axis were deleted from the WIT contract (archived at `v1`); see [wit/emery.wit](wit/emery.wit).
+- **source adapter** — input role: one WebAssembly component exporting the WIT `source-adapter` world (`extract` + `metadata`; no manifest file). `extract` takes a typed `SourceInput` (`key`, workspace-or-value) and returns an Evidence document of typed claims — the spec IR (A8/A16; required extras are fail-closed engine-side). Survey, leads, and the target axis were deleted from the WIT contract (archived at `v1`); see [wit/emery.wit](wit/emery.wit).
 - **engine** — this product: the engine guest (`emery:engine`), the surviving engine crates, and the engine side of the adapter contract.
 - **capability** — an engine-side trait a provider carries (`Source`, `Model`, `StateStore` / `BlobStore`).
 - **contract** — the typed agreement (WIT, CLI, wire).
@@ -42,7 +42,7 @@ emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src
 ```text
 src/               shipped binary (omnia::runtime!, static CWD-rooted deployment, filesystem-backed keyvalue/blobstore hosts) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run)
 crates/            the workspace crates above
-examples/          mock source adapter + static runtime host (root-package examples; ADR-0009 §5)
+examples/          mock source adapter + static runtime host (root-package examples)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:specify skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
@@ -92,7 +92,7 @@ Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/em
 
 ## Gotchas
 
-- **Adapter admission is static.** `emery specify <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a project-relative local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache on the first `specify` that names it; extract dispatch beyond the declared set fails at dispatch. There is no download path (ADR-0002 §2), and GitHub URLs are refused.
+- **Adapter admission is static.** `emery specify <adapter>` accepts a package reference (`emery:intent@1.0.0`), the first-party shorthand (`intent@1.0.0`), a bare name, or a project-relative local `.wasm` path — but until the dynamic resolver returns, dispatch lands only on guests declared in the runtime invocation (`src/main.rs`; the journey host declares its mock `source` the same way in `examples/runtime.rs`). A local `.wasm` still mirrors into the project cache on the first `specify` that names it; extract dispatch beyond the declared set fails at dispatch. There is no download path, and GitHub URLs are refused.
 - Never hand-edit `.emery/` state (the component cache, the generation store); never `mkdir -p .emery/...`. Route through the CLI. The binding list is per-run input — argv, or an operator-owned `emery.toml` named by `--config` (or discovered at the project root by a run naming no bindings at all); the engine never writes it.
 - `make links` enforces Developer Guide link integrity — renaming docs paths requires updating links in the same change.
 - Crossing a major is a hard cut: no silent compatibility aliases and no migration framework. Pre-1.0, a major bump means regenerating with a fresh `emery specify`.

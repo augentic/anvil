@@ -1,4 +1,4 @@
-/// The `emery:adapter` contract (ADR-0008): one source axis, two
+/// The `emery:adapter` contract: one source axis, two
 /// operations. Adapter guests export the `source` interface alone. No
 /// resource types cross the contract: dispatch carries plain values,
 /// routed by each call's `adapter-id` first argument.
@@ -21,13 +21,13 @@ interface types {
 }
 
 /// The source adapter contract: `extract` is the one judgment operation
-/// (survey is gone — ADR-0008). The guest assembles a prompt from its
+/// (survey is gone). The guest assembles a prompt from its
 /// compiled-in fragments, opens the completion session with a workspace
 /// lend of the source view (or no lend for an inline value), answers
 /// the model's reference tool calls from its embedded corpus, and
 /// deserializes the schema-gated answer.
 ///
-/// Extract's return is the specification IR (A8/A16, ADR-0009 §3):
+/// Extract's return is the specification IR (A8/A16):
 /// the engine fails closed when a claim kind's required extras are
 /// absent, and every open extra crosses the contract verbatim.
 interface source {

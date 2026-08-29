@@ -1,6 +1,6 @@
 # emery specify
 
-Generate `spec.md` / `design.md` from the sources named on the invocation and commit them as one generation (ADR-0008 §3, ADR-0009).
+Generate `spec.md` / `design.md` from the sources named on the invocation and commit them as one generation.
 
 ## Synopsis
 
@@ -14,7 +14,7 @@ emery specify                       # discovers the project-root emery.toml
 
 The one generate verb. Each run names its own sources: every positional `<adapter>` binds a **workspace-backed** source (the adapter reads a read-only view rooted at the project directory; the binding key is the adapter name), and every `--description <adapter>=<text>` (repeatable, `-d`) binds a **description-backed** source (the adapter extracts the inline text; no filesystem view is lent). Nothing about the binding list persists between runs — repeat the sources on every invocation (Makefile, skill, CI), or keep them in an operator-owned `emery.toml` selected with `--config [<path>]` (`-c`; the omitted value selects the project-relative `emery.toml`). A run naming no bindings at all discovers the project-root `emery.toml` as a fallback — discovery is a fallback, never merged with argv bindings.
 
-Each run resolves its adapters before extracting; a local `.wasm` component mirrors into the out-of-tree project cache as a side effect, so the selector stays resolvable after the original file is removed. Extraction dispatches every binding over the `Source` capability, reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer. Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]`. Re-running over identical sources is byte-stable and reports an empty re-mine diff in the success envelope (ADR-0010) — nothing is persisted for the diff. Review the committed set with [`emery show`](show.md).
+Each run resolves its adapters before extracting; a local `.wasm` component mirrors into the out-of-tree project cache as a side effect, so the selector stays resolvable after the original file is removed. Extraction dispatches every binding over the `Source` capability, reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer. Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]`. Re-running over identical sources is byte-stable and reports an empty re-mine diff in the success envelope — nothing is persisted for the diff. Review the committed set with [`emery show`](show.md).
 
 `emery specify` without any source — and with no project-root `emery.toml` to discover — fails typed with `specify-source-required` (exit `1`); there is no interactive prompt mode, so every other input arrives as a flag. Binding the same `name` twice fails as `bad_request` (exit `1`); a `--description` entry without `<adapter>=` fails as `bad_request` (exit `1`); combining `--config` with positional adapters or `--description` fails as `bad_request` (exit `1`).
 

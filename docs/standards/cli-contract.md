@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1` (ADR-0008).
+The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1`.
 
 The CLI itself is built in the in-tree Cargo workspace at the repo root. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -14,7 +14,7 @@ Never hand-edit `.emery/` state (the component cache, the generation store); nev
 
 ## Verb tree
 
-- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--config` without a value selects the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback, never merged with argv bindings. The binding list is per-run input, never persisted. Invoked without a source — and with nothing to discover — it exits `1` with `specify-source-required`; mixing `--config` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
+- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator: resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--config` without a value selects the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback, never merged with argv bindings. The binding list is per-run input, never persisted. Invoked without a source — and with nothing to discover — it exits `1` with `specify-source-required`; mixing `--config` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
 - `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `2`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 

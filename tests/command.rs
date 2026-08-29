@@ -10,8 +10,7 @@ mod support;
 use serde_json::Value;
 use support::{Provider, cli, cli_ok, router};
 
-// Widening the route budget requires an ADR (ADR-0008); deleted verbs
-// are deleted from the grammar, not hidden.
+// Deleted verbs are deleted from the grammar, not hidden.
 #[tokio::test]
 async fn route_budget() {
     let provider = Provider::idle();

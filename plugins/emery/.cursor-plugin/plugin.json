@@ -1,7 +1,7 @@
 {
   "name": "emery",
   "displayName": "Emery Workflow",
-  "description": "Emery skills: specify. The delivery workflow is frozen during the spec-generator remediation (ADR-0008); deleted skills return with the new surface.",
+  "description": "Emery skills: specify. The delivery workflow is frozen during the spec-generator remediation; deleted skills return with the new surface.",
   "version": "0.30.0",
   "author": {
     "name": "Augentic",

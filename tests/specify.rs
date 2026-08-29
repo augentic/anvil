@@ -665,7 +665,7 @@ async fn component_missing() {
     }
 }
 
-// GitHub URLs are refused: a source checkout is not an adapter (ADR-0002).
+// GitHub URLs are refused: a source checkout is not an adapter.
 #[tokio::test]
 async fn github_refused() {
     let provider = Provider::idle();
@@ -674,7 +674,7 @@ async fn github_refused() {
 
 // An exact package pin (`emery:<name>@<semver>` or the first-party
 // shorthand) dispatches by its versioned routed id; admission stays
-// static — there is no download path (ADR-0002).
+// static — there is no download path.
 #[tokio::test]
 async fn package_pin() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");

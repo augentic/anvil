@@ -8,7 +8,7 @@ Do not put orchestration, synthesis, validation, or code-generation prose in ski
 
 | Plugin | Directory | Prefix | Role |
 | ------ | --------- | ------ | ---- |
-| Emery | `plugins/emery/` | `/emery:` | The surviving wrapper: `specify`. The v1 workflow skills are archived at tag `v1` (ADR-0008) |
+| Emery | `plugins/emery/` | `/emery:` | The surviving wrapper: `specify`. The v1 workflow skills are archived at tag `v1` |
 
 Layout:
 

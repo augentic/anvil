@@ -9,7 +9,7 @@ alwaysApply: true
 
 This plugin provides the surviving Emery skill: generate a specification. The skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output.
 
-The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme (ADR-0008). Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the sources named on the invocation; `emery show spec` and `emery show design` print the reviewable documents of the current generation.
+The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme. Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the sources named on the invocation; `emery show spec` and `emery show design` print the reviewable documents of the current generation.
 
 ## Workflow
 

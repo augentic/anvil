@@ -49,7 +49,7 @@ The success body names the committed generation and its reviewable set:
 }
 ```
 
-`diff` is the re-mine diff against the superseded generation (ADR-0010): the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
+`diff` is the re-mine diff against the superseded generation: the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
 `emery specify` with no source — and no project-root `emery.toml` to discover — fails with `error: "specify-source-required"` (exit 1); mixing `--config` with positional adapters or `--description`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--config` without a value explicitly selects the project-relative `emery.toml`. A GitHub URL binding fails with `error: "bad_request"`. Validation refusals from the extract or synthesis gates exit 1 with `error: "bad_request"`.
 
