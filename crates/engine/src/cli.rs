@@ -1,33 +1,112 @@
-//! The CLI surface: command grammar, output projection, and the exit
-//! contract. `exit_code` is the failure-code authority.
+//! The CLI surface: clap grammar, handler dispatch, and the exit contract.
 
-use std::convert::Infallible;
-use std::io::Write;
+use std::ffi::OsString;
+use std::fmt;
+use std::io::{self, Write};
 
-use clap::Args;
+use clap::error::ErrorKind;
+use clap::{Args, CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use emery_adapter::Source;
-use omnia_guest::api::Provider;
-use omnia_guest::api::command::{
-    BuildError, CommandResponse, Completions, Outcome, Projector, Router, RouterBuilder, run,
-};
-use omnia_guest::api::invoke::Invoker;
+use omnia_guest::api::{Client, Metadata};
 use omnia_guest::{BlobStore, Error, Model, StateStore, server_error};
 use serde::Serialize;
 
 use crate::handler::Render;
-use crate::show::{Show, ShowInput};
-use crate::specify::{Specify, SpecifyInput};
+use crate::show::ShowInput;
+use crate::specify::SpecifyInput;
 
-/// The Emery command router bound over one provider.
-pub type Cli<P> = Router<P, Globals>;
+/// The Emery command grammar bound over one provider.
+pub struct Cli<P> {
+    client: Client<P>,
+    inventory: Vec<RouteInfo>,
+}
+
+impl<P: Send + Sync + 'static> fmt::Debug for Cli<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Cli").field("inventory", &self.inventory).finish_non_exhaustive()
+    }
+}
 
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
+/// Buffered command output and process exit status.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct CommandResponse {
+    /// Bytes written to standard output.
+    pub stdout: Vec<u8>,
+    /// Bytes written to standard error.
+    pub stderr: Vec<u8>,
+    /// Numeric process exit status.
+    pub exit: u8,
+}
+
+impl CommandResponse {
+    /// Create a successful response.
+    #[must_use]
+    pub fn success(stdout: impl Into<Vec<u8>>) -> Self {
+        Self {
+            stdout: stdout.into(),
+            stderr: Vec::new(),
+            exit: 0,
+        }
+    }
+
+    /// Create a failed response.
+    #[must_use]
+    pub fn failure(stderr: impl Into<Vec<u8>>, exit: u8) -> Self {
+        Self {
+            stdout: Vec::new(),
+            stderr: stderr.into(),
+            exit,
+        }
+    }
+
+    /// Write both output channels.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first output sink error.
+    pub fn write_to(&self, stdout: &mut impl Write, stderr: &mut impl Write) -> io::Result<()> {
+        stdout.write_all(&self.stdout)?;
+        stderr.write_all(&self.stderr)?;
+        Ok(())
+    }
+}
+
+/// A command route selector.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct Selector {
+    path: Vec<String>,
+}
+
+impl Selector {
+    /// Return the nested command path.
+    #[must_use]
+    pub fn path(&self) -> &[String] {
+        &self.path
+    }
+}
+
+/// Read-only metadata for one command binding.
+#[derive(Clone, Debug)]
+pub struct RouteInfo {
+    selector: Selector,
+}
+
+impl RouteInfo {
+    /// Return the command selector.
+    #[must_use]
+    pub const fn selector(&self) -> &Selector {
+        &self.selector
+    }
+}
+
 /// Global command arguments.
 #[derive(Clone, Copy, Debug, Args)]
-pub struct Globals {
+struct Globals {
     /// Select the output format.
-    #[arg(long, env = "EMERY_FORMAT", default_value = "text")]
+    #[arg(long, env = "EMERY_FORMAT", default_value = "text", global = true)]
     format: Format,
 }
 
@@ -41,69 +120,135 @@ enum Format {
     Json,
 }
 
-/// Builds the Emery command router.
-///
-/// Each operation input doubles as its clap surface, so route
-/// decoding is infallible by construction.
-///
-/// # Errors
-///
-/// Returns route or argument conflicts.
-pub fn router<P>(invoker: Invoker<P>) -> Result<Cli<P>, BuildError>
-where
-    P: Provider + Model + Source + StateStore + BlobStore,
-{
-    let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
-    RouterBuilder::new(command, invoker)
-        .completions(
-            Completions::new()
-                .about("Print a shell-completion script for `<shell>` to stdout")
-                .long_about("Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `emery completions zsh > ~/.zsh/_emery`). The output tracks the live clap surface so every new verb is auto-discovered."),
-        )
-        .route(
-            ["specify"],
-            run::<SpecifyInput, Specify>()
-                .about("Generate spec.md and design.md from the named sources")
-                .long_about("Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources [<path>]`; omitting the path explicitly selects `sources.toml`. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff.")
-                .project_with(EmeryProjector),
-        )
-        .route(
-            ["show"],
-            run::<ShowInput, Show>()
-                .about("Print a reviewable document of the current generation to stdout")
-                .long_about("Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 2).")
-                .project_with(EmeryProjector),
-        )
-        .build()
+#[derive(Debug, Parser)]
+#[command(
+    name = "emery",
+    version = env!("CARGO_PKG_VERSION"),
+    about = ABOUT,
+    disable_help_subcommand = true,
+    subcommand_required = true,
+    arg_required_else_help = true
+)]
+struct App {
+    #[command(flatten)]
+    globals: Globals,
+    #[command(subcommand)]
+    verb: Verb,
 }
 
-/// Projects Emery outcomes into command responses.
-#[derive(Clone, Copy, Debug, Default)]
-struct EmeryProjector;
+#[derive(Debug, Subcommand)]
+enum Verb {
+    /// Generate spec.md and design.md from the named sources
+    #[command(long_about = SPECIFY_LONG)]
+    Specify(SpecifyInput),
+    /// Print a reviewable document of the current generation to stdout
+    #[command(long_about = SHOW_LONG)]
+    Show(ShowInput),
+    /// Print a shell-completion script for `<shell>` to stdout
+    #[command(long_about = COMPLETIONS_LONG)]
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
+}
 
-impl<T> Projector<T, Error, Infallible, Globals> for EmeryProjector
+const SPECIFY_LONG: &str = "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources [<path>]`; omitting the path explicitly selects `sources.toml`. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff.";
+const SHOW_LONG: &str = "Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 2).";
+const COMPLETIONS_LONG: &str = "Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `emery completions zsh > ~/.zsh/_emery`). The output tracks the live clap surface so every new verb is auto-discovered.";
+
+/// Builds the Emery command grammar over `provider`.
+pub fn router<P>(provider: P) -> Cli<P>
 where
-    T: Render + Serialize + Send + 'static,
+    P: Model + Source + StateStore + BlobStore + Send + Sync + 'static,
 {
-    type Error = Error;
+    Cli {
+        client: Client::new("emery", provider),
+        inventory: inventory(),
+    }
+}
 
-    fn project(
-        &self, outcome: Outcome<T, Error, Infallible>, globals: &Globals,
-    ) -> Result<CommandResponse, Self::Error> {
-        match outcome {
-            Outcome::Output(output) => {
-                let mut stdout = Vec::new();
-                emit(&mut stdout, globals.format, &output, |w, v| v.render(w))?;
-                Ok(CommandResponse::success(stdout))
+fn inventory() -> Vec<RouteInfo> {
+    let mut routes: Vec<RouteInfo> = App::command()
+        .get_subcommands()
+        .filter(|command| !command.is_hide_set())
+        .map(|command| RouteInfo {
+            selector: Selector {
+                path: vec![command.get_name().to_string()],
+            },
+        })
+        .collect();
+    routes.sort_by(|left, right| left.selector.path.cmp(&right.selector.path));
+    routes
+}
+
+impl<P> Cli<P>
+where
+    P: Model + Source + StateStore + BlobStore + Send + Sync + 'static,
+{
+    /// Return the deterministic route inventory.
+    #[must_use]
+    pub fn inventory(&self) -> &[RouteInfo] {
+        &self.inventory
+    }
+
+    /// Parse and execute one argument vector.
+    pub async fn execute<I, T>(&self, argv: I) -> CommandResponse
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<OsString>,
+    {
+        let mut argv: Vec<OsString> = argv.into_iter().map(Into::into).collect();
+        let name = OsString::from("emery");
+        if argv.is_empty() {
+            argv.push(name);
+        } else {
+            argv[0] = name;
+        }
+        let parsed = match App::try_parse_from(&argv) {
+            Ok(app) => app,
+            Err(error) => return clap_error(&error),
+        };
+        match parsed.verb {
+            Verb::Completions { shell } => completion(shell),
+            Verb::Specify(input) => {
+                project(self.client.call(input, &Metadata::default()).await, parsed.globals.format)
             }
-            Outcome::Operation(error) => Ok(failure(globals.format, &error)),
-            Outcome::Decode(never) => match never {},
+            Verb::Show(input) => {
+                project(self.client.call(input, &Metadata::default()).await, parsed.globals.format)
+            }
         }
     }
+}
 
-    fn project_failure(&self, error: Self::Error, globals: &Globals) -> CommandResponse {
-        failure(globals.format, &error)
+fn project<T: Render + Serialize>(result: Result<T, Error>, format: Format) -> CommandResponse {
+    match result {
+        Ok(output) => {
+            let mut stdout = Vec::new();
+            match emit(&mut stdout, format, &output, |writer, value| value.render(writer)) {
+                Ok(()) => CommandResponse::success(stdout),
+                Err(fallback) => {
+                    CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 3)
+                }
+            }
+        }
+        Err(error) => failure(format, &error),
     }
+}
+
+fn clap_error(error: &clap::Error) -> CommandResponse {
+    let rendered = error.render().to_string().into_bytes();
+    match error.kind() {
+        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => CommandResponse::success(rendered),
+        _ => CommandResponse::failure(rendered, 2),
+    }
+}
+
+fn completion(shell: Shell) -> CommandResponse {
+    let mut command = App::command();
+    let name = command.get_name().to_owned();
+    let mut output = Vec::new();
+    clap_complete::generate(shell, &mut command, name, &mut output);
+    CommandResponse::success(output)
 }
 
 /// Writes `payload` in the requested format.
@@ -113,7 +258,7 @@ where
 /// Returns serialization or I/O failures.
 fn emit<T: Serialize>(
     writer: &mut dyn Write, format: Format, payload: &T,
-    render_text: impl FnOnce(&mut dyn Write, &T) -> std::io::Result<()>,
+    render_text: impl FnOnce(&mut dyn Write, &T) -> io::Result<()>,
 ) -> Result<(), Error> {
     match format {
         Format::Json => {
@@ -184,11 +329,11 @@ fn hint(code: &str) -> Option<&'static str> {
     }
 }
 
-fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<()> {
+fn write_error_text(writer: &mut dyn Write, body: &ErrorBody) -> io::Result<()> {
     let (red, reset) = error_style();
-    writeln!(w, "{red}error: {}{reset}", body.message)?;
+    writeln!(writer, "{red}error: {}{reset}", body.message)?;
     if let Some(hint) = body.hint {
-        writeln!(w, "hint: {hint}")?;
+        writeln!(writer, "hint: {hint}")?;
     }
     Ok(())
 }
@@ -207,7 +352,7 @@ fn error_style() -> (&'static str, &'static str) {
 #[cfg(not(target_arch = "wasm32"))]
 fn stderr_terminal() -> bool {
     use std::io::IsTerminal as _;
-    std::io::stderr().is_terminal()
+    io::stderr().is_terminal()
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -14,7 +14,6 @@ use std::sync::Arc;
 use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
 use emery_testkit::Memory;
-use omnia_guest::api::invoke::Invoker;
 
 type Grammar = emery_engine::cli::Cli<Inert>;
 
@@ -65,7 +64,7 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
 }
 
 fn grammar() -> Grammar {
-    emery_engine::cli::router(Invoker::new("emery", Inert::default())).expect("router")
+    emery_engine::cli::router(Inert::default())
 }
 
 // Global flags do not appear in route-specific help.

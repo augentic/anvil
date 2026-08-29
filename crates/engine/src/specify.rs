@@ -3,10 +3,8 @@
 use std::io::Write;
 
 use emery_adapter::Source;
-use omnia_guest::api::Provider;
-use omnia_guest::api::invoke::CallContext;
-use omnia_guest::api::operation::Operation;
-use omnia_guest::{BlobStore, Model, StateStore};
+use omnia_guest::api::{Context, Handler};
+use omnia_guest::{BlobStore, Error, Model, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
@@ -74,23 +72,16 @@ impl Render for SpecifyBody {
     }
 }
 
-/// The `specify` operation route.
-#[derive(Clone, Copy, Debug)]
-pub struct Specify;
-
-impl<P: Provider + Model + Source + StateStore + BlobStore> Operation<P> for Specify {
-    type Error = omnia_guest::Error;
-    type Input = SpecifyInput;
+impl<P: Model + Source + StateStore + BlobStore> Handler<P> for SpecifyInput {
+    type Error = Error;
     type Output = SpecifyBody;
 
-    async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
-    ) -> Result<Self::Output, Self::Error> {
-        let SpecifyInput {
+    async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
+        let Self {
             adapters,
             values,
             sources,
-        } = input;
+        } = self;
         let bindings = crate::sources::bindings(&adapters, &values, sources.as_deref())?;
 
         let sets = extract_all(context.provider, &bindings).await?;

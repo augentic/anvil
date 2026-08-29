@@ -27,7 +27,7 @@ src/main.rs   →  omnia::runtime! (command mode; embedded engine bytes, static 
 
 The deployment projects nothing out of argv: no pre-boot fact depends on the parsed grammar — the invocation directory is the project root, and everything else, displays and rejections included, renders in the guest.
 
-The operator grammar is assembled in `crates/engine/src/cli.rs` directly over the `Operation` types: each operation's `Input` derives `clap::Args`, so the grammar and the operation input are one type and route decoding is infallible by construction. `omnia_guest::api::command` owns clap behavior, completions, inventory, invocation, and the WASI last mile (`execute_wasi`: argv, telemetry init/flush, output channels, exact exit). The WASI shim only constructs the provider and hands the assembled router to that adapter. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The operator grammar is assembled in `crates/engine/src/cli.rs` directly over the handler input types: each input derives `clap::Args` and implements `omnia_guest::api::Handler`, so the grammar and the handler input are one type and route decoding is infallible by construction. `emery_engine::cli` owns clap behavior, completions, inventory, `Client` dispatch, and the buffered `CommandResponse`. The WASI shim constructs the provider, runs that grammar, writes both channels, and hands the exit status to `omnia_guest::api::command::execute_wasi` (telemetry init/flush and exact exit). The handler contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
 ## JSON envelope contract
 
@@ -51,7 +51,7 @@ The exit-code contract is part of the public interface for operators and skill w
 | `3`  | `ServerError`    | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error`.                               |
 | `4`  | `BadGateway`     | Upstream or model failure. The `error` field is the Omnia default `bad_gateway`.                                                                |
 
-Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
+Guest commands inherit the same contract: `emery_engine::cli` projects parser and handler outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
 
 ## Error handling
 

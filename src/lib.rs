@@ -3,26 +3,30 @@
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         use emery_engine::cli;
-        use omnia_guest::api::invoke::Invoker;
+        use omnia_guest::api::command;
 
-        // The bare provider uses imported model and source capabilities.
-        // Host-bound key-value and blobstore capabilities provide durable
-        // engine storage through the default trait bodies.
-        #[derive(Clone)]
-        struct Provider;
-        impl omnia_guest::Model for Provider {}
+        omnia_guest::provider! {
+            struct Provider: Model + StateStore + BlobStore;
+        }
         impl emery_adapter::Source for Provider {}
-        impl omnia_guest::StateStore for Provider {}
-        impl omnia_guest::BlobStore for Provider {}
 
         struct Cli;
         wasip3::cli::command::export!(Cli);
 
         impl wasip3::exports::cli::run::Guest for Cli {
             async fn run() -> Result<(), ()> {
-                let router = cli::router(Invoker::new("emery", Provider)).map_err(drop)?;
-                omnia_guest::api::command::execute_wasi(&router).await
+                command::execute_wasi(dispatch()).await
             }
+        }
+
+        async fn dispatch() -> Result<(), u8> {
+            let response = cli::router(Provider)
+                .execute(wasip3::cli::environment::get_arguments())
+                .await;
+            if response.write_to(&mut std::io::stdout(), &mut std::io::stderr()).is_err() {
+                return Err(3);
+            }
+            if response.exit == 0 { Ok(()) } else { Err(response.exit) }
         }
     }
 }

@@ -13,6 +13,7 @@ readme = "../../README.md"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+clap_complete.workspace = true
 emery-adapter.workspace = true
 omnia-guest.workspace = true
 semver.workspace = true
