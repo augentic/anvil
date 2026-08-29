@@ -516,6 +516,15 @@ async fn config_file_refused() {
             "bad_request",
             "`registry`",
         ),
+        // The per-binding `digest` content pin is reserved until the
+        // loader threads it (compose-seam C1).
+        (
+            "[[source]]\nname = \"pinned\"\nadapter = \"acme:ledger@2.1.0\"\n\
+             digest = \"sha256:9f2c44aa\"\n",
+            1,
+            "bad_request",
+            "`digest`",
+        ),
         (
             "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\ngit = \"https://github.com/acme/api@v2\"\n",
             1,

@@ -127,6 +127,12 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
              not yet supported — name the adapter without it",
         ));
     }
+    if entry.digest.is_some() {
+        return Err(bad_request!(
+            "source `{name}` sets `digest`; the per-binding content pin is reserved and not yet \
+             supported — name the adapter without it",
+        ));
+    }
     let locations = [
         entry.path.is_some(),
         entry.git.is_some(),
@@ -234,4 +240,6 @@ struct SourceEntry {
     description: Option<String>,
     #[serde(default)]
     registry: Option<String>,
+    #[serde(default)]
+    digest: Option<String>,
 }

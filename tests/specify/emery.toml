@@ -40,6 +40,13 @@ adapter = "./source.wasm"
 # adapter = "acme:ledger@2.1.0"
 # registry = "registry.acme.example"
 
+# # Content pin for the adapter bytes. Reserved; refuses typed until
+# # the loader verifies pins.
+# [[source]]
+# name = "pinned"
+# adapter = "acme:ledger@2.1.0"
+# digest = "sha256:9f2c44…"
+
 # # Remote repository, read at the pinned ref over the host-bound read
 # # grant (GitHub MCP server) — never downloaded. Reserved; refuses typed
 # # until the read-view grant exists.
