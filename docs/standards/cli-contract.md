@@ -14,7 +14,7 @@ Never hand-edit `.emery/` state (the component cache, the generation store); nev
 
 ## Verb tree
 
-- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `1` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
+- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--config` without a value selects the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback, never merged with argv bindings. The binding list is per-run input, never persisted. Invoked without a source — and with nothing to discover — it exits `1` with `specify-source-required`; mixing `--config` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
 - `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `2`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
@@ -28,7 +28,7 @@ The canonical envelope shapes live in [docs/reference/cli-output-shapes.md](../r
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `specify-source-required` — `emery specify` without a source binding.
+- `specify-source-required` — `emery specify` without a source binding and with no project-root `emery.toml` to discover.
 - `spec-not-generated` — `emery show` before any generation is committed.
 - `adapter-cli-too-old` — an adapter's declared `emery` compatibility floor is newer than the running binary.
 

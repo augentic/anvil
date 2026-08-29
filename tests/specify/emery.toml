@@ -1,0 +1,62 @@
+# emery.toml — operator-authored; the engine never writes this file.
+# Selected with `emery specify --config [<path>]`, or discovered at the
+# project root by a run naming no bindings at all.
+
+# Each [[source]] entry binds one source, in declaration order; `name`
+# is the binding key. The adapter is file-relative.
+[[source]]
+name = "greeting"
+adapter = "./source.wasm"
+
+# # Workspace lend of the invocation directory (the default: path = ".").
+# [[source]]
+# name = "docs"
+# adapter = "emery:documentation@1.2.0"
+
+# # Local path, resolved relative to this file. The name is the binding
+# # key, so one adapter may bind several roots.
+# [[source]]
+# name = "api-surface"
+# adapter = "typescript"
+# path = "packages/api/src"
+
+# # Inline description instead of a filesystem view — the file form of
+# # `--description`.
+# [[source]]
+# name = "intent"
+# adapter = "intent@1.0.0"
+# description = "Ship a location-independent spec generator."
+
+# # Local component path as the adapter selector, mirrored into the cache
+# # at ensure. Adapter location and source location are separate axes.
+# [[source]]
+# name = "custom"
+# adapter = "./adapters/custom.wasm"
+
+# # Registry override for a package-shaped adapter. Reserved; refuses
+# # typed until dynamic adapter resolution lands.
+# [[source]]
+# name = "third-party"
+# adapter = "acme:ledger@2.1.0"
+# registry = "registry.acme.example"
+
+# # Remote repository, read at the pinned ref over the host-bound read
+# # grant (GitHub MCP server) — never downloaded. Reserved; refuses typed
+# # until the read-view grant exists.
+# [[source]]
+# name = "upstream-api"
+# adapter = "documentation"
+# git = "https://github.com/acme/api@v2.3.0"
+
+# # Remote resource behind an MCP-served product; the host binding routes
+# # the domain to Figma's MCP server. Reserved, as above.
+# [[source]]
+# name = "checkout-flow"
+# adapter = "documentation"
+# url = "https://www.figma.com/design/aBcD3fG/checkout-flow"
+
+# # Document at a URL, read live at extract time. Reserved, as above.
+# [[source]]
+# name = "api-contract"
+# adapter = "documentation"
+# url = "https://example.com/spec/openapi.yaml"

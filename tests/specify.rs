@@ -20,7 +20,7 @@ use support::{Provider, claim, cli, cli_ok, evidence, requirement};
 const SPEC_ANSWER: &str = include_str!("specify/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
 const PRECEDENCE_ANSWER: &str = include_str!("specify/3-precedence.md");
-const SOURCES: &str = include_str!("specify/sources.toml");
+const SOURCES: &str = include_str!("specify/emery.toml");
 
 fn project_tempdir() -> tempfile::TempDir {
     tempfile::TempDir::new_in(env!("CARGO_MANIFEST_DIR")).expect("project tempdir")
@@ -84,20 +84,20 @@ async fn gen_spec() {
     provider.model.assert_exhausted();
 }
 
-// `--sources` is the other specify authority: table keys become binding
-// keys, and a local adapter resolves relative to the file.
+// `--config` is the other specify authority: entry names become
+// binding keys, and a local adapter resolves relative to the file.
 #[tokio::test]
 async fn from_file() {
     let workspace = project_tempdir();
     fs::write(workspace.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
-    let sources = workspace.path().join("sources.toml");
-    fs::write(&sources, SOURCES).expect("write sources.toml");
-    let sources = project_arg(&sources);
+    let config = workspace.path().join("emery.toml");
+    fs::write(&config, SOURCES).expect("write emery.toml");
+    let config = project_arg(&config);
 
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [greeting]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
 
-    let resp = cli_ok(&provider, &["emery", "specify", "--sources", &sources]).await;
+    let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("sources: 1"), "{stdout}");
     assert_eq!(
@@ -110,7 +110,7 @@ async fn from_file() {
     let spec = generation(&provider.storage, &id, "spec.md");
     assert!(
         String::from_utf8_lossy(&spec).contains("Sources: [greeting]"),
-        "the table key is the binding key"
+        "the entry name is the binding key"
     );
     let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
     assert_eq!(shown.stdout, spec, "show renders the committed spec.md alone");
@@ -118,14 +118,39 @@ async fn from_file() {
     provider.model.assert_exhausted();
 }
 
-// `--value` binds inline text under the adapter's name: no filesystem
-// lend reaches extract, and a bare adapter needs no local component.
+// A run naming no bindings at all discovers the project-root
+// `emery.toml` before failing — never merged with argv bindings. The
+// CWD move is hermetic under nextest's process-per-test isolation.
 #[tokio::test]
-async fn value_binding() {
+async fn discovery() {
+    let project = tempfile::TempDir::new().expect("project dir");
+    fs::write(
+        project.path().join("emery.toml"),
+        "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\n",
+    )
+    .expect("write emery.toml");
+    std::env::set_current_dir(project.path()).expect("enter project");
+
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+
+    cli_ok(&provider, &["emery", "specify"]).await;
+
+    let id = pointer(&provider.storage);
+    let spec = generation(&provider.storage, &id, "spec.md");
+    assert!(String::from_utf8_lossy(&spec).contains("Sources: [docs]"));
+    provider.model.assert_exhausted();
+}
+
+// `--description` binds inline text under the adapter's name: no
+// filesystem lend reaches extract, and a bare adapter needs no local
+// component.
+#[tokio::test]
+async fn description_binding() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [intent]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
 
-    cli_ok(&provider, &["emery", "specify", "--value", "intent=Ship it."]).await;
+    cli_ok(&provider, &["emery", "specify", "--description", "intent=Ship it."]).await;
 
     let calls = provider.source.calls.lock().expect("calls");
     let (id, input) = calls.first().expect("one extract dispatch");
@@ -200,7 +225,7 @@ async fn authority_precedence() {
             "docs",
             "wiki-live",
             "code",
-            "--value",
+            "--description",
             "intent=Sessions expire after 30.",
         ],
     )
@@ -440,51 +465,83 @@ async fn model_fails() {
     fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
 }
 
-// The operator-owned `sources.toml` parses fail-closed: every
-// malformed carrier refuses typed before anything commits.
+// The operator-owned `emery.toml` parses fail-closed: every malformed
+// carrier refuses typed before anything commits.
 #[tokio::test]
-async fn sources_file_refused() {
+async fn config_file_refused() {
     let cases: &[(&str, u8, &str, &str)] = &[
         ("not toml [", 1, "bad_request", "TOML parse error"),
         (
-            "[sources.docs]\nadapter = \"documentation\"\nbranch = \"main\"\n",
+            "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\nbranch = \"main\"\n",
             1,
             "bad_request",
             "unknown field `branch`",
         ),
         ("", 1, "specify-source-required", ""),
+        // The superseded `[sources.<key>]` / `value` schema fails loudly.
         (
-            "[sources.docs]\nadapter = \"documentation\"\npath = \"docs\"\nvalue = \"text\"\n",
+            "[sources.docs]\nadapter = \"documentation\"\n",
+            1,
+            "bad_request",
+            "unknown field `sources`",
+        ),
+        (
+            "[[source]]\nname = \"intent\"\nadapter = \"intent\"\nvalue = \"text\"\n",
+            1,
+            "bad_request",
+            "unknown field `value`",
+        ),
+        ("[[source]]\nadapter = \"documentation\"\n", 1, "bad_request", "missing field `name`"),
+        (
+            "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\npath = \"docs\"\n\
+             description = \"text\"\n",
             1,
             "bad_request",
             "more than one of `path`",
         ),
+        // Duplicate names reuse argv's typed duplicate error.
         (
-            "[sources.upstream]\nadapter = \"documentation\"\ngit = \"https://github.com/acme/api@v2\"\n",
+            "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\n\n\
+             [[source]]\nname = \"docs\"\nadapter = \"intent\"\n",
+            1,
+            "bad_request",
+            "bound twice",
+        ),
+        // The per-binding `registry` override is reserved until dynamic
+        // adapter resolution lands (compose-seam C2).
+        (
+            "[[source]]\nname = \"third-party\"\nadapter = \"acme:ledger@2.1.0\"\n\
+             registry = \"registry.acme.example\"\n",
+            1,
+            "bad_request",
+            "`registry`",
+        ),
+        (
+            "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\ngit = \"https://github.com/acme/api@v2\"\n",
             1,
             "bad_request",
             "remote location",
         ),
         (
-            "[sources.upstream]\nadapter = \"documentation\"\nurl = \"https://example.com/openapi.yaml\"\n",
+            "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\nurl = \"https://example.com/openapi.yaml\"\n",
             1,
             "bad_request",
             "remote location",
         ),
         (
-            "[sources.upstream]\nadapter = \"documentation\"\ngit = \"git+https://github.com/acme/api#deadbeef\"\n",
+            "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\ngit = \"git+https://github.com/acme/api#deadbeef\"\n",
             1,
             "bad_request",
             "source-id form",
         ),
         (
-            "[sources.docs]\nadapter = \"documentation\"\npath = \"../../outside\"\n",
+            "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\npath = \"../../outside\"\n",
             1,
             "bad_request",
             "../../outside",
         ),
         (
-            "[sources.local]\nadapter = \"/tmp/source.wasm\"\n",
+            "[[source]]\nname = \"local\"\nadapter = \"/tmp/source.wasm\"\n",
             1,
             "bad_request",
             "`/tmp/source.wasm`",
@@ -492,12 +549,11 @@ async fn sources_file_refused() {
     ];
     for (body, exit, code, fragment) in cases {
         let dir = project_tempdir();
-        let path = dir.path().join("sources.toml");
-        fs::write(&path, body).expect("write sources.toml");
+        let path = dir.path().join("emery.toml");
+        fs::write(&path, body).expect("write emery.toml");
         let path = project_arg(&path);
         let provider = Provider::idle();
-        let envelope =
-            fail(&provider, &["emery", "specify", "--sources", &path], *exit, code).await;
+        let envelope = fail(&provider, &["emery", "specify", "--config", &path], *exit, code).await;
         if !fragment.is_empty() {
             let message = envelope["message"].as_str().unwrap_or("");
             assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
@@ -507,43 +563,41 @@ async fn sources_file_refused() {
 
     // An unreadable file is a typed filesystem error.
     let provider = Provider::idle();
-    fail(
-        &provider,
-        &["emery", "specify", "--sources", "nonexistent/sources.toml"],
-        3,
-        "server_error",
-    )
-    .await;
+    fail(&provider, &["emery", "specify", "--config", "nonexistent/emery.toml"], 3, "server_error")
+        .await;
 
     // Host-absolute and escaping paths never cross into the guest namespace.
-    for path in ["/nonexistent/sources.toml", "../sources.toml"] {
-        fail(&provider, &["emery", "specify", "--sources", path], 1, "bad_request").await;
+    for path in ["/nonexistent/emery.toml", "../emery.toml"] {
+        fail(&provider, &["emery", "specify", "--config", path], 1, "bad_request").await;
     }
 }
 
 // File-relative `path` entries anchor at the file's directory, fold
 // `.` and `..` lexically, and stay `.`-relative so the guest preopen
-// can open them; `value` entries lend nothing — all observed on the
-// `SourceInput` the adapter receives.
+// can open them; `description` entries lend nothing; `[[source]]`
+// entries bind in declaration order, not name order — all observed on
+// the `SourceInput` the adapter receives.
 #[tokio::test]
 async fn binding_paths() {
     let dir = project_tempdir();
-    let path = dir.path().join("sources.toml");
+    let path = dir.path().join("emery.toml");
     fs::write(
         &path,
-        "[sources.docs]\nadapter = \"documentation\"\npath = \"nested/../docs\"\n\n\
-         [sources.intent]\nadapter = \"intent\"\nvalue = \"Ship it.\"\n\n\
-         [sources.local]\nadapter = \"local\"\npath = \"./docs\"\n",
+        "[[source]]\nname = \"zulu\"\nadapter = \"documentation\"\npath = \"nested/../docs\"\n\n\
+         [[source]]\nname = \"intent\"\nadapter = \"intent\"\ndescription = \"Ship it.\"\n\n\
+         [[source]]\nname = \"alpha\"\nadapter = \"local\"\npath = \"./docs\"\n",
     )
-    .expect("write sources.toml");
+    .expect("write emery.toml");
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs, intent, local]");
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [zulu, intent, alpha]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
     let path = project_arg(&path);
-    cli_ok(&provider, &["emery", "specify", "--sources", &path]).await;
+    cli_ok(&provider, &["emery", "specify", "--config", &path]).await;
 
     let calls = provider.source.calls.lock().expect("calls");
-    for key in ["docs", "local"] {
+    let order: Vec<&str> = calls.iter().map(|(_, input)| input.key.as_str()).collect();
+    assert_eq!(order, ["zulu", "intent", "alpha"], "entries bind in declaration order");
+    for key in ["zulu", "alpha"] {
         let (_, input) = calls.iter().find(|(_, input)| input.key == key).expect("dispatched");
         let SourceContent::Workspace(workspace) = &input.content else {
             panic!("a path binding lends a workspace");
@@ -563,7 +617,7 @@ async fn binding_paths() {
     assert_eq!(
         input.content,
         SourceContent::Value("Ship it.".to_string()),
-        "a file `value` entry binds inline text"
+        "a file `description` entry binds inline text"
     );
     drop(calls);
     provider.model.assert_exhausted();

@@ -6,7 +6,7 @@ argument-hint: <adapter>
 
 # Specify Skill
 
-`emery specify` is the one generate verb: it resolves the named source adapters (mirroring a local component into the project cache), extracts, reconciles, synthesises, and commits one generation behind the `current` pointer. Nothing about the binding list persists between runs — repeat the sources on every invocation, or point at an operator-owned `sources.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
+`emery specify` is the one generate verb: it resolves the named source adapters (mirroring a local component into the project cache), extracts, reconciles, synthesises, and commits one generation behind the `current` pointer. Nothing about the binding list persists between runs — repeat the sources on every invocation, or keep them in an operator-owned `emery.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 
@@ -20,12 +20,12 @@ brew install emery
 
 Then run `emery --version --quiet` and stop on failure.
 
-2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--value <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a binding file selects it instead with `--sources [<path>]`; omit the value only for the project-relative `sources.toml`. Never combine the file carrier with positional adapters or `--value` (mixing fails typed, exit 1). Local paths must stay relative to the project and must not escape it.
+2. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: no source at all — and no project-root `emery.toml` to discover — fails typed (`specify-source-required`). Gather conversationally: the source adapters to extract (each positional `<adapter>` is a workspace-backed source; each `--description <adapter>=<text>` is an inline source such as an operator directive). An operator who keeps a config file selects it instead with `--config [<path>]`; omit the value only for the project-relative `emery.toml`, and a run naming no bindings at all discovers that file on its own. Never combine the file carrier with positional adapters or `--description` (mixing fails typed, exit 1). Local paths must stay relative to the project and must not escape it.
 3. **Invoke**:
 
 ```bash
-emery specify <adapter>... [--value <adapter>=<text>] --quiet
-# or: emery specify --sources [<path>] --quiet
+emery specify <adapter>... [--description <adapter>=<text>] --quiet
+# or: emery specify --config [<path>] --quiet
 ```
 
 Specify dispatches model judgment and can take a while on large workspaces; it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).

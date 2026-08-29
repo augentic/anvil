@@ -24,12 +24,12 @@ pub struct SpecifyInput {
     pub adapters: Vec<String>,
     /// Bind an inline source as `<adapter>=<text>`; repeatable.
     #[serde(default)]
-    #[arg(long = "value")]
-    pub values: Vec<String>,
-    /// Operator-owned binding list; defaults to sources.toml.
+    #[arg(long = "description", short = 'd')]
+    pub descriptions: Vec<String>,
+    /// Operator-owned config; the omitted value selects emery.toml.
     #[serde(default)]
-    #[arg(long, num_args = 0..=1, default_missing_value = "sources.toml")]
-    pub sources: Option<String>,
+    #[arg(long, short = 'c', num_args = 0..=1, default_missing_value = crate::sources::CONFIG_FILE)]
+    pub config: Option<String>,
 }
 
 /// Successful `emery specify` result.
@@ -79,10 +79,10 @@ impl<P: Model + Source + StateStore + BlobStore> Handler<P> for SpecifyInput {
     async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
         let Self {
             adapters,
-            values,
-            sources,
+            descriptions,
+            config,
         } = self;
-        let bindings = crate::sources::bindings(&adapters, &values, sources.as_deref())?;
+        let bindings = crate::sources::bindings(&adapters, &descriptions, config.as_deref())?;
 
         let sets = extract_all(context.provider, &bindings).await?;
         let rows = reconcile(&sets);

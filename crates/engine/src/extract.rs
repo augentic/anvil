@@ -81,7 +81,7 @@ fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
                 root: root.display().to_string(),
             })
         }
-        BindingContent::Value(value) => SourceContent::Value(value.clone()),
+        BindingContent::Description(text) => SourceContent::Value(text.clone()),
     };
     Ok(SourceInput {
         key: binding.key.clone(),
