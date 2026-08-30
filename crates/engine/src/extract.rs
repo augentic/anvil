@@ -29,21 +29,24 @@ async fn dispatch<P: Source>(
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
-    /// The routed adapter identity (`source:<name>[@<version>]`).
+    /// The routed adapter identity: a package reference for a
+    /// registry adapter, `source:<name>` otherwise.
     pub adapter: String,
     /// Claim-set authority class.
     pub authority: Authority,
     /// The validated claims.
     pub claims: Vec<Claim>,
-    /// Resolved content digest of a loader-loaded local component.
+    /// Resolved content digest of a loader-loaded adapter.
     pub digest: Option<Digest>,
 }
 
 /// Resolves, extracts, and validates every source binding.
 ///
-/// A local component loads through the deployment's loader — read
-/// fresh on every run, its optional pin verified host-side — before
-/// extract dispatch.
+/// A local component or a registry package loads through the
+/// deployment's loader — a component read fresh on every run, a
+/// package fetched from the binding's registry override or the
+/// acquirer's default endpoint, either one's optional pin verified
+/// host-side — before extract dispatch.
 ///
 /// # Errors
 ///
@@ -54,7 +57,13 @@ pub async fn extract_all<P: Source + Plugins>(
     let mut sets = Vec::with_capacity(bindings.len());
     for binding in bindings {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let resolved = resolve::source(provider, &selector, binding.digest.as_ref()).await?;
+        let resolved = resolve::source(
+            provider,
+            &selector,
+            binding.digest.as_ref(),
+            binding.registry.as_deref(),
+        )
+        .await?;
         let input = input_for(binding)?;
         let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {

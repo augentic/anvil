@@ -25,9 +25,12 @@ pub struct SourceBinding {
     pub adapter: String,
     /// What the adapter extracts.
     pub content: BindingContent,
-    /// Optional sha256 content pin for a local-component adapter,
+    /// Optional sha256 content pin for a loader-loaded adapter,
     /// verified host-side before validation.
     pub digest: Option<Digest>,
+    /// Optional registry endpoint override for a package adapter;
+    /// `None` selects the acquirer's default.
+    pub registry: Option<String>,
 }
 
 /// Workspace or inline source content.
@@ -85,6 +88,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
                 adapter: value.clone(),
                 content: BindingContent::Workspace(".".to_string()),
                 digest: None,
+                registry: None,
             },
         )?;
     }
@@ -98,6 +102,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
                 adapter: adapter.to_string(),
                 content: BindingContent::Description(text.to_string()),
                 digest: None,
+                registry: None,
             },
         )?;
     }
@@ -127,13 +132,8 @@ fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
 
 fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     let name = &entry.name;
-    if entry.registry.is_some() {
-        return Err(bad_request!(
-            "source `{name}` sets `registry`; the per-binding registry override is reserved and \
-             not yet supported — name the adapter without it",
-        ));
-    }
     let selector = AdapterSelector::parse(&entry.adapter)?;
+    let registry = registry(entry, &selector)?;
     let digest = digest(entry, &selector)?;
     let locations = [
         entry.path.is_some(),
@@ -172,24 +172,40 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
         adapter: adapter_value(&selector, &entry.adapter, base)?,
         content,
         digest,
+        registry,
     })
 }
 
+// The endpoint override only steers registry acquisition, so it rides
+// only a package-shaped selector.
+fn registry(entry: &SourceEntry, selector: &AdapterSelector) -> Result<Option<String>, Error> {
+    let name = &entry.name;
+    let Some(endpoint) = entry.registry.as_deref() else {
+        return Ok(None);
+    };
+    if !matches!(selector, AdapterSelector::Package { .. }) {
+        return Err(bad_request!(
+            "source `{name}` sets `registry` on an adapter the registry never serves; the \
+             override only applies to registry package references (`<namespace>:<name>@<version>`)",
+        ));
+    }
+    Ok(Some(endpoint.to_owned()))
+}
+
 // The pin binds exact component bytes, so it rides only a selector
-// the loader acquires; registry pins activate with registry
-// acquisition.
+// the loader acquires — a local component path or a registry package.
 fn digest(entry: &SourceEntry, selector: &AdapterSelector) -> Result<Option<Digest>, Error> {
     let name = &entry.name;
     let Some(pin) = entry.digest.as_deref() else {
         return Ok(None);
     };
-    if !matches!(selector, AdapterSelector::Component { .. }) {
+    if matches!(selector, AdapterSelector::Bare { .. }) {
         return Err(bad_request!(
-            "source `{name}` sets `digest` on a registry adapter; registry content pins are \
-             reserved and not yet supported — pin a local component path instead",
+            "source `{name}` sets `digest` on a bare adapter name the loader never acquires; \
+             pin a local component path or an exact registry package reference instead",
         ));
     }
-    pin.parse().map(Some).map_err(|err| bad_request!("source `{name}`: {err}"))
+    pin.parse().map(Some).map_err(|err| bad_request!("source `{name}`: {err}",))
 }
 
 // A local component selector in the file resolves relative to the

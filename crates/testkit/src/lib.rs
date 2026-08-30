@@ -98,7 +98,6 @@ impl Memory {
             self.blobs.lock().expect("blob lock").clone(),
         )
     }
-
 }
 
 fn unscripted<T: Send>(operation: &str) -> impl Future<Output = anyhow::Result<T>> + Send + use<T> {

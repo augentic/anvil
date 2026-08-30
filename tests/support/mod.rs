@@ -28,15 +28,18 @@ pub fn digest(pair: &str) -> Digest {
     format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
 }
 
-/// Scripted `Plugins`: per-package resolved digests and a record of
-/// every load request. An unscripted package resolves to the request's
-/// own pin, or the fixed `digest("ab")`; a pin that disagrees with the
+/// Scripted `Plugins`: per-package outcomes and a record of every
+/// load request. An unscripted package resolves to the request's own
+/// pin, or the fixed `digest("ab")`; a pin that disagrees with the
 /// scripted digest refuses `digest-mismatch`, mirroring the host's
-/// verify-before-validate step.
+/// verify-before-validate step; a scripted failure refuses typed
+/// before any digest logic.
 #[derive(Clone, Debug, Default)]
 pub struct PluginScript {
     /// Resolved digests keyed by package identity.
     pub digests: BTreeMap<String, Digest>,
+    /// Typed load refusals keyed by package identity.
+    pub failures: BTreeMap<String, LoadError>,
     /// Every load request, recorded for call assertions.
     pub calls: Arc<Mutex<Vec<PluginRef>>>,
 }
@@ -160,8 +163,10 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
     }
 
     fn metadata(&self, id: &str) -> SourceMetadata {
-        let name = id.strip_prefix("source:").unwrap_or(id);
-        let name = name.split_once('@').map_or(name, |(stem, _)| stem);
+        // Routed ids are `source:<name>` or a package reference
+        // (`<namespace>:<name>@<version>`); floors key on the name.
+        let name = id.split_once('@').map_or(id, |(stem, _)| stem);
+        let name = name.rsplit_once(':').map_or(name, |(_, stem)| stem);
         SourceMetadata {
             emery_floor: self.source.floors.get(name).cloned(),
         }
@@ -169,10 +174,11 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
 }
 
 impl<S: Send + Sync + 'static> Plugins for Provider<S> {
-    fn load(
-        &self, plugin: &PluginRef,
-    ) -> impl Future<Output = Result<Plugin, LoadError>> + Send {
+    fn load(&self, plugin: &PluginRef) -> impl Future<Output = Result<Plugin, LoadError>> + Send {
         self.plugins.calls.lock().expect("loads").push(plugin.clone());
+        if let Some(refusal) = self.plugins.failures.get(&plugin.package) {
+            return std::future::ready(Err(refusal.clone()));
+        }
         let resolved = self
             .plugins
             .digests

@@ -34,17 +34,16 @@ adapter = "./source.wasm"
 # name = "custom"
 # adapter = "./adapters/custom.wasm"
 
-# # Registry override for a package-shaped adapter. Reserved; refuses
-# # typed until dynamic adapter resolution lands.
+# # Registry endpoint override for a package-shaped adapter; omitted,
+# # the acquirer's compiled-in default endpoint serves the fetch.
 # [[source]]
 # name = "third-party"
 # adapter = "acme:ledger@2.1.0"
 # registry = "registry.acme.example"
 
-# # Content pin for a local component's bytes, verified host-side before
-# # validation; an unpinned load reports its digest in the envelope —
-# # commit it here to pin. On a registry adapter the key stays reserved
-# # until registry acquisition lands.
+# # Content pin for a loader-loaded adapter's bytes (local component or
+# # registry package), verified host-side before validation; an unpinned
+# # load reports its digest in the envelope — commit it here to pin.
 # [[source]]
 # name = "pinned"
 # adapter = "./adapters/pinned.wasm"

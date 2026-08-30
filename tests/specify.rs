@@ -14,7 +14,7 @@ use std::sync::Arc;
 use emery_adapter::types::{Authority, ClaimKind, SourceContent};
 use emery_adapter::{DispatchError, types};
 use emery_testkit::{Memory, Namespaced};
-use omnia_guest::plugins::Location;
+use omnia_guest::plugins::{Digest, Error as LoadError, Location};
 use serde_json::Value;
 use support::{Provider, claim, cli, cli_ok, digest, evidence, requirement};
 
@@ -59,15 +59,14 @@ async fn gen_spec() {
     // --------------------------------------------------
     // Observe: the load, the pointer, and the generation.
     // --------------------------------------------------
-    let loads = provider.plugins.calls.lock().expect("loads");
-    let request = loads.first().expect("one load request");
+    let request =
+        provider.plugins.calls.lock().expect("loads").first().cloned().expect("one load request");
     assert_eq!(request.package, "source:source", "the routed id is the loaded package identity");
     let Location::Path(path) = &request.location else {
         panic!("a local component loads by path");
     };
     assert!(path.ends_with("source.wasm"), "the preopen-relative path rides the request: {path}");
     assert!(request.digest.is_none(), "an unpinned binding requests no digest");
-    drop(loads);
     // TOFU: the resolved digest rides the success envelope for the
     // operator to commit as the binding's pin.
     let stdout = String::from_utf8_lossy(&resp.stdout);
@@ -113,8 +112,8 @@ async fn from_file() {
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("sources: 1"), "{stdout}");
-    let loads = provider.plugins.calls.lock().expect("loads");
-    let request = loads.first().expect("one load request");
+    let request =
+        provider.plugins.calls.lock().expect("loads").first().cloned().expect("one load request");
     let Location::Path(path) = &request.location else {
         panic!("a local component loads by path");
     };
@@ -122,7 +121,6 @@ async fn from_file() {
         path.ends_with("source.wasm") && !path.starts_with("./"),
         "the file-relative selector resolves against the config directory: {path}"
     );
-    drop(loads);
 
     let id = pointer(&provider.storage);
     let spec = generation(&provider.storage, &id, "spec.md");
@@ -525,25 +523,6 @@ async fn config_file_refused() {
             "bad_request",
             "bound twice",
         ),
-        // The per-binding `registry` override is reserved until dynamic
-        // adapter resolution lands (compose-seam C2).
-        (
-            "[[source]]\nname = \"third-party\"\nadapter = \"acme:ledger@2.1.0\"\n\
-             registry = \"registry.acme.example\"\n",
-            1,
-            "bad_request",
-            "`registry`",
-        ),
-        // A `digest` pin binds exact local-component bytes; on a
-        // registry adapter it stays reserved until registry
-        // acquisition lands (compose-seam C2).
-        (
-            "[[source]]\nname = \"pinned\"\nadapter = \"acme:ledger@2.1.0\"\n\
-             digest = \"sha256:9f2c44aa\"\n",
-            1,
-            "bad_request",
-            "registry adapter",
-        ),
         // A malformed pin on a local component refuses before any load.
         (
             "[[source]]\nname = \"pinned\"\nadapter = \"./source.wasm\"\n\
@@ -605,6 +584,43 @@ async fn config_file_refused() {
     // Host-absolute and escaping paths never cross into the guest namespace.
     for path in ["/nonexistent/emery.toml", "../emery.toml"] {
         fail(&provider, &["emery", "specify", "--config", path], 1, "bad_request").await;
+    }
+}
+
+// The loader keys are gated by selector kind: `registry` only steers
+// registry acquisition, so it rides only a package-shaped selector,
+// and a `digest` pin binds exact bytes the loader acquires, so a bare
+// name — which never loads — cannot carry one.
+#[tokio::test]
+async fn loader_keys_gated() {
+    let cases: &[(&str, &str)] = &[
+        (
+            "[[source]]\nname = \"local\"\nadapter = \"./source.wasm\"\n\
+             registry = \"registry.acme.example\"\n",
+            "never serves",
+        ),
+        (
+            "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\n\
+             registry = \"registry.acme.example\"\n",
+            "never serves",
+        ),
+        (
+            "[[source]]\nname = \"pinned\"\nadapter = \"documentation\"\n\
+             digest = \"sha256:9f2c44aa\"\n",
+            "bare adapter name",
+        ),
+    ];
+    for (body, fragment) in cases {
+        let dir = project_tempdir();
+        let path = dir.path().join("emery.toml");
+        fs::write(&path, body).expect("write emery.toml");
+        let path = project_arg(&path);
+        let provider = Provider::idle();
+        let envelope =
+            fail(&provider, &["emery", "specify", "--config", &path], 1, "bad_request").await;
+        let message = envelope["message"].as_str().unwrap_or("");
+        assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
+        assert!(provider.storage.is_empty(), "a refused run writes nothing: {fragment}");
     }
 }
 
@@ -769,22 +785,129 @@ async fn github_refused() {
     fail(&provider, &["emery", "specify", "https://github.com/acme/api"], 1, "bad_request").await;
 }
 
-// An exact package pin (`emery:<name>@<semver>` or the first-party
-// shorthand) dispatches by its versioned routed id; admission stays
-// static — there is no download path.
+// An exact package reference (`emery:<name>@<semver>`, or the
+// first-party shorthand as sugar for the `emery` namespace) loads
+// through the deployment loader from the acquirer's default registry
+// and dispatches by its own package identity — no parallel routed id.
 #[tokio::test]
-async fn package_pin() {
+async fn package_loads() {
+    for reference in ["emery:demo@1.2.0", "demo@1.2.0"] {
+        let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");
+        let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+
+        cli_ok(&provider, &["emery", "specify", reference]).await;
+
+        let loads = provider.plugins.calls.lock().expect("loads");
+        let request = loads.first().expect("one load request");
+        assert_eq!(
+            request.package, "emery:demo@1.2.0",
+            "the package reference is the load identity: {reference}"
+        );
+        assert_eq!(
+            request.location,
+            Location::Registry(None),
+            "no override selects the acquirer's default registry"
+        );
+        assert!(request.digest.is_none(), "an unpinned binding requests no digest");
+        drop(loads);
+        let calls = provider.source.calls.lock().expect("calls");
+        let (id, input) = calls.first().expect("one extract dispatch");
+        assert_eq!(id, "emery:demo@1.2.0", "the routed id is the loaded package identity");
+        assert_eq!(input.key, "demo", "the binding key is the adapter name");
+        drop(calls);
+        provider.model.assert_exhausted();
+    }
+}
+
+// The binding's `registry` key overrides the acquirer's default
+// endpoint per source, and an unpinned registry load reports its
+// resolved digest for the operator to commit (TOFU).
+#[tokio::test]
+async fn registry_override() {
+    let dir = project_tempdir();
+    let config = dir.path().join("emery.toml");
+    fs::write(
+        &config,
+        "[[source]]\nname = \"ledger\"\nadapter = \"acme:ledger@2.1.0\"\n\
+         registry = \"registry.acme.example\"\n",
+    )
+    .expect("write emery.toml");
+    let config = project_arg(&config);
+
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [ledger]");
+    let mut provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    provider.plugins.digests.insert("acme:ledger@2.1.0".to_string(), digest("cd"));
+
+    let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
+
+    let loads = provider.plugins.calls.lock().expect("loads");
+    let request = loads.first().expect("one load request");
+    assert_eq!(request.package, "acme:ledger@2.1.0", "third-party namespaces pass through");
+    assert_eq!(
+        request.location,
+        Location::Registry(Some("registry.acme.example".to_string())),
+        "the binding's override rides the load request"
+    );
+    drop(loads);
+    let stdout = String::from_utf8_lossy(&resp.stdout);
+    assert!(stdout.contains(&format!("digest ledger: {}", digest("cd"))), "{stdout}");
+    provider.model.assert_exhausted();
+}
+
+// A registry package pin verifies like a local component pin: the pin
+// rides the load request, and a mismatch refuses typed before
+// anything extracts or commits.
+#[tokio::test]
+async fn pinned_package() {
+    let pinned = |pin: &Digest| {
+        format!("[[source]]\nname = \"demo\"\nadapter = \"emery:demo@1.2.0\"\ndigest = \"{pin}\"\n")
+    };
+
+    let dir = project_tempdir();
+    let config = dir.path().join("emery.toml");
+    fs::write(&config, pinned(&digest("ab"))).expect("write emery.toml");
+    let config = project_arg(&config);
+
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
-
-    cli_ok(&provider, &["emery", "specify", "emery:demo@1.2.0"]).await;
-
-    let calls = provider.source.calls.lock().expect("calls");
-    let (id, input) = calls.first().expect("one extract dispatch");
-    assert_eq!(id, "source:demo@1.2.0", "the routed id carries the exact pin");
-    assert_eq!(input.key, "demo", "the binding key is the adapter name");
-    drop(calls);
+    cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
+    let request =
+        provider.plugins.calls.lock().expect("loads").first().cloned().expect("one load request");
+    assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
     provider.model.assert_exhausted();
+
+    let mismatched = project_tempdir();
+    let config = mismatched.path().join("emery.toml");
+    fs::write(&config, pinned(&digest("11"))).expect("write emery.toml");
+    let config = project_arg(&config);
+
+    let mut provider = Provider::idle();
+    provider.plugins.digests.insert("emery:demo@1.2.0".to_string(), digest("ab"));
+    fail(&provider, &["emery", "specify", "--config", &config], 1, "digest-mismatch").await;
+    assert!(provider.storage.is_empty(), "a refused run writes nothing");
+}
+
+// Load failures land on the exit contract: an acquisition (registry
+// or network) failure is the loader's `acquire-failed` on the
+// BadGateway exit; a component refused host-side validation is
+// `artifact-refused` on the BadRequest exit.
+#[tokio::test]
+async fn load_failures_typed() {
+    let mut provider = Provider::idle();
+    provider.plugins.failures.insert(
+        "emery:demo@1.2.0".to_string(),
+        LoadError::AcquireFailed("resolving `emery:demo@1.2.0`: endpoint unreachable".to_string()),
+    );
+    fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 4, "acquire-failed").await;
+    assert!(provider.storage.is_empty(), "a refused run writes nothing");
+
+    let mut provider = Provider::idle();
+    provider.plugins.failures.insert(
+        "emery:demo@1.2.0".to_string(),
+        LoadError::ArtifactRefused("not a raw wasm component".to_string()),
+    );
+    fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 1, "artifact-refused").await;
+    assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
 // Package references pin an exact SemVer — no branches, tags, or

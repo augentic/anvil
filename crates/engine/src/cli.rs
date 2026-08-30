@@ -328,6 +328,9 @@ fn hint(code: &str) -> Option<&'static str> {
         "digest-mismatch" => Some(
             "the component's bytes changed since the pin was committed; re-verify its provenance and update the binding's `digest`, or drop the key to re-pin from the reported digest",
         ),
+        "acquire-failed" => Some(
+            "the deployment's acquirer could not produce the package: check the network, that the exact version exists at the registry, and the binding's `registry` override (the default endpoint is compiled into the binary)",
+        ),
         _ => None,
     }
 }

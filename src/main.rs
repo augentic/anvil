@@ -11,6 +11,7 @@ cfg_if::cfg_if! {
         use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
+        use omnia_wasm_pkg::{AcquireExt as _, RegistryAcquire};
 
         omnia::runtime!({
             mode: command,
@@ -23,9 +24,12 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: "." },
             ],
+            // Paths resolve first (read fresh, never cached); registry
+            // packages fetch from `omnia.host` over the project CAS.
             plugins: {
                 interfaces: ["emery:adapter/source@0.1.0"],
-                acquire: MountAcquire,
+                acquire: MountAcquire
+                    .or(RegistryAcquire::new("omnia.host").cached_at(".omnia/cache/wasm-pkg")),
             },
             hosts: {
                 WasiOtel: OtelDefault,

@@ -15,6 +15,8 @@ pub enum AdapterSelector {
     /// Exact package reference (`emery:omnia@1.0.0`; `omnia@1.0.0`
     /// is sugar for the `emery` namespace).
     Package {
+        /// Kebab-case package namespace (`emery` for the shorthand).
+        namespace: String,
         /// Kebab-case adapter name.
         name: String,
         /// Mandatory exact SemVer pin.
@@ -55,6 +57,7 @@ impl AdapterSelector {
                     name: name.to_string(),
                 },
                 |version| Self::Package {
+                    namespace: "emery".to_string(),
                     name: name.to_string(),
                     version,
                 },
@@ -75,15 +78,6 @@ impl AdapterSelector {
         match self {
             Self::Bare { name } | Self::Package { name, .. } => Ok(name.clone()),
             Self::Component { path } => name_from_component(path),
-        }
-    }
-
-    /// Returns the exact package pin, if present.
-    #[must_use]
-    pub const fn version(&self) -> Option<&semver::Version> {
-        match self {
-            Self::Package { version, .. } => Some(version),
-            Self::Bare { .. } | Self::Component { .. } => None,
         }
     }
 }
@@ -123,6 +117,7 @@ fn parse_validated_package(
         )
     })?;
     Ok(AdapterSelector::Package {
+        namespace: namespace.to_string(),
         name: name.to_string(),
         version,
     })

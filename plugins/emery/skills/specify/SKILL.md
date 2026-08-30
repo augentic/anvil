@@ -6,7 +6,7 @@ argument-hint: <adapter>
 
 # Specify Skill
 
-`emery specify` is the one generate verb: it resolves the named source adapters (a local component loads through the deployment loader, read fresh each run; its optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extracts, reconciles, synthesises, and commits one generation behind the `current` pointer. Nothing about the binding list persists between runs — repeat the sources on every invocation, or keep them in an operator-owned `emery.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
+`emery specify` is the one generate verb: it resolves the named source adapters (a local component loads through the deployment loader, read fresh each run; an exact package reference fetches from its registry; either load's optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extracts, reconciles, synthesises, and commits one generation behind the `current` pointer. Nothing about the binding list persists between runs — repeat the sources on every invocation, or keep them in an operator-owned `emery.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 
@@ -32,6 +32,6 @@ Specify dispatches model judgment and can take a while on large workspaces; it r
 
 ## Relay
 
-- Surface the CLI output verbatim — the success envelope names the committed generation, the re-mine diff against the superseded one, and the resolved digest of every loader-loaded local component (offer the digest to the operator as the binding's `digest` pin for reproducible loads).
+- Surface the CLI output verbatim — the success envelope names the committed generation, the re-mine diff against the superseded one, and the resolved digest of every loader-loaded adapter (offer the digest to the operator as the binding's `digest` pin for reproducible loads).
 - Review is `emery show spec` / `emery show design` — never read or edit `.emery/` state by hand.
 - On non-zero exit, surface the structured error and stop — never hand-roll spec documents. A `digest-mismatch` failure means the component's bytes changed since the pin was committed; relay the hint and let the operator decide.

@@ -16,7 +16,7 @@ The engine guest imports `emery:adapter/source`; it has no separate WIT package.
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
-The host embeds no adapter-version recommendation and — since the Phase 3 spine cut — no download path. Adapter guests, when present, are declared in the runtime invocation the same way the journey host declares its mock source ([`examples/runtime.rs`](../examples/runtime.rs)); the shipped `src/main.rs` embeds the engine only.
+The host embeds no adapter-version recommendation: exact package pins arrive as run input, fetched through the compiled-in acquirer (the `omnia.host` default endpoint, overridable per binding), and local components load by path (the journey host in [`examples/runtime.rs`](../examples/runtime.rs) loads its built mock source that way); the shipped `src/main.rs` embeds the engine only. Statically declared adapter guests remain possible in a custom runtime invocation.
 
 ## Release lines
 
