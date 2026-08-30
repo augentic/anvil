@@ -535,15 +535,15 @@ version = "0.3.104"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema]]
-version = "0.52.0"
+version = "0.52.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-regex]]
-version = "0.52.0"
+version = "0.52.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-value]]
-version = "0.52.0"
+version = "0.52.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonwebtoken]]
@@ -795,7 +795,7 @@ version = "0.5.18"
 criteria = "safe-to-deploy"
 
 [[exemptions.referencing]]
-version = "0.52.0"
+version = "0.52.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.reqwest]]
