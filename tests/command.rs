@@ -10,8 +10,7 @@ mod support;
 use serde_json::Value;
 use support::{Provider, cli, cli_ok, router};
 
-// Widening the route budget requires an ADR (ADR-0008); deleted verbs
-// are deleted from the grammar, not hidden.
+// Deleted verbs are deleted from the grammar, not hidden.
 #[tokio::test]
 async fn route_budget() {
     let provider = Provider::idle();
@@ -67,9 +66,13 @@ async fn route_budget() {
     }
 }
 
-// `specify` requires at least one source; a refused run writes nothing.
+// A bindingless run discovers the project-root `emery.toml`; with no
+// file to discover it refuses typed and writes nothing. The CWD move
+// is safe under nextest's process-per-test isolation.
 #[tokio::test]
 async fn specify_without_sources() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    std::env::set_current_dir(dir.path()).expect("enter empty project");
     let provider = Provider::idle();
 
     let response = cli(&provider, &["emery", "specify"]).await;
@@ -82,26 +85,29 @@ async fn specify_without_sources() {
 }
 
 // Naming the file carrier without a value explicitly selects the
-// project-relative `sources.toml`; it is not implicit discovery.
+// project-relative `emery.toml`; a missing explicit file is a read
+// error, never a discovery miss.
 #[tokio::test]
-async fn specify_default_sources_path() {
+async fn specify_default_config_path() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    std::env::set_current_dir(dir.path()).expect("enter empty project");
     let provider = Provider::idle();
 
-    let response = cli(&provider, &["emery", "specify", "--sources"]).await;
+    let response = cli(&provider, &["emery", "specify", "--config"]).await;
     assert_eq!(response.exit, 3);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("sources.toml"), "{stderr}");
+    assert!(stderr.contains("emery.toml"), "{stderr}");
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
-// `--sources` carries the whole binding list; mixing refuses typed.
+// `--config` carries the whole binding list; mixing refuses typed.
 #[tokio::test]
 async fn specify_mixed_sources() {
     let provider = Provider::idle();
 
     for argv in [
-        &["emery", "specify", "docs", "--sources", "sources.toml"][..],
-        &["emery", "specify", "--value", "intent=text", "--sources", "sources.toml"][..],
+        &["emery", "specify", "docs", "--config", "emery.toml"][..],
+        &["emery", "specify", "--description", "intent=text", "--config", "emery.toml"][..],
     ] {
         fail(&provider, argv, 1, "bad_request").await;
     }
@@ -116,18 +122,31 @@ async fn specify_duplicate_source() {
     let provider = Provider::idle();
     for argv in [
         &["emery", "specify", "docs", "docs"][..],
-        &["emery", "specify", "docs", "--value", "docs=inline text"][..],
+        &["emery", "specify", "docs", "--description", "docs=inline text"][..],
     ] {
         fail(&provider, argv, 1, "bad_request").await;
     }
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
-// `--value` needs the `<adapter>=<text>` shape.
+// `--description` needs the `<adapter>=<text>` shape.
 #[tokio::test]
-async fn specify_malformed_value() {
+async fn specify_malformed_description() {
     let provider = Provider::idle();
-    fail(&provider, &["emery", "specify", "--value", "no-equals"], 1, "bad_request").await;
+    fail(&provider, &["emery", "specify", "--description", "no-equals"], 1, "bad_request").await;
+}
+
+// The superseded flag spellings are deleted from the grammar, not
+// aliased (hard cut): clap refuses them as unknown arguments.
+#[tokio::test]
+async fn specify_old_flags_deleted() {
+    let provider = Provider::idle();
+    for argv in [
+        &["emery", "specify", "--sources", "emery.toml"][..],
+        &["emery", "specify", "--value", "intent=text"][..],
+    ] {
+        assert_eq!(cli(&provider, argv).await.exit, 2, "{argv:?}");
+    }
 }
 
 // The read verb fails typed before any generation is committed.

@@ -9,7 +9,7 @@ alwaysApply: true
 
 This plugin provides the surviving Emery skill: generate a specification. The skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output.
 
-The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme (ADR-0008). Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the sources named on the invocation; `emery show spec` and `emery show design` print the reviewable documents of the current generation.
+The v1 delivery workflow (plan / refine / execute / status / finalize and the `system-*` definition loop) is frozen and archived at git tag `v1` under the spec-generator remediation programme. Its verbs are deleted from the CLI grammar and its skills are deleted from this plugin — do not attempt to run them or reconstruct their behavior by hand. `emery specify` generates `spec.md` / `design.md` from the sources named on the invocation; `emery show spec` and `emery show design` print the reviewable documents of the current generation.
 
 ## Workflow
 
@@ -17,7 +17,7 @@ The v1 delivery workflow (plan / refine / execute / status / finalize and the `s
 /emery:specify <adapter>           (every generation run)
 ```
 
-That is the whole shipped surface. The binding list never persists — repeat the adapters on every run, or keep them in an operator-owned file selected with `--sources [<path>]` (`--sources` alone means the project-relative `sources.toml`; the engine does not discover it). Never hand-edit `.emery/` state (the component cache and generation store); route through the CLI.
+That is the whole shipped surface. The binding list never persists — repeat the adapters on every run, or keep them in an operator-owned `emery.toml` selected with `--config [<path>]` (`--config` alone means the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root file as a fallback). Never hand-edit `.emery/` state (the generation store); route through the CLI.
 
 ## Tracing and output
 
@@ -43,9 +43,11 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 
 | Error code | What it means | Next action |
 |------------|---------------|-------------|
-| `specify-source-required` | `emery specify` was run without naming a source | `emery specify <adapter>` (and/or `--value <adapter>=<text>`, or `--sources [<path>]`) |
+| `specify-source-required` | `emery specify` was run without naming a source, and no project-root `emery.toml` was found | `emery specify <adapter>` (and/or `--description <adapter>=<text>`, or `--config [<path>]`) |
 | `adapter-cli-too-old` | The installed binary is older than an adapter's declared floor | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
 | `spec-not-generated` | `emery show` was run before any generation was committed | `/emery:specify <adapter>` first |
+| `digest-mismatch` | A pinned adapter's bytes changed since the pin was committed | Re-verify provenance and update the binding's `digest` in `emery.toml`, or drop the key to re-pin from the reported digest |
+| `acquire-failed` | The registry fetch for a package adapter failed (network, endpoint, or a missing exact version) | Check connectivity, that the exact version exists, and the binding's `registry` override, then rerun |
 
 ### Reviewing the generated documents
 

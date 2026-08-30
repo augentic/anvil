@@ -55,8 +55,21 @@ impl Source for Inert {
     }
 }
 
+impl omnia_guest::Plugins for Inert {
+    fn load(
+        &self, _plugin: &omnia_guest::plugins::PluginRef,
+    ) -> impl Future<Output = Result<omnia_guest::plugins::Plugin, omnia_guest::plugins::Error>> + Send
+    {
+        std::future::ready(never_loaded())
+    }
+}
+
 fn never_dispatched() -> Result<omnia_guest::model::Reply, omnia_guest::model::Error> {
     unreachable!("the plugin suite never dispatches the model")
+}
+
+fn never_loaded() -> Result<omnia_guest::plugins::Plugin, omnia_guest::plugins::Error> {
+    unreachable!("the plugin suite never dispatches the loader")
 }
 
 fn never_extracted() -> Result<Evidence, DispatchError> {

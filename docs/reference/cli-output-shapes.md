@@ -45,13 +45,18 @@ The success body names the committed generation and its reviewable set:
     "added": [],
     "removed": [],
     "changed": ["session.timeout"]
-  }
+  },
+  "digests": [
+    { "source": "custom", "digest": "sha256:9f2c44…" }
+  ]
 }
 ```
 
-`diff` is the re-mine diff against the superseded generation (ADR-0010): the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
+`diff` is the re-mine diff against the superseded generation: the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
-`emery specify` with no source fails with `error: "specify-source-required"` (exit 1); mixing `--sources` with positional adapters or `--value`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--sources` without a value explicitly selects the project-relative `sources.toml`. A GitHub URL binding fails with `error: "bad_request"`. Validation refusals from the extract or synthesis gates exit 1 with `error: "bad_request"`.
+`digests` reports the resolved sha256 content digest of every loader-loaded adapter — a local component or a registry package — pinned or not; it is absent when no binding loaded one. On an unpinned first run this is the trust-on-first-use report — commit the digest as the binding's `digest` pin in `emery.toml` to make the load reproducible. A pin that no longer matches the resolved bytes fails with `error: "digest-mismatch"` (exit 1).
+
+`emery specify` with no source — and no project-root `emery.toml` to discover — fails with `error: "specify-source-required"` (exit 1); mixing `--config` with positional adapters or `--description`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--config` without a value explicitly selects the project-relative `emery.toml`. A GitHub URL binding fails with `error: "bad_request"`. Validation refusals from the extract or synthesis gates exit 1 with `error: "bad_request"`.
 
 ### `emery show <spec|design>`
 

@@ -4,7 +4,8 @@ use std::io::Write;
 
 use emery_adapter::Source;
 use omnia_guest::api::{Context, Handler};
-use omnia_guest::{BlobStore, Error, Model, StateStore};
+use omnia_guest::plugins::Digest;
+use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
@@ -24,12 +25,12 @@ pub struct SpecifyInput {
     pub adapters: Vec<String>,
     /// Bind an inline source as `<adapter>=<text>`; repeatable.
     #[serde(default)]
-    #[arg(long = "value")]
-    pub values: Vec<String>,
-    /// Operator-owned binding list; defaults to sources.toml.
+    #[arg(long = "description", short = 'd')]
+    pub descriptions: Vec<String>,
+    /// Operator-owned config; the omitted value selects emery.toml.
     #[serde(default)]
-    #[arg(long, num_args = 0..=1, default_missing_value = "sources.toml")]
-    pub sources: Option<String>,
+    #[arg(long, short = 'c', num_args = 0..=1, default_missing_value = crate::sources::CONFIG_FILE)]
+    pub config: Option<String>,
 }
 
 /// Successful `emery specify` result.
@@ -45,6 +46,22 @@ pub struct SpecifyBody {
     /// Diff from the predecessor; absent on the first run.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
+    /// Resolved content digests of loader-loaded adapters (local
+    /// components and registry packages) — commit one as its
+    /// binding's `digest` pin to make the load reproducible
+    /// (trust-on-first-use).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub digests: Vec<SourceDigest>,
+}
+
+/// One loader-resolved source digest reported by `emery specify`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct SourceDigest {
+    /// The binding key.
+    pub source: String,
+    /// The resolved `sha256:<hex>` content digest.
+    pub digest: Digest,
 }
 
 impl Render for SpecifyBody {
@@ -52,6 +69,9 @@ impl Render for SpecifyBody {
         writeln!(w, "committed generation {}", self.generation)?;
         writeln!(w, "  requirements: {}", self.requirements)?;
         writeln!(w, "  sources: {}", self.sources)?;
+        for entry in &self.digests {
+            writeln!(w, "  digest {}: {}", entry.source, entry.digest)?;
+        }
         if let Some(diff) = &self.diff {
             if diff.is_empty() {
                 writeln!(w, "  diff vs {}: none (byte-stable)", diff.from)?;
@@ -72,17 +92,17 @@ impl Render for SpecifyBody {
     }
 }
 
-impl<P: Model + Source + StateStore + BlobStore> Handler<P> for SpecifyInput {
+impl<P: Model + Source + StateStore + BlobStore + Plugins> Handler<P> for SpecifyInput {
     type Error = Error;
     type Output = SpecifyBody;
 
     async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
         let Self {
             adapters,
-            values,
-            sources,
+            descriptions,
+            config,
         } = self;
-        let bindings = crate::sources::bindings(&adapters, &values, sources.as_deref())?;
+        let bindings = crate::sources::bindings(&adapters, &descriptions, config.as_deref())?;
 
         let sets = extract_all(context.provider, &bindings).await?;
         let rows = reconcile(&sets);
@@ -99,11 +119,21 @@ impl<P: Model + Source + StateStore + BlobStore> Handler<P> for SpecifyInput {
         let committed = home.commit(&set, &observed).await?;
         let diff =
             observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
+        let digests = sets
+            .iter()
+            .filter_map(|source| {
+                source.digest.clone().map(|digest| SourceDigest {
+                    source: source.key.clone(),
+                    digest,
+                })
+            })
+            .collect();
         Ok(SpecifyBody {
             generation: committed.id,
             requirements: rows.len(),
             sources: sets.len(),
             diff,
+            digests,
         })
     }
 }

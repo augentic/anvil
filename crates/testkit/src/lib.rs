@@ -17,7 +17,6 @@ type Blobs = BTreeMap<String, BTreeMap<String, Vec<u8>>>;
 pub struct Memory {
     state: Mutex<State>,
     blobs: Mutex<Blobs>,
-    blob_has_fault: Mutex<Option<String>>,
 }
 
 impl Memory {
@@ -78,15 +77,6 @@ impl Memory {
         );
     }
 
-    /// Makes the next blob existence probe fail with `detail`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if a lock is poisoned (a prior holder panicked).
-    pub fn fail_blob_has(&self, detail: &str) {
-        *self.blob_has_fault.lock().expect("blob has fault lock") = Some(detail.to_string());
-    }
-
     /// Returns whether storage is empty.
     ///
     /// # Panics
@@ -107,10 +97,6 @@ impl Memory {
             self.state.lock().expect("state lock").clone(),
             self.blobs.lock().expect("blob lock").clone(),
         )
-    }
-
-    fn take_blob_has_fault(&self) -> Option<anyhow::Error> {
-        self.blob_has_fault.lock().expect("blob has fault lock").take().map(anyhow::Error::msg)
     }
 }
 
@@ -222,9 +208,6 @@ impl BlobStore for Namespaced {
     fn has(
         &self, container: &str, name: &str,
     ) -> impl Future<Output = anyhow::Result<bool>> + Send {
-        if let Some(err) = self.inner.take_blob_has_fault() {
-            return ready(Err(err));
-        }
         ready(Ok(self.inner.object(&self.scoped(container), name).is_some()))
     }
 
@@ -364,9 +347,6 @@ impl BlobStore for Memory {
     fn has(
         &self, container: &str, name: &str,
     ) -> impl Future<Output = anyhow::Result<bool>> + Send {
-        if let Some(err) = self.take_blob_has_fault() {
-            return ready(Err(err));
-        }
         ready(Ok(self.object(container, name).is_some()))
     }
 

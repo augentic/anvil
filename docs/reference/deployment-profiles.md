@@ -4,17 +4,16 @@ How the `emery` runtime binds engine storage, and how deployments other than the
 
 ## The storage boundary
 
-Engine state — the generation store, the `current` pointer, and the component cache — is reachable only through the storage capabilities (`omnia_guest::StateStore` / `BlobStore` on the guest side). The names the engine uses are flat, deployment-neutral formulas:
+Engine state — the generation store and the `current` pointer — is reachable only through the storage capabilities (`omnia_guest::StateStore` / `BlobStore` on the guest side). The names the engine uses are flat, deployment-neutral formulas:
 
 | Surface | Kind | Name |
 | --- | --- | --- |
 | Current-generation pointer | keyvalue key | `spec/current` |
 | Generation documents | blobstore container `spec` | `generations/<id>/<doc>.md` |
-| Component cache | blobstore container `adapters` | `<name>.wasm` |
 
 The host side of the boundary is a backend type implementing `omnia::Backend` (connection options from the environment) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the boundary exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
 
-Package pins dispatch to statically admitted guests and do not imply a stored component. Dynamic resolution is deferred; its eventual artifact identity and integrity model must bind the resolved digest to the component the host executes rather than add an engine-owned mutable sidecar.
+Loaded components are not engine state: a path- or package-shaped adapter loads through the deployment's `omnia:plugins/loader` capability, whose compiled-in acquirer is a composition in the shipped profile — `MountAcquire` first, reading a local component fresh from the read-only `.` mount on every run, then a wasm-pkg registry acquirer defaulting to `omnia.host` whose fetches cache content-addressed in the project CAS at `.omnia/cache/wasm-pkg` (host-owned, outside the guest-reachable blobstore root; a poisoned entry fails its digest instead of becoming code). Integrity binds the resolved sha256 digest to the exact bytes the host executes, verified against the binding's optional pin, never an engine-owned mutable sidecar. Bare names dispatch to statically admitted guests and do not imply a stored component.
 
 ## The shipped profile: local filesystem
 

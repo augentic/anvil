@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1` (ADR-0008).
+The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1`.
 
 The CLI itself is built in the in-tree Cargo workspace at the repo root. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -10,11 +10,11 @@ Skills are ultrathin invoke-and-relay wrappers: they elicit missing arguments, i
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. See [AGENTS.md](../../AGENTS.md).
 
-Never hand-edit `.emery/` state (the component cache, the generation store); never `mkdir -p .emery/...`. Route through the CLI — it enforces the legal set of states and validates inputs in one place for humans, agents, and CI alike.
+Never hand-edit `.emery/` state (the generation store); never `mkdir -p .emery/...`. Route through the CLI — it enforces the legal set of states and validates inputs in one place for humans, agents, and CI alike.
 
 ## Verb tree
 
-- `emery specify <adapter>... [--value <adapter>=<text>] [--sources [<path>]]` — the spec generator (ADR-0008 §3): resolve the sources named on the invocation (mirroring a project-relative local component into the project cache), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--sources` is always explicit; omitting only its value selects the project-relative `sources.toml`. The binding list is per-run input, never persisted. Invoked without a source it exits `1` with `specify-source-required`; mixing `--sources` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
+- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator: resolve the sources named on the invocation (a project-relative local component loads through the deployment loader, read fresh each run; an exact package reference fetches from the binding's `registry` override or the compiled-in default endpoint; either load's optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extract, reconcile, synthesise, and commit `spec.md` / `design.md` as one generation behind the swapped `current` pointer. `--config` without a value selects the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback, never merged with argv bindings. The binding list is per-run input, never persisted. Invoked without a source — and with nothing to discover — it exits `1` with `specify-source-required`; mixing `--config` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
 - `emery show <spec|design>` — print a reviewable document of the current generation; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `2`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
@@ -28,9 +28,11 @@ The canonical envelope shapes live in [docs/reference/cli-output-shapes.md](../r
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `specify-source-required` — `emery specify` without a source binding.
+- `specify-source-required` — `emery specify` without a source binding and with no project-root `emery.toml` to discover.
 - `spec-not-generated` — `emery show` before any generation is committed.
 - `adapter-cli-too-old` — an adapter's declared `emery` compatibility floor is newer than the running binary.
+- `digest-mismatch` — a pinned adapter (local component or registry package) hashed to different bytes than the binding's `digest` pin; re-verify provenance and update the pin, or drop it to re-pin from the reported digest.
+- `acquire-failed` — the deployment's acquirer could not produce a registry package (network, endpoint, or a missing exact version); check connectivity and the binding's `registry` override.
 
 ## Exit codes
 
@@ -39,10 +41,10 @@ The CLI uses the Omnia 1:1 exit map. The authoritative definition lives in [`AGE
 | Code | Name | Skills see it on |
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
-| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `adapter-cli-too-old`, or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `adapter-cli-too-old`, tell the operator to update the installed binary through its install channel. |
+| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `adapter-cli-too-old`, the loader's kebab-case refusals — `digest-mismatch` foremost — or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `adapter-cli-too-old`, tell the operator to update the installed binary through its install channel. |
 | `2` | `NotFound` | Missing resource (`spec-not-generated`, or the Omnia default `not_found`). Clap usage and unknown-verb also exit 2 (framework). |
 | `3` | `ServerError` | Unclassified default: I/O, storage (`server_error`). |
-| `4` | `BadGateway` | Upstream or model failure (`bad_gateway`). |
+| `4` | `BadGateway` | Upstream, model, or component-acquisition failure (`bad_gateway`, the loader's `acquire-failed`). |
 
 Skills should branch on the exit code first (success vs failure class) and on the three kebab recovery discriminants second (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`). Other failures share the Omnia snake_case default for that class (`bad_request`, `not_found`, `server_error`, `bad_gateway`). New exit codes are not invented by skills or the CLI.
 

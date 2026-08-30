@@ -9,7 +9,7 @@ use clap::{Args, CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use emery_adapter::Source;
 use omnia_guest::api::{Client, Metadata};
-use omnia_guest::{BlobStore, Error, Model, StateStore, server_error};
+use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, server_error};
 use serde::Serialize;
 
 use crate::handler::Render;
@@ -152,14 +152,14 @@ enum Verb {
     },
 }
 
-const SPECIFY_LONG: &str = "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--value <adapter>=<text>` for inline sources — or point at an operator-owned binding list with `--sources [<path>]`; omitting the path explicitly selects `sources.toml`. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves and, for a local component, mirrors its adapters before extracting; nothing about the binding list persists between runs. No sources fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer (ADR-0001). Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]` (ADR-0004). Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope (ADR-0010) — nothing is persisted for the diff.";
+const SPECIFY_LONG: &str = "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--description <adapter>=<text>` for inline sources — or point at an operator-owned config with `--config [<path>]`; omitting the path explicitly selects `emery.toml`. A run naming no bindings at all discovers the project-root `emery.toml` as a fallback — never merged with argv bindings. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves its adapters before extracting; a local component loads through the deployment loader, read fresh on every run — a deleted source file refuses typed — with the binding's optional `digest` pin verified before validation, and each resolved digest reported in the success envelope (commit one as its binding's pin to make the load reproducible). Nothing about the binding list persists between runs. No sources — and no discoverable `emery.toml` — fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer. Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]`. Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope — nothing is persisted for the diff.";
 const SHOW_LONG: &str = "Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 2).";
 const COMPLETIONS_LONG: &str = "Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `emery completions zsh > ~/.zsh/_emery`). The output tracks the live clap surface so every new verb is auto-discovered.";
 
 /// Builds the Emery command grammar over `provider`.
 pub fn router<P>(provider: P) -> Cli<P>
 where
-    P: Model + Source + StateStore + BlobStore + Send + Sync + 'static,
+    P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
 {
     Cli {
         client: Client::new("emery", provider),
@@ -183,7 +183,7 @@ fn inventory() -> Vec<RouteInfo> {
 
 impl<P> Cli<P>
 where
-    P: Model + Source + StateStore + BlobStore + Send + Sync + 'static,
+    P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
 {
     /// Return the deterministic route inventory.
     #[must_use]
@@ -320,11 +320,17 @@ fn hint(code: &str) -> Option<&'static str> {
             "update the installed binary through its install channel: `brew upgrade emery`, or `cargo install --git https://github.com/augentic/emery --locked`",
         ),
         "specify-source-required" => Some(
-            "`emery specify <adapter>...` generates the spec over the sources named on the invocation; there is no persisted binding list",
+            "`emery specify <adapter>...` generates the spec over the sources named on the invocation; a bindingless run reads the project-root `emery.toml` when present — there is no other persisted binding list",
         ),
         "spec-not-generated" => {
             Some("run `emery specify <adapter>...` to commit a generation, then re-run show")
         }
+        "digest-mismatch" => Some(
+            "the component's bytes changed since the pin was committed; re-verify its provenance and update the binding's `digest`, or drop the key to re-pin from the reported digest",
+        ),
+        "acquire-failed" => Some(
+            "the deployment's acquirer could not produce the package: check the network, that the exact version exists at the registry, and the binding's `registry` override (the default endpoint is compiled into the binary)",
+        ),
         _ => None,
     }
 }

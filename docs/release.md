@@ -16,7 +16,7 @@ The engine guest imports `emery:adapter/source`; it has no separate WIT package.
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
-The host embeds no adapter-version recommendation and — since the Phase 3 spine cut (ADR-0002) — no download path. Adapter guests, when present, are declared in the runtime invocation the same way the journey host declares its mock source ([`examples/runtime.rs`](../examples/runtime.rs)); the shipped `src/main.rs` embeds the engine only.
+The host embeds no adapter-version recommendation: exact package pins arrive as run input, fetched through the compiled-in acquirer (the `omnia.host` default endpoint, overridable per binding), and local components load by path (the journey host in [`examples/runtime.rs`](../examples/runtime.rs) loads its built mock source that way); the shipped `src/main.rs` embeds the engine only. Statically declared adapter guests remain possible in a custom runtime invocation.
 
 ## Release lines
 
@@ -85,7 +85,7 @@ wkg publish target/wasm32-wasip2/release/emery.wasm \
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. There is no pull-on-miss (ADR-0002). A host that wants those components as static guests builds them and declares them in the runtime invocation, the same way the journey host declares its mock source.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. There is no pull-on-miss. A host that wants those components as static guests builds them and declares them in the runtime invocation, the same way the journey host declares its mock source.
 
 ## Installing a release
 

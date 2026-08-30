@@ -1,4 +1,6 @@
-//! Static host for the mock source component with fixed synthesis answers.
+//! Scripted-model host for the mock-source journey: the engine loads the
+//! built mock component by path through the deployment loader, e.g.
+//! `specify ./target/wasm32-wasip2/release/examples/source.wasm`.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -6,6 +8,7 @@ cfg_if::cfg_if! {
         use std::future::Future;
         use std::sync::{Arc, Mutex};
 
+        use omnia::MountAcquire;
         use omnia_filesystem::Client as Filesystem;
         use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_keyvalue::WasiKeyValue;
@@ -19,18 +22,14 @@ cfg_if::cfg_if! {
                     id: "emery",
                     source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
                 },
-                {
-                    id: "source:source",
-                    source: concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/target/wasm32-wasip2/release/examples/source.wasm",
-                    ),
-                },
             ],
             mounts: [
                 { name: ".", path: "." },
             ],
-            dispatch: ["emery:adapter/source@0.1.0"],
+            plugins: {
+                interfaces: ["emery:adapter/source@0.1.0"],
+                acquire: MountAcquire,
+            },
             hosts: {
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,

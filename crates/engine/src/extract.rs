@@ -7,7 +7,8 @@ use emery_adapter::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
 use emery_adapter::{DispatchError, Source};
-use omnia_guest::{BlobStore, Error, bad_gateway, bad_request};
+use omnia_guest::plugins::Digest;
+use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
 use crate::handler::preopen_path;
 use crate::resolve::{self, AdapterSelector};
@@ -28,36 +29,49 @@ async fn dispatch<P: Source>(
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
-    /// The routed adapter identity (`source:<name>[@<version>]`).
+    /// The routed adapter identity: a package reference for a
+    /// registry adapter, `source:<name>` otherwise.
     pub adapter: String,
     /// Claim-set authority class.
     pub authority: Authority,
     /// The validated claims.
     pub claims: Vec<Claim>,
+    /// Resolved content digest of a loader-loaded adapter.
+    pub digest: Option<Digest>,
 }
 
 /// Resolves, extracts, and validates every source binding.
 ///
-/// Resolution mirrors a local component into the cache on the first
-/// `specify` that names it.
+/// A local component or a registry package loads through the
+/// deployment's loader — a component read fresh on every run, a
+/// package fetched from the binding's registry override or the
+/// acquirer's default endpoint, either one's optional pin verified
+/// host-side — before extract dispatch.
 ///
 /// # Errors
 ///
 /// Propagates resolution, extract, and [`validate_set`] failures.
-pub async fn extract_all<P: Source + BlobStore>(
+pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
     for binding in bindings {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let id = resolve::source(provider, &selector).await?;
+        let resolved = resolve::source(
+            provider,
+            &selector,
+            binding.digest.as_ref(),
+            binding.registry.as_deref(),
+        )
+        .await?;
         let input = input_for(binding)?;
-        let evidence = dispatch(provider, &id, &input).await?;
+        let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
-            adapter: id,
+            adapter: resolved.id,
             authority: evidence.authority,
             claims: evidence.claims,
+            digest: resolved.digest,
         };
         validate_set(&set)?;
         sets.push(set);
@@ -81,7 +95,7 @@ fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
                 root: root.display().to_string(),
             })
         }
-        BindingContent::Value(value) => SourceContent::Value(value.clone()),
+        BindingContent::Description(text) => SourceContent::Value(text.clone()),
     };
     Ok(SourceInput {
         key: binding.key.clone(),
