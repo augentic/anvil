@@ -15,17 +15,13 @@ cfg_if::cfg_if! {
 
         omnia::runtime!({
             mode: command,
-            guests: [
-                {
-                    id: "emery",
-                    source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
-                }
-            ],
+            guests: [{
+                id: "emery",
+                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.cwasm")),
+            }],
             mounts: [
                 { name: ".", path: "." },
             ],
-            // Paths resolve first (read fresh, never cached); registry
-            // packages fetch from `omnia.host` over the project CAS.
             plugins: {
                 interfaces: ["emery:adapter/source@0.1.0"],
                 acquire: MountAcquire

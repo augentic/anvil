@@ -134,6 +134,56 @@ async fn from_file() {
     provider.model.assert_exhausted();
 }
 
+// One adapter may bind several roots: the loader is asked once, and
+// each binding extracts over its own workspace.
+#[tokio::test]
+async fn shared_adapter_several_roots() {
+    let cases: &[(&str, &str, bool)] = &[
+        ("emery:documentation@1.2.0", "emery:documentation@1.2.0", false),
+        ("./source.wasm", "source:source", true),
+    ];
+    for (adapter, package, wasm) in cases {
+        let dir = project_tempdir();
+        if *wasm {
+            fs::write(dir.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
+        }
+        let config = dir.path().join("emery.toml");
+        fs::write(
+            &config,
+            format!(
+                "[[source]]\nname = \"docs\"\nadapter = \"{adapter}\"\npath = \"docs\"\n\n\
+                 [[source]]\nname = \"api\"\nadapter = \"{adapter}\"\npath = \"api\"\n"
+            ),
+        )
+        .expect("write emery.toml");
+        let config = project_arg(&config);
+
+        let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs, api]");
+        let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+
+        let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
+        let stdout = String::from_utf8_lossy(&resp.stdout);
+        assert!(stdout.contains("sources: 2"), "{adapter}: {stdout}");
+        assert!(stdout.contains(&format!("digest docs: {}", digest("ab"))), "{adapter}: {stdout}");
+        assert!(stdout.contains(&format!("digest api: {}", digest("ab"))), "{adapter}: {stdout}");
+
+        let loads = provider.plugins.calls.lock().expect("loads");
+        assert_eq!(loads.len(), 1, "{adapter}: one adapter identity loads once");
+        assert_eq!(loads[0].package, *package, "{adapter}");
+        drop(loads);
+
+        let calls = provider.source.calls.lock().expect("calls");
+        assert_eq!(calls.len(), 2, "{adapter}: each binding extracts");
+        assert_eq!(calls[0].0, *package);
+        assert_eq!(calls[0].1.key, "docs");
+        assert_eq!(calls[1].0, *package);
+        assert_eq!(calls[1].1.key, "api");
+        drop(calls);
+
+        provider.model.assert_exhausted();
+    }
+}
+
 // A run naming no bindings at all discovers the project-root
 // `emery.toml` before failing — never merged with argv bindings. The
 // CWD move is hermetic under nextest's process-per-test isolation.
@@ -885,6 +935,31 @@ async fn pinned_package() {
     provider.plugins.digests.insert("emery:demo@1.2.0".to_string(), digest("ab"));
     fail(&provider, &["emery", "specify", "--config", &config], 1, "digest-mismatch").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
+}
+
+// A second binding that re-pins an already-loaded adapter refuses
+// already-active: the loader cannot re-bind the identity.
+#[tokio::test]
+async fn shared_adapter_conflicting_pin() {
+    let dir = project_tempdir();
+    let config = dir.path().join("emery.toml");
+    fs::write(
+        &config,
+        format!(
+            "[[source]]\nname = \"a\"\nadapter = \"emery:demo@1.2.0\"\ndigest = \"{}\"\n\n\
+             [[source]]\nname = \"b\"\nadapter = \"emery:demo@1.2.0\"\ndigest = \"{}\"\n",
+            digest("ab"),
+            digest("cd"),
+        ),
+    )
+    .expect("write emery.toml");
+    let config = project_arg(&config);
+
+    let provider = Provider::idle();
+    fail(&provider, &["emery", "specify", "--config", &config], 1, "already-active").await;
+    assert!(provider.storage.is_empty(), "a refused run writes nothing");
+    let loads = provider.plugins.calls.lock().expect("loads");
+    assert_eq!(loads.len(), 1, "the conflicting pin never reaches the loader");
 }
 
 // Load failures land on the exit contract: an acquisition (registry

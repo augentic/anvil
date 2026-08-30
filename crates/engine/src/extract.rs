@@ -1,5 +1,6 @@
 //! Source extraction and fail-closed claim validation.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use emery_adapter::answers::claim_id_findings;
@@ -7,7 +8,7 @@ use emery_adapter::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
 use emery_adapter::{DispatchError, Source};
-use omnia_guest::plugins::Digest;
+use omnia_guest::plugins::{Digest, Error as LoadError};
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
 use crate::handler::preopen_path;
@@ -46,7 +47,8 @@ pub struct SourceSet {
 /// deployment's loader — a component read fresh on every run, a
 /// package fetched from the binding's registry override or the
 /// acquirer's default endpoint, either one's optional pin verified
-/// host-side — before extract dispatch.
+/// host-side — before extract dispatch. One adapter identity loads
+/// once; further bindings reuse the loaded guest.
 ///
 /// # Errors
 ///
@@ -55,15 +57,9 @@ pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
+    let mut loaded = BTreeMap::new();
     for binding in bindings {
-        let selector = AdapterSelector::parse(&binding.adapter)?;
-        let resolved = resolve::source(
-            provider,
-            &selector,
-            binding.digest.as_ref(),
-            binding.registry.as_deref(),
-        )
-        .await?;
+        let resolved = resolve_once(provider, binding, &mut loaded).await?;
         let input = input_for(binding)?;
         let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {
@@ -77,6 +73,49 @@ pub async fn extract_all<P: Source + Plugins>(
         sets.push(set);
     }
     Ok(sets)
+}
+
+// The loader registers one identity per run; a second binding that
+// reuses the adapter extracts over the already-loaded guest.
+async fn resolve_once<P: Source + Plugins>(
+    provider: &P, binding: &SourceBinding, loaded: &mut BTreeMap<String, resolve::Resolved>,
+) -> Result<resolve::Resolved, Error> {
+    let selector = AdapterSelector::parse(&binding.adapter)?;
+    let key = load_key(&selector)?;
+    if let Some(existing) = key.as_ref().and_then(|key| loaded.get(key)) {
+        pin_agrees(existing, binding.digest.as_ref())?;
+        return Ok(existing.clone());
+    }
+    let resolved =
+        resolve::source(provider, &selector, binding.digest.as_ref(), binding.registry.as_deref())
+            .await?;
+    if let Some(key) = key {
+        loaded.insert(key, resolved.clone());
+    }
+    Ok(resolved)
+}
+
+fn load_key(selector: &AdapterSelector) -> Result<Option<String>, Error> {
+    Ok(match selector {
+        AdapterSelector::Bare { .. } => None,
+        AdapterSelector::Package {
+            namespace,
+            name,
+            version,
+        } => Some(format!("{namespace}:{name}@{version}")),
+        AdapterSelector::Component { .. } => Some(format!("source:{}", selector.name()?)),
+    })
+}
+
+fn pin_agrees(existing: &resolve::Resolved, pin: Option<&Digest>) -> Result<(), Error> {
+    match (pin, existing.digest.as_ref()) {
+        (Some(pin), Some(held)) if pin != held => Err(LoadError::AlreadyActive(format!(
+            "package `{}` is already active with digest {held}, which is not the requested pin",
+            existing.id
+        ))
+        .into()),
+        _ => Ok(()),
+    }
 }
 
 // `.` spans the project preopen, including `.emery/`, until guest
