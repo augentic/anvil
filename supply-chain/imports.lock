@@ -245,8 +245,8 @@ user-login = "seanmonstar"
 user-name = "Sean McArthur"
 
 [[publisher.indexmap]]
-version = "2.14.0"
-when = "2026-04-09"
+version = "2.14.1"
+when = "2026-08-28"
 user-id = 539
 user-login = "cuviper"
 user-name = "Josh Stone"
