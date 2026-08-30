@@ -9,7 +9,7 @@ cfg_if::cfg_if! {
         use std::sync::{Arc, Mutex};
 
         use omnia::MountAcquire;
-        use omnia_filesystem::Client as Filesystem;
+        use omnia_filesystem::{Client as Filesystem, ConnectOptions as FilesystemOptions};
         use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
@@ -33,8 +33,9 @@ cfg_if::cfg_if! {
             hosts: {
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
-                WasiKeyValue: Filesystem,
-                WasiBlobstore: Filesystem,
+                // Same compiled-in store root as the shipped binary.
+                WasiKeyValue: Filesystem(FilesystemOptions { root: ".omnia/storage".into() }),
+                WasiBlobstore: Filesystem(FilesystemOptions { root: ".omnia/storage".into() }),
             }
         });
 

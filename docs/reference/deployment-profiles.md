@@ -11,13 +11,13 @@ Engine state — the generation store and the `current` pointer — is reachable
 | Current-generation pointer | keyvalue key | `spec/current` |
 | Generation documents | blobstore container `spec` | `generations/<id>/<doc>.md` |
 
-The host side of the boundary is a backend type implementing `omnia::Backend` (connection options from the environment) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the boundary exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
+The host side of the boundary is a backend type implementing `omnia::Backend` (connection options compiled into the `hosts:` row, or loaded from the environment when the row carries none) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the boundary exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
 
 Loaded components are not engine state: a path- or package-shaped adapter loads through the deployment's `omnia:plugins/loader` capability, whose compiled-in acquirer is a composition in the shipped profile — `MountAcquire` first, reading a local component fresh from the read-only `.` mount on every run, then a wasm-pkg registry acquirer defaulting to `omnia.host` whose fetches cache content-addressed in the project CAS at `.omnia/cache/wasm-pkg` (host-owned, outside the guest-reachable blobstore root; a poisoned entry fails its digest instead of becoming code). Integrity binds the resolved sha256 digest to the exact bytes the host executes, verified against the binding's optional pin, never an engine-owned mutable sidecar. Bare names dispatch to statically admitted guests and do not imply a stored component.
 
 ## The shipped profile: local filesystem
 
-[`src/main.rs`](../../src/main.rs) binds both storage hosts to `omnia_filesystem::Client`: a durable, network-free store rooted at `FILESYSTEM_ROOT` (default `.omnia/storage` under the invocation directory). One invocation directory is one project; isolation between projects is the filesystem root itself. Generations survive restart, and nothing writes the working tree — the `.` mount is read-only.
+[`src/main.rs`](../../src/main.rs) binds both storage hosts to `omnia_filesystem::Client` with the root compiled into the invocation: a durable, network-free store at `.omnia/storage` under the invocation directory. The root is deployment policy, not an environment tunable — retargeting it means shipping a different profile, never setting `FILESYSTEM_ROOT`. One invocation directory is one project; isolation between projects is the filesystem root itself. Generations survive restart, and nothing writes the working tree — the `.` mount is read-only.
 
 ## Project-id-keyed shared backings
 
@@ -29,7 +29,7 @@ The `multi_project_isolation` scenario in [`tests/specify.rs`](../../tests/speci
 
 `omnia-backends` ships host clients that drop into the same `hosts:` table:
 
-| Backend | keyvalue | blobstore | Configuration |
+| Backend | keyvalue | blobstore | Environment configuration |
 | --- | --- | --- | --- |
 | `omnia-filesystem` | yes | yes | `FILESYSTEM_ROOT` |
 | `omnia-redis` | yes | — | `REDIS_URL` |
@@ -37,7 +37,7 @@ The `multi_project_isolation` scenario in [`tests/specify.rs`](../../tests/speci
 | `omnia-mongodb` | — | yes | `MONGODB_URL` |
 | `omnia-azure-blob` | — | yes | `AZURE_BLOB_ENDPOINT` |
 
-Credentials and endpoints live in the host binding's environment, never in engine state or operator files.
+The environment variables apply to a bare `hosts:` row; a row carrying compiled-in connect options (`Backend(options)`, as the shipped profile does for its filesystem root) ignores them. Credentials and endpoints live in the host binding's environment, never in engine state or operator files.
 
 > [!WARNING]
 > Identifier grammar is backend policy. The filesystem backend rejects `/` inside a bucket or container name (path-traversal fencing), so a project-id prefix targeting it needs a single-segment delimiter (for example `<project>--spec`) or per-project roots. The in-memory and remote backends accept `/`-separated identifiers.
