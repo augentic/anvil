@@ -7,6 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
+use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, bad_request, server_error};
 
 use crate::handler::preopen_path;
@@ -24,6 +25,9 @@ pub struct SourceBinding {
     pub adapter: String,
     /// What the adapter extracts.
     pub content: BindingContent,
+    /// Optional sha256 content pin for a local-component adapter,
+    /// verified host-side before validation.
+    pub digest: Option<Digest>,
 }
 
 /// Workspace or inline source content.
@@ -80,6 +84,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
                 key,
                 adapter: value.clone(),
                 content: BindingContent::Workspace(".".to_string()),
+                digest: None,
             },
         )?;
     }
@@ -92,6 +97,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
                 key,
                 adapter: adapter.to_string(),
                 content: BindingContent::Description(text.to_string()),
+                digest: None,
             },
         )?;
     }
@@ -127,12 +133,8 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
              not yet supported — name the adapter without it",
         ));
     }
-    if entry.digest.is_some() {
-        return Err(bad_request!(
-            "source `{name}` sets `digest`; the per-binding content pin is reserved and not yet \
-             supported — name the adapter without it",
-        ));
-    }
+    let selector = AdapterSelector::parse(&entry.adapter)?;
+    let digest = digest(entry, &selector)?;
     let locations = [
         entry.path.is_some(),
         entry.git.is_some(),
@@ -167,17 +169,35 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     };
     Ok(SourceBinding {
         key: name.clone(),
-        adapter: adapter_value(&entry.adapter, base)?,
+        adapter: adapter_value(&selector, &entry.adapter, base)?,
         content,
+        digest,
     })
+}
+
+// The pin binds exact component bytes, so it rides only a selector
+// the loader acquires; registry pins activate with registry
+// acquisition.
+fn digest(entry: &SourceEntry, selector: &AdapterSelector) -> Result<Option<Digest>, Error> {
+    let name = &entry.name;
+    let Some(pin) = entry.digest.as_deref() else {
+        return Ok(None);
+    };
+    if !matches!(selector, AdapterSelector::Component { .. }) {
+        return Err(bad_request!(
+            "source `{name}` sets `digest` on a registry adapter; registry content pins are \
+             reserved and not yet supported — pin a local component path instead",
+        ));
+    }
+    pin.parse().map(Some).map_err(|err| bad_request!("source `{name}`: {err}"))
 }
 
 // A local component selector in the file resolves relative to the
 // file, like Cargo `path` dependencies; other selector kinds pass
 // through unchanged.
-fn adapter_value(raw: &str, base: &Path) -> Result<String, Error> {
-    match AdapterSelector::parse(raw)? {
-        AdapterSelector::Component { path } => Ok(resolved(base, &path)?.display().to_string()),
+fn adapter_value(selector: &AdapterSelector, raw: &str, base: &Path) -> Result<String, Error> {
+    match selector {
+        AdapterSelector::Component { path } => Ok(resolved(base, path)?.display().to_string()),
         _ => Ok(raw.to_string()),
     }
 }

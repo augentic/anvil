@@ -17,7 +17,7 @@ The v1 delivery workflow (plan / refine / execute / status / finalize and the `s
 /emery:specify <adapter>           (every generation run)
 ```
 
-That is the whole shipped surface. The binding list never persists — repeat the adapters on every run, or keep them in an operator-owned `emery.toml` selected with `--config [<path>]` (`--config` alone means the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root file as a fallback). Never hand-edit `.emery/` state (the component cache and generation store); route through the CLI.
+That is the whole shipped surface. The binding list never persists — repeat the adapters on every run, or keep them in an operator-owned `emery.toml` selected with `--config [<path>]` (`--config` alone means the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root file as a fallback). Never hand-edit `.emery/` state (the generation store); route through the CLI.
 
 ## Tracing and output
 
@@ -46,6 +46,7 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 | `specify-source-required` | `emery specify` was run without naming a source, and no project-root `emery.toml` was found | `emery specify <adapter>` (and/or `--description <adapter>=<text>`, or `--config [<path>]`) |
 | `adapter-cli-too-old` | The installed binary is older than an adapter's declared floor | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
 | `spec-not-generated` | `emery show` was run before any generation was committed | `/emery:specify <adapter>` first |
+| `digest-mismatch` | A pinned local component's bytes changed since the pin was committed | Re-verify provenance and update the binding's `digest` in `emery.toml`, or drop the key to re-pin from the reported digest |
 
 ### Reviewing the generated documents
 

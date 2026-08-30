@@ -4,7 +4,8 @@ use std::io::Write;
 
 use emery_adapter::Source;
 use omnia_guest::api::{Context, Handler};
-use omnia_guest::{BlobStore, Error, Model, StateStore};
+use omnia_guest::plugins::Digest;
+use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
@@ -45,6 +46,21 @@ pub struct SpecifyBody {
     /// Diff from the predecessor; absent on the first run.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
+    /// Resolved content digests of loader-loaded local components —
+    /// commit one as its binding's `digest` pin to make the load
+    /// reproducible (trust-on-first-use).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub digests: Vec<SourceDigest>,
+}
+
+/// One loader-resolved source digest reported by `emery specify`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct SourceDigest {
+    /// The binding key.
+    pub source: String,
+    /// The resolved `sha256:<hex>` content digest.
+    pub digest: Digest,
 }
 
 impl Render for SpecifyBody {
@@ -52,6 +68,9 @@ impl Render for SpecifyBody {
         writeln!(w, "committed generation {}", self.generation)?;
         writeln!(w, "  requirements: {}", self.requirements)?;
         writeln!(w, "  sources: {}", self.sources)?;
+        for entry in &self.digests {
+            writeln!(w, "  digest {}: {}", entry.source, entry.digest)?;
+        }
         if let Some(diff) = &self.diff {
             if diff.is_empty() {
                 writeln!(w, "  diff vs {}: none (byte-stable)", diff.from)?;
@@ -72,7 +91,7 @@ impl Render for SpecifyBody {
     }
 }
 
-impl<P: Model + Source + StateStore + BlobStore> Handler<P> for SpecifyInput {
+impl<P: Model + Source + StateStore + BlobStore + Plugins> Handler<P> for SpecifyInput {
     type Error = Error;
     type Output = SpecifyBody;
 
@@ -99,11 +118,21 @@ impl<P: Model + Source + StateStore + BlobStore> Handler<P> for SpecifyInput {
         let committed = home.commit(&set, &observed).await?;
         let diff =
             observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
+        let digests = sets
+            .iter()
+            .filter_map(|source| {
+                source.digest.clone().map(|digest| SourceDigest {
+                    source: source.key.clone(),
+                    digest,
+                })
+            })
+            .collect();
         Ok(SpecifyBody {
             generation: committed.id,
             requirements: rows.len(),
             sources: sets.len(),
             diff,
+            digests,
         })
     }
 }

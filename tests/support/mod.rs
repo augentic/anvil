@@ -13,6 +13,7 @@ use emery_adapter::{DispatchError, Source};
 use emery_engine::cli::{self, CommandResponse};
 use emery_testkit::{Memory, Scripted};
 use omnia_guest::model::{Error, Reply, Request, ToolCall};
+use omnia_guest::plugins::{Digest, Error as LoadError, Plugin, PluginRef, Plugins};
 use omnia_guest::{BlobStore, Model, StateStore};
 use serde_json::Value;
 
@@ -21,6 +22,24 @@ pub const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 
 /// Dispatched `(routed id, input)` pairs, in call order.
 pub type Recorded = Vec<(String, SourceInput)>;
+
+/// A full-length `sha256:` digest from one repeated hex pair.
+pub fn digest(pair: &str) -> Digest {
+    format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
+}
+
+/// Scripted `Plugins`: per-package resolved digests and a record of
+/// every load request. An unscripted package resolves to the request's
+/// own pin, or the fixed `digest("ab")`; a pin that disagrees with the
+/// scripted digest refuses `digest-mismatch`, mirroring the host's
+/// verify-before-validate step.
+#[derive(Clone, Debug, Default)]
+pub struct PluginScript {
+    /// Resolved digests keyed by package identity.
+    pub digests: BTreeMap<String, Digest>,
+    /// Every load request, recorded for call assertions.
+    pub calls: Arc<Mutex<Vec<PluginRef>>>,
+}
 
 /// Scripted `Source`: per-key evidence, per-adapter floors, and a
 /// record of every dispatch. An unscripted key answers the greeting
@@ -66,6 +85,8 @@ pub struct Provider<S = Memory> {
     pub model: Scripted,
     /// The scripted `Source`.
     pub source: SourceScript,
+    /// The scripted `Plugins` loader.
+    pub plugins: PluginScript,
     /// The scripted storage pair.
     pub storage: Arc<S>,
 }
@@ -88,6 +109,7 @@ impl<S> Provider<S> {
         Self {
             model: Scripted::answering(answers),
             source: SourceScript::default(),
+            plugins: PluginScript::default(),
             storage,
         }
     }
@@ -98,6 +120,7 @@ impl<S> Clone for Provider<S> {
         Self {
             model: self.model.clone(),
             source: self.source.clone(),
+            plugins: self.plugins.clone(),
             storage: Arc::clone(&self.storage),
         }
     }
@@ -142,6 +165,29 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
         SourceMetadata {
             emery_floor: self.source.floors.get(name).cloned(),
         }
+    }
+}
+
+impl<S: Send + Sync + 'static> Plugins for Provider<S> {
+    fn load(
+        &self, plugin: &PluginRef,
+    ) -> impl Future<Output = Result<Plugin, LoadError>> + Send {
+        self.plugins.calls.lock().expect("loads").push(plugin.clone());
+        let resolved = self
+            .plugins
+            .digests
+            .get(&plugin.package)
+            .cloned()
+            .or_else(|| plugin.digest.clone())
+            .unwrap_or_else(|| digest("ab"));
+        let outcome = match &plugin.digest {
+            Some(pin) if *pin != resolved => Err(LoadError::DigestMismatch(format!(
+                "package `{}` resolved to {resolved}, which is not the pinned {pin}",
+                plugin.package
+            ))),
+            _ => Ok(Plugin::new(plugin.package.clone(), resolved)),
+        };
+        std::future::ready(outcome)
     }
 }
 

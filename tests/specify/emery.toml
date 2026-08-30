@@ -27,8 +27,9 @@ adapter = "./source.wasm"
 # adapter = "intent@1.0.0"
 # description = "Ship a location-independent spec generator."
 
-# # Local component path as the adapter selector, mirrored into the cache
-# # at ensure. Adapter location and source location are separate axes.
+# # Local component path as the adapter selector, loaded through the
+# # deployment loader and read fresh on every run. Adapter location and
+# # source location are separate axes.
 # [[source]]
 # name = "custom"
 # adapter = "./adapters/custom.wasm"
@@ -40,11 +41,13 @@ adapter = "./source.wasm"
 # adapter = "acme:ledger@2.1.0"
 # registry = "registry.acme.example"
 
-# # Content pin for the adapter bytes. Reserved; refuses typed until
-# # the loader verifies pins.
+# # Content pin for a local component's bytes, verified host-side before
+# # validation; an unpinned load reports its digest in the envelope —
+# # commit it here to pin. On a registry adapter the key stays reserved
+# # until registry acquisition lands.
 # [[source]]
 # name = "pinned"
-# adapter = "acme:ledger@2.1.0"
+# adapter = "./adapters/pinned.wasm"
 # digest = "sha256:9f2c44…"
 
 # # Remote repository, read at the pinned ref over the host-bound read

@@ -14,8 +14,9 @@ use std::sync::Arc;
 use emery_adapter::types::{Authority, ClaimKind, SourceContent};
 use emery_adapter::{DispatchError, types};
 use emery_testkit::{Memory, Namespaced};
+use omnia_guest::plugins::Location;
 use serde_json::Value;
-use support::{Provider, claim, cli, cli_ok, evidence, requirement};
+use support::{Provider, claim, cli, cli_ok, digest, evidence, requirement};
 
 const SPEC_ANSWER: &str = include_str!("specify/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
@@ -34,9 +35,9 @@ fn project_arg(path: &Path) -> String {
         .to_string()
 }
 
-// One `specify` ensures, mirrors, extracts, and commits — no prior
-// verb; `show` renders the committed bytes alone; an identical re-run
-// is byte-stable and says so.
+// One `specify` loads, extracts, and commits — no prior verb; `show`
+// renders the committed bytes alone; an identical re-run is
+// byte-stable and says so.
 #[tokio::test]
 async fn gen_spec() {
     // --------------------------------------------------
@@ -53,15 +54,27 @@ async fn gen_spec() {
     // --------------------------------------------------
     // Act: the first specify.
     // --------------------------------------------------
-    cli_ok(&provider, &["emery", "specify", &component]).await;
+    let resp = cli_ok(&provider, &["emery", "specify", &component]).await;
 
     // --------------------------------------------------
-    // Observe: the mirror, the pointer, and the generation.
+    // Observe: the load, the pointer, and the generation.
     // --------------------------------------------------
-    assert_eq!(
-        provider.storage.object("adapters", "source.wasm").as_deref(),
-        Some(b"\0asm-stub".as_slice()),
-        "the component is mirrored into the cache container"
+    let loads = provider.plugins.calls.lock().expect("loads");
+    let request = loads.first().expect("one load request");
+    assert_eq!(request.package, "source:source", "the routed id is the loaded package identity");
+    let Location::Path(path) = &request.location else {
+        panic!("a local component loads by path");
+    };
+    assert!(path.ends_with("source.wasm"), "the preopen-relative path rides the request: {path}");
+    assert!(request.digest.is_none(), "an unpinned binding requests no digest");
+    drop(loads);
+    // TOFU: the resolved digest rides the success envelope for the
+    // operator to commit as the binding's pin.
+    let stdout = String::from_utf8_lossy(&resp.stdout);
+    assert!(stdout.contains(&format!("digest source: {}", digest("ab"))), "{stdout}");
+    assert!(
+        provider.storage.objects("adapters").is_empty(),
+        "nothing mirrors into engine storage; the loader reads the file fresh"
     );
     assert!(provider.storage.state("project.yaml").is_none(), "no project record exists");
     let id = pointer(&provider.storage);
@@ -100,11 +113,16 @@ async fn from_file() {
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("sources: 1"), "{stdout}");
-    assert_eq!(
-        provider.storage.object("adapters", "source.wasm").as_deref(),
-        Some(b"\0asm-stub".as_slice()),
-        "the file-relative component is mirrored"
+    let loads = provider.plugins.calls.lock().expect("loads");
+    let request = loads.first().expect("one load request");
+    let Location::Path(path) = &request.location else {
+        panic!("a local component loads by path");
+    };
+    assert!(
+        path.ends_with("source.wasm") && !path.starts_with("./"),
+        "the file-relative selector resolves against the config directory: {path}"
     );
+    drop(loads);
 
     let id = pointer(&provider.storage);
     let spec = generation(&provider.storage, &id, "spec.md");
@@ -516,14 +534,23 @@ async fn config_file_refused() {
             "bad_request",
             "`registry`",
         ),
-        // The per-binding `digest` content pin is reserved until the
-        // loader threads it (compose-seam C1).
+        // A `digest` pin binds exact local-component bytes; on a
+        // registry adapter it stays reserved until registry
+        // acquisition lands (compose-seam C2).
         (
             "[[source]]\nname = \"pinned\"\nadapter = \"acme:ledger@2.1.0\"\n\
              digest = \"sha256:9f2c44aa\"\n",
             1,
             "bad_request",
-            "`digest`",
+            "registry adapter",
+        ),
+        // A malformed pin on a local component refuses before any load.
+        (
+            "[[source]]\nname = \"pinned\"\nadapter = \"./source.wasm\"\n\
+             digest = \"sha256:9f2c44aa\"\n",
+            1,
+            "bad_request",
+            "64 hex characters",
         ),
         (
             "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\ngit = \"https://github.com/acme/api@v2\"\n",
@@ -632,36 +659,21 @@ async fn binding_paths() {
     provider.model.assert_exhausted();
 }
 
-// The mirrored component keeps a recorded selector resolvable after
-// the operator deletes the source file.
+// Local components are read fresh on every run — nothing mirrors, so
+// a re-run after the operator deletes the source file refuses typed.
 #[tokio::test]
-async fn mirror_survives_removal() {
+async fn deleted_component_refused() {
     let workspace = project_tempdir();
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
     let component = project_arg(&component);
 
-    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", &component]).await;
 
     fs::remove_file(&component).expect("remove the operator's file");
-    cli_ok(&provider, &["emery", "specify", &component]).await;
-
-    assert!(
-        provider.storage.object("adapters", "source.wasm").is_some(),
-        "the mirror serves the recorded selector"
-    );
+    fail(&provider, &["emery", "specify", &component], 2, "not_found").await;
     provider.model.assert_exhausted();
-}
-
-// Mirror recovery distinguishes an unavailable cache from a confirmed
-// absent mirror and therefore never falls through to a path error.
-#[tokio::test]
-async fn mirror_probe_fault() {
-    let provider = Provider::idle();
-    provider.storage.fail_blob_has("cache backend unavailable");
-
-    fail(&provider, &["emery", "specify", "./missing.wasm"], 3, "server_error").await;
 }
 
 // A path that is not a `.wasm` component file refuses typed.
@@ -672,6 +684,82 @@ async fn component_missing() {
     for path in ["/tmp/missing.wasm", "../missing.wasm"] {
         fail(&provider, &["emery", "specify", path], 1, "bad_request").await;
     }
+}
+
+// A pin that matches the resolved bytes loads and extracts, and the
+// success envelope confirms the digest beside the binding key.
+#[tokio::test]
+async fn pinned_component() {
+    let dir = project_tempdir();
+    fs::write(dir.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
+    let config = dir.path().join("emery.toml");
+    fs::write(
+        &config,
+        format!(
+            "[[source]]\nname = \"local\"\nadapter = \"./source.wasm\"\ndigest = \"{}\"\n",
+            digest("ab")
+        ),
+    )
+    .expect("write emery.toml");
+    let config = project_arg(&config);
+
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [local]");
+    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+
+    let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
+    let stdout = String::from_utf8_lossy(&resp.stdout);
+    assert!(stdout.contains(&format!("digest local: {}", digest("ab"))), "{stdout}");
+
+    let loads = provider.plugins.calls.lock().expect("loads");
+    let request = loads.first().expect("one load request");
+    assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
+    drop(loads);
+    provider.model.assert_exhausted();
+}
+
+// A pinned local component must hash to exactly the pinned bytes: the
+// loader's typed mismatch refusal surfaces on the exit contract before
+// anything extracts or commits.
+#[tokio::test]
+async fn digest_mismatch_refused() {
+    let dir = project_tempdir();
+    fs::write(dir.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
+    let config = dir.path().join("emery.toml");
+    fs::write(
+        &config,
+        format!(
+            "[[source]]\nname = \"local\"\nadapter = \"./source.wasm\"\ndigest = \"{}\"\n",
+            digest("11")
+        ),
+    )
+    .expect("write emery.toml");
+    let config = project_arg(&config);
+
+    let mut provider = Provider::idle();
+    provider.plugins.digests.insert("source:source".to_string(), digest("ab"));
+
+    fail(&provider, &["emery", "specify", "--config", &config], 1, "digest-mismatch").await;
+    assert!(provider.storage.is_empty(), "a refused run writes nothing");
+}
+
+// TOFU: an unpinned local component reports its resolved digest in the
+// JSON success envelope so the operator can commit it as the pin.
+#[tokio::test]
+async fn tofu_digest_reported() {
+    let workspace = project_tempdir();
+    let component = workspace.path().join("source.wasm");
+    fs::write(&component, b"\0asm-stub").expect("stub wasm");
+    let component = project_arg(&component);
+
+    let mut provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
+    provider.plugins.digests.insert("source:source".to_string(), digest("cd"));
+
+    let resp = cli(&provider, &["emery", "--format", "json", "specify", &component]).await;
+    assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
+    let envelope: Value = serde_json::from_slice(&resp.stdout).expect("one JSON envelope");
+    assert_eq!(envelope["digests"][0]["source"], "source", "{envelope}");
+    assert_eq!(envelope["digests"][0]["digest"], digest("cd").as_str(), "{envelope}");
+    provider.model.assert_exhausted();
 }
 
 // GitHub URLs are refused: a source checkout is not an adapter.
@@ -754,8 +842,6 @@ async fn multi_project_isolation() {
     // Every write landed under its project prefix; nothing landed flat.
     assert!(shared.state("spec/current").is_none(), "no unprefixed pointer exists");
     assert!(shared.objects("spec").is_empty(), "no unprefixed generation exists");
-    assert!(shared.object("alpha/adapters", "source.wasm").is_some());
-    assert!(shared.object("beta/adapters", "source.wasm").is_some());
 
     let id_alpha = project_pointer(&shared, "alpha");
     let id_beta = project_pointer(&shared, "beta");

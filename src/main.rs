@@ -4,6 +4,7 @@ cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         fn main() {}
     } else {
+        use omnia::MountAcquire;
         use omnia_cursor::Client as Cursor;
         use omnia_filesystem::Client as Filesystem;
         use omnia_wasi_blobstore::WasiBlobstore;
@@ -22,7 +23,10 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: "." },
             ],
-            plugins: ["emery:adapter/source@0.1.0"],
+            plugins: {
+                interfaces: ["emery:adapter/source@0.1.0"],
+                acquire: MountAcquire,
+            },
             hosts: {
                 WasiOtel: OtelDefault,
                 WasiModel: Cursor,

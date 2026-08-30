@@ -6,7 +6,7 @@ cfg_if::cfg_if! {
         use omnia_guest::api::command;
 
         omnia_guest::provider! {
-            struct Provider: Model + StateStore + BlobStore;
+            struct Provider: Model + StateStore + BlobStore + Plugins;
         }
         impl emery_adapter::Source for Provider {}
 

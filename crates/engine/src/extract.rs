@@ -7,7 +7,8 @@ use emery_adapter::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
 use emery_adapter::{DispatchError, Source};
-use omnia_guest::{BlobStore, Error, bad_gateway, bad_request};
+use omnia_guest::plugins::Digest;
+use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
 use crate::handler::preopen_path;
 use crate::resolve::{self, AdapterSelector};
@@ -34,30 +35,34 @@ pub struct SourceSet {
     pub authority: Authority,
     /// The validated claims.
     pub claims: Vec<Claim>,
+    /// Resolved content digest of a loader-loaded local component.
+    pub digest: Option<Digest>,
 }
 
 /// Resolves, extracts, and validates every source binding.
 ///
-/// Resolution mirrors a local component into the cache on the first
-/// `specify` that names it.
+/// A local component loads through the deployment's loader — read
+/// fresh on every run, its optional pin verified host-side — before
+/// extract dispatch.
 ///
 /// # Errors
 ///
 /// Propagates resolution, extract, and [`validate_set`] failures.
-pub async fn extract_all<P: Source + BlobStore>(
+pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
     for binding in bindings {
         let selector = AdapterSelector::parse(&binding.adapter)?;
-        let id = resolve::source(provider, &selector).await?;
+        let resolved = resolve::source(provider, &selector, binding.digest.as_ref()).await?;
         let input = input_for(binding)?;
-        let evidence = dispatch(provider, &id, &input).await?;
+        let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
-            adapter: id,
+            adapter: resolved.id,
             authority: evidence.authority,
             claims: evidence.claims,
+            digest: resolved.digest,
         };
         validate_set(&set)?;
         sets.push(set);
