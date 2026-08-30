@@ -217,12 +217,12 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
-# omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
-# omnia-filesystem = { git = "https://github.com/augentic/omnia-backends" }
-# omnia-wasm-pkg = { git = "https://github.com/augentic/omnia-backends" }
-omnia-cursor = { path = "../omnia-backends/crates/cursor" }
-omnia-filesystem = { path = "../omnia-backends/crates/filesystem" }
-omnia-wasm-pkg = { path = "../omnia-backends/crates/wasm-pkg" }
+omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
+omnia-filesystem = { git = "https://github.com/augentic/omnia-backends" }
+omnia-wasm-pkg = { git = "https://github.com/augentic/omnia-backends" }
+# omnia-cursor = { path = "../omnia-backends/crates/cursor" }
+# omnia-filesystem = { path = "../omnia-backends/crates/filesystem" }
+# omnia-wasm-pkg = { path = "../omnia-backends/crates/wasm-pkg" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
