@@ -28,7 +28,6 @@ omnia-wasi-blobstore.workspace = true
 omnia-wasi-keyvalue.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
-omnia-wasm-pkg.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 cfg-if.workspace = true
@@ -197,7 +196,6 @@ omnia-wasi-otel = "0.35.0"
 
 omnia-cursor = "0.29.0"
 omnia-filesystem = "0.29.0"
-omnia-wasm-pkg = "0.29.0"
 
 [patch.crates-io]
 omnia = { git = "https://github.com/augentic/omnia" }
@@ -219,10 +217,8 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
 
 omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
 omnia-filesystem = { git = "https://github.com/augentic/omnia-backends" }
-omnia-wasm-pkg = { git = "https://github.com/augentic/omnia-backends" }
 # omnia-cursor = { path = "../omnia-backends/crates/cursor" }
 # omnia-filesystem = { path = "../omnia-backends/crates/filesystem" }
-# omnia-wasm-pkg = { path = "../omnia-backends/crates/wasm-pkg" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
