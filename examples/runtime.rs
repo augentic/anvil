@@ -8,7 +8,6 @@ cfg_if::cfg_if! {
         use std::future::Future;
         use std::sync::{Arc, Mutex};
 
-        use omnia::MountAcquire;
         use omnia_filesystem::{Client as Filesystem, ConnectOptions as FilesystemOptions};
         use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_keyvalue::WasiKeyValue;
@@ -26,9 +25,13 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: "." },
             ],
+            // Path-only and cacheless: the mock component reads fresh from
+            // the invocation directory on every run that names it.
             plugins: {
                 interfaces: ["emery:adapter/source@0.1.0"],
-                acquire: MountAcquire,
+                locations: [
+                    { name: ".", path: "." },
+                ],
             },
             hosts: {
                 WasiOtel: OtelDefault,
