@@ -31,7 +31,7 @@ pub fn digest(pair: &str) -> Digest {
 /// Scripted `Plugins`: per-package outcomes and a record of every
 /// load request. An unscripted package resolves to the request's own
 /// pin, or the fixed `digest("ab")`; a pin that disagrees with the
-/// scripted digest refuses `digest-mismatch`, mirroring the host's
+/// scripted digest refuses `refused`, mirroring the host's
 /// verify-before-validate step; a scripted failure refuses typed
 /// before any digest logic.
 #[derive(Clone, Debug, Default)]
@@ -187,7 +187,7 @@ impl<S: Send + Sync + 'static> Plugins for Provider<S> {
             .or_else(|| plugin.digest.clone())
             .unwrap_or_else(|| digest("ab"));
         let outcome = match &plugin.digest {
-            Some(pin) if *pin != resolved => Err(LoadError::DigestMismatch(format!(
+            Some(pin) if *pin != resolved => Err(LoadError::Refused(format!(
                 "package `{}` resolved to {resolved}, which is not the pinned {pin}",
                 plugin.package
             ))),
