@@ -1,0 +1,11 @@
+# Operator-owned binding list for the mock-source journey. The engine
+# never writes this file. From the repository root:
+#   cargo run --example runtime -- specify --config examples/emery.toml
+#
+# Build the component first (`make source`, or
+# `cargo build --example source --target wasm32-wasip2 --release`).
+# The adapter path is relative to this file.
+
+[[source]]
+name = "greeting"
+adapter = "../target/wasm32-wasip2/release/examples/source.wasm"

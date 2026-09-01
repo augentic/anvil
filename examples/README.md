@@ -16,13 +16,13 @@ cargo build --example source --target wasm32-wasip2 --release
 # run the host (argv after `--` is the emery guest's)
 export CURSOR_API_KEY=<Cursor API key>
 export RUST_LOG=info,omnia_cursor=debug,cursor_wasm=debug,opentelemetry_sdk=off
-cargo run --example runtime -- specify source
+cargo run --example runtime -- specify --config examples/emery.toml
 
 # review the committed spec
 cargo run --example runtime -- show spec
 ```
 
-The `--` is cargo's separator; the guest receives `specify source` directly. There is no host `run` subcommand.
+The `--` is cargo's separator; the guest receives `specify --config examples/emery.toml` directly. There is no host `run` subcommand. The config binds the built mock component by path (`[emery.toml](emery.toml)`); a bare name still only dispatches guests declared in the runtime invocation, and this host declares none.
 
 ## Installing cursor-sdk-bridge
 

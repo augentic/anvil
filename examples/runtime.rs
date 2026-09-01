@@ -1,6 +1,6 @@
 //! Scripted-model host for the mock-source journey: the engine loads the
-//! built mock component by path through the deployment loader, e.g.
-//! `specify ./target/wasm32-wasip2/release/examples/source.wasm`.
+//! built mock component through the deployment loader. Name the binding
+//! list with `specify --config examples/emery.toml`.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
