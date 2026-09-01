@@ -804,7 +804,7 @@ async fn digest_mismatch_refused() {
     let mut provider = Provider::idle();
     provider.plugins.digests.insert("source:source".to_string(), digest("ab"));
 
-    fail(&provider, &["emery", "specify", "--config", &config], 1, "digest-mismatch").await;
+    fail(&provider, &["emery", "specify", "--config", &config], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
@@ -933,7 +933,7 @@ async fn pinned_package() {
 
     let mut provider = Provider::idle();
     provider.plugins.digests.insert("emery:demo@1.2.0".to_string(), digest("ab"));
-    fail(&provider, &["emery", "specify", "--config", &config], 1, "digest-mismatch").await;
+    fail(&provider, &["emery", "specify", "--config", &config], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
@@ -963,25 +963,25 @@ async fn shared_adapter_conflicting_pin() {
 }
 
 // Load failures land on the exit contract: an acquisition (registry
-// or network) failure is the loader's `acquire-failed` on the
+// or network) failure is the loader's `unavailable` on the
 // BadGateway exit; a component refused host-side validation is
-// `artifact-refused` on the BadRequest exit.
+// `refused` on the BadRequest exit.
 #[tokio::test]
 async fn load_failures_typed() {
     let mut provider = Provider::idle();
     provider.plugins.failures.insert(
         "emery:demo@1.2.0".to_string(),
-        LoadError::AcquireFailed("resolving `emery:demo@1.2.0`: endpoint unreachable".to_string()),
+        LoadError::Unavailable("resolving `emery:demo@1.2.0`: endpoint unreachable".to_string()),
     );
-    fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 4, "acquire-failed").await;
+    fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 4, "unavailable").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 
     let mut provider = Provider::idle();
     provider.plugins.failures.insert(
         "emery:demo@1.2.0".to_string(),
-        LoadError::ArtifactRefused("not a raw wasm component".to_string()),
+        LoadError::Refused("not a raw wasm component".to_string()),
     );
-    fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 1, "artifact-refused").await;
+    fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 

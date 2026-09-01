@@ -34,4 +34,4 @@ Specify dispatches model judgment and can take a while on large workspaces; it r
 
 - Surface the CLI output verbatim — the success envelope names the committed generation, the re-mine diff against the superseded one, and the resolved digest of every loader-loaded adapter (offer the digest to the operator as the binding's `digest` pin for reproducible loads).
 - Review is `emery show spec` / `emery show design` — never read or edit `.emery/` state by hand.
-- On non-zero exit, surface the structured error and stop — never hand-roll spec documents. A `digest-mismatch` failure means the component's bytes changed since the pin was committed; relay the hint and let the operator decide.
+- On non-zero exit, surface the structured error and stop — never hand-roll spec documents. A `refused` failure means the loader rejected the request (a pin that no longer matches, a malformed pin, an invalid artifact, or an unserved location); relay the hint and let the operator decide.
