@@ -186,6 +186,7 @@ emery-prose = { path = "crates/prose" }
 emery-testkit = { path = "crates/testkit" }
 
 omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
+omnia-core = { version = "0.36.0" }
 omnia-guest = "0.36.0"
 omnia-guest-macros = "0.36.0"
 omnia-host-macros = "0.36.0"
@@ -200,6 +201,7 @@ omnia-filesystem = "0.29.0"
 
 [patch.crates-io]
 omnia = { git = "https://github.com/augentic/omnia" }
+omnia-core = { git = "https://github.com/augentic/omnia" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia" }
