@@ -20,7 +20,7 @@ The `source` and `runtime` examples remain the in-tree component-shape fixture; 
 
 ### The mock source example
 
-The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor. The `runtime` example hosts it the way a static deployment declares adapter guests (`source:source`). Do not add another mock adapter, mock model, or mock-adapter copy — extend the example. The root suites' scripted `Source` (`tests/support/mod.rs`) is a capability double, not an adapter: it never parses a workspace and carries no extraction behavior beyond the scenario's scripted evidence.
+The `source` example (`examples/source.rs`) is the one mock source adapter: a `emery_adapter::SourceAdapter` implementor whose extract calls the host `Model`. The `runtime` example hosts it with the Cursor backend and a path-only plugin `locations:` list. Do not add another mock adapter, mock model, or mock-adapter copy — extend the example. The root suites' scripted `Source` (`tests/support/mod.rs`) is a capability double, not an adapter: it never parses a workspace and carries no extraction behavior beyond the scenario's scripted evidence.
 
 Capability doubles live in `emery-testkit`: the FIFO request-recording `Scripted` model (a native `Model` implementation the root suites script directly) and the scripted storage pair (`Memory`, `Namespaced`). Scenario doubles — the scripted `Source` and the shared provider — live in the root package's `tests/support/mod.rs`. Suites own only scenario content and assertions.
 

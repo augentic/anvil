@@ -1,11 +1,61 @@
-# Operator-owned binding list for the mock-source journey. The engine
-# never writes this file. From the repository root:
-#   cargo run --example runtime -- specify --config examples/emery.toml
+# Emery configuration.
 #
-# Build the component first (`make source`, or
-# `cargo build --example source --target wasm32-wasip2 --release`).
-# The adapter path is relative to this file.
+# Each [[source]] entry binds one source, in declaration order; `name`
+# is the binding key. Exactly one content key — `path` or `description`
+# (omitted means the workspace lend at `.`). `path` and a local
+# component `adapter` resolve relative to this file.
 
+# Live journey: local mock component + inline description.
 [[source]]
 name = "greeting"
 adapter = "../target/wasm32-wasip2/release/examples/source.wasm"
+description = "GET /greeting returns the static string 'hello'."
+# digest = "sha256:9f2c44…" # pin the component bytes; an unpinned run reports this in the envelope
+
+# # Workspace lend of the invocation directory (the default: path = ".").
+# [[source]]
+# name = "docs"
+# adapter = "emery:documentation@1.2.0"
+
+# # Local path, resolved relative to this file. The name is the binding
+# # key, so one adapter may bind several roots.
+# [[source]]
+# name = "api-surface"
+# adapter = "typescript"
+# path = "packages/api/src"
+
+# # Inline description instead of a filesystem view — the file form of
+# # `--description`. First-party shorthand (`intent@1.0.0` → `emery:intent@1.0.0`).
+# [[source]]
+# name = "intent"
+# adapter = "intent@1.0.0"
+# description = "Ship a location-independent spec generator."
+
+# # Local component path as the adapter selector, loaded through the
+# # deployment loader and read fresh on every run. Adapter location and
+# # source location are separate axes.
+# [[source]]
+# name = "custom"
+# adapter = "./adapters/custom.wasm"
+
+# # Registry endpoint override for a package-shaped adapter; omitted,
+# # the acquirer's compiled-in default endpoint serves the fetch.
+# [[source]]
+# name = "third-party"
+# adapter = "acme:ledger@2.1.0"
+# registry = "registry.acme.example"
+# digest = "sha256:55c29a…"
+
+# # Remote repository, read at the pinned ref over the host-bound read
+# # grant — never downloaded. Reserved; refuses typed until the
+# # read-view grant exists.
+# [[source]]
+# name = "upstream-api"
+# adapter = "documentation"
+# git = "https://github.com/acme/api@v2.3.0"
+
+# # Remote resource, read live at extract time. Reserved, as above.
+# [[source]]
+# name = "api-contract"
+# adapter = "documentation"
+# url = "https://example.com/spec/openapi.yaml"

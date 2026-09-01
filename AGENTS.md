@@ -42,7 +42,7 @@ emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src
 ```text
 src/               shipped binary (omnia::runtime!, static CWD-rooted deployment, filesystem-backed keyvalue/blobstore hosts) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run)
 crates/            the workspace crates above
-examples/          mock source adapter + static runtime host (root-package examples)
+examples/          mock source adapter + cursor-bound runtime host (root-package examples)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:specify skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
@@ -85,7 +85,7 @@ make test     # cargo nextest run --locked --workspace --all-features --no-tests
 make lint     # clippy --workspace --all-targets --all-features -- -D warnings
 make fmt      # nightly cargo fmt --all
 make source   # build the mock source example (wasm32-wasip2, release)
-make runtime  # build the scripted-model runtime example
+make runtime  # build the cursor-bound runtime example
 ```
 
 Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/emery` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).

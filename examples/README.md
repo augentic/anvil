@@ -1,6 +1,6 @@
 # Mock Source Example
 
-Static host for the mock source adapter: `specify` extracts a deterministic greeting claim, synthesises from canned answers, and commits a generation.
+Live `specify` journey via [omnia-cursor](https://github.com/augentic/omnia-backends/tree/main/crates/cursor): the mock source extracts a greeting claim through the host model, the engine synthesises `spec.md` / `design.md`, and the generation commits.
 
 ## Prerequisites
 
@@ -13,16 +13,17 @@ Static host for the mock source adapter: `specify` extracts a deterministic gree
 # build the mock source component
 cargo build --example source --target wasm32-wasip2 --release
 
-# run the host (argv after `--` is the emery guest's)
+# --debug => export RUST_LOG=info,omnia_cursor=debug,cursor_wasm=debug,opentelemetry_sdk=off
 export CURSOR_API_KEY=<Cursor API key>
-export RUST_LOG=info,omnia_cursor=debug,cursor_wasm=debug,opentelemetry_sdk=off
-cargo run --example runtime -- specify --config examples/emery.toml
+cargo run --example runtime -- --debug specify --config examples/emery.toml
 
 # review the committed spec
-cargo run --example runtime -- show spec
+cargo run --example runtime -- --debug show spec
 ```
 
-The `--` is cargo's separator; the guest receives `specify --config examples/emery.toml` directly. There is no host `run` subcommand. The config binds the built mock component by path (`[emery.toml](emery.toml)`); a bare name still only dispatches guests declared in the runtime invocation, and this host declares none.
+The config binds the built mock component by path (`[emery.toml](emery.toml)`) and supplies the greeting brief as an inline `description`, so extract is function-tool-only (the adapter's `list_docs` / `read_doc` closure, no workspace lend). A bare name still only dispatches guests declared in the runtime invocation, and this host declares none.
+
+Extract and synthesis both complete through the Cursor backend. The mock guest answers reference-tool calls in-process the same way the [omnia-cursor example](https://github.com/augentic/omnia-backends/tree/main/examples/cursor) answers `lifecycle`.
 
 ## Installing cursor-sdk-bridge
 
