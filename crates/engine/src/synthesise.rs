@@ -253,7 +253,7 @@ fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
         if requirement.id != row.id {
             return Err(mismatch(&format!("expected `{}`, found `{}`", row.id, requirement.id)));
         }
-        // Headings are reconciliation and re-mine-diff identity.
+        // headings must be reconciliation and re-mine-diff identity
         if requirement.name != row.subject {
             return Err(mismatch(&format!(
                 "`{}` must head its subject `{}`, found `{}`",

@@ -27,13 +27,14 @@ Artifact authority is unchanged in spirit: when authoritative inputs are incompl
 
 ## The Rust workspace
 
-Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_adapter::`, `emery_engine::`, …). The root package and `emery-testkit` stay `publish = false`.
+Leaf → root. Each publishing package is `emery-<crate>` on crates.io; Rust `use` paths follow the package name (`emery_adapter::`, `emery_engine::`, …). The root package, `emery-testkit`, and the mock `source` crate stay `publish = false`.
 
 ```text
 adapter      # the adapter SDK — the SourceAdapter operations trait (extract + metadata + docs), the WIT package + source! export macro, the Source capability (wasm32 defaults over the engine guest's source::import wrappers; bare natively so tests script Source), WIT types, embedded prose registry + the reference tool closure (list_docs / read_doc over the embedded docs)
 engine       # the spec generator — per-run source bindings (argv + emery.toml loaders + root discovery), specify + show handlers, extract leg (resolve + required-extras gate) over the provider's Source capability, reconcile/synthesise (embedded synthesis prose), the fail-closed spec AST, the generation-pointer output home; plus the ported kernels: emery_engine::resolve (selector parsing, loader-backed local-component loading over the Plugins capability, the adapter floor gate) and emery_engine::handler (preopen-relative path normalization, Render); plus the CLI surface (emery_engine::cli — clap grammar over Handler inputs: specify + show + completions, Client dispatch, output projection, the exit contract)
 prose        # build-dependency crate — embed-time prompt-corpus walk + link check
 testkit      # unpublished — scripted capability doubles for native tests: the FIFO request-recording `Scripted` model plus the StateStore/BlobStore pair (`Memory`, `Namespaced`); not a production crate
+source       # unpublished mock greeting adapter under examples/source — SourceAdapter + embedded prose + fixture tree; not a production crate
 emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src/lib.rs — bare model provider, wasi:cli/run) + shipped runtime (src/main.rs, one omnia::runtime! embedding $OUT_DIR/emery.cwasm; static, CWD-rooted deployment policy inline — the invocation directory mounts read-only as `.`, the wasi:keyvalue/wasi:blobstore hosts bind the generation state to the durable omnia-filesystem store (compiled-in root `.omnia/storage`), and the plugins block declares the source seam with the declarative locations list: the `.` path root, so local `.wasm` adapters load fresh each run, then the omnia.host registry endpoint with cache: Filesystem — the project CAS under the same durable store at `.omnia/storage/plugins/` — for exact package references; bare names still dispatch statically declared guests)
 ```
 
@@ -42,7 +43,7 @@ emery (root) # Omnia deployment unit under src/: wasm32 engine guest cdylib (src
 ```text
 src/               shipped binary (omnia::runtime!, static CWD-rooted deployment, filesystem-backed keyvalue/blobstore hosts) + wasm32 engine guest cdylib (bare model provider, wasi:cli/run)
 crates/            the workspace crates above
-examples/          mock source adapter + cursor-bound runtime host (root-package examples)
+examples/          unpublished mock source crate (`source/`) + cursor-bound runtime host (root-package example)
 wit/               the emery:adapter WIT package (source-adapter world) + README
 plugins/emery/     Cursor plugin: /emery:specify skill wrapper, rules, manifest
 docs/              Developer Guide (mdBook; reference + contributing + standards only)
@@ -67,7 +68,7 @@ Omnia default codes are snake_case (`bad_request`, `not_found`, `server_error`, 
 Emery strictly enforces a **root-led integration posture** (DWN-style):
 
 - The root `tests/` scenario suites are the default home for every CLI-reachable behavior: `tests/specify.rs` (the `specify` → `show` product arc), `tests/command.rs` (the CLI wire contract), and `tests/plugin.rs` (plugin-rule mentions vs the shipped grammar) drive the in-process command router over scripted capabilities (`tests/support/mod.rs`) and read like usage documentation.
-- Crate suites in `crates/<name>/tests/` survive only for independently useful library contracts (the adapter SDK, prose) or product invariants impractical to arrange through the entry points; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
+- Crate suites in `crates/<name>/tests/` and `examples/source/tests/` survive only for independently useful library contracts (the adapter SDK, prose, the mock source's extract trait) or product invariants impractical to arrange through the entry points; unit tests are near-zero, reserved for genuinely CLI-unreachable branches.
 - Default to deletion; do not widen public APIs to test private kernels. `make cov` (workspace-wide) is the brake; `CRATE=emery-<crate> make cov-crate` audits one leaf contract.
 - One fast rung: the native suites (`make test`, per push) over scripted `Model` + `Source` + `Plugins` + storage (`StateStore`/`BlobStore`); engine state is asserted through the scripted store and the envelope, never the filesystem. The v1 eval and wasm-example rungs are archived at `v1`. No test builds or spawns the mock source component.
 
@@ -84,7 +85,7 @@ make links    # Developer Guide link integrity (mdbook build docs, mdbook-linkch
 make test     # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 make lint     # clippy --workspace --all-targets --all-features -- -D warnings
 make fmt      # nightly cargo fmt --all
-make source   # build the mock source example (wasm32-wasip2, release)
+make source   # build the mock source crate (wasm32-wasip2, release)
 make runtime  # build the cursor-bound runtime example
 ```
 

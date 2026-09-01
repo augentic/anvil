@@ -5,12 +5,11 @@
 # (omitted means the workspace lend at `.`). `path` and a local
 # component `adapter` resolve relative to this file.
 
-# Live journey: local mock component + inline description.
+# Live journey: local mock component + its fixture tree.
 [[source]]
-name = "greeting"
-adapter = "../target/wasm32-wasip2/release/examples/source.wasm"
-description = "GET /greeting returns the static string 'hello'."
-# digest = "sha256:9f2c44…" # pin the component bytes; an unpinned run reports this in the envelope
+name = "docs"
+adapter = "../target/wasm32-wasip2/release/adapter.wasm"
+path = "docs/"
 
 # # Workspace lend of the invocation directory (the default: path = ".").
 # [[source]]

@@ -37,6 +37,7 @@ omnia-guest.workspace = true
 wasip3.workspace = true
 
 [build-dependencies]
+emery-prose.workspace = true
 omnia.workspace = true
 
 [dev-dependencies]
@@ -51,10 +52,8 @@ emery-engine.workspace = true
 omnia-guest.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 
-[[example]]
-name = "source"
-path = "examples/source.rs"
-crate-type = ["cdylib"]
+# [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+# emery-testkit.workspace = true
 
 [[example]]
 name = "runtime"
@@ -63,13 +62,8 @@ path = "examples/runtime.rs"
 [lints]
 workspace = true
 
-[package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
-bin-dir = "{ bin }{ binary-ext }"
-pkg-fmt = "tgz"
-
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "examples/adapter"]
 
 [workspace.package]
 authors = ["Augentic"]

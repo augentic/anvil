@@ -1,82 +1,32 @@
-//! Mock source adapter: extract calls the host model over a greeting brief.
-#![cfg(target_arch = "wasm32")]
+//! Mock greeting source: extract mines the bound fixture or brief.
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::registry::Doc;
 use emery_adapter::types::{Context, Error, Evidence, SourceContent, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, repaired};
 
-// This development-only identity must never match a release pin.
+use crate::registry;
+
+/// Extracts the greeting fixture into structured claims.
 #[derive(Clone, Copy, Debug)]
-struct Mock;
+pub struct Adapter;
 
-emery_adapter::source!(Mock);
-
-const EXTRACT: &str = r#"# source.extract
-
-Emit one `Evidence` document from the bound greeting brief.
-
-Read `reference.md` via `read_doc` before answering.
-
-## Claim kinds
-
-| Kind | Required body field | When to emit |
-|---|---|---|
-| `requirement` | `statement` | The one greeting behaviour the brief (or the reference) states. |
-
-Do not invent a `criterion`. A `requirement` without `statement` fails the run closed.
-
-## Output contract
-
-```json
-{
-  "authority": "documentation",
-  "claims": [
-    {
-      "kind": "requirement",
-      "id": "greeting.behaviour",
-      "statement": "GET /greeting returns the static string 'hello'."
-    }
-  ]
-}
-```
-
-The caller persists the document; do not write it yourself.
-"#;
-
-const REFERENCE: &str = "\
-# Greeting source
-
-The mock source documents one behaviour: GET /greeting returns the \
-static string 'hello'. Requirement ids stay `greeting.behaviour`.
-";
-
-const DOCS: &[Doc] = &[
-    Doc {
-        path: "prompts/extract.md",
-        body: EXTRACT,
-    },
-    Doc {
-        path: "reference.md",
-        body: REFERENCE,
-    },
-];
-
-impl SourceAdapter for Mock {
-    const IDENTITY: &str = "source@0.1.0";
+impl SourceAdapter for Adapter {
+    // Development-only: must never match a release pin.
+    const IDENTITY: &str = concat!("source@", env!("CARGO_PKG_VERSION"));
 
     fn metadata() -> SourceMetadata {
         SourceMetadata { emery_floor: None }
     }
 
     fn docs() -> &'static [Doc] {
-        DOCS
+        registry::docs()
     }
 
     async fn extract<P: Model>(
         model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
-        let system = EXTRACT.to_string();
+        let system = registry::body("prompts/extract.md").to_string();
         let user = format!(
             "Extract the claim set of the greeting source bound to adapter `{id}` \
              (source key `{key}`).\n\n\
@@ -105,8 +55,10 @@ fn content_note(input: &SourceInput) -> Result<String, Error> {
             ))
         }
         SourceContent::Workspace(view) => Ok(format!(
-            "`$SOURCE_DIR` is the read-only view at `{}`. Prefer the bound tree; \
-             fall back to `reference.md` when the tree does not state a greeting.",
+            "`$SOURCE_DIR` is the read-only view at `{}` — the greeting tree the \
+             prompt walks. Prefer the bound tree; fall back to `references/greeting.md` \
+             when the tree does not state a greeting. Nothing outside it is reachable; \
+             extract mines only this source.",
             view.root
         )),
     }

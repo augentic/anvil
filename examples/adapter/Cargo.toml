@@ -1,0 +1,25 @@
+[package]
+name = "adapter"
+description = "Mock greeting source-adapter (journey example)"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+emery-adapter.workspace = true
+
+[build-dependencies]
+emery-prose.workspace = true
+
+[dev-dependencies]
+emery-testkit.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
