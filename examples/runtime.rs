@@ -8,7 +8,7 @@ cfg_if::cfg_if! {
         use std::future::Future;
         use std::sync::{Arc, Mutex};
 
-        use omnia_filesystem::{Client as Filesystem, ConnectOptions as FilesystemOptions};
+        use omnia_filesystem::{Client as Filesystem, ConnectOptions};
         use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_keyvalue::WasiKeyValue;
         use omnia_wasi_model::{Answer, FutureResult, Request, ToolHost, WasiModel, WasiModelCtx};
@@ -25,8 +25,6 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: "." },
             ],
-            // Path-only and cacheless: the mock component reads fresh from
-            // the invocation directory on every run that names it.
             plugins: {
                 interfaces: ["emery:adapter/source@0.1.0"],
                 locations: [
@@ -36,9 +34,8 @@ cfg_if::cfg_if! {
             hosts: {
                 WasiOtel: OtelDefault,
                 WasiModel: ScriptedModel,
-                // Same compiled-in store root as the shipped binary.
-                WasiKeyValue: Filesystem(FilesystemOptions { root: ".omnia/storage".into() }),
-                WasiBlobstore: Filesystem(FilesystemOptions { root: ".omnia/storage".into() }),
+                WasiKeyValue: Filesystem(ConnectOptions { root: ".omnia/storage".into() }),
+                WasiBlobstore: Filesystem(ConnectOptions { root: ".omnia/storage".into() }),
             }
         });
 

@@ -185,14 +185,15 @@ emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-testkit = { path = "crates/testkit" }
 
-omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
-omnia-guest = "0.35.0"
-omnia-guest-macros = "0.35.0"
-omnia-host-macros = "0.35.0"
-omnia-wasi-blobstore = "0.35.0"
-omnia-wasi-keyvalue = "0.35.0"
-omnia-wasi-model = "0.35.0"
-omnia-wasi-otel = "0.35.0"
+omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
+omnia-guest = "0.36.0"
+omnia-guest-macros = "0.36.0"
+omnia-host-macros = "0.36.0"
+omnia-plugin = "0.36.0"
+omnia-wasi-blobstore = "0.36.0"
+omnia-wasi-keyvalue = "0.36.0"
+omnia-wasi-model = "0.36.0"
+omnia-wasi-otel = "0.36.0"
 
 omnia-cursor = "0.29.0"
 omnia-filesystem = "0.29.0"
@@ -202,6 +203,7 @@ omnia = { git = "https://github.com/augentic/omnia" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia" }
+omnia-plugin = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-keyvalue = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
