@@ -15,7 +15,7 @@ The adapter lives at `[source/](source/)` — the same anatomy as a first-party 
 
 ```bash
 # build the source adapter
-cargo build -p adapter --target wasm32-wasip2 --release
+cargo build --example adapter --target wasm32-wasip2 --release
 
 # run the example
 export CURSOR_API_KEY=<Cursor API key>

@@ -1,11 +1,29 @@
-//! Mock greeting source: extract mines the bound fixture or brief.
+//! Mock greeting source adapter.
+
+// #[cfg(target_arch = "wasm32")]
+// mod guest {
+//     emery_adapter::source!(crate::Adapter);
+// }
+
+// mod registry {
+//     emery_adapter::registry!();
+// }
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
-use emery_adapter::registry::Doc;
+use emery_adapter::registry::{self, Doc};
 use emery_adapter::types::{Context, Error, Evidence, SourceContent, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, repaired};
 
-use crate::registry;
+static DOCS: &[Doc] = &[
+    Doc {
+        path: "prompts/extract.md",
+        body: include_str!("prose/prompts/extract.md"),
+    },
+    Doc {
+        path: "references/greeting.md",
+        body: include_str!("prose/references/greeting.md"),
+    },
+];
 
 /// Extracts the greeting fixture into structured claims.
 #[derive(Clone, Copy, Debug)]
@@ -20,13 +38,13 @@ impl SourceAdapter for Adapter {
     }
 
     fn docs() -> &'static [Doc] {
-        registry::docs()
+        DOCS
     }
 
     async fn extract<P: Model>(
         model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
-        let system = registry::body("prompts/extract.md").to_string();
+        let system = registry::body(DOCS, "prompts/extract.md").to_string();
         let user = format!(
             "Extract the claim set of the greeting source bound to adapter `{id}` \
              (source key `{key}`).\n\n\

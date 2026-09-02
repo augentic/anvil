@@ -3,16 +3,6 @@
 version = 4
 
 [[package]]
-name = "adapter"
-version = "0.1.0"
-dependencies = [
- "emery-adapter",
- "emery-prose",
- "emery-testkit",
- "tokio",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
