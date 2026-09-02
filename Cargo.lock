@@ -1059,7 +1059,6 @@ dependencies = [
  "cfg-if",
  "emery-adapter",
  "emery-engine",
- "emery-prose",
  "emery-testkit",
  "omnia",
  "omnia-cursor",

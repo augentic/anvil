@@ -1,13 +1,9 @@
 //! Mock greeting source adapter.
 
-// #[cfg(target_arch = "wasm32")]
-// mod guest {
-//     emery_adapter::source!(crate::Adapter);
-// }
-
-// mod registry {
-//     emery_adapter::registry!();
-// }
+#[cfg(target_arch = "wasm32")]
+mod guest {
+    emery_adapter::source!(crate::Adapter);
+}
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::registry::{self, Doc};
