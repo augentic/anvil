@@ -1,11 +1,11 @@
 # Requirement block
 
-Every requirement in `spec.md` is one H3 block: heading, three provenance lines, body, and at least one scenario. You author the heading name, body prose, and scenarios; the provenance lines and heading tag come **verbatim** from the requirement's reconciliation row.
+Every requirement in `spec.md` is one H3 block: heading, three provenance lines, body, and at least one scenario. You author the body prose and scenarios; the heading name, heading tag, and provenance lines come **verbatim** from the requirement's reconciliation row. The heading name is the row's subject — the dotted-kebab claim id (`greeting.behaviour`), or `<id> acceptance criteria` for an appended gap row — never a prose title.
 
 ## Canonical template
 
 ```markdown
-### Requirement: <Human-readable name>[ <tag>]
+### Requirement: <subject>[ <tag>]
 
 ID: REQ-<NNN>
 Sources: [<source>, <source>, …]
@@ -23,6 +23,7 @@ Every requirement **must** include ≥1 `#### Scenario:` heading — including `
 
 Invariants the engine's parser re-checks fail-closed:
 
+- **Heading name:** exactly the row's subject. Re-runs diff generations by this name, so a rewritten heading is refused as a renamed requirement.
 - **`ID:`** matches `^REQ-[0-9]{3}$`, unique across the document, exactly the row's minted id.
 - **`Sources:`** kebab-case keys in the row's order. `[]` only with `Status: unknown`.
 - **`Status:`** the closed enum `agreed | unknown | conflict | divergence`, exactly the row's value.
@@ -31,7 +32,7 @@ Invariants the engine's parser re-checks fail-closed:
 ## Worked `unknown` — evidence gap
 
 ```markdown
-### Requirement: Password reset acceptance criteria [unknown]
+### Requirement: auth.password-reset acceptance criteria [unknown]
 
 ID: REQ-002
 Sources: []

@@ -1,6 +1,6 @@
 # Tag grammar
 
-Three review-signal tags render into `spec.md` from each requirement's reconciliation row. Each appears after the human-readable name, separated by a single space. Tags never park the run — they document uncertainty inline so the operator can reconcile and re-run `emery specify`.
+Three review-signal tags render into `spec.md` from each requirement's reconciliation row. Each appears after the heading name (the row's subject), separated by a single space. Tags never park the run — they document uncertainty inline so the operator can reconcile and re-run `emery specify`.
 
 ## Closed tag set
 
@@ -10,7 +10,7 @@ Three review-signal tags render into `spec.md` from each requirement's reconcili
 | `[conflict]` | `conflict` | Same-class disagreement; no winner | Amend or drop a source; re-run |
 | `[divergence]` | `divergence` | Disagreement; one wins by authority (`intent > documentation > behaviour`) | Override the source set if the winner is wrong; otherwise proceed |
 
-Headline: `### Requirement: <Name> [<tag>]`. One tag per headline; no stacking. `Status: agreed` carries no tag.
+Headline: `### Requirement: <subject> [<tag>]`. One tag per headline; no stacking. `Status: agreed` carries no tag.
 
 ## Coherence rule
 

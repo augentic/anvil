@@ -17,6 +17,6 @@ The request carries:
 ## Contract
 
 - Answer with the raw Markdown document only — no fences around it, no commentary, no envelope.
-- Author names, bodies, scenarios, and notes. Render every provenance line (`ID:` / `Sources:` / `Status:` and the heading tag) **exactly** as its reconciliation row states — the engine refuses an answer that drops, reorders, or rewrites a row.
+- Author bodies, scenarios, and notes. Render the heading name (the row's subject) and every provenance line (`ID:` / `Sources:` / `Status:` and the heading tag) **exactly** as its reconciliation row states — the engine refuses an answer that drops, reorders, renames, or rewrites a row.
 - Never invent evidence. Only cite claims present in the inputs. Preserve gaps as `[unknown]` rather than guessing; never auto-resolve a `[conflict]`.
 - No timestamps, run ids, or log lines anywhere in the output — an identical re-run must produce byte-identical documents.

@@ -196,7 +196,7 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
         let sources = row.sources.join(", ");
         let _ = writeln!(
             prompt,
-            "- {id}{tag} — subject `{subject}` — Status: {status} — Sources: [{sources}]",
+            "- {id} — heading `### Requirement: {subject}{tag}` — Status: {status} — Sources: [{sources}]",
             id = row.id,
             subject = row.subject,
             status = row.status,
