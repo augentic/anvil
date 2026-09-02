@@ -4,20 +4,20 @@ Emery proves engine correctness from this repository alone. The placement rules 
 
 ## Gate 1 — repository correctness (every push)
 
-`make ci` owns formatting, lints, schemas, the test suites, and the mdBook links gate (Developer Guide link integrity, `make links`). The native suites inside it are led by the root scenario binaries (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`), which drive the in-process command router over scripted capabilities — the whole product arc from argv to committed storage, plus the CLI wire contract and the plugin-rule grammar check. The surviving crate suites prove independent library contracts and the CLI-impractical engine invariants.
+`make ci` owns formatting, lints, schemas, the test suites, and the mdBook links gate (Developer Guide link integrity, `make links`). The native suites inside it are led by the root scenario binaries (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`), which drive the in-process command router over scripted capabilities — the whole product arc from argv to committed storage, plus the CLI wire contract and the plugin-rule grammar check. The surviving crate suites prove independent library contracts (the adapter SDK, prose, the mock source's extract trait) and the CLI-impractical engine invariants.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
 ## The WASM boundary
 
-No test builds or spawns the mock source component. The `source` and `runtime` examples remain for local component-shape work (`make source` / `make runtime`). Run those when a change crosses a WIT, dispatch, hosting, or preopen boundary.
+No test builds or spawns the mock source component. Native `examples/source/tests/` cover the extract trait with a scripted model. `make source` / `make runtime` remain for local component-shape work. Run those when a change crosses a WIT, dispatch, hosting, or preopen boundary.
 
 ## Placement decision
 
 When adding coverage, the default write path is a root product scenario — a crate test is the exception, and a `src` unit test the last resort:
 
-1. Put every CLI-reachable behavior in the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`). The `source` and `runtime` examples are not a test rung.
-2. Put an independently useful library contract (the adapter SDK, the prose walker) in that crate's integration suite; the same holds for a product invariant impractical to arrange through the entry points.
+1. Put every CLI-reachable behavior in the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`). Building or spawning the mock source component is not a test rung.
+2. Put an independently useful library contract (the adapter SDK, the prose walker, the mock source's extract trait) in that crate's integration suite; the same holds for a product invariant impractical to arrange through the entry points.
 3. Put a private dense matrix in a kernel unit test only when integration is impractical.
 4. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
@@ -26,7 +26,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `emery-testkit` owns the scripted capability doubles: the FIFO request-recording `Scripted` model and the storage pair (`StateStore` / `BlobStore`). Suites own scenario content: scripted answers and assertions.
-- `examples/source.rs` is the only adapter double. Do not add another mock adapter or mock-adapter copy.
+- `examples/source/` is the only adapter double. Do not add another mock adapter or mock-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `emery-adapters`; no Emery gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Consistency (links)

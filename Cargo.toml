@@ -40,7 +40,6 @@ wasip3.workspace = true
 omnia.workspace = true
 
 [dev-dependencies]
-anyhow.workspace = true
 emery-adapter.workspace = true
 emery-testkit.workspace = true
 serde_json.workspace = true
@@ -52,8 +51,8 @@ omnia-guest.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 
 [[example]]
-name = "source"
-path = "examples/source.rs"
+name = "adapter"
+path = "examples/adapter/lib.rs"
 crate-type = ["cdylib"]
 
 [[example]]
@@ -62,11 +61,6 @@ path = "examples/runtime.rs"
 
 [lints]
 workspace = true
-
-[package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
-bin-dir = "{ bin }{ binary-ext }"
-pkg-fmt = "tgz"
 
 [workspace]
 members = ["crates/*"]
@@ -81,48 +75,28 @@ rust-version = "1.98"
 version = "0.38.0"
 
 [workspace.lints.rust]
-elided_lifetimes_in_paths = "warn"
-unexpected_cfgs = "warn"
-explicit_outlives_requirements = "warn"
-let_underscore_drop = "warn"
-macro_use_extern_crate = "warn"
-meta_variable_misuse = "warn"
-missing_copy_implementations = "warn"
-missing_debug_implementations = "warn"
+# https://dirname.github.io/rust-std-doc/rustc/lints/listing/allowed-by-default.html
 missing_docs = "warn"
-redundant_lifetimes = "warn"
-single_use_lifetimes = "warn"
 trivial_numeric_casts = "warn"
-unsafe_code = "warn"
+unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "warn"
 unused_extern_crates = "warn"
-unused_import_braces = "warn"
-unused_lifetimes = "warn"
-unused_qualifications = "warn"
 
 [workspace.lints.clippy]
-# set priority = -1 so individual lints below can override them.
-all = { level = "warn", priority = -1 }
+# https://doc.rust-lang.org/stable/clippy/index.html
+all = { level = "warn", priority = -1 }      # correctness, suspicious, style, complexity, perf
 cargo = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 
-# The `cargo` group's `multiple_crate_versions` lint is the wrong signal in a
-# workspace this size: transitive duplicates accrete from upstream crates we do
-# not control (windows-sys generations, wasmparser/wit-* cycles, rand v0.8/0.9),
-# and the ratchet allowlist that used to live in `clippy.toml` grew without ever
-# shrinking. A quarterly `cargo tree --duplicates` audit is the cheaper signal.
-multiple_crate_versions = "allow"
-
 # Cherry-picked lints are from the `restriction` lint group in order to drive up
 # consistency, quality, and brevity
 # See https://microsoft.github.io/rust-guidelines/guidelines/universal/index.html
-allow_attributes = "warn"
-allow_attributes_without_reason = "warn"
+
+# allow_attributes_without_reason = "warn"
 as_pointer_underscore = "warn"
 assertions_on_result_states = "warn"
 clone_on_ref_ptr = "warn"
-dbg_macro = "warn"
 deref_by_slicing = "warn"
 disallowed_script_idents = "warn"
 empty_drop = "warn"
@@ -130,31 +104,15 @@ empty_enum_variants_with_brackets = "warn"
 empty_structs_with_brackets = "warn"
 fn_to_numeric_cast_any = "warn"
 if_then_some_else_none = "warn"
-infinite_loop = "warn"
-iter_over_hash_type = "warn"
 map_err_ignore = "warn"
-mixed_read_write_in_expression = "warn"
-mod_module_files = "warn"
-non_zero_suggestions = "warn"
-partial_pub_fields = "warn"
-pub_without_shorthand = "warn"
-rc_buffer = "warn"
-rc_mutex = "warn"
 redundant_type_annotations = "warn"
-ref_patterns = "warn"
 renamed_function_params = "warn"
-same_name_method = "warn"
 semicolon_outside_block = "warn"
-string_add = "warn"
-todo = "warn"
-try_err = "warn"
 undocumented_unsafe_blocks = "warn"
 unnecessary_safety_comment = "warn"
 unnecessary_safety_doc = "warn"
 unneeded_field_pattern = "warn"
-unseparated_literal_suffix = "warn"
 unused_result_ok = "warn"
-verbose_file_reads = "warn"
 
 # Recommended-but-skipped restriction lints with rationale:
 # - `tests_outside_test_module`: fires on every integration test in `tests/*.rs`
