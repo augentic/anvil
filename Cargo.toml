@@ -18,9 +18,12 @@ crate-type = ["cdylib", "rlib"]
 name = "emery"
 path = "src/main.rs"
 
+[dependencies]
+cfg-if.workspace = true
+emery-adapter.workspace = true
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
-cfg-if.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-filesystem.workspace = true
@@ -30,8 +33,6 @@ omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-cfg-if.workspace = true
-emery-adapter.workspace = true
 emery-engine.workspace = true
 omnia-guest.workspace = true
 wasip3.workspace = true
@@ -40,7 +41,6 @@ wasip3.workspace = true
 omnia.workspace = true
 
 [dev-dependencies]
-emery-adapter.workspace = true
 emery-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
@@ -48,6 +48,7 @@ tempfile.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 emery-engine.workspace = true
 omnia-guest.workspace = true
+test-utils.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 
 [[example]]
@@ -142,6 +143,7 @@ emery-adapter = { path = "crates/adapter" }
 emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-testkit = { path = "crates/testkit" }
+test-utils = { path = "crates/test-utils" }
 
 omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
 omnia-core = { version = "0.36.0" }

@@ -1,0 +1,25 @@
+[package]
+name = "test-utils"
+description = "Fixture-component build pipeline and runtime harness for the root component suite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Native only: the build script compiles the mock adapter example to a
+# `wasm32-wasip2` component and the harness embeds the omnia runtime.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anyhow.workspace = true
+emery-adapter.workspace = true
+omnia.workspace = true
+omnia-wasi-blobstore.workspace = true
+omnia-wasi-keyvalue.workspace = true
+omnia-wasi-model.workspace = true
+omnia-wasi-otel.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

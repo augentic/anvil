@@ -77,6 +77,24 @@ impl Memory {
         );
     }
 
+    /// Creates an empty container; idempotent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
+    pub fn insert_container(&self, name: &str) {
+        let _ = self.blobs.lock().expect("blob lock").entry(name.to_string()).or_default();
+    }
+
+    /// Returns whether `name` was created or holds objects.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a lock is poisoned (a prior holder panicked).
+    pub fn has_container(&self, name: &str) -> bool {
+        self.blobs.lock().expect("blob lock").contains_key(name)
+    }
+
     /// Returns whether storage is empty.
     ///
     /// # Panics
@@ -237,16 +255,17 @@ impl BlobStore for Namespaced {
         unscripted("clear")
     }
 
-    fn create_container(&self, _name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
-        unscripted("create_container")
+    fn create_container(&self, name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
+        self.inner.insert_container(&self.scoped(name));
+        ready(Ok(()))
     }
 
     fn delete_container(&self, _name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
         unscripted("delete_container")
     }
 
-    fn container_exists(&self, _name: &str) -> impl Future<Output = anyhow::Result<bool>> + Send {
-        unscripted("container_exists")
+    fn container_exists(&self, name: &str) -> impl Future<Output = anyhow::Result<bool>> + Send {
+        ready(Ok(self.inner.has_container(&self.scoped(name))))
     }
 
     fn container_info(
@@ -376,16 +395,17 @@ impl BlobStore for Memory {
         unscripted("clear")
     }
 
-    fn create_container(&self, _name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
-        unscripted("create_container")
+    fn create_container(&self, name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
+        self.insert_container(name);
+        ready(Ok(()))
     }
 
     fn delete_container(&self, _name: &str) -> impl Future<Output = anyhow::Result<()>> + Send {
         unscripted("delete_container")
     }
 
-    fn container_exists(&self, _name: &str) -> impl Future<Output = anyhow::Result<bool>> + Send {
-        unscripted("container_exists")
+    fn container_exists(&self, name: &str) -> impl Future<Output = anyhow::Result<bool>> + Send {
+        ready(Ok(self.has_container(name)))
     }
 
     fn container_info(

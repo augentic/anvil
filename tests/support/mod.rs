@@ -32,8 +32,9 @@ pub fn digest(pair: &str) -> Digest {
 /// load request. An unscripted package resolves to the request's own
 /// pin, or the fixed `digest("ab")`; a pin that disagrees with the
 /// scripted digest refuses `refused`, mirroring the host's
-/// verify-before-validate step; a scripted failure refuses typed
-/// before any digest logic.
+/// verify-before-validate step (proved against the real loader in
+/// `tests/component.rs`); a scripted failure refuses typed before any
+/// digest logic.
 #[derive(Clone, Debug, Default)]
 pub struct PluginScript {
     /// Resolved digests keyed by package identity.
