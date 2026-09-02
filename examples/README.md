@@ -9,6 +9,8 @@ The adapter lives at `[adapter/](adapter/)` — the same anatomy as a first-part
 - [cursor-sdk-bridge](https://github.com/cursor/sdk-bridge). See [below](#installing-cursor-sdk-bridge) for installation.
 - `CURSOR_API_KEY`
 
+
+
 ## Build and run
 
 ```bash
@@ -31,11 +33,9 @@ See [#host-to-guest-tool-calls](#host-to-guest-tool-calls) for more detail.
 
 ## Host-to-guest tool calls
 
-`wasi-model` implements guest-defined tools using two streams rather than direct callbacks. The host sends `ToolCall` values to the guest through the session’s `calls` stream, while the guest returns corresponding `ToolResult` values through a second stream it creates.
+In Emery, the only tools a completion session declares are the reference tools — `list_docs` and `read_doc` — over the adapter's embedded prose corpus. `wasi-model` delivers them as two streams rather than direct callbacks: the host writes each `ToolCall` to the session's `calls` stream, and the guest answers with a `ToolResult` on a second stream it created and passed to `create`, carrying the same correlation ID so the host can resume the completion.
 
-To open a completion session, the guest creates the result stream, retains its writable end, and passes the readable end to `create`. The host returns a `reply` future and the `calls` stream. While awaiting the reply, the guest handles each tool call and writes a result with the same correlation ID, allowing the host to resume the completion.
-
-The mount (`--mount`, or `[[mount]]` in `config.toml`) preopens `examples/cursor/workspace` as the tree named `.`; the guest lends it through `grants.workspace` and the cursor backend resolves it to the working tree the agent runs in.
+Every answer is served in-process from the embedded corpus (`emery_adapter::references`): `list_docs` returns the embedded document paths, `read_doc` returns one document body by adapter-relative path, and anything else — an unknown tool, malformed arguments, an unembedded path — comes back as a repairable error. No HTTP shelf, no MCP callback, and no access to the source input or the generation store crosses this seam; the model reaches nothing but the adapter's own reference documents.
 
 ## Installing cursor-sdk-bridge
 
