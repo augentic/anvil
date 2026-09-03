@@ -4,8 +4,9 @@
 //! scenarios cannot reach — the `wasi:cli/run` wrapper, the WIT lowering
 //! on both sides of the `emery:adapter/source` seam, the real plugin
 //! loader, the reference-tool closure over real wasi-model streams — and
-//! nothing `tests/specify.rs` already asserts. The runtime inherits
-//! stdout, so scenarios observe the exit status and the storage handles.
+//! nothing `tests/specify.rs` already asserts. The engine under test is
+//! the component the shipped runtime embeds. The runtime inherits stdout,
+//! so scenarios observe the exit status and the storage handles.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -16,7 +17,8 @@ use serde_json::{Value, json};
 use test_utils::{Backends, Deployment, MOCK_ADAPTER, ScriptedModel, scratch};
 
 /// The engine component the root build script produced for this profile
-/// (a raw component under `dev`; the rung runs under `make test`).
+/// (a raw component under `dev`; the rung runs under `make test`) — staged
+/// as a seamless fixture by `path_load_no_seam_refuses`.
 const ENGINE: &str = concat!(env!("OUT_DIR"), "/emery.cwasm");
 
 const SPEC_ANSWER: &str = include_str!("specify/1-spec.md");
@@ -42,15 +44,15 @@ fn answers(binding: &str) -> [Value; 3] {
 }
 
 /// The current generation id, read back through the keyvalue handle.
-async fn pointer(backends: &Backends) -> String {
+async fn pointer(backends: &Backends<ScriptedModel>) -> String {
     let pointer = backends.state("spec/current").await.expect("a committed generation");
     String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string()
 }
 
 /// A committed generation document, read back through the blobstore handle.
-async fn generation(backends: &Backends, id: &str, name: &str) -> String {
+async fn generation(backends: &Backends<ScriptedModel>, id: &str, name: &str) -> String {
     let bytes = backends
-        .blob("spec", &format!("generations/{id}/{name}"))
+        .object("spec", &format!("generations/{id}/{name}"))
         .await
         .unwrap_or_else(|| panic!("{name} committed"));
     String::from_utf8(bytes).expect("utf-8 document")
@@ -68,14 +70,13 @@ async fn mock_bare_name() {
     // --------------------------------------------------
     let project = scratch();
     project.write("docs/greeting.md", "The greeting endpoint returns hello.");
-    let backends = Backends::scripted(ScriptedModel::answering(answers("greeting"))).await;
+    let backends = Backends::defaults().await.model(ScriptedModel::answering(answers("greeting")));
 
     // --------------------------------------------------
     // Act.
     // --------------------------------------------------
     let status = test_utils::run(
         Deployment {
-            engine: ENGINE,
             argv: &["specify", "greeting"],
             project: &project,
             guests: &[("source:greeting", MOCK_ADAPTER)],
@@ -90,7 +91,7 @@ async fn mock_bare_name() {
     // --------------------------------------------------
     assert_eq!(status, ExitStatus::SUCCESS);
     backends.model.assert_exhausted();
-    let requests = backends.model.requests();
+    let requests = backends.model.seen();
     assert_eq!(requests.len(), 3, "extract, spec, design");
     assert!(
         requests[0]
@@ -124,10 +125,9 @@ async fn mock_path_load() {
     project.write("adapter.wasm", &bytes);
 
     // Unpinned: the binding key is the file stem.
-    let backends = Backends::scripted(ScriptedModel::answering(answers("adapter"))).await;
+    let backends = Backends::defaults().await.model(ScriptedModel::answering(answers("adapter")));
     let status = test_utils::run(
         Deployment {
-            engine: ENGINE,
             argv: &["specify", "./adapter.wasm"],
             project: &project,
             guests: &[],
@@ -146,10 +146,9 @@ async fn mock_path_load() {
         )
     };
     project.write("emery.toml", config(&sha256_digest(&bytes)));
-    let backends = Backends::scripted(ScriptedModel::answering(answers("greeting"))).await;
+    let backends = Backends::defaults().await.model(ScriptedModel::answering(answers("greeting")));
     let status = test_utils::run(
         Deployment {
-            engine: ENGINE,
             argv: &["specify", "--config", "emery.toml"],
             project: &project,
             guests: &[],
@@ -163,10 +162,9 @@ async fn mock_path_load() {
 
     // Pinned to other bytes: refused (exit 1) before the model is reached.
     project.write("emery.toml", config(&format!("sha256:{}", "ab".repeat(32))));
-    let backends = Backends::scripted(ScriptedModel::answering(answers("greeting"))).await;
+    let backends = Backends::defaults().await.model(ScriptedModel::answering([]));
     let status = test_utils::run(
         Deployment {
-            engine: ENGINE,
             argv: &["specify", "--config", "emery.toml"],
             project: &project,
             guests: &[],
@@ -176,7 +174,7 @@ async fn mock_path_load() {
     .await
     .expect("deployment runs");
     assert_eq!(status.code(), 1, "a disagreeing pin refuses typed");
-    assert!(backends.model.requests().is_empty(), "no extraction after a refused load");
+    assert!(backends.model.seen().is_empty(), "no extraction after a refused load");
     assert!(backends.state("spec/current").await.is_none(), "nothing commits");
 }
 
@@ -187,11 +185,10 @@ async fn mock_path_load() {
 async fn path_load_no_seam_refuses() {
     let project = scratch();
     project.write("adapter.wasm", fs::read(ENGINE).expect("the engine component"));
-    let backends = Backends::scripted(ScriptedModel::answering(answers("adapter"))).await;
+    let backends = Backends::defaults().await.model(ScriptedModel::answering([]));
 
     let status = test_utils::run(
         Deployment {
-            engine: ENGINE,
             argv: &["specify", "./adapter.wasm"],
             project: &project,
             guests: &[],
@@ -202,7 +199,7 @@ async fn path_load_no_seam_refuses() {
     .expect("deployment runs");
 
     assert_eq!(status.code(), 1, "a seamless component refuses");
-    assert!(backends.model.requests().is_empty(), "no extraction after a refused load");
+    assert!(backends.model.seen().is_empty(), "no extraction after a refused load");
 }
 
 // The reference tools are served in-process from the adapter's embedded
@@ -213,11 +210,10 @@ async fn read_doc_served_in_process() {
     let project = scratch();
     let model = ScriptedModel::answering(answers("greeting"))
         .calling(0, [("read_doc", r#"{"path":"prompts/extract.md"}"#)]);
-    let backends = Backends::scripted(model).await;
+    let backends = Backends::defaults().await.model(model);
 
     let status = test_utils::run(
         Deployment {
-            engine: ENGINE,
             argv: &["specify", "greeting"],
             project: &project,
             guests: &[("source:greeting", MOCK_ADAPTER)],

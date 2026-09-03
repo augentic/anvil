@@ -10,7 +10,7 @@ This gate is model-free and self-contained: no sibling checkout, no live model, 
 
 ## The WASM boundary
 
-`tests/component.rs` is the component rung and runs inside the same `make test`: the shipped engine component and the built mock adapter component instantiated under the real omnia runtime by the `test-utils` harness, over a scripted host-side model and in-memory storage backends. `crates/test-utils/build.rs` nested-builds `--example adapter` for `wasm32-wasip2` (the root build script already builds the engine), so this is the one place the gate compiles a component — incremental after the first build. The rung owns the boundary alone: `wasi:cli/run`, the seam lowering, the real path loader and digest pin, a seamless component refused, the reference-tool streams. `make source` / `make runtime` remain for the live Cursor journey.
+`tests/component.rs` is the component rung and runs inside the same `make test`: the shipped deployment (`emery::manifest()`, overlaid by the `test-utils` harness through `omnia_test::host::Deployment`) and the built mock adapter component instantiated under the real omnia runtime, over omnia-test's scripted host-side model and in-memory storage backends. `crates/test-utils/build.rs` drives `omnia_test::build::Components` to compile `--example adapter` for `wasm32-wasip2` (the root build script already builds the engine), so this is the one place the gate compiles a component — incremental after the first build. The rung owns the boundary alone: `wasi:cli/run`, the seam lowering, the real path loader and digest pin, a seamless component refused, the reference-tool streams. `make source` / `make runtime` remain for the live Cursor journey.
 
 ## Placement decision
 
@@ -25,7 +25,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 
 ## Boundaries
 
-- `emery-testkit` owns the scripted capability doubles: the FIFO request-recording `Scripted` model and the storage pair (`StateStore` / `BlobStore`). `test-utils` owns the component rung's host-side doubles and deployment assembler. Suites own scenario content: scripted answers and assertions.
+- omnia's `omnia-test` crate owns the scripted capability doubles: the FIFO request-recording `guest::Scripted` model, the storage pair (`guest::{Memory, Namespaced}`), and the host-side `host::{ScriptedModel, Backends}`. `test-utils` owns only the component rung's fixture build and the `run` overlay of the shipped deployment. Suites own scenario content: scripted answers and assertions.
 - `examples/adapter/` is the only adapter double. Do not add another mock adapter or mock-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `emery-adapters`; no Emery gate resolves that repository, and neither repository gates on the other's HEAD.
 

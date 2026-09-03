@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
+use omnia_guest::{BlobStore, BlobStoreExt as _, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 

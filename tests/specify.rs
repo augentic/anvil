@@ -13,8 +13,9 @@ use std::sync::Arc;
 
 use emery_adapter::types::{Authority, ClaimKind, SourceContent};
 use emery_adapter::{DispatchError, types};
-use emery_testkit::{Memory, Namespaced};
+use omnia_guest::model::Error as ModelError;
 use omnia_guest::plugins::{Digest, Error as LoadError, Location};
+use omnia_test::guest::{Memory, Namespaced, Scripted};
 use serde_json::Value;
 use support::{Provider, claim, cli, cli_ok, digest, evidence, requirement};
 
@@ -59,8 +60,7 @@ async fn gen_spec() {
     // --------------------------------------------------
     // Observe: the load, the pointer, and the generation.
     // --------------------------------------------------
-    let request =
-        provider.plugins.calls.lock().expect("loads").first().cloned().expect("one load request");
+    let request = provider.plugins.loads().first().cloned().expect("one load request");
     assert_eq!(request.package, "source:source", "the routed id is the loaded package identity");
     let Location::Path(path) = &request.location else {
         panic!("a local component loads by path");
@@ -112,8 +112,7 @@ async fn from_file() {
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains("sources: 1"), "{stdout}");
-    let request =
-        provider.plugins.calls.lock().expect("loads").first().cloned().expect("one load request");
+    let request = provider.plugins.loads().first().cloned().expect("one load request");
     let Location::Path(path) = &request.location else {
         panic!("a local component loads by path");
     };
@@ -167,10 +166,9 @@ async fn shared_adapter_several_roots() {
         assert!(stdout.contains(&format!("digest docs: {}", digest("ab"))), "{adapter}: {stdout}");
         assert!(stdout.contains(&format!("digest api: {}", digest("ab"))), "{adapter}: {stdout}");
 
-        let loads = provider.plugins.calls.lock().expect("loads");
+        let loads = provider.plugins.loads();
         assert_eq!(loads.len(), 1, "{adapter}: one adapter identity loads once");
         assert_eq!(loads[0].package, *package, "{adapter}");
-        drop(loads);
 
         let calls = provider.source.calls.lock().expect("calls");
         assert_eq!(calls.len(), 2, "{adapter}: each binding extracts");
@@ -527,8 +525,12 @@ async fn empty_design() {
 // A model transport failure surfaces as one typed synthesis error.
 #[tokio::test]
 async fn model_fails() {
-    let provider = Provider::idle();
+    let provider = Provider {
+        model: Scripted::new([Err(ModelError::Backend("scripted transport failure".into()))]),
+        ..Provider::idle()
+    };
     fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
+    provider.model.assert_exhausted();
 }
 
 // The operator-owned `emery.toml` parses fail-closed: every malformed
@@ -776,10 +778,9 @@ async fn pinned_component() {
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains(&format!("digest local: {}", digest("ab"))), "{stdout}");
 
-    let loads = provider.plugins.calls.lock().expect("loads");
+    let loads = provider.plugins.loads();
     let request = loads.first().expect("one load request");
     assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
-    drop(loads);
     provider.model.assert_exhausted();
 }
 
@@ -802,7 +803,7 @@ async fn digest_mismatch_refused() {
     let config = project_arg(&config);
 
     let mut provider = Provider::idle();
-    provider.plugins.digests.insert("source:source".to_string(), digest("ab"));
+    provider.plugins = provider.plugins.clone().digest("source:source", digest("ab"));
 
     fail(&provider, &["emery", "specify", "--config", &config], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
@@ -818,7 +819,7 @@ async fn tofu_digest_reported() {
     let component = project_arg(&component);
 
     let mut provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
-    provider.plugins.digests.insert("source:source".to_string(), digest("cd"));
+    provider.plugins = provider.plugins.clone().digest("source:source", digest("cd"));
 
     let resp = cli(&provider, &["emery", "--format", "json", "specify", &component]).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
@@ -847,7 +848,7 @@ async fn package_loads() {
 
         cli_ok(&provider, &["emery", "specify", reference]).await;
 
-        let loads = provider.plugins.calls.lock().expect("loads");
+        let loads = provider.plugins.loads();
         let request = loads.first().expect("one load request");
         assert_eq!(
             request.package, "emery:demo@1.2.0",
@@ -859,7 +860,6 @@ async fn package_loads() {
             "no override selects the acquirer's default registry"
         );
         assert!(request.digest.is_none(), "an unpinned binding requests no digest");
-        drop(loads);
         let calls = provider.source.calls.lock().expect("calls");
         let (id, input) = calls.first().expect("one extract dispatch");
         assert_eq!(id, "emery:demo@1.2.0", "the routed id is the loaded package identity");
@@ -886,11 +886,11 @@ async fn registry_override() {
 
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [ledger]");
     let mut provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
-    provider.plugins.digests.insert("acme:ledger@2.1.0".to_string(), digest("cd"));
+    provider.plugins = provider.plugins.clone().digest("acme:ledger@2.1.0", digest("cd"));
 
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
 
-    let loads = provider.plugins.calls.lock().expect("loads");
+    let loads = provider.plugins.loads();
     let request = loads.first().expect("one load request");
     assert_eq!(request.package, "acme:ledger@2.1.0", "third-party namespaces pass through");
     assert_eq!(
@@ -898,7 +898,6 @@ async fn registry_override() {
         Location::Registry(Some("registry.acme.example".to_string())),
         "the binding's override rides the load request"
     );
-    drop(loads);
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains(&format!("digest ledger: {}", digest("cd"))), "{stdout}");
     provider.model.assert_exhausted();
@@ -921,8 +920,7 @@ async fn pinned_package() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");
     let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
-    let request =
-        provider.plugins.calls.lock().expect("loads").first().cloned().expect("one load request");
+    let request = provider.plugins.loads().first().cloned().expect("one load request");
     assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
     provider.model.assert_exhausted();
 
@@ -932,7 +930,7 @@ async fn pinned_package() {
     let config = project_arg(&config);
 
     let mut provider = Provider::idle();
-    provider.plugins.digests.insert("emery:demo@1.2.0".to_string(), digest("ab"));
+    provider.plugins = provider.plugins.clone().digest("emery:demo@1.2.0", digest("ab"));
     fail(&provider, &["emery", "specify", "--config", &config], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
@@ -958,7 +956,7 @@ async fn shared_adapter_conflicting_pin() {
     let provider = Provider::idle();
     fail(&provider, &["emery", "specify", "--config", &config], 1, "already-active").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
-    let loads = provider.plugins.calls.lock().expect("loads");
+    let loads = provider.plugins.loads();
     assert_eq!(loads.len(), 1, "the conflicting pin never reaches the loader");
 }
 
@@ -969,18 +967,18 @@ async fn shared_adapter_conflicting_pin() {
 #[tokio::test]
 async fn load_failures_typed() {
     let mut provider = Provider::idle();
-    provider.plugins.failures.insert(
-        "emery:demo@1.2.0".to_string(),
+    provider.plugins = provider.plugins.clone().refuse(
+        "emery:demo@1.2.0",
         LoadError::Unavailable("resolving `emery:demo@1.2.0`: endpoint unreachable".to_string()),
     );
     fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 4, "unavailable").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 
     let mut provider = Provider::idle();
-    provider.plugins.failures.insert(
-        "emery:demo@1.2.0".to_string(),
-        LoadError::Refused("not a raw wasm component".to_string()),
-    );
+    provider.plugins = provider
+        .plugins
+        .clone()
+        .refuse("emery:demo@1.2.0", LoadError::Refused("not a raw wasm component".to_string()));
     fail(&provider, &["emery", "specify", "emery:demo@1.2.0"], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
@@ -1022,17 +1020,16 @@ async fn multi_project_isolation() {
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
     let component = project_arg(&component);
 
-    let shared = Arc::new(Memory::default());
+    // `Memory` is a shared handle: every clone reads the same store.
+    let shared = Memory::default();
     let alpha = Provider::over(
-        Arc::new(Namespaced::new("alpha", Arc::clone(&shared))),
+        Arc::new(Namespaced::new("alpha", shared.clone())),
         [SPEC_ANSWER, DESIGN_ANSWER],
     );
     let beta_spec = SPEC_ANSWER.replace("hello", "howdy");
     let beta_design = DESIGN_ANSWER.replace("hello", "howdy");
-    let beta = Provider::over(
-        Arc::new(Namespaced::new("beta", Arc::clone(&shared))),
-        [beta_spec, beta_design],
-    );
+    let beta =
+        Provider::over(Arc::new(Namespaced::new("beta", shared.clone())), [beta_spec, beta_design]);
 
     cli_ok(&alpha, &["emery", "specify", &component]).await;
     cli_ok(&beta, &["emery", "specify", &component]).await;
