@@ -48,7 +48,6 @@ tempfile.workspace = true
 emery-engine.workspace = true
 omnia-guest.workspace = true
 omnia-test = { workspace = true, features = ["guest"] }
-test-utils.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 
 [[example]]
@@ -64,7 +63,7 @@ path = "examples/runtime.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "examples/component"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -142,7 +141,6 @@ wit-bindgen = { version = "0.61.1", features = ["async-spawn"] }
 emery-adapter = { path = "crates/adapter" }
 emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
-test-utils = { path = "crates/test-utils" }
 
 omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
 omnia-core = { version = "0.36.0" }

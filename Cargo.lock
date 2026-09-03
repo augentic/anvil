@@ -515,6 +515,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "component"
+version = "0.38.0"
+dependencies = [
+ "anyhow",
+ "emery",
+ "omnia",
+ "omnia-test",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "const-hex"
 version = "1.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1070,7 +1082,6 @@ dependencies = [
  "omnia-wasi-otel",
  "serde_json",
  "tempfile",
- "test-utils",
  "tokio",
  "wasip3",
 ]
@@ -4132,16 +4143,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "test-utils"
-version = "0.38.0"
-dependencies = [
- "anyhow",
- "emery",
- "omnia",
- "omnia-test",
 ]
 
 [[package]]

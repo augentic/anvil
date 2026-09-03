@@ -4,26 +4,21 @@
 //! scenarios cannot reach — the `wasi:cli/run` wrapper, the WIT lowering
 //! on both sides of the `emery:adapter/source` seam, the real plugin
 //! loader, the reference-tool closure over real wasi-model streams — and
-//! nothing `tests/specify.rs` already asserts. The engine under test is
-//! the component the shipped runtime embeds. The runtime inherits stdout,
-//! so scenarios observe the exit status and the storage handles.
+//! nothing the root `tests/specify.rs` already asserts. The engine under
+//! test is the component the shipped runtime embeds. The runtime inherits
+//! stdout, so scenarios observe the exit status and the storage handles.
 
 #![cfg(not(target_arch = "wasm32"))]
 
 use std::fs;
 
+use component::{Backends, Deployment, MOCK_ADAPTER, ScriptedModel, scratch};
 use omnia::{ExitStatus, sha256_digest};
 use serde_json::{Value, json};
-use test_utils::{Backends, Deployment, MOCK_ADAPTER, ScriptedModel, scratch};
 
-/// The engine component the root build script produced for this profile
-/// (a raw component under `dev`; the rung runs under `make test`) — staged
-/// as a seamless fixture by `path_load_no_seam_refuses`.
-const ENGINE: &str = concat!(env!("OUT_DIR"), "/emery.cwasm");
-
-const SPEC_ANSWER: &str = include_str!("specify/1-spec.md");
-const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
-const EXTRACT_PROMPT: &str = include_str!("../examples/adapter/prose/prompts/extract.md");
+const SPEC_ANSWER: &str = include_str!("../../../tests/specify/1-spec.md");
+const DESIGN_ANSWER: &str = include_str!("../../../tests/specify/2-design.md");
+const EXTRACT_PROMPT: &str = include_str!("../../adapter/prose/prompts/extract.md");
 
 /// The greeting requirement the mock adapter is scripted to extract.
 fn evidence() -> Value {
@@ -75,7 +70,7 @@ async fn mock_bare_name() {
     // --------------------------------------------------
     // Act.
     // --------------------------------------------------
-    let status = test_utils::run(
+    let status = component::run(
         Deployment {
             argv: &["specify", "greeting"],
             project: &project,
@@ -126,7 +121,7 @@ async fn mock_path_load() {
 
     // Unpinned: the binding key is the file stem.
     let backends = Backends::defaults().await.model(ScriptedModel::answering(answers("adapter")));
-    let status = test_utils::run(
+    let status = component::run(
         Deployment {
             argv: &["specify", "./adapter.wasm"],
             project: &project,
@@ -147,7 +142,7 @@ async fn mock_path_load() {
     };
     project.write("emery.toml", config(&sha256_digest(&bytes)));
     let backends = Backends::defaults().await.model(ScriptedModel::answering(answers("greeting")));
-    let status = test_utils::run(
+    let status = component::run(
         Deployment {
             argv: &["specify", "--config", "emery.toml"],
             project: &project,
@@ -163,7 +158,7 @@ async fn mock_path_load() {
     // Pinned to other bytes: refused (exit 1) before the model is reached.
     project.write("emery.toml", config(&format!("sha256:{}", "ab".repeat(32))));
     let backends = Backends::defaults().await.model(ScriptedModel::answering([]));
-    let status = test_utils::run(
+    let status = component::run(
         Deployment {
             argv: &["specify", "--config", "emery.toml"],
             project: &project,
@@ -180,14 +175,14 @@ async fn mock_path_load() {
 
 // A component on the path slot that does not export the seam is not an
 // adapter: the loader refuses it typed (exit 1) and the model is never
-// reached. The engine component itself is the fixture.
+// reached. The engine component the runtime embeds is itself the fixture.
 #[tokio::test]
 async fn path_load_no_seam_refuses() {
     let project = scratch();
-    project.write("adapter.wasm", fs::read(ENGINE).expect("the engine component"));
+    project.write("adapter.wasm", component::engine().expect("the embedded engine component"));
     let backends = Backends::defaults().await.model(ScriptedModel::answering([]));
 
-    let status = test_utils::run(
+    let status = component::run(
         Deployment {
             argv: &["specify", "./adapter.wasm"],
             project: &project,
@@ -212,7 +207,7 @@ async fn read_doc_served_in_process() {
         .calling(0, [("read_doc", r#"{"path":"prompts/extract.md"}"#)]);
     let backends = Backends::defaults().await.model(model);
 
-    let status = test_utils::run(
+    let status = component::run(
         Deployment {
             argv: &["specify", "greeting"],
             project: &project,
