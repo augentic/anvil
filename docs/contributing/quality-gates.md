@@ -10,13 +10,13 @@ This gate is model-free and self-contained: no sibling checkout, no live model, 
 
 ## The WASM boundary
 
-`tests/component.rs` is the component rung and runs inside the same `make test`: the shipped deployment (`emery::manifest()`, overlaid by the `test-utils` harness through `omnia_test::host::Deployment`) and the built mock adapter component instantiated under the real omnia runtime, over omnia-test's scripted host-side model and in-memory storage backends. `crates/test-utils/build.rs` drives `omnia_test::build::Components` to compile `--example adapter` for `wasm32-wasip2` (the root build script already builds the engine), so this is the one place the gate compiles a component — incremental after the first build. The rung owns the boundary alone: `wasi:cli/run`, the seam lowering, the real path loader and digest pin, a seamless component refused, the reference-tool streams. `make source` / `make runtime` remain for the live Cursor journey.
+`examples/component/tests/component.rs` is the component rung and runs inside the same `make test` as its own unpublished workspace package: the shipped deployment (`emery::manifest()`, overlaid by the package's `run` harness through `omnia_test::host::Deployment`) and the built mock adapter component instantiated under the real omnia runtime, over omnia-test's scripted host-side model and in-memory storage backends. `examples/component/build.rs` drives `omnia_test::build::Components` to compile `--example adapter` for `wasm32-wasip2` (the root build script builds only the engine, for every build of the binary), so this is the one place the gate compiles a component — incremental after the first build. The rung owns the boundary alone: `wasi:cli/run`, the seam lowering, the real path loader and digest pin, a seamless component refused, the reference-tool streams. `make source` / `make runtime` remain for the live Cursor journey.
 
 ## Placement decision
 
 When adding coverage, the default write path is a root product scenario — a crate test is the exception, and a `src` unit test the last resort:
 
-1. Put every CLI-reachable behavior in the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`); a scenario goes to `tests/component.rs` only when the wasm boundary is its subject.
+1. Put every CLI-reachable behavior in the root scenario suites (`tests/specify.rs`, `tests/command.rs`, `tests/plugin.rs`); a scenario goes to the component rung (`examples/component/tests/component.rs`) only when the wasm boundary is its subject.
 2. Put an independently useful library contract (the adapter SDK, the prose walker) in that crate's integration suite; the same holds for a product invariant impractical to arrange through the entry points.
 3. Put a private dense matrix in a kernel unit test only when integration is impractical.
 4. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
@@ -25,7 +25,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 
 ## Boundaries
 
-- omnia's `omnia-test` crate owns the scripted capability doubles: the FIFO request-recording `guest::Scripted` model, the storage pair (`guest::{Memory, Namespaced}`), and the host-side `host::{ScriptedModel, Backends}`. `test-utils` owns only the component rung's fixture build and the `run` overlay of the shipped deployment. Suites own scenario content: scripted answers and assertions.
+- omnia's `omnia-test` crate owns the scripted capability doubles: the FIFO request-recording `guest::Scripted` model, the storage pair (`guest::{Memory, Namespaced}`), and the host-side `host::{ScriptedModel, Backends}`. The `component` package owns only the component rung's fixture build, the `run` overlay of the shipped deployment, and the rung's scenarios. Suites own scenario content: scripted answers and assertions.
 - `examples/adapter/` is the only adapter double. Do not add another mock adapter or mock-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `emery-adapters`; no Emery gate resolves that repository, and neither repository gates on the other's HEAD.
 
