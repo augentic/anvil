@@ -7,7 +7,7 @@
 //! diffs — is owned by the root `specify` scenarios.
 
 use emery_engine::home::{Home, SpecSet};
-use emery_testkit::Memory;
+use omnia_test::guest::Memory;
 
 fn set(spec: &str) -> SpecSet {
     SpecSet {

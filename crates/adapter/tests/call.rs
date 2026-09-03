@@ -5,7 +5,7 @@ use std::path::Path;
 use emery_adapter::registry::Doc;
 use emery_adapter::types::{Context, Error};
 use emery_adapter::{Error as ModelError, Format, ToolCall, judgment};
-use emery_testkit::{Scripted, function_tools};
+use omnia_test::guest::{Scripted, function_tools};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -130,22 +130,22 @@ async fn closure_answers_reference_calls() {
     let exchanges = model.exchanges();
     assert_eq!(exchanges.len(), 4);
     assert_eq!(
-        exchanges[0].1,
+        exchanges[0].outcome,
         Ok(json!({"paths": ["prompts/extract.md", "references/depth.md"]}).to_string())
     );
     assert_eq!(
-        exchanges[1].1,
+        exchanges[1].outcome,
         Ok(json!({"path": "references/depth.md", "body": "DEPTH"}).to_string())
     );
     assert!(
-        exchanges[2].1.as_ref().is_err_and(|err| err.contains("references/missing.md")),
+        exchanges[2].outcome.as_ref().is_err_and(|err| err.contains("references/missing.md")),
         "an unembedded path is a repairable error: {:?}",
-        exchanges[2].1
+        exchanges[2].outcome
     );
     assert!(
-        exchanges[3].1.as_ref().is_err_and(|err| err.contains("unknown tool")),
+        exchanges[3].outcome.as_ref().is_err_and(|err| err.contains("unknown tool")),
         "an undeclared tool is a repairable error: {:?}",
-        exchanges[3].1
+        exchanges[3].outcome
     );
 }
 

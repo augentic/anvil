@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
                 { name: ".", path: "." },
             ],
             plugins: {
-                interfaces: ["emery:adapter/source@0.1.0"],
+                interfaces: [emery_adapter::SOURCE_INTERFACE],
                 locations: [
                     { name: ".", path: "." },
                 ],

@@ -27,8 +27,10 @@ toml.workspace = true
 emery-prose.workspace = true
 
 [dev-dependencies]
-emery-testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+omnia-test = { workspace = true, features = ["guest"] }
 
 [lints]
 workspace = true

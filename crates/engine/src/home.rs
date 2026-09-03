@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
+use omnia_guest::{BlobStore, BlobStoreExt as _, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -190,6 +190,19 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     /// Propagates write, swap, and prune failures.
     pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
         let id = set.id();
+        // `wasi:blobstore` writes need an existing container; only some
+        // backends create one on `get-container`.
+        let exists = self
+            .store
+            .container_exists(SPEC_CONTAINER)
+            .await
+            .map_err(|err| storage::failed("checking the generation container", &err))?;
+        if !exists {
+            self.store
+                .create_container(SPEC_CONTAINER)
+                .await
+                .map_err(|err| storage::failed("creating the generation container", &err))?;
+        }
         for (name, body) in set.files() {
             self.store
                 .put(SPEC_CONTAINER, &object(&id, name), body.as_bytes())

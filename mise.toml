@@ -17,10 +17,3 @@
 includes = ["mise-rust.toml"]
 # includes = ["git::https://github.com/augentic/.github.git//mise/rust.toml?ref=v0.1.0"]
 
-[tasks.source]
-description = "Build the mock source adapter (wasm32-wasip2, release)"
-run = "cargo build -p adapter --target wasm32-wasip2 --release"
-
-[tasks.runtime]
-description = "Build the cursor-bound runtime example"
-run = "cargo build --example runtime"

@@ -1,6 +1,6 @@
 //! Shared scenario plumbing for the root suites: one provider that
-//! scripts every capability (`Model`, `Source`, storage), the live
-//! command grammar, and the in-process CLI runners.
+//! scripts every capability (`Model`, `Source`, `Plugins`, storage), the
+//! live command grammar, and the in-process CLI runners.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -11,10 +11,9 @@ use emery_adapter::types::{
 };
 use emery_adapter::{DispatchError, Source};
 use emery_engine::cli::{self, CommandResponse};
-use emery_testkit::{Memory, Scripted};
-use omnia_guest::model::{Error, Reply, Request, ToolCall};
-use omnia_guest::plugins::{Digest, Error as LoadError, Plugin, PluginRef, Plugins};
-use omnia_guest::{BlobStore, Model, StateStore};
+use omnia_guest::plugins::Digest;
+use omnia_guest::{BlobStore, StateStore};
+use omnia_test::guest::{Memory, Scripted, ScriptedLoader};
 use serde_json::Value;
 
 /// The default scripted requirement statement.
@@ -26,22 +25,6 @@ pub type Recorded = Vec<(String, SourceInput)>;
 /// A full-length `sha256:` digest from one repeated hex pair.
 pub fn digest(pair: &str) -> Digest {
     format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
-}
-
-/// Scripted `Plugins`: per-package outcomes and a record of every
-/// load request. An unscripted package resolves to the request's own
-/// pin, or the fixed `digest("ab")`; a pin that disagrees with the
-/// scripted digest refuses `refused`, mirroring the host's
-/// verify-before-validate step; a scripted failure refuses typed
-/// before any digest logic.
-#[derive(Clone, Debug, Default)]
-pub struct PluginScript {
-    /// Resolved digests keyed by package identity.
-    pub digests: BTreeMap<String, Digest>,
-    /// Typed load refusals keyed by package identity.
-    pub failures: BTreeMap<String, LoadError>,
-    /// Every load request, recorded for call assertions.
-    pub calls: Arc<Mutex<Vec<PluginRef>>>,
 }
 
 /// Scripted `Source`: per-key evidence, per-adapter floors, and a
@@ -88,8 +71,13 @@ pub struct Provider<S = Memory> {
     pub model: Scripted,
     /// The scripted `Source`.
     pub source: SourceScript,
-    /// The scripted `Plugins` loader.
-    pub plugins: PluginScript,
+    /// The scripted `Plugins` loader: an unscripted, unpinned package
+    /// resolves to the fixed `digest("ab")` the `specify` scenarios
+    /// assert in their envelopes; a pin that disagrees with a scripted
+    /// digest refuses `refused`, mirroring the host's
+    /// verify-before-validate step (proved against the real loader in
+    /// the component rung, `examples/component/tests/component.rs`).
+    pub plugins: ScriptedLoader,
     /// The scripted storage pair.
     pub storage: Arc<S>,
 }
@@ -112,7 +100,7 @@ impl<S> Provider<S> {
         Self {
             model: Scripted::answering(answers),
             source: SourceScript::default(),
-            plugins: PluginScript::default(),
+            plugins: ScriptedLoader::default().defaulting(digest("ab")),
             storage,
         }
     }
@@ -129,24 +117,11 @@ impl<S> Clone for Provider<S> {
     }
 }
 
-emery_testkit::scripted_storage!(Provider<Memory>, storage);
-emery_testkit::scripted_storage!(Provider<emery_testkit::Namespaced>, storage);
-
-impl<S: Send + Sync + 'static> Model for Provider<S> {
-    async fn complete(&self, request: Request) -> Result<Reply, Error> {
-        self.model.complete(request).await
-    }
-
-    fn complete_with<H, F>(
-        &self, request: Request, handler: H,
-    ) -> impl Future<Output = Result<Reply, Error>> + Send
-    where
-        H: FnMut(ToolCall) -> F + Send,
-        F: Future<Output = Result<String, String>> + Send,
-    {
-        self.model.complete_with(request, handler)
-    }
-}
+omnia_test::delegate!(impl[S: StateStore + BlobStore + Send + Sync + 'static] Provider<S> {
+    Model => model,
+    Plugins => plugins,
+    StateStore + BlobStore => storage,
+});
 
 impl<S: Send + Sync + 'static> Source for Provider<S> {
     fn extract(
@@ -173,35 +148,10 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
     }
 }
 
-impl<S: Send + Sync + 'static> Plugins for Provider<S> {
-    fn load(&self, plugin: &PluginRef) -> impl Future<Output = Result<Plugin, LoadError>> + Send {
-        self.plugins.calls.lock().expect("loads").push(plugin.clone());
-        if let Some(refusal) = self.plugins.failures.get(&plugin.package) {
-            return std::future::ready(Err(refusal.clone()));
-        }
-        let resolved = self
-            .plugins
-            .digests
-            .get(&plugin.package)
-            .cloned()
-            .or_else(|| plugin.digest.clone())
-            .unwrap_or_else(|| digest("ab"));
-        let outcome = match &plugin.digest {
-            Some(pin) if *pin != resolved => Err(LoadError::Refused(format!(
-                "package `{}` resolved to {resolved}, which is not the pinned {pin}",
-                plugin.package
-            ))),
-            _ => Ok(Plugin::new(plugin.package.clone(), resolved)),
-        };
-        std::future::ready(outcome)
-    }
-}
-
 /// The live command grammar bound over `provider`.
 pub fn router<S>(provider: &Provider<S>) -> cli::Cli<Provider<S>>
 where
-    S: Send + Sync + 'static,
-    Provider<S>: StateStore + BlobStore,
+    S: StateStore + BlobStore + Send + Sync + 'static,
 {
     cli::router(provider.clone())
 }
@@ -209,8 +159,7 @@ where
 /// Runs one CLI invocation in-process, returning the raw response.
 pub async fn cli<S>(provider: &Provider<S>, argv: &[&str]) -> CommandResponse
 where
-    S: Send + Sync + 'static,
-    Provider<S>: StateStore + BlobStore,
+    S: StateStore + BlobStore + Send + Sync + 'static,
 {
     router(provider).execute(argv.iter().copied()).await
 }
@@ -218,8 +167,7 @@ where
 /// Runs one CLI invocation and asserts success.
 pub async fn cli_ok<S>(provider: &Provider<S>, argv: &[&str]) -> CommandResponse
 where
-    S: Send + Sync + 'static,
-    Provider<S>: StateStore + BlobStore,
+    S: StateStore + BlobStore + Send + Sync + 'static,
 {
     let resp = cli(provider, argv).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));

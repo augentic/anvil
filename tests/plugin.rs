@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{DispatchError, Source};
-use emery_testkit::Memory;
+use omnia_test::guest::Memory;
 
 type Grammar = emery_engine::cli::Cli<Inert>;
 
@@ -23,7 +23,9 @@ struct Inert {
     storage: Arc<Memory>,
 }
 
-emery_testkit::scripted_storage!(Inert, storage);
+omnia_test::delegate!(impl Inert {
+    StateStore + BlobStore => storage,
+});
 
 impl omnia_guest::Model for Inert {
     fn complete(

@@ -1,0 +1,29 @@
+[package]
+name = "component"
+description = "The component rung: the shipped deployment and the mock adapter component under the omnia runtime with scripted backends"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+# The build script compiles the mock adapter example to `wasm32-wasip2`
+# through omnia-test's fixture pipeline (`std`-only).
+[build-dependencies]
+omnia-test = { workspace = true, default-features = false, features = ["build"] }
+
+# Native only: the harness overlays the shipped runtime's deployment through
+# omnia-test.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anyhow.workspace = true
+emery = { path = "../.." }
+omnia.workspace = true
+omnia-test = { workspace = true, features = ["host"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true
