@@ -16,11 +16,10 @@ use omnia_guest::{BlobStore, StateStore};
 use omnia_test::guest::{Memory, Scripted, ScriptedLoader};
 use serde_json::Value;
 
-/// The default scripted requirement statement.
-pub const GREETING: &str = "GET /greeting returns the static string 'hello'.";
+const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 
 /// Dispatched `(routed id, input)` pairs, in call order.
-pub type Recorded = Vec<(String, SourceInput)>;
+type Recorded = Vec<(String, SourceInput)>;
 
 /// A full-length `sha256:` digest from one repeated hex pair.
 pub fn digest(pair: &str) -> Digest {
@@ -172,4 +171,19 @@ where
     let resp = cli(provider, argv).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
     resp
+}
+
+/// Runs `argv` in JSON mode and asserts the typed failure envelope.
+pub async fn fail<S>(provider: &Provider<S>, argv: &[&str], exit: u8, code: &str) -> Value
+where
+    S: StateStore + BlobStore + Send + Sync + 'static,
+{
+    let mut json = vec!["emery", "--format", "json"];
+    json.extend(argv.iter().skip(1).copied());
+    let resp = cli(provider, &json).await;
+    assert_eq!(resp.exit, exit, "{code}: {}", String::from_utf8_lossy(&resp.stderr));
+    let envelope: Value = serde_json::from_slice(&resp.stderr).expect("one JSON envelope");
+    assert_eq!(envelope["error"], code, "{envelope}");
+    assert_eq!(envelope["exit-code"], exit, "{envelope}");
+    envelope
 }

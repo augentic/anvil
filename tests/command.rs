@@ -8,7 +8,7 @@
 mod support;
 
 use serde_json::Value;
-use support::{Provider, cli, cli_ok, router};
+use support::{Provider, cli, cli_ok, fail, router};
 
 // Deleted verbs are deleted from the grammar, not hidden.
 #[tokio::test]
@@ -277,15 +277,4 @@ async fn response_contract() {
             }
         }
     }
-}
-
-// Runs `argv` in JSON mode and asserts the typed failure envelope.
-async fn fail(provider: &Provider, argv: &[&str], exit: u8, code: &str) {
-    let mut json = vec!["emery", "--format", "json"];
-    json.extend(argv.iter().skip(1).copied());
-    let resp = cli(provider, &json).await;
-    assert_eq!(resp.exit, exit, "{code}: {}", String::from_utf8_lossy(&resp.stderr));
-    let envelope: Value = serde_json::from_slice(&resp.stderr).expect("one JSON envelope");
-    assert_eq!(envelope["error"], code, "{envelope}");
-    assert_eq!(envelope["exit-code"], exit, "{envelope}");
 }

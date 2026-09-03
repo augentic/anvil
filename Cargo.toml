@@ -63,7 +63,7 @@ path = "examples/runtime.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*", "examples/component"]
+members = ["crates/*"]
 
 [workspace.package]
 authors = ["Augentic"]
