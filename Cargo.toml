@@ -20,7 +20,7 @@ path = "src/main.rs"
 
 [dependencies]
 cfg-if.workspace = true
-emery-adapter.workspace = true
+emery-source.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -40,7 +40,11 @@ wasip3.workspace = true
 [build-dependencies]
 omnia.workspace = true
 
+# The SDK and prose registry serve `examples/adapter` only; the shipped
+# guest and runtime link the contract crate alone.
 [dev-dependencies]
+emery-adapter.workspace = true
+emery-prose.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
@@ -141,6 +145,7 @@ wit-bindgen = { version = "0.61.1", features = ["async-spawn"] }
 emery-adapter = { path = "crates/adapter" }
 emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
+emery-source = { path = "crates/source" }
 
 omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
 omnia-core = { version = "0.36.0" }

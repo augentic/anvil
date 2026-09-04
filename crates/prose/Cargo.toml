@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Build-time codegen for embedded prompt corpora: walk a markdown tree, link-check it, and emit a generated DOCS table"
+description = "Embedded prompt corpora: the runtime Doc registry, plus (feature `emit`) build-time codegen that walks a markdown tree, link-checks it, and emits the DOCS table"
 categories = ["development-tools::build-utils"]
 keywords = ["emery", "prose", "codegen"]
 readme = "../../README.md"
@@ -12,8 +12,12 @@ readme = "../../README.md"
 [lints]
 workspace = true
 
+[features]
+# Build-time walker + link check; enable from `[build-dependencies]` only.
+emit = ["dep:anyhow"]
+
 [dependencies]
-anyhow.workspace = true
+anyhow = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

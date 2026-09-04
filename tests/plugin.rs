@@ -11,8 +11,8 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{DispatchError, Source};
+use emery_source::types::{Evidence, SourceInput, SourceMetadata};
+use emery_source::{DispatchError, Source};
 use omnia_test::guest::Memory;
 
 type Grammar = emery_engine::cli::Cli<Inert>;

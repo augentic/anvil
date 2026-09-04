@@ -14,5 +14,5 @@ mod synthesise;
 
 // Generated from the link-checked synthesis corpus at build time.
 mod prose {
-    emery_adapter::registry!();
+    emery_prose::registry!();
 }

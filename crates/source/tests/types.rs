@@ -1,7 +1,7 @@
 //! Adapter WIT type tests.
 
-use emery_adapter::Error as ModelError;
-use emery_adapter::types::Error;
+use emery_source::types::Error;
+use omnia_guest::model::Error as ModelError;
 
 #[test]
 fn error_mapping() {

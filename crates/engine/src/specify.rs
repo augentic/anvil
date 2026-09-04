@@ -2,7 +2,7 @@
 
 use std::io::Write;
 
-use emery_adapter::Source;
+use emery_source::Source;
 use omnia_guest::api::{Context, Handler};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};

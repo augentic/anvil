@@ -1,6 +1,6 @@
 //! Embedded document registry tests.
 
-use emery_adapter::registry::{Doc, body, find};
+use emery_prose::registry::{Doc, body, find};
 
 // A sorted table, as the `prose` codegen emits.
 static DOCS: &[Doc] = &[

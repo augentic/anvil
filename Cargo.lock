@@ -1059,6 +1059,8 @@ dependencies = [
  "cfg-if",
  "emery-adapter",
  "emery-engine",
+ "emery-prose",
+ "emery-source",
  "omnia",
  "omnia-cursor",
  "omnia-filesystem",
@@ -1078,15 +1080,15 @@ dependencies = [
 name = "emery-adapter"
 version = "0.38.0"
 dependencies = [
+ "emery-prose",
+ "emery-source",
  "omnia-guest",
  "omnia-test",
  "schemars",
  "serde",
  "serde_json",
  "tempfile",
- "thiserror 2.0.20",
  "tokio",
- "wit-bindgen 0.61.1",
 ]
 
 [[package]]
@@ -1096,8 +1098,8 @@ dependencies = [
  "anyhow",
  "clap",
  "clap_complete",
- "emery-adapter",
  "emery-prose",
+ "emery-source",
  "omnia-guest",
  "omnia-test",
  "semver",
@@ -1115,6 +1117,18 @@ version = "0.38.0"
 dependencies = [
  "anyhow",
  "tempfile",
+]
+
+[[package]]
+name = "emery-source"
+version = "0.38.0"
+dependencies = [
+ "omnia-guest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "wit-bindgen 0.61.1",
 ]
 
 [[package]]

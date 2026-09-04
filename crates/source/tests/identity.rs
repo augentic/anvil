@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use emery_adapter::{AdapterIdentity, IdentityError};
+use emery_source::{AdapterIdentity, IdentityError};
 
 #[test]
 fn from_str_name_version() {

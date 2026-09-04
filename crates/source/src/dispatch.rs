@@ -26,7 +26,8 @@ pub enum DispatchError {
 
 /// Import-side source dispatch over the `emery:adapter/source` contract.
 ///
-/// Adapters implement the export-side [`crate::SourceAdapter`] instead.
+/// Adapters implement the export-side `SourceAdapter` from `emery-adapter`
+/// instead.
 pub trait Source: Send + Sync {
     /// Dispatches `extract` to `id`.
     #[cfg(not(target_arch = "wasm32"))]
@@ -39,7 +40,7 @@ pub trait Source: Send + Sync {
     fn extract(
         &self, id: &str, input: &SourceInput,
     ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
-        crate::source::import::extract(id, input)
+        crate::wire::import::extract(id, input)
     }
 
     /// Returns resolve-time metadata for `id`.
@@ -49,6 +50,6 @@ pub trait Source: Send + Sync {
     /// Returns resolve-time metadata for `id`.
     #[cfg(target_arch = "wasm32")]
     fn metadata(&self, id: &str) -> SourceMetadata {
-        crate::source::import::metadata(id)
+        crate::wire::import::metadata(id)
     }
 }

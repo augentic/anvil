@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
         omnia_guest::provider! {
             struct Provider: Model + StateStore + BlobStore + Plugins;
         }
-        impl emery_adapter::Source for Provider {}
+        impl emery_source::Source for Provider {}
 
         omnia_guest::command!(dispatch);
 
@@ -48,7 +48,7 @@ cfg_if::cfg_if! {
                 { name: ".", path: "." },
             ],
             plugins: {
-                interfaces: [emery_adapter::SOURCE_INTERFACE],
+                interfaces: [emery_source::SOURCE_INTERFACE],
                 locations: [
                     { name: ".", path: "." },
                     { registry: "omnia.host" },

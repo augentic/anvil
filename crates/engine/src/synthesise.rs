@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use emery_adapter::types::{Authority, Claim, ClaimKind};
+use emery_source::types::{Authority, Claim, ClaimKind};
 use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 

@@ -5,7 +5,7 @@ mod selector;
 
 use std::path::Path;
 
-use emery_adapter::Source;
+use emery_source::Source;
 use omnia_guest::plugins::{Digest, Location, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 pub use selector::AdapterSelector;

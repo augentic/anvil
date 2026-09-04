@@ -2,9 +2,9 @@
 
 use std::future::Future;
 
+use emery_prose::registry::Doc;
 use omnia_guest::Model;
 
-use crate::registry::Doc;
 use crate::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
 
 /// Contract implemented by source adapters.

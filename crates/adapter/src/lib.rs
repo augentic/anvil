@@ -1,27 +1,20 @@
 //! SDK for Emery source adapter components.
 //!
-//! Adapters implement [`SourceAdapter`]; engine providers implement the
-//! import-side [`Source`] capability.
+//! Adapters implement [`SourceAdapter`]. The `emery:adapter/source`
+//! contract itself (the WIT DTOs, the import-side [`Source`] capability)
+//! is `emery-source`, re-exported here so an adapter needs one crate.
 
 pub mod answers;
 mod call;
-pub mod dispatch;
-mod identity;
 mod operations;
 pub mod references;
-pub mod registry;
 pub mod types;
 
 #[cfg(target_arch = "wasm32")]
 pub mod source;
 
-/// The versioned `source` interface a deployment declares as its plugin
-/// seam; must track the `emery:adapter` WIT package version.
-pub const SOURCE_INTERFACE: &str = "emery:adapter/source@0.1.0";
-
 pub use call::{MAX_REPAIRS, judgment, repaired};
-pub use dispatch::{DispatchError, Source};
-pub use identity::{AdapterIdentity, IdentityError};
+pub use emery_source::{AdapterIdentity, DispatchError, IdentityError, SOURCE_INTERFACE, Source};
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;

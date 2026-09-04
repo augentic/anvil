@@ -3,11 +3,11 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use emery_adapter::answers::claim_id_findings;
-use emery_adapter::types::{
+use emery_source::claims::claim_id_findings;
+use emery_source::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
-use emery_adapter::{DispatchError, Source};
+use emery_source::{DispatchError, Source};
 use omnia_guest::plugins::{Digest, Error as LoadError};
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
@@ -18,7 +18,7 @@ use crate::sources::{BindingContent, SourceBinding};
 // On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
-) -> Result<emery_adapter::types::Evidence, Error> {
+) -> Result<emery_source::types::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
         DispatchError::Call(failure) => bad_gateway!("source `{id}`: {failure}",),
         extras @ DispatchError::Extras { .. } => bad_gateway!("source `{id}` {extras}",),

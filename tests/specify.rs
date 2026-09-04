@@ -11,8 +11,8 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use emery_adapter::types::{Authority, ClaimKind, SourceContent};
-use emery_adapter::{DispatchError, types};
+use emery_source::types::{Authority, ClaimKind, SourceContent};
+use emery_source::{DispatchError, types};
 use omnia_guest::model::Error as ModelError;
 use omnia_guest::plugins::{Digest, Error as LoadError, Location};
 use omnia_test::guest::{Memory, Namespaced, Scripted};

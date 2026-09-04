@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
-use emery_adapter::Source;
+use emery_source::Source;
 use omnia_guest::api::{Client, Metadata};
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, server_error};
 use serde::Serialize;

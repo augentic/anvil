@@ -2,9 +2,9 @@
 
 use std::path::Path;
 
-use emery_adapter::registry::Doc;
 use emery_adapter::types::{Context, Error};
 use emery_adapter::{Error as ModelError, Format, ToolCall, judgment};
+use emery_prose::registry::Doc;
 use omnia_test::guest::{Scripted, function_tools};
 use serde::Deserialize;
 use serde_json::json;
