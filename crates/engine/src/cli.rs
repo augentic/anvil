@@ -75,11 +75,12 @@ where
     arg_required_else_help = true
 )]
 struct App {
+    #[command(subcommand)]
+    verb: Verb,
+
     /// Select the output format.
     #[arg(long, env = "EMERY_FORMAT", default_value = "text", global = true)]
     format: Format,
-    #[command(subcommand)]
-    verb: Verb,
 }
 
 #[derive(Debug, Subcommand)]
