@@ -13,7 +13,7 @@ The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module
 
 ## Engine failures are Omnia errors
 
-Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `adapter-cli-too-old`, and `spec-not-generated`. The adapter WIT seam (`emery_adapter::types::Error`) is a different contract — do not replace it with Omnia errors.
+Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `adapter-cli-too-old`, and `spec-not-generated`. The adapter WIT seam (`emery_source::types::Error`) is a different contract — do not replace it with Omnia errors.
 
 ```rust
 // BAD — a house error type, even if it later maps to Omnia.
