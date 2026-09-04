@@ -61,9 +61,9 @@ Omnia default codes are snake_case (`bad_request`, `not_found`, `server_error`, 
 
 ## The CLI module (`emery_engine::cli`)
 
-`crates/engine/src/cli.rs` is the whole CLI surface: the clap `App` / `Globals` types, `Client` dispatch, the Emery command projector, and the fixed exit contract. There is no HTTP surface: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router.
+`crates/engine/src/cli.rs` is the whole CLI surface: the clap `App` type, `Client` dispatch, the Emery command projector, and the fixed exit contract. There is no HTTP surface: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router.
 
-There is no separate `*Args` layer: each handler input derives `clap::Args` and registers as a clap subcommand, so grammar/input drift cannot exist and route decoding is infallible. Field parsers (closed `ValueEnum`s, repeatable flags, defaults) live on the input's `#[arg]` attributes. Global flags (`--format`) stay in `Globals`, not handler input. A module-level layering rule replaces the old crate boundary: `cli` imports handler input types and `omnia_guest::Error` only, never domain kernels.
+There is no separate `*Args` layer: each handler input derives `clap::Args` and registers as a clap subcommand, so grammar/input drift cannot exist and route decoding is infallible. Field parsers (closed `ValueEnum`s, repeatable flags, defaults) live on the input's `#[arg]` attributes. Global flags (`--format`) stay on `App`, not handler input. A module-level layering rule replaces the old crate boundary: `cli` imports handler input types and `omnia_guest::Error` only, never domain kernels.
 
 ## Dispatch contract (`cli.rs`)
 

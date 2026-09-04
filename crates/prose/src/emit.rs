@@ -160,15 +160,15 @@ fn link_targets(body: &str) -> Vec<&str> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::symlink;
+
     use super::*;
-    use  std::os::unix::fs::symlink;
 
     fn write(root: &Path, rel: &str, body: &str) {
         let path = root.join(rel);
         fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         fs::write(path, body).expect("write");
     }
-
 
     // directory symlink and fenced `](` — live engine tree has neither.
     #[test]

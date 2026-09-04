@@ -16,16 +16,7 @@ async fn route_budget() {
     let provider = Provider::idle();
     let router = router(&provider);
 
-    let inventory: Vec<Vec<String>> =
-        router.inventory().iter().map(|route| route.selector().path().to_vec()).collect();
-    assert_eq!(
-        inventory,
-        [
-            Vec::from(["completions"].map(str::to_string)),
-            Vec::from(["show"].map(str::to_string)),
-            Vec::from(["specify"].map(str::to_string)),
-        ]
-    );
+    assert_eq!(emery_engine::cli::verbs(), ["completions", "show", "specify"]);
 
     for removed in [
         &["emery", "init"][..],

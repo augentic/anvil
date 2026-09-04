@@ -5,12 +5,11 @@ use std::fmt;
 use std::io::{self, Write};
 
 use clap::error::ErrorKind;
-use clap::{Args, CommandFactory, Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use emery_source::Source;
-use omnia_guest::api::{Client, Metadata};
+use omnia_guest::api::{Client, Handler, Metadata};
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, server_error};
-use serde::Serialize;
 
 use crate::handler::Render;
 use crate::show::ShowInput;
@@ -19,12 +18,11 @@ use crate::specify::SpecifyInput;
 /// The Emery command grammar bound over one provider.
 pub struct Cli<P> {
     client: Client<P>,
-    inventory: Vec<RouteInfo>,
 }
 
-impl<P: Send + Sync + 'static> fmt::Debug for Cli<P> {
+impl<P> fmt::Debug for Cli<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Cli").field("inventory", &self.inventory).finish_non_exhaustive()
+        f.debug_struct("Cli").finish_non_exhaustive()
     }
 }
 
@@ -74,42 +72,6 @@ impl CommandResponse {
     }
 }
 
-/// A command route selector.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct Selector {
-    path: Vec<String>,
-}
-
-impl Selector {
-    /// Return the nested command path.
-    #[must_use]
-    pub fn path(&self) -> &[String] {
-        &self.path
-    }
-}
-
-/// Read-only metadata for one command binding.
-#[derive(Clone, Debug)]
-pub struct RouteInfo {
-    selector: Selector,
-}
-
-impl RouteInfo {
-    /// Return the command selector.
-    #[must_use]
-    pub const fn selector(&self) -> &Selector {
-        &self.selector
-    }
-}
-
-/// Global command arguments.
-#[derive(Clone, Copy, Debug, Args)]
-struct Globals {
-    /// Select the output format.
-    #[arg(long, env = "EMERY_FORMAT", default_value = "text", global = true)]
-    format: Format,
-}
-
 /// CLI output format.
 #[derive(Copy, Clone, Debug, Default, clap::ValueEnum, PartialEq, Eq)]
 enum Format {
@@ -130,8 +92,9 @@ enum Format {
     arg_required_else_help = true
 )]
 struct App {
-    #[command(flatten)]
-    globals: Globals,
+    /// Select the output format.
+    #[arg(long, env = "EMERY_FORMAT", default_value = "text", global = true)]
+    format: Format,
     #[command(subcommand)]
     verb: Verb,
 }
@@ -163,34 +126,22 @@ where
 {
     Cli {
         client: Client::new("emery", provider),
-        inventory: inventory(),
     }
 }
 
-fn inventory() -> Vec<RouteInfo> {
-    let mut routes: Vec<RouteInfo> = App::command()
-        .get_subcommands()
-        .filter(|command| !command.is_hide_set())
-        .map(|command| RouteInfo {
-            selector: Selector {
-                path: vec![command.get_name().to_string()],
-            },
-        })
-        .collect();
-    routes.sort_by(|left, right| left.selector.path.cmp(&right.selector.path));
-    routes
+/// Sorted live verb names from the clap grammar.
+#[must_use]
+pub fn verbs() -> Vec<String> {
+    let mut names: Vec<String> =
+        App::command().get_subcommands().map(|command| command.get_name().to_owned()).collect();
+    names.sort_unstable();
+    names
 }
 
 impl<P> Cli<P>
 where
     P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
 {
-    /// Return the deterministic route inventory.
-    #[must_use]
-    pub fn inventory(&self) -> &[RouteInfo] {
-        &self.inventory
-    }
-
     /// Parse and execute one argument vector.
     pub async fn execute<I, T>(&self, argv: I) -> CommandResponse
     where
@@ -210,36 +161,32 @@ where
         };
         match parsed.verb {
             Verb::Completions { shell } => completion(shell),
-            Verb::Specify(input) => {
-                project(self.client.call(input, &Metadata::default()).await, parsed.globals.format)
-            }
-            Verb::Show(input) => {
-                project(self.client.call(input, &Metadata::default()).await, parsed.globals.format)
-            }
+            Verb::Specify(input) => self.dispatch(input, parsed.format).await,
+            Verb::Show(input) => self.dispatch(input, parsed.format).await,
         }
+    }
+
+    async fn dispatch<I>(&self, input: I, format: Format) -> CommandResponse
+    where
+        I: Handler<P, Error = Error>,
+        I::Output: Render,
+    {
+        project(self.client.call(input, &Metadata::default()).await, format)
     }
 }
 
-fn project<T: Render + Serialize>(result: Result<T, Error>, format: Format) -> CommandResponse {
+fn project<T: Render>(result: Result<T, Error>, format: Format) -> CommandResponse {
     match result {
-        Ok(output) => {
-            let mut stdout = Vec::new();
-            match emit(&mut stdout, format, &output, |writer, value| value.render(writer)) {
-                Ok(()) => CommandResponse::success(stdout),
-                Err(fallback) => {
-                    CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 3)
-                }
-            }
-        }
+        Ok(output) => rendered(format, &output, CommandResponse::success),
         Err(error) => failure(format, &error),
     }
 }
 
 fn clap_error(error: &clap::Error) -> CommandResponse {
-    let rendered = error.render().to_string().into_bytes();
+    let text = error.render().to_string().into_bytes();
     match error.kind() {
-        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => CommandResponse::success(rendered),
-        _ => CommandResponse::failure(rendered, 2),
+        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => CommandResponse::success(text),
+        _ => CommandResponse::failure(text, 2),
     }
 }
 
@@ -256,17 +203,24 @@ fn completion(shell: Shell) -> CommandResponse {
 /// # Errors
 ///
 /// Returns serialization or I/O failures.
-fn emit<T: Serialize>(
-    writer: &mut dyn Write, format: Format, payload: &T,
-    render_text: impl FnOnce(&mut dyn Write, &T) -> io::Result<()>,
-) -> Result<(), Error> {
+fn emit(writer: &mut dyn Write, format: Format, payload: &impl Render) -> Result<(), Error> {
     match format {
         Format::Json => {
             serde_json::to_writer_pretty(&mut *writer, payload)
                 .map_err(|err| server_error!("failed to serialize JSON response: {err}",))?;
             writeln!(writer).map_err(|err| server_error!(err))
         }
-        Format::Text => render_text(writer, payload).map_err(|err| server_error!(err)),
+        Format::Text => payload.render(writer).map_err(|err| server_error!(err)),
+    }
+}
+
+fn rendered(
+    format: Format, payload: &impl Render, ok: impl FnOnce(Vec<u8>) -> CommandResponse,
+) -> CommandResponse {
+    let mut buf = Vec::new();
+    match emit(&mut buf, format, payload) {
+        Ok(()) => ok(buf),
+        Err(fallback) => CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 3),
     }
 }
 
@@ -281,7 +235,7 @@ const fn exit_code(error: &Error) -> u8 {
 }
 
 /// Serialized command failure.
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct ErrorBody {
     error: String,
@@ -302,16 +256,24 @@ impl From<&Error> for ErrorBody {
     }
 }
 
+impl Render for ErrorBody {
+    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
+        let (red, reset) = error_style();
+        writeln!(w, "{red}error: {}{reset}", self.message)?;
+        if let Some(hint) = self.hint {
+            writeln!(w, "hint: {hint}")?;
+        }
+        Ok(())
+    }
+}
+
 /// Renders command-failure bytes and their exit code.
 ///
 /// Rendering failures become a plain `ServerError` line (exit 3).
 fn failure(format: Format, error: &Error) -> CommandResponse {
-    let body = ErrorBody::from(error);
-    let mut stderr = Vec::new();
-    match emit(&mut stderr, format, &body, write_error_text) {
-        Ok(()) => CommandResponse::failure(stderr, exit_code(error)),
-        Err(fallback) => CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 3),
-    }
+    rendered(format, &ErrorBody::from(error), |stderr| {
+        CommandResponse::failure(stderr, exit_code(error))
+    })
 }
 
 fn hint(code: &str) -> Option<&'static str> {
@@ -335,33 +297,21 @@ fn hint(code: &str) -> Option<&'static str> {
     }
 }
 
-fn write_error_text(writer: &mut dyn Write, body: &ErrorBody) -> io::Result<()> {
-    let (red, reset) = error_style();
-    writeln!(writer, "{red}error: {}{reset}", body.message)?;
-    if let Some(hint) = body.hint {
-        writeln!(writer, "hint: {hint}")?;
-    }
-    Ok(())
-}
-
 // `NO_COLOR`, missing `TERM`, and `TERM=dumb` disable ANSI styling.
 // Wasm has no terminal probe, so only those environment guards apply.
 fn error_style() -> (&'static str, &'static str) {
     let opted_out = std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
         || !std::env::var_os("TERM").is_some_and(|term| !term.is_empty() && term != "dumb");
-    if opted_out || !stderr_terminal() {
-        return ("", "");
-    }
-    ("\x1b[1;31m", "\x1b[0m")
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn stderr_terminal() -> bool {
-    use std::io::IsTerminal as _;
-    io::stderr().is_terminal()
-}
-
-#[cfg(target_arch = "wasm32")]
-const fn stderr_terminal() -> bool {
-    true
+    let tty = {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use std::io::IsTerminal as _;
+            io::stderr().is_terminal()
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            true
+        }
+    };
+    if opted_out || !tty { ("", "") } else { ("\x1b[1;31m", "\x1b[0m") }
 }
