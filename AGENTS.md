@@ -86,6 +86,7 @@ make lint     # clippy --workspace --all-targets --all-features -- -D warnings
 make fmt      # nightly cargo fmt --all
 make source   # build the mock adapter example (wasm32-wasip2, release) for the live journey
 make runtime  # build the cursor-bound runtime example
+make sweep    # drop target/ artifacts untouched for a week (cargo-sweep); cargo never collects them itself
 ```
 
 Local Cursor preview of the skill wrapper: `cursor-agent --plugin-dir plugins/emery` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).

@@ -44,6 +44,10 @@ run = "cargo deny --workspace check"
 [clean]
 run = "cargo clean"
 
+[sweep]
+description = "Drop target/ artifacts untouched for a week; cargo never collects them itself"
+run = "cargo sweep --time 7"
+
 # -------------------------------------
 # Advisory / helpers (not part of ci)
 # -------------------------------------

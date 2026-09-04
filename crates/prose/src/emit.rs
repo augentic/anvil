@@ -158,26 +158,19 @@ fn link_targets(body: &str) -> Vec<&str> {
     targets
 }
 
+#[cfg(test)]
 mod tests {
-    // use std::fs;
-    // use std::path::Path;
+    use super::*;
+    use  std::os::unix::fs::symlink;
 
-    // use super::emit_from;
+    fn write(root: &Path, rel: &str, body: &str) {
+        let path = root.join(rel);
+        fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        fs::write(path, body).expect("write");
+    }
 
-    // fn write(root: &Path, rel: &str, body: &str) {
-    //     let path = root.join(rel);
-    //     fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-    //     fs::write(path, body).expect("write");
-    // }
 
-    // fn symlink_dir(original: impl AsRef<Path>, link: impl AsRef<Path>) {
-    //     #[cfg(unix)]
-    //     std::os::unix::fs::symlink(original, link).expect("symlink");
-    //     #[cfg(windows)]
-    //     std::os::windows::fs::symlink_dir(original, link).expect("symlink");
-    // }
-
-    // Keep: directory symlink and fenced `](` — live engine tree has neither.
+    // directory symlink and fenced `](` — live engine tree has neither.
     #[test]
     fn embeds() {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -186,7 +179,7 @@ mod tests {
         let tree = tmp.path().join("prompts");
         write(&tree, "a.md", "see [b](b.md)\n\n```swift\nprocessEffects([UInt8](effects))\n```\n");
         write(&tree, "b.md", "# B\n");
-        symlink_dir(&shared, tree.join("runtime"));
+        let _ = symlink(&shared, tree.join("runtime"));
         let out = tmp.path().join("out");
         fs::create_dir_all(&out).expect("mkdir out");
 
@@ -197,7 +190,7 @@ mod tests {
         assert!(generated.contains("path: \"runtime/rule.md\""), "{generated}");
     }
 
-    // Keep: fail-closed refusals no live corpus can arrange.
+    // fail-closed refusals no live corpus can arrange.
     #[test]
     fn refuses() {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -211,7 +204,7 @@ mod tests {
 
         let cycle = tmp.path().join("cycle");
         write(&cycle, "intro.md", "# Intro\n");
-        symlink_dir(Path::new("."), cycle.join("loop"));
+        let _ = symlink(Path::new("."), cycle.join("loop"));
         let err = emit_from(&cycle, &out).expect_err("cycle");
         assert!(err.to_string().contains("symlink cycle"), "{err}");
     }

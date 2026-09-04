@@ -14,6 +14,10 @@ An ordinary change should never need to leave this rung.
 
 `make check` is the pre-commit gate: formatting, clippy under `-D warnings` (guest deny-list in `crates/clippy.toml`), this rung, doctests, and docs. `make ci` adds the links gate plus vet/deny.
 
+## Keeping `target/` bounded
+
+Cargo never garbage-collects `target/`: every distinct feature set, profile, `RUSTFLAGS`, or `Cargo.lock` revision leaves its own copy of the dependency tree behind, and wasmtime plus Cranelift are the bulk of it. Two guards keep that in check — dependencies build with `debug = "line-tables-only"` (workspace crates keep full debuginfo), and the root `build.rs` compiles the wasm32 engine into one shared `target/wasm32-engine` directory instead of a fresh tree under each per-hash `OUT_DIR`. Run `make sweep` (needs `cargo install cargo-sweep`) periodically, and `make clean` after a package rename or a large lock bump, since a renamed package's old build directories are never reused.
+
 ## What CI runs
 
 - Per push: `make ci` — the self-contained workspace gate (nextest `--workspace`, clippy/doc/doctest/links/vet/deny). No sibling checkout, no model.

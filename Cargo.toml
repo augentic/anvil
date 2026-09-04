@@ -203,7 +203,10 @@ opt-level = 2
 strip = true
 
 # Optimise WASI debug builds because Cranelift JIT-compiles at run time.
+# Dependencies keep line tables only (workspace crates are unaffected): wasmtime
+# and Cranelift with full debuginfo dominate `target/`.
 [profile.dev.package]
+"*" = { debug = "line-tables-only" }
 cranelift-assembler-x64 = { opt-level = 2 }
 cranelift-bforest = { opt-level = 2 }
 cranelift-bitset = { opt-level = 2 }
