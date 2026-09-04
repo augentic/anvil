@@ -6,6 +6,9 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+#[path = "support/verbs.rs"]
+mod verbs;
+
 use std::collections::BTreeSet;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -79,7 +82,7 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
 }
 
 fn grammar() -> Grammar {
-    emery_engine::cli::router(Inert::default())
+    emery_engine::cli::Cli::new(Inert::default())
 }
 
 // Global flags do not appear in verb-specific help.
@@ -90,10 +93,6 @@ const SKILL_VERBS: &[(&str, &str)] = &[("specify", "specify")];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/emery")
-}
-
-fn known_verbs() -> BTreeSet<String> {
-    emery_engine::cli::verbs().into_iter().collect()
 }
 
 #[derive(Debug)]
@@ -209,7 +208,7 @@ async fn assert_flags(router: &Grammar, verb: &str, text: &str) {
             "flag `{flag}` mentioned with no verb to validate against (in `{text}`)"
         );
         if help.is_none() {
-            let response = router.execute(["emery", verb, "--help"]).await;
+            let response = router.run(["emery", verb, "--help"]).await;
             assert_eq!(response.exit, 0, "`emery {verb} --help` must succeed");
             help = Some(String::from_utf8_lossy(&response.stdout).into_owned());
         }
@@ -228,7 +227,10 @@ async fn rule_matches_router() {
     let doc = std::fs::read_to_string(&rule)
         .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
     let router = grammar();
-    let verbs = known_verbs();
+    let help = router.run(["emery", "--help"]).await;
+    assert_eq!(help.exit, 0, "`emery --help` must succeed");
+    let verbs: BTreeSet<String> =
+        verbs::verbs(&String::from_utf8_lossy(&help.stdout)).into_iter().collect();
 
     let mentions = mentions(&doc);
     assert!(

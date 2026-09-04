@@ -35,8 +35,15 @@ impl<P> Cli<P>
 where
     P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
 {
+    /// Create a new Emery command grammar bound over `provider`.
+    pub fn new(provider: P) -> Self {
+        Self {
+            client: Client::new("emery", provider),
+        }
+    }
+
     /// Parse and execute one argument vector.
-    pub async fn execute<I, T>(&self, argv: I) -> CommandResponse
+    pub async fn run<I, T>(&self, argv: I) -> Response
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString>,
@@ -59,7 +66,7 @@ where
         }
     }
 
-    async fn dispatch<I>(&self, input: I, format: Format) -> CommandResponse
+    async fn dispatch<I>(&self, input: I, format: Format) -> Response
     where
         I: Handler<P, Error = Error>,
         I::Output: Render,
@@ -87,7 +94,7 @@ struct App {
 
 /// Buffered command output and process exit status.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct CommandResponse {
+pub struct Response {
     /// Bytes written to standard output.
     pub stdout: Vec<u8>,
     /// Bytes written to standard error.
@@ -96,7 +103,7 @@ pub struct CommandResponse {
     pub exit: u8,
 }
 
-impl CommandResponse {
+impl Response {
     /// Create a successful response.
     #[must_use]
     pub fn success(stdout: impl Into<Vec<u8>>) -> Self {
@@ -188,46 +195,27 @@ impl Render for ErrorBody {
     }
 }
 
-/// Builds the Emery command grammar over `provider`.
-pub fn router<P>(provider: P) -> Cli<P>
-where
-    P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
-{
-    Cli {
-        client: Client::new("emery", provider),
-    }
-}
-
-/// Sorted live verb names from the clap grammar.
-#[must_use]
-pub fn verbs() -> Vec<String> {
-    let mut names: Vec<String> =
-        App::command().get_subcommands().map(|command| command.get_name().to_owned()).collect();
-    names.sort_unstable();
-    names
-}
-
-fn project<T: Render>(result: Result<T, Error>, format: Format) -> CommandResponse {
+fn project<T: Render>(result: Result<T, Error>, format: Format) -> Response {
     match result {
-        Ok(output) => rendered(format, &output, CommandResponse::success),
+        Ok(output) => rendered(format, &output, Response::success),
         Err(error) => failure(format, &error),
     }
 }
 
-fn clap_error(error: &clap::Error) -> CommandResponse {
+fn clap_error(error: &clap::Error) -> Response {
     let text = error.render().to_string().into_bytes();
     match error.kind() {
-        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => CommandResponse::success(text),
-        _ => CommandResponse::failure(text, 2),
+        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => Response::success(text),
+        _ => Response::failure(text, 2),
     }
 }
 
-fn completion(shell: Shell) -> CommandResponse {
+fn completion(shell: Shell) -> Response {
     let mut command = App::command();
     let name = command.get_name().to_owned();
     let mut output = Vec::new();
     clap_complete::generate(shell, &mut command, name, &mut output);
-    CommandResponse::success(output)
+    Response::success(output)
 }
 
 /// Writes `payload` in the requested format.
@@ -247,12 +235,12 @@ fn emit(writer: &mut dyn Write, format: Format, payload: &impl Render) -> Result
 }
 
 fn rendered(
-    format: Format, payload: &impl Render, ok: impl FnOnce(Vec<u8>) -> CommandResponse,
-) -> CommandResponse {
+    format: Format, payload: &impl Render, ok: impl FnOnce(Vec<u8>) -> Response,
+) -> Response {
     let mut buf = Vec::new();
     match emit(&mut buf, format, payload) {
         Ok(()) => ok(buf),
-        Err(fallback) => CommandResponse::failure(format!("error: {fallback}\n").into_bytes(), 3),
+        Err(fallback) => Response::failure(format!("error: {fallback}\n").into_bytes(), 3),
     }
 }
 
@@ -269,10 +257,8 @@ const fn exit_code(error: &Error) -> u8 {
 /// Renders command-failure bytes and their exit code.
 ///
 /// Rendering failures become a plain `ServerError` line (exit 3).
-fn failure(format: Format, error: &Error) -> CommandResponse {
-    rendered(format, &ErrorBody::from(error), |stderr| {
-        CommandResponse::failure(stderr, exit_code(error))
-    })
+fn failure(format: Format, error: &Error) -> Response {
+    rendered(format, &ErrorBody::from(error), |stderr| Response::failure(stderr, exit_code(error)))
 }
 
 fn hint(code: &str) -> Option<&'static str> {

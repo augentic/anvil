@@ -6,17 +6,18 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 mod support;
+#[path = "support/verbs.rs"]
+mod verbs;
 
 use serde_json::Value;
 use support::{Provider, cli, cli_ok, fail, router};
+use verbs::verbs;
 
 // Deleted verbs are deleted from the grammar, not hidden.
 #[tokio::test]
 async fn route_budget() {
     let provider = Provider::idle();
     let router = router(&provider);
-
-    assert_eq!(emery_engine::cli::verbs(), ["completions", "show", "specify"]);
 
     for removed in [
         &["emery", "init"][..],
@@ -41,14 +42,13 @@ async fn route_budget() {
         &["emery", "journal", "show"][..],
         &["emery", "debt"][..],
     ] {
-        assert_eq!(router.execute(removed.iter().copied()).await.exit, 2, "{removed:?}");
+        assert_eq!(router.run(removed.iter().copied()).await.exit, 2, "{removed:?}");
     }
 
-    let help = router.execute(["emery", "--help"]).await;
+    let help = router.run(["emery", "--help"]).await;
     assert_eq!(help.exit, 0);
     let help = String::from_utf8_lossy(&help.stdout);
-    assert!(help.contains("specify"), "{help}");
-    assert!(help.contains("show"), "{help}");
+    assert_eq!(verbs(&help), ["completions", "show", "specify"]);
     for gone in ["init", "plan", "slice", "system", "journal", "debt", "adapter"] {
         assert!(
             !help.lines().any(|line| line.trim_start().starts_with(gone)),
