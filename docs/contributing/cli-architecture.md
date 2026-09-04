@@ -34,7 +34,7 @@ The operator grammar is assembled in `crates/engine/src/cli.rs` directly over th
 All JSON output follows the shared envelope contract:
 
 - **Kebab-case keys** — `app-name`, `project-dir` (never `app_name` or `projectDir`)
-- **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure body is `ErrorBody`. There is no top-level envelope-version stamp.
+- **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure is the flat `{error, message, exit-code}` envelope (optional `hint`). There is no top-level envelope-version stamp.
 - **Error discriminants** — the three kebab recovery codes (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`), the loader's kebab refusals (`refused`, `already-active`, `unavailable`, `internal`), plus the four snake_case Omnia defaults (`bad_request`, `not_found`, `server_error`, `bad_gateway`); skills and tests grep on the `error` field, so renaming one is a breaking change.
 
 The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent.

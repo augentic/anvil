@@ -84,21 +84,53 @@ where
         I::Output: Render,
     {
         match self.client.call(input, &Metadata::default()).await {
-            Ok(output) => rendered(format, &output, Response::success),
-            Err(err) => rendered(format, &ErrorBody::from(&err), |stderr| {
-                Response::failure(stderr, exit_code(&err))
-            }),
+            Ok(output) => {
+                let mut buf = Vec::new();
+                match emit(&mut buf, format, &output) {
+                    Ok(()) => Response::success(buf),
+                    Err(fallback) => {
+                        Response::failure(format!("error: {fallback}\n").into_bytes(), 3)
+                    }
+                }
+            }
+            Err(err) => {
+                let exit = exit_code(&err);
+                let error = err.code();
+                let mut buf = Vec::new();
+                let wrote = match format {
+                    Format::Json => {
+                        let mut body = serde_json::json!({
+                            "error": error.as_str(),
+                            "message": err.description(),
+                            "exit-code": exit,
+                        });
+                        if let Some(hint) = hint(&error) {
+                            body["hint"] = hint.into();
+                        }
+                        serde_json::to_writer_pretty(&mut buf, &body)
+                            .map_err(|err| {
+                                server_error!("failed to serialize JSON response: {err}",)
+                            })
+                            .and_then(|()| writeln!(&mut buf).map_err(|err| server_error!(err)))
+                    }
+                    Format::Text => {
+                        let (red, reset) = error_style();
+                        writeln!(&mut buf, "{red}error: {}{reset}", err.description())
+                            .and_then(|()| {
+                                hint(&error)
+                                    .map_or(Ok(()), |hint| writeln!(&mut buf, "hint: {hint}"))
+                            })
+                            .map_err(|err| server_error!(err))
+                    }
+                };
+                match wrote {
+                    Ok(()) => Response::failure(buf, exit),
+                    Err(fallback) => {
+                        Response::failure(format!("error: {fallback}\n").into_bytes(), 3)
+                    }
+                }
+            }
         }
-    }
-}
-
-fn rendered(
-    format: Format, payload: &impl Render, ok: impl FnOnce(Vec<u8>) -> Response,
-) -> Response {
-    let mut buf = Vec::new();
-    match emit(&mut buf, format, payload) {
-        Ok(()) => ok(buf),
-        Err(fallback) => Response::failure(format!("error: {fallback}\n").into_bytes(), 3),
     }
 }
 
@@ -187,39 +219,6 @@ enum Verb {
         /// Shell to generate completions for
         shell: Shell,
     },
-}
-
-/// Serialized command failure.
-#[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
-struct ErrorBody {
-    error: String,
-    message: String,
-    exit_code: u8,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    hint: Option<&'static str>,
-}
-
-impl From<&Error> for ErrorBody {
-    fn from(err: &Error) -> Self {
-        Self {
-            error: err.code(),
-            message: err.description(),
-            exit_code: exit_code(err),
-            hint: hint(&err.code()),
-        }
-    }
-}
-
-impl Render for ErrorBody {
-    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
-        let (red, reset) = error_style();
-        writeln!(w, "{red}error: {}{reset}", self.message)?;
-        if let Some(hint) = self.hint {
-            writeln!(w, "hint: {hint}")?;
-        }
-        Ok(())
-    }
 }
 
 fn emit(writer: &mut dyn Write, format: Format, payload: &impl Render) -> Result<(), Error> {
