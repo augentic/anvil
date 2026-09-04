@@ -61,6 +61,7 @@ pub async fn extract_all<P: Source + Plugins>(
     for binding in bindings {
         let resolved = resolve_once(provider, binding, &mut loaded).await?;
         let input = input_for(binding)?;
+        tracing::info!(source = %binding.key, adapter = %resolved.id, "extracting");
         let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
@@ -70,6 +71,7 @@ pub async fn extract_all<P: Source + Plugins>(
             digest: resolved.digest,
         };
         validate_set(&set)?;
+        tracing::debug!(source = %set.key, claims = set.claims.len(), "extracted");
         sets.push(set);
     }
     Ok(sets)

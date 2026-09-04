@@ -39,6 +39,8 @@ All JSON output follows the shared envelope contract:
 
 The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent.
 
+Progress is `tracing`, never stdout: the engine emits a handful of INFO events at its slow seams (each source extraction, each synthesis pass) and DEBUG detail (claim counts), rendered by the guest subscriber `execute_wasi` installs and filtered by the guest's `RUST_LOG`. The semantic result stays the buffered `Response`; no engine code writes a process stream.
+
 ## Exit codes
 
 The exit-code contract is part of the public interface for operators and skill wrappers; `exit_code` in `crates/engine/src/cli.rs` maps `omnia_guest::Error` variants and is the single source of truth:

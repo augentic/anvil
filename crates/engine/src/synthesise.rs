@@ -149,9 +149,11 @@ fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
 pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
 ) -> Result<Documents, Error> {
+    tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
     let parsed = spec::parse(&spec)?;
     check_rows(&parsed, rows)?;
+    tracing::info!("synthesising design.md");
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
         return Err(bad_request!(

@@ -138,6 +138,7 @@ tempfile = "3.27.0"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
 toml = "1.1.4"
+tracing = "0.1.44"
 wasip3 = "0.8.0"
 wasmtime = { version = "48.0.1", default-features = false, features = ["anyhow", "component-model-bytes"] }
 wit-bindgen = { version = "0.61.1", features = ["async-spawn"] }
