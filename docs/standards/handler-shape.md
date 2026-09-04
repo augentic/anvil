@@ -41,7 +41,7 @@ Handlers never write to stdout. Each returns a typed body implementing `Serializ
 
 ## Errors and their projections
 
-Handlers return `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the JSON error body from `code()` / `description()`. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
+Handlers return `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the failure envelope from `code()` / `description()`; the envelope is itself a `Render + Serialize` body, so success and failure share one rendering path. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
@@ -67,7 +67,7 @@ There is no separate `*Args` layer: each handler input derives `clap::Args` and 
 
 ## Dispatch contract (`cli.rs`)
 
-The reusable command grammar lives in `crates/engine/src/cli.rs`. `Cli::new` binds a provider into a `Client`; `Cli::run` runs one argv and returns the buffered `Response`. Wire-contract suites call the same `Cli` and assert on the buffered channels.
+The reusable command grammar lives in `crates/engine/src/cli.rs`. `cli::run` binds a provider into a `Client`, runs one argv, and returns the buffered `Response`. Wire-contract suites call the same `run` and assert on the buffered channels.
 
 On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs that grammar over its provider, writes both channels, and returns the exit status, which the macro hands to `omnia_guest::api::command::execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
 

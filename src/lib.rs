@@ -4,7 +4,7 @@
 
 use std::io::{stderr, stdout};
 
-use emery_engine::cli::Cli;
+use emery_engine::cli;
 use wasip3::cli::environment;
 
 omnia_guest::provider! {
@@ -15,7 +15,7 @@ impl emery_source::Source for Provider {}
 omnia_guest::command!(dispatch);
 
 async fn dispatch() -> Result<(), u8> {
-    let response = Cli::new(Provider).run(environment::get_arguments()).await;
+    let response = cli::run(Provider, environment::get_arguments()).await;
     if response.write_to(&mut stdout(), &mut stderr()).is_err() {
         return Err(3);
     }

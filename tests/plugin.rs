@@ -18,8 +18,6 @@ use emery_source::types::{Evidence, SourceInput, SourceMetadata};
 use emery_source::{DispatchError, Source};
 use omnia_test::guest::Memory;
 
-type Grammar = emery_engine::cli::Cli<Inert>;
-
 // Capabilities are never dispatched; the suite only inspects the grammar.
 #[derive(Clone, Debug, Default)]
 struct Inert {
@@ -81,8 +79,9 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
     unreachable!("the plugin suite never dispatches Source")
 }
 
-fn grammar() -> Grammar {
-    emery_engine::cli::Cli::new(Inert::default())
+/// Runs `argv` through the live grammar over the inert provider.
+async fn grammar(argv: &[&str]) -> emery_engine::cli::Response {
+    emery_engine::cli::run(Inert::default(), argv.iter().copied()).await
 }
 
 // Global flags do not appear in verb-specific help.
@@ -197,7 +196,7 @@ fn flags_of(text: &str) -> Vec<String> {
         .collect()
 }
 
-async fn assert_flags(router: &Grammar, verb: &str, text: &str) {
+async fn assert_flags(verb: &str, text: &str) {
     let mut help: Option<String> = None;
     for flag in flags_of(text) {
         if GLOBAL_FLAGS.contains(&flag.as_str()) {
@@ -208,7 +207,7 @@ async fn assert_flags(router: &Grammar, verb: &str, text: &str) {
             "flag `{flag}` mentioned with no verb to validate against (in `{text}`)"
         );
         if help.is_none() {
-            let response = router.run(["emery", verb, "--help"]).await;
+            let response = grammar(&["emery", verb, "--help"]).await;
             assert_eq!(response.exit, 0, "`emery {verb} --help` must succeed");
             help = Some(String::from_utf8_lossy(&response.stdout).into_owned());
         }
@@ -226,8 +225,7 @@ async fn rule_matches_router() {
     let rule = plugin_dir().join("rules/emery.mdc");
     let doc = std::fs::read_to_string(&rule)
         .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
-    let router = grammar();
-    let help = router.run(["emery", "--help"]).await;
+    let help = grammar(&["emery", "--help"]).await;
     assert_eq!(help.exit, 0, "`emery --help` must succeed");
     let verbs: BTreeSet<String> =
         verbs::verbs(&String::from_utf8_lossy(&help.stdout)).into_iter().collect();
@@ -252,7 +250,7 @@ async fn rule_matches_router() {
                         rest.unwrap_or_default(),
                     );
                 }
-                assert_flags(&router, verb.as_deref().unwrap_or(""), first).await;
+                assert_flags(verb.as_deref().unwrap_or(""), first).await;
                 for segment in segments {
                     let tokens: Vec<&str> = segment.split_whitespace().collect();
                     let (alt, _rest) = walk_verb(&tokens, &verbs);
@@ -271,7 +269,7 @@ async fn rule_matches_router() {
                     .unwrap_or_else(|| {
                         panic!("skill `{name}` has no CLI verb mapping in this test — add it")
                     });
-                assert_flags(&router, verb, &rest).await;
+                assert_flags(verb, &rest).await;
             }
         }
     }

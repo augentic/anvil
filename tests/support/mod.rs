@@ -1,6 +1,6 @@
 //! Shared scenario plumbing for the root suites: one provider that
-//! scripts every capability (`Model`, `Source`, `Plugins`, storage), the
-//! live command grammar, and the in-process CLI runners.
+//! scripts every capability (`Model`, `Source`, `Plugins`, storage) and
+//! the in-process CLI runners over the live command grammar.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -147,20 +147,12 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
     }
 }
 
-/// The live command grammar bound over `provider`.
-pub fn router<S>(provider: &Provider<S>) -> cli::Cli<Provider<S>>
-where
-    S: StateStore + BlobStore + Send + Sync + 'static,
-{
-    cli::Cli::new(provider.clone())
-}
-
 /// Runs one CLI invocation in-process, returning the raw response.
 pub async fn cli<S>(provider: &Provider<S>, argv: &[&str]) -> Response
 where
     S: StateStore + BlobStore + Send + Sync + 'static,
 {
-    router(provider).run(argv.iter().copied()).await
+    cli::run(provider.clone(), argv.iter().copied()).await
 }
 
 /// Runs one CLI invocation and asserts success.

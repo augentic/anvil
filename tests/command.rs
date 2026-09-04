@@ -10,14 +10,13 @@ mod support;
 mod verbs;
 
 use serde_json::Value;
-use support::{Provider, cli, cli_ok, fail, router};
+use support::{Provider, cli, cli_ok, fail};
 use verbs::verbs;
 
 // Deleted verbs are deleted from the grammar, not hidden.
 #[tokio::test]
 async fn route_budget() {
     let provider = Provider::idle();
-    let router = router(&provider);
 
     for removed in [
         &["emery", "init"][..],
@@ -42,10 +41,10 @@ async fn route_budget() {
         &["emery", "journal", "show"][..],
         &["emery", "debt"][..],
     ] {
-        assert_eq!(router.run(removed.iter().copied()).await.exit, 2, "{removed:?}");
+        assert_eq!(cli(&provider, removed).await.exit, 2, "{removed:?}");
     }
 
-    let help = router.run(["emery", "--help"]).await;
+    let help = cli(&provider, &["emery", "--help"]).await;
     assert_eq!(help.exit, 0);
     let help = String::from_utf8_lossy(&help.stdout);
     assert_eq!(verbs(&help), ["completions", "show", "specify"]);
@@ -163,7 +162,7 @@ async fn globals_and_completions() {
     let help = cli_ok(&provider, &["emery", "completions", "--help"]).await;
     let help = String::from_utf8_lossy(&help.stdout);
     assert!(help.contains("Pipe into your shell's completion directory"));
-    assert!(help.contains("output tracks the live clap surface"));
+    assert!(help.contains("emery completions zsh > ~/.zsh/_emery"));
 }
 
 // Adapters version independently, so the binary reports its own SemVer.
