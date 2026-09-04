@@ -57,10 +57,22 @@ where
         }
         let parsed = match App::try_parse_from(&argv) {
             Ok(app) => app,
-            Err(error) => return clap_error(&error),
+            Err(err) => {
+                let text = err.render().to_string().into_bytes();
+                return match err.kind() {
+                    ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => Response::success(text),
+                    _ => Response::failure(text, 2),
+                };
+            }
         };
         match parsed.verb {
-            Verb::Completions { shell } => completion(shell),
+            Verb::Completions { shell } => {
+                let mut command = App::command();
+                let name = command.get_name().to_owned();
+                let mut output = Vec::new();
+                clap_complete::generate(shell, &mut command, name, &mut output);
+                Response::success(output)
+            }
             Verb::Specify(input) => self.dispatch(input, parsed.format).await,
             Verb::Show(input) => self.dispatch(input, parsed.format).await,
         }
@@ -71,7 +83,22 @@ where
         I: Handler<P, Error = Error>,
         I::Output: Render,
     {
-        project(self.client.call(input, &Metadata::default()).await, format)
+        match self.client.call(input, &Metadata::default()).await {
+            Ok(output) => rendered(format, &output, Response::success),
+            Err(err) => rendered(format, &ErrorBody::from(&err), |stderr| {
+                Response::failure(stderr, exit_code(&err))
+            }),
+        }
+    }
+}
+
+fn rendered(
+    format: Format, payload: &impl Render, ok: impl FnOnce(Vec<u8>) -> Response,
+) -> Response {
+    let mut buf = Vec::new();
+    match emit(&mut buf, format, payload) {
+        Ok(()) => ok(buf),
+        Err(fallback) => Response::failure(format!("error: {fallback}\n").into_bytes(), 3),
     }
 }
 
@@ -195,34 +222,6 @@ impl Render for ErrorBody {
     }
 }
 
-fn project<T: Render>(result: Result<T, Error>, format: Format) -> Response {
-    match result {
-        Ok(output) => rendered(format, &output, Response::success),
-        Err(error) => failure(format, &error),
-    }
-}
-
-fn clap_error(error: &clap::Error) -> Response {
-    let text = error.render().to_string().into_bytes();
-    match error.kind() {
-        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => Response::success(text),
-        _ => Response::failure(text, 2),
-    }
-}
-
-fn completion(shell: Shell) -> Response {
-    let mut command = App::command();
-    let name = command.get_name().to_owned();
-    let mut output = Vec::new();
-    clap_complete::generate(shell, &mut command, name, &mut output);
-    Response::success(output)
-}
-
-/// Writes `payload` in the requested format.
-///
-/// # Errors
-///
-/// Returns serialization or I/O failures.
 fn emit(writer: &mut dyn Write, format: Format, payload: &impl Render) -> Result<(), Error> {
     match format {
         Format::Json => {
@@ -234,16 +233,6 @@ fn emit(writer: &mut dyn Write, format: Format, payload: &impl Render) -> Result
     }
 }
 
-fn rendered(
-    format: Format, payload: &impl Render, ok: impl FnOnce(Vec<u8>) -> Response,
-) -> Response {
-    let mut buf = Vec::new();
-    match emit(&mut buf, format, payload) {
-        Ok(()) => ok(buf),
-        Err(fallback) => Response::failure(format!("error: {fallback}\n").into_bytes(), 3),
-    }
-}
-
 /// The failure-code authority: the Omnia 1:1 exit map.
 const fn exit_code(error: &Error) -> u8 {
     match error {
@@ -252,13 +241,6 @@ const fn exit_code(error: &Error) -> u8 {
         Error::ServerError { .. } => 3,
         Error::BadGateway { .. } => 4,
     }
-}
-
-/// Renders command-failure bytes and their exit code.
-///
-/// Rendering failures become a plain `ServerError` line (exit 3).
-fn failure(format: Format, error: &Error) -> Response {
-    rendered(format, &ErrorBody::from(error), |stderr| Response::failure(stderr, exit_code(error)))
 }
 
 fn hint(code: &str) -> Option<&'static str> {
