@@ -1,9 +1,13 @@
 //! Builds and embeds the wasm32 engine component.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const WASM_TARGET: &str = "wasm32-wasip2";
+
+// The child build's target directory, a sibling of the outer profile
+// directory shared by every outer configuration.
+const NESTED_TARGET: &str = "wasm32-engine";
 
 const TARGET_HINT: &str = "the wasm32 engine could not be built; install the target with `rustup \
                            target add wasm32-wasip2` and retry";
@@ -58,9 +62,8 @@ fn build_engine() -> PathBuf {
 
     // Reuse Cargo from the parent build to stay on its toolchain.
     let cargo = std::env::var_os("CARGO").expect("cargo env");
-    // Isolation avoids the parent's target lock; unsetting CARGO_TARGET_DIR
-    // alone still deadlocks when the user configures build.target-dir.
-    let target_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("engine");
+    let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env"));
+    let target_dir = nested_target_dir(&out_dir);
     let release = std::env::var("PROFILE").as_deref() == Ok("release");
 
     let mut child = Command::new(cargo);
