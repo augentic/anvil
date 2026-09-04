@@ -15,6 +15,11 @@ use crate::handler::Render;
 use crate::show::ShowInput;
 use crate::specify::SpecifyInput;
 
+const ABOUT: &str = "Deterministic primitives for spec-driven development";
+const SPECIFY_DESC: &str = "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--description <adapter>=<text>` for inline sources — or point at an operator-owned config with `--config [<path>]`; omitting the path explicitly selects `emery.toml`. A run naming no bindings at all discovers the project-root `emery.toml` as a fallback — never merged with argv bindings. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves its adapters before extracting; a local component loads through the deployment loader, read fresh on every run — a deleted source file refuses typed — with the binding's optional `digest` pin verified before validation, and each resolved digest reported in the success envelope (commit one as its binding's pin to make the load reproducible). Nothing about the binding list persists between runs. No sources — and no discoverable `emery.toml` — fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer. Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]`. Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope — nothing is persisted for the diff.";
+const SHOW_DESC: &str = "Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 2).";
+const COMPLETIONS_DESC: &str = "Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `emery completions zsh > ~/.zsh/_emery`). The output tracks the live clap surface so every new verb is auto-discovered.";
+
 /// The Emery command grammar bound over one provider.
 pub struct Cli<P> {
     client: Client<P>,
@@ -26,7 +31,59 @@ impl<P> fmt::Debug for Cli<P> {
     }
 }
 
-const ABOUT: &str = "Deterministic primitives for spec-driven development";
+impl<P> Cli<P>
+where
+    P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
+{
+    /// Parse and execute one argument vector.
+    pub async fn execute<I, T>(&self, argv: I) -> CommandResponse
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<OsString>,
+    {
+        let mut argv: Vec<OsString> = argv.into_iter().map(Into::into).collect();
+        let name = OsString::from("emery");
+        if argv.is_empty() {
+            argv.push(name);
+        } else {
+            argv[0] = name;
+        }
+        let parsed = match App::try_parse_from(&argv) {
+            Ok(app) => app,
+            Err(error) => return clap_error(&error),
+        };
+        match parsed.verb {
+            Verb::Completions { shell } => completion(shell),
+            Verb::Specify(input) => self.dispatch(input, parsed.format).await,
+            Verb::Show(input) => self.dispatch(input, parsed.format).await,
+        }
+    }
+
+    async fn dispatch<I>(&self, input: I, format: Format) -> CommandResponse
+    where
+        I: Handler<P, Error = Error>,
+        I::Output: Render,
+    {
+        project(self.client.call(input, &Metadata::default()).await, format)
+    }
+}
+
+#[derive(Debug, Parser)]
+#[command(
+    name = "emery",
+    version = env!("CARGO_PKG_VERSION"),
+    about = ABOUT,
+    disable_help_subcommand = true,
+    subcommand_required = true,
+    arg_required_else_help = true
+)]
+struct App {
+    /// Select the output format.
+    #[arg(long, env = "EMERY_FORMAT", default_value = "text", global = true)]
+    format: Format,
+    #[command(subcommand)]
+    verb: Verb,
+}
 
 /// Buffered command output and process exit status.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -82,42 +139,54 @@ enum Format {
     Json,
 }
 
-#[derive(Debug, Parser)]
-#[command(
-    name = "emery",
-    version = env!("CARGO_PKG_VERSION"),
-    about = ABOUT,
-    disable_help_subcommand = true,
-    subcommand_required = true,
-    arg_required_else_help = true
-)]
-struct App {
-    /// Select the output format.
-    #[arg(long, env = "EMERY_FORMAT", default_value = "text", global = true)]
-    format: Format,
-    #[command(subcommand)]
-    verb: Verb,
-}
-
 #[derive(Debug, Subcommand)]
 enum Verb {
     /// Generate spec.md and design.md from the named sources
-    #[command(long_about = SPECIFY_LONG)]
+    #[command(long_about = SPECIFY_DESC)]
     Specify(SpecifyInput),
     /// Print a reviewable document of the current generation to stdout
-    #[command(long_about = SHOW_LONG)]
+    #[command(long_about = SHOW_DESC)]
     Show(ShowInput),
     /// Print a shell-completion script for `<shell>` to stdout
-    #[command(long_about = COMPLETIONS_LONG)]
+    #[command(long_about = COMPLETIONS_DESC)]
     Completions {
         /// Shell to generate completions for
         shell: Shell,
     },
 }
 
-const SPECIFY_LONG: &str = "Generate spec.md and design.md from the named sources.\n\nPass one or more `<adapter>` values (first-party shorthand, package reference, or project-relative local component path) for workspace-backed sources, and `--description <adapter>=<text>` for inline sources — or point at an operator-owned config with `--config [<path>]`; omitting the path explicitly selects `emery.toml`. A run naming no bindings at all discovers the project-root `emery.toml` as a fallback — never merged with argv bindings. Mixing the file carrier with argv bindings refuses typed (exit 1). Each run resolves its adapters before extracting; a local component loads through the deployment loader, read fresh on every run — a deleted source file refuses typed — with the binding's optional `digest` pin verified before validation, and each resolved digest reported in the success envelope (commit one as its binding's pin to make the load reproducible). Nothing about the binding list persists between runs. No sources — and no discoverable `emery.toml` — fails typed with `specify-source-required` (exit 1).\n\nFilesystem inputs are relative to the project preopen `.` and may not escape it. Extraction reconciles the typed claims under authority precedence (intent > documentation > behaviour), synthesises the two reviewable documents, and commits them as one generation behind the atomically swapped `current` pointer. Gaps stay `[unknown]`; disagreement surfaces inline as `[conflict]` / `[divergence]`. Re-running over identical sources is byte-stable and reports an empty re-mine diff; a changed source names its changed artifacts and spec sections in the success envelope — nothing is persisted for the diff.";
-const SHOW_LONG: &str = "Print a reviewable document of the current generation to stdout.\n\n`emery show spec` and `emery show design` render the named document of the generation the `current` pointer names — a verifiable, non-authoritative projection of the store. Text output is the document body alone, so it pipes cleanly; `--format json` wraps it with the generation id. Before any generation is committed the verb fails typed with `spec-not-generated` (exit 2).";
-const COMPLETIONS_LONG: &str = "Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `emery completions zsh > ~/.zsh/_emery`). The output tracks the live clap surface so every new verb is auto-discovered.";
+/// Serialized command failure.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct ErrorBody {
+    error: String,
+    message: String,
+    exit_code: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hint: Option<&'static str>,
+}
+
+impl From<&Error> for ErrorBody {
+    fn from(err: &Error) -> Self {
+        Self {
+            error: err.code(),
+            message: err.description(),
+            exit_code: exit_code(err),
+            hint: hint(&err.code()),
+        }
+    }
+}
+
+impl Render for ErrorBody {
+    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
+        let (red, reset) = error_style();
+        writeln!(w, "{red}error: {}{reset}", self.message)?;
+        if let Some(hint) = self.hint {
+            writeln!(w, "hint: {hint}")?;
+        }
+        Ok(())
+    }
+}
 
 /// Builds the Emery command grammar over `provider`.
 pub fn router<P>(provider: P) -> Cli<P>
@@ -136,43 +205,6 @@ pub fn verbs() -> Vec<String> {
         App::command().get_subcommands().map(|command| command.get_name().to_owned()).collect();
     names.sort_unstable();
     names
-}
-
-impl<P> Cli<P>
-where
-    P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
-{
-    /// Parse and execute one argument vector.
-    pub async fn execute<I, T>(&self, argv: I) -> CommandResponse
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<OsString>,
-    {
-        let mut argv: Vec<OsString> = argv.into_iter().map(Into::into).collect();
-        let name = OsString::from("emery");
-        if argv.is_empty() {
-            argv.push(name);
-        } else {
-            argv[0] = name;
-        }
-        let parsed = match App::try_parse_from(&argv) {
-            Ok(app) => app,
-            Err(error) => return clap_error(&error),
-        };
-        match parsed.verb {
-            Verb::Completions { shell } => completion(shell),
-            Verb::Specify(input) => self.dispatch(input, parsed.format).await,
-            Verb::Show(input) => self.dispatch(input, parsed.format).await,
-        }
-    }
-
-    async fn dispatch<I>(&self, input: I, format: Format) -> CommandResponse
-    where
-        I: Handler<P, Error = Error>,
-        I::Output: Render,
-    {
-        project(self.client.call(input, &Metadata::default()).await, format)
-    }
 }
 
 fn project<T: Render>(result: Result<T, Error>, format: Format) -> CommandResponse {
@@ -231,39 +263,6 @@ const fn exit_code(error: &Error) -> u8 {
         Error::NotFound { .. } => 2,
         Error::ServerError { .. } => 3,
         Error::BadGateway { .. } => 4,
-    }
-}
-
-/// Serialized command failure.
-#[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
-struct ErrorBody {
-    error: String,
-    message: String,
-    exit_code: u8,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    hint: Option<&'static str>,
-}
-
-impl From<&Error> for ErrorBody {
-    fn from(err: &Error) -> Self {
-        Self {
-            error: err.code(),
-            message: err.description(),
-            exit_code: exit_code(err),
-            hint: hint(&err.code()),
-        }
-    }
-}
-
-impl Render for ErrorBody {
-    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
-        let (red, reset) = error_style();
-        writeln!(w, "{red}error: {}{reset}", self.message)?;
-        if let Some(hint) = self.hint {
-            writeln!(w, "hint: {hint}")?;
-        }
-        Ok(())
     }
 }
 
