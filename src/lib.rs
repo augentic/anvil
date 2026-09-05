@@ -2,8 +2,6 @@
 
 #![cfg(target_arch = "wasm32")]
 
-use std::io::{stderr, stdout};
-
 use emery_engine::cli;
 use wasip3::cli::environment;
 
@@ -16,7 +14,7 @@ omnia_guest::command!(dispatch);
 
 async fn dispatch() -> Result<(), u8> {
     let response = cli::run(Provider, environment::get_arguments()).await;
-    if response.write_to(&mut stdout(), &mut stderr()).is_err() {
+    if response.write().is_err() {
         return Err(3);
     }
     if response.exit == 0 { Ok(()) } else { Err(response.exit) }

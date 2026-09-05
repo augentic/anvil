@@ -2,6 +2,7 @@
 
 use std::ffi::OsString;
 use std::io::{self, Write};
+use std::io::{stderr, stdout};
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
@@ -146,9 +147,9 @@ impl Response {
     /// # Errors
     ///
     /// Returns the first output sink error.
-    pub fn write_to(&self, stdout: &mut impl Write, stderr: &mut impl Write) -> io::Result<()> {
-        stdout.write_all(&self.stdout)?;
-        stderr.write_all(&self.stderr)?;
+    pub fn write(&self) -> io::Result<()> {
+        stdout().write_all(&self.stdout)?;
+        stderr().write_all(&self.stderr)?;
         Ok(())
     }
 }
