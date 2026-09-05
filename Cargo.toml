@@ -149,17 +149,17 @@ emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-source = { path = "crates/source" }
 
-omnia = { version = "0.34.0", default-features = false, features = ["jit"] }
+omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
 omnia-core = "0.36.0"
 omnia-guest = "0.36.0"
 omnia-guest-macros = "0.36.0"
 omnia-host-macros = "0.36.0"
 omnia-plugin = "0.36.0"
 omnia-test = { version = "0.36.0", default-features = false }
-omnia-wasi-blobstore = "0.34.0"
-omnia-wasi-keyvalue = "0.34.0"
+omnia-wasi-blobstore = "0.36.0"
+omnia-wasi-keyvalue = "0.36.0"
 omnia-wasi-model = "0.36.0"
-omnia-wasi-otel = "0.34.0"
+omnia-wasi-otel = "0.36.0"
 
 omnia-cursor = "0.29.0"
 omnia-filesystem = "0.29.0"
