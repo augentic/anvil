@@ -2,7 +2,7 @@
 //! reconcile, synthesise, and commit one generation.
 
 use emery_source::Source;
-use omnia_guest::api::{Context, Handler};
+use omnia_guest::api::Context;
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
@@ -51,44 +51,42 @@ pub struct SourceDigest {
     pub digest: Digest,
 }
 
-impl<P: Model + Source + StateStore + BlobStore + Plugins> Handler<P> for Specify {
-    type Error = Error;
-    type Output = SpecifyBody;
+#[omnia_guest::handler]
+async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
+    input: Specify, context: Context<'_, P>,
+) -> Result<SpecifyBody, Error> {
+    let Specify { bindings } = input;
+    validate(&bindings)?;
 
-    async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
-        let Self { bindings } = self;
-        validate(&bindings)?;
+    let sets = extract_all(context.provider, &bindings).await?;
+    let rows = reconcile(&sets);
+    let documents = synthesise(context.provider, &sets, &rows).await?;
 
-        let sets = extract_all(context.provider, &bindings).await?;
-        let rows = reconcile(&sets);
-        let documents = synthesise(context.provider, &sets, &rows).await?;
-
-        let set = SpecSet {
-            spec: documents.spec,
-            design: documents.design,
-        };
-        let home = Home::new(context.provider);
-        // One observation feeds both the CAS expected value and the
-        // re-mine diff, computed in memory and emitted only here.
-        let observed = home.observe().await;
-        let committed = home.commit(&set, &observed).await?;
-        let diff =
-            observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
-        let digests = sets
-            .iter()
-            .filter_map(|source| {
-                source.digest.clone().map(|digest| SourceDigest {
-                    source: source.key.clone(),
-                    digest,
-                })
+    let set = SpecSet {
+        spec: documents.spec,
+        design: documents.design,
+    };
+    let home = Home::new(context.provider);
+    // One observation feeds both the CAS expected value and the
+    // re-mine diff, computed in memory and emitted only here.
+    let observed = home.observe().await;
+    let committed = home.commit(&set, &observed).await?;
+    let diff =
+        observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
+    let digests = sets
+        .iter()
+        .filter_map(|source| {
+            source.digest.clone().map(|digest| SourceDigest {
+                source: source.key.clone(),
+                digest,
             })
-            .collect();
-        Ok(SpecifyBody {
-            generation: committed.id,
-            requirements: rows.len(),
-            sources: sets.len(),
-            diff,
-            digests,
         })
-    }
+        .collect();
+    Ok(SpecifyBody {
+        generation: committed.id,
+        requirements: rows.len(),
+        sources: sets.len(),
+        diff,
+        digests,
+    })
 }

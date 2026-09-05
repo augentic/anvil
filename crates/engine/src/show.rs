@@ -1,7 +1,7 @@
 //! The review operation: a verifiable, non-authoritative projection of
 //! one document from the current generation.
 
-use omnia_guest::api::{Context, Handler};
+use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
@@ -37,26 +37,24 @@ pub struct ShowBody {
     pub body: String,
 }
 
-impl<P: StateStore + BlobStore> Handler<P> for Show {
-    type Error = Error;
-    type Output = ShowBody;
-
-    async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
-        let home = Home::new(context.provider);
-        let Some((committed, set)) = home.current_set().await? else {
-            return Err(Error::NotFound {
-                code: "spec-not-generated".into(),
-                description: "no specification generation has been committed".into(),
-            });
-        };
-        let body = match self.document {
-            Document::Spec => set.spec,
-            Document::Design => set.design,
-        };
-        Ok(ShowBody {
-            generation: committed.id,
-            document: self.document,
-            body,
-        })
-    }
+#[omnia_guest::handler]
+async fn show<P: StateStore + BlobStore>(
+    input: Show, context: Context<'_, P>,
+) -> Result<ShowBody, Error> {
+    let home = Home::new(context.provider);
+    let Some((committed, set)) = home.current_set().await? else {
+        return Err(Error::NotFound {
+            code: "spec-not-generated".into(),
+            description: "no specification generation has been committed".into(),
+        });
+    };
+    let body = match input.document {
+        Document::Spec => set.spec,
+        Document::Design => set.design,
+    };
+    Ok(ShowBody {
+        generation: committed.id,
+        document: input.document,
+        body,
+    })
 }
