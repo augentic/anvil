@@ -1,16 +1,19 @@
 //! The CLI surface: clap grammar, handler dispatch, and the exit contract.
 
+mod output;
+
 use std::ffi::OsString;
-use std::io::{self, Write};
+use std::fmt::{self, Display};
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use emery_source::Source;
 use omnia_guest::api::{Client, Metadata};
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
+use output::Format;
+pub use output::Response;
 use serde::Serialize;
 
-use crate::handler::Render;
 use crate::show::ShowInput;
 use crate::specify::SpecifyInput;
 
@@ -29,6 +32,9 @@ const COMPLETIONS_DESC: &str = "Generate shell completions.\n\n\
     Pipe into your shell's completion directory. Example: \
     `emery completions zsh > ~/.zsh/_emery`";
 
+// Clap's usage-error status; help and version print to stdout and exit 0.
+const EXIT_USAGE: u8 = 2;
+
 /// Parse and execute one argument vector over `provider`, buffering both channels.
 pub async fn run<P, I, T>(provider: P, argv: I) -> Response
 where
@@ -39,14 +45,11 @@ where
     let app = match App::try_parse_from(argv) {
         Ok(app) => app,
         Err(err) => {
-            let text = err.render().to_string();
+            let rendered = err.render().to_string();
             return if err.use_stderr() {
-                Response::default().outcome(Err::<String, _>(Error::NotFound {
-                    code: "2".to_string(),
-                    description: text,
-                }))
+                Response::failure(rendered, EXIT_USAGE)
             } else {
-                Response::default().outcome(Ok(text))
+                Response::success(rendered)
             };
         }
     };
@@ -58,12 +61,10 @@ where
         Verb::Completions { shell } => {
             let mut out = Vec::new();
             clap_complete::generate(shell, &mut App::command(), "emery", &mut out);
-            Response::default().outcome(Ok(out))
+            Response::success(out)
         }
-        Verb::Specify(input) => {
-            Response::new(app.format).outcome(client.call(input, &metadata).await)
-        }
-        Verb::Show(input) => Response::new(app.format).outcome(client.call(input, &metadata).await),
+        Verb::Specify(input) => project(app.format, client.call(input, &metadata).await),
+        Verb::Show(input) => project(app.format, client.call(input, &metadata).await),
     }
 }
 
@@ -104,76 +105,15 @@ enum Verb {
     },
 }
 
-/// CLI output format.
-#[derive(Copy, Clone, Debug, Default, clap::ValueEnum, PartialEq, Eq)]
-enum Format {
-    /// Human-readable text.
-    #[default]
-    Text,
-    /// Pretty-printed JSON.
-    Json,
-}
-
-/// Buffered command output and process exit status.
-#[derive(Clone, Debug, Default)]
-pub struct Response {
-    /// The output format.
-    format: Format,
-    /// Bytes written to standard output.
-    pub stdout: Vec<u8>,
-    /// Bytes written to standard error.
-    pub stderr: Vec<u8>,
-    /// Numeric process exit status.
-    pub exit: u8,
-}
-
-impl Response {
-    fn new(format: Format) -> Self {
-        Self {
-            format,
-            stdout: Vec::new(),
-            stderr: Vec::new(),
-            exit: 0,
+// The command projector: the success body rides stdout, the failure
+// envelope rides stderr with its exit status.
+fn project<T: Serialize + Display>(format: Format, outcome: Result<T, Error>) -> Response {
+    match outcome {
+        Ok(body) => Response::success(format.encode(&body)),
+        Err(error) => {
+            let failure = Failure::from(&error);
+            Response::failure(format.encode(&failure), failure.exit_code)
         }
-    }
-
-    fn outcome<T: Render>(self, outcome: Result<T, Error>) -> Self {
-        match outcome {
-            Ok(body) => Self {
-                format: self.format,
-                stdout: self.emit(&body),
-                stderr: Vec::new(),
-                exit: self.exit,
-            },
-            Err(err) => Self {
-                format: self.format,
-                stdout: Vec::new(),
-                stderr: self.emit(&Failure::from(&err)),
-                exit: exit_code(&err),
-            },
-        }
-    }
-
-    // Both sinks are in-memory: a plain DTO serializes and a `Vec` never
-    // refuses a write, so projection has no failure path of its own.
-    fn emit<T: Render>(&self, body: &T) -> Vec<u8> {
-        let mut out = Vec::new();
-        match self.format {
-            Format::Json => {
-                serde_json::to_writer_pretty(&mut out, body).expect("a plain DTO serializes");
-                out.push(b'\n');
-            }
-            Format::Text => body.render(&mut out).expect("a Vec sink never fails"),
-        }
-        out
-    }
-}
-
-impl From<Response> for Result<(), u8> {
-    fn from(response: Response) -> Self {
-        io::stdout().write_all(&response.stdout).map_err(|_| 3)?;
-        io::stderr().write_all(&response.stderr).map_err(|_| 3)?;
-        if response.exit == 0 { Ok(()) } else { Err(response.exit) }
     }
 }
 
@@ -200,23 +140,11 @@ impl From<&Error> for Failure {
     }
 }
 
-impl Render for String {
-    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
-        w.write_all(self.as_bytes())
-    }
-}
-
-impl Render for Vec<u8> {
-    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
-        w.write_all(self)
-    }
-}
-
-impl Render for Failure {
-    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
-        writeln!(w, "error: {}", self.message)?;
+impl Display for Failure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "error[{}]: {}", self.error, self.message)?;
         if let Some(hint) = self.hint {
-            writeln!(w, "hint: {hint}")?;
+            writeln!(f, "hint: {hint}")?;
         }
         Ok(())
     }

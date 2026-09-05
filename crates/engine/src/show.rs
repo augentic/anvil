@@ -1,13 +1,12 @@
 //! The `emery show` operation: a verifiable, non-authoritative
 //! projection of the current generation to stdout.
 
-use std::io::Write;
+use std::fmt;
 
 use omnia_guest::api::{Context, Handler};
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::Render;
 use crate::home::Home;
 
 /// The reviewable documents of one generation.
@@ -56,9 +55,9 @@ pub struct ShowBody {
 // Text mode is the document alone — a deliberate exception to the
 // result-line convention so `emery show spec` pipes cleanly; the
 // generation id rides the JSON envelope.
-impl Render for ShowBody {
-    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        w.write_all(self.body.as_bytes())
+impl fmt::Display for ShowBody {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.body)
     }
 }
 
@@ -71,8 +70,7 @@ impl<P: StateStore + BlobStore> Handler<P> for ShowInput {
         let Some((committed, set)) = home.current_set().await? else {
             return Err(Error::NotFound {
                 code: "spec-not-generated".into(),
-                description: "spec-not-generated: no specification generation has been committed"
-                    .into(),
+                description: "no specification generation has been committed".into(),
             });
         };
         let body = match self.document {

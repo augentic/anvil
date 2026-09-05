@@ -227,10 +227,10 @@ fn resolved(base: &Path, relative: &Path) -> Result<PathBuf, Error> {
 fn source_required() -> Error {
     Error::BadRequest {
         code: "specify-source-required".into(),
-        description: "specify-source-required: emery specify requires at least one source: pass \
-                      `<adapter>` (package reference or local component path) and/or \
-                      `--description <adapter>=<text>`, select an operator-owned config with \
-                      `--config [<path>]`, or add an `emery.toml` at the project root"
+        description: "emery specify requires at least one source: pass `<adapter>` (package \
+                      reference or local component path) and/or `--description \
+                      <adapter>=<text>`, select an operator-owned config with `--config \
+                      [<path>]`, or add an `emery.toml` at the project root"
             .into(),
     }
 }

@@ -27,14 +27,14 @@ omnia_guest::server_error!("{} ({source})", path.display())
 
 ## One body per command, no wrapper newtype
 
-Don't introduce `XxxBody` to hang `Render` off a domain type. Move `Render` onto the domain type, or pass an inline closure to `ctx.emit_with`. If the same wrapper appears in three command files, it's a domain concept — promote it to the crate that owns the type.
+Don't introduce `XxxBody` to hang `Display` off a domain type. Move `Display` onto the domain type. If the same wrapper appears in three command files, it's a domain concept — promote it to the crate that owns the type.
 
 ```rust
-// BAD — wrapper newtype existing only to carry Render.
-struct ContextRenderInput<'a>(&'a ResolvedContext);
-impl Render for ContextRenderInput<'_> { /* ... */ }
-// GOOD — Render on the domain type, or:
-ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
+// BAD — wrapper newtype existing only to carry Display.
+struct ContextDisplay<'a>(&'a ResolvedContext);
+impl fmt::Display for ContextDisplay<'_> { /* ... */ }
+// GOOD — Display on the domain type.
+impl fmt::Display for ResolvedContext { /* ... */ }
 ```
 
 ## No traits for testability alone

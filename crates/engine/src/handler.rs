@@ -1,21 +1,8 @@
-//! Transport-neutral command plumbing: text-mode rendering and
-//! preopen-relative path normalization.
+//! Handler plumbing: preopen-relative path normalization.
 
-use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
 use omnia_guest::{Error, bad_request};
-use serde::Serialize;
-
-/// Human-readable rendering for a serializable command body.
-pub trait Render: Serialize {
-    /// Writes `self` to `w`.
-    ///
-    /// # Errors
-    ///
-    /// Propagates I/O errors.
-    fn render(&self, w: &mut dyn Write) -> std::io::Result<()>;
-}
 
 /// Normalizes an operator path inside the `.` project preopen.
 ///

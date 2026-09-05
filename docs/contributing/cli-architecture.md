@@ -27,7 +27,7 @@ src/main.rs   →  emery::main()  →  omnia::runtime! in src/lib.rs (command mo
 
 The deployment projects nothing out of argv: no pre-boot fact depends on the parsed grammar — the invocation directory is the project root, and everything else, displays and rejections included, renders in the guest.
 
-The operator grammar is assembled in `crates/engine/src/cli.rs` directly over the handler input types: each input derives `clap::Args` and implements `omnia_guest::api::Handler`, so the grammar and the handler input are one type and route decoding is infallible by construction. `emery_engine::cli` owns clap behavior, completions, `Client` dispatch, and the buffered `Response`; `cli::run(provider, argv)` is the whole entry. The WASI shim (`omnia_guest::command!(dispatch)` in `src/lib.rs`) constructs the provider, runs that grammar, writes both channels via `Response::write`, and hands the exit status to `omnia_guest::api::command::execute_wasi` (telemetry init/flush and exact exit). The handler contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The operator grammar is assembled in `crates/engine/src/cli.rs` directly over the handler input types: each input derives `clap::Args` and implements `omnia_guest::api::Handler`, so the grammar and the handler input are one type and route decoding is infallible by construction. `emery_engine::cli` owns clap behavior, completions, `Client` dispatch, and the buffered `Response`; `cli::run(provider, argv)` is the whole entry. The WASI shim (`omnia_guest::command!(dispatch)` in `src/lib.rs`) constructs the provider, runs that grammar, and returns the `Response`; it implements `omnia_guest::api::command::IntoExit`, which writes both channels and hands the exit status to `omnia_guest::api::command::execute_wasi` (telemetry init/flush and exact exit). The handler contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
 ## JSON envelope contract
 
@@ -62,7 +62,7 @@ Commands return `omnia_guest::Error`. Construct the Omnia class that matches: `B
 The pattern for a command operation:
 
 1. Call into a library crate function that returns `Result<T, omnia_guest::Error>`
-2. Return a typed body implementing `Serialize + Render`
+2. Return a typed body implementing `Serialize + Display`
 3. Let the command projector render success or apply the shared error contract
 
 ## Public Rust API

@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 ## Text-mode style
 
-Every `Render` impl follows one convention so operators can scan any command's output the same way:
+Every body's `Display` impl follows one convention so operators can scan any command's output the same way:
 
 - **Result line first, lowercase, verb-first**: `committed generation 9f8e7d6c…`.
 - **Detail lines are indented `label: value` pairs** with kebab-case labels: `  sources: 3`.
@@ -83,9 +83,9 @@ Every failing verb emits the same flat envelope on stderr:
 ```json
 {
   "error": "specify-source-required",
-  "message": "specify-source-required: emery specify requires at least one source: …",
+  "message": "emery specify requires at least one source: …",
   "exit-code": 1
 }
 ```
 
-An optional `hint` key carries a static recovery hint when the error defines one.
+An optional `hint` key carries a static recovery hint when the error defines one. Text mode prints the same envelope as `error[specify-source-required]: emery specify requires at least one source: …` followed by a `hint:` line when one is defined; the discriminant is grep-stable in both formats, so a `message` never repeats it.

@@ -1,6 +1,6 @@
 //! The `emery specify` operation.
 
-use std::io::Write;
+use std::fmt;
 
 use emery_source::Source;
 use omnia_guest::api::{Context, Handler};
@@ -9,7 +9,6 @@ use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
-use crate::handler::Render;
 use crate::home::{Diff, Home, SpecSet};
 use crate::synthesise::{reconcile, synthesise};
 
@@ -64,27 +63,27 @@ pub struct SourceDigest {
     pub digest: Digest,
 }
 
-impl Render for SpecifyBody {
-    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "committed generation {}", self.generation)?;
-        writeln!(w, "  requirements: {}", self.requirements)?;
-        writeln!(w, "  sources: {}", self.sources)?;
+impl fmt::Display for SpecifyBody {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "committed generation {}", self.generation)?;
+        writeln!(f, "  requirements: {}", self.requirements)?;
+        writeln!(f, "  sources: {}", self.sources)?;
         for entry in &self.digests {
-            writeln!(w, "  digest {}: {}", entry.source, entry.digest)?;
+            writeln!(f, "  digest {}: {}", entry.source, entry.digest)?;
         }
         if let Some(diff) = &self.diff {
             if diff.is_empty() {
-                writeln!(w, "  diff vs {}: none (byte-stable)", diff.from)?;
+                writeln!(f, "  diff vs {}: none (byte-stable)", diff.from)?;
             } else {
-                writeln!(w, "  diff vs {}: {}", diff.from, diff.artifacts.join(", "))?;
+                writeln!(f, "  diff vs {}: {}", diff.from, diff.artifacts.join(", "))?;
                 for subject in &diff.added {
-                    writeln!(w, "    + {subject}")?;
+                    writeln!(f, "    + {subject}")?;
                 }
                 for subject in &diff.removed {
-                    writeln!(w, "    - {subject}")?;
+                    writeln!(f, "    - {subject}")?;
                 }
                 for subject in &diff.changed {
-                    writeln!(w, "    ~ {subject}")?;
+                    writeln!(f, "    ~ {subject}")?;
                 }
             }
         }

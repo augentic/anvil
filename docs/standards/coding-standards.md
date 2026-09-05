@@ -78,7 +78,7 @@ Doc comments describe what this is today. Version-history tables, dated bumps, c
 
 ## Naming
 
-Prefer short, idiomatic Rust names. Don't restate context the surrounding module, type, or function already supplies. Avoid `_local` / `_value` / `_helper` suffixes. New functions: 1–3 words. Predicates start with `is_` / `has_`. DTOs returned by handlers are `<Action>Body` / `<Action>Row`, never `<Action>Response` / `<Action>Json` (the type's role is `Body`; the format dispatch lives in `emit` — see [handler-shape.md](./handler-shape.md)).
+Prefer short, idiomatic Rust names. Don't restate context the surrounding module, type, or function already supplies. Avoid `_local` / `_value` / `_helper` suffixes. New functions: 1–3 words. Predicates start with `is_` / `has_`. DTOs returned by handlers are `<Action>Body` / `<Action>Row`, never `<Action>Response` / `<Action>Json` (the type's role is `Body`; the format dispatch lives in the command projector — see [handler-shape.md](./handler-shape.md)).
 
 **Identifier length.** Declared item names (`fn` / `struct` / `enum` / `trait` / `type` / `const` / `static` / `mod`), named fields, and enum variants are **≤ 25 characters** (Unicode scalars on the bare identifier, not the module path). **Review only** — clippy has no identifier-length lint (`module_name_repetitions` still catches in-module restatement). Push narrative into docs, comments, or nested `mod` context — not into the identifier.
 
@@ -110,7 +110,7 @@ Reviewers catch the density caps (see [Comments](#comments)) and the 25-characte
 
 ## Format dispatch
 
-Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/engine/src/cli.rs` owns format dispatch through the internal `emit` function in the same module. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/engine/src/cli.rs` owns format dispatch through the module-private `Format::encode`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -123,11 +123,11 @@ match format {
 Ok(SomeBody::from(&result))
 ```
 
-Text mode renders through the body's `emery_engine::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
+Text mode renders through the body's `std::fmt::Display` impl; the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
 
 ## One emit path
 
-Success bodies and failures leave operations as typed values. The command projector in `emery_engine::cli` renders those values at the command boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, construct an Omnia `Error` (macros for defaults; explicit variants only for the three recovery codes); do not hand-roll a `*ErrBody` DTO. `emit` stays internal to `crates/engine/src/cli.rs`.
+Success bodies and failures leave operations as typed values. The command projector in `emery_engine::cli` renders those values at the command boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, construct an Omnia `Error` (macros for defaults; explicit variants only for the three recovery codes); do not hand-roll a `*ErrBody` DTO. `Format::encode` stays private to `emery_engine::cli`.
 
 ## DTOs
 
@@ -178,9 +178,9 @@ struct HandleBody {
     path: PathBuf,
 }
 
-impl Render for HandleBody {
-    fn render(&self, w: &mut dyn std::io::Write) -> std::io::Result<()> {
-        writeln!(w, "{}", self.name)
+impl fmt::Display for HandleBody {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", self.name)
     }
 }
 

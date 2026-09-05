@@ -1,6 +1,6 @@
 # Handler shape
 
-The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/engine`, how paths anchor at the deployed preopen layout, how typed outputs implement `Render + Serialize`, and how the command projector maps terminal results.
+The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/engine`, how paths anchor at the deployed preopen layout, how typed outputs implement `Serialize + Display`, and how the command projector maps terminal results.
 
 ## Shared handler plumbing (`emery_engine::handler`)
 
@@ -35,13 +35,13 @@ Handlers live beside their domain kernels.
 
 Handlers anchor at the `.` preopen inside `handle`: paths are constants relative to the project-root mount (the invocation directory natively; `emery_engine::handler::preopen_path` normalizes operator paths inside it), and engine storage is named by fixed key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Handlers never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
 
-## Output: `Render + Serialize`
+## Output: `Serialize + Display`
 
-Handlers never write to stdout. Each returns a typed body implementing `Serialize` for JSON and `Render` for command text output.
+Handlers never write to stdout. Each returns a typed body implementing `Serialize` for JSON and `std::fmt::Display` for command text output. There is no house rendering trait: the two standard traits are the whole body contract, and the projector encodes either into memory infallibly.
 
 ## Errors and their projections
 
-Handlers return `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the failure envelope from `code()` / `description()`; the envelope is itself a `Render + Serialize` body, so success and failure share one rendering path. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
+Handlers return `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the failure envelope from `code()` / `description()`; the envelope is itself a `Serialize + Display` body, so success and failure share one rendering path. Its text form is `error[<code>]: <message>` plus an optional `hint:` line, so the `error` discriminant is grep-stable in both formats and descriptions never repeat it. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
@@ -69,7 +69,7 @@ There is no separate `*Args` layer: each handler input derives `clap::Args` and 
 
 The reusable command grammar lives in `crates/engine/src/cli.rs`. `cli::run` binds a provider into a `Client`, runs one argv, and returns the buffered `Response`. Wire-contract suites call the same `run` and assert on the buffered channels.
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs that grammar over its provider, writes both channels via `Response::write`, and returns the exit status, which the macro hands to `omnia_guest::api::command::execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs that grammar over its provider and returns the `Response` itself; `Response` implements `omnia_guest::api::command::IntoExit`, so the macro writes both channels and hands the exit status to `execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
 
 Target discipline per leaf arm:
 
