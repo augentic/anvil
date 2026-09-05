@@ -1058,7 +1058,7 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "emery-adapter",
- "emery-engine",
+ "emery-cli",
  "emery-prose",
  "emery-source",
  "omnia",
@@ -1092,12 +1092,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "emery-cli"
+version = "0.38.0"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "emery-engine",
+ "omnia-guest",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "emery-engine"
 version = "0.38.0"
 dependencies = [
  "anyhow",
- "clap",
- "clap_complete",
  "emery-prose",
  "emery-source",
  "omnia-guest",
@@ -1108,7 +1119,6 @@ dependencies = [
  "sha2 0.11.0",
  "strum 0.28.0",
  "tokio",
- "toml",
  "tracing",
 ]
 

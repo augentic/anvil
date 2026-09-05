@@ -80,8 +80,8 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
 }
 
 /// Runs `argv` through the live grammar over the inert provider.
-async fn grammar(argv: &[&str]) -> emery_engine::cli::Response {
-    emery_engine::cli::run(Inert::default(), argv.iter().copied()).await
+async fn grammar(argv: &[&str]) -> emery_cli::Response {
+    emery_cli::run(Inert::default(), argv.iter().copied()).await
 }
 
 // Global flags do not appear in verb-specific help.

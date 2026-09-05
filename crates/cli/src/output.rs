@@ -1,14 +1,13 @@
 //! The command output contract: format-aware body encoding and the
 //! buffered channel pair a run reports.
 
-use std::fmt::Display;
-use std::io::{self, Write};
-
 use serde::Serialize;
+
+use super::text::Text;
 
 /// Command output format.
 #[derive(Copy, Clone, Debug, clap::ValueEnum, PartialEq, Eq)]
-pub(super) enum Format {
+pub enum Format {
     /// Human-readable text.
     Text,
     /// Pretty-printed JSON.
@@ -17,10 +16,14 @@ pub(super) enum Format {
 
 impl Format {
     // Every body is a derived DTO encoded into memory, so encoding has
-    // no failure path; the `expect` states the invariant.
-    pub(super) fn encode<T: Serialize + Display>(self, body: &T) -> Vec<u8> {
+    // no failure path; the `expect`s state the invariant.
+    pub fn encode<T: Serialize + Text>(self, body: &T) -> Vec<u8> {
         match self {
-            Self::Text => body.to_string().into_bytes(),
+            Self::Text => {
+                let mut out = String::new();
+                body.text(&mut out).expect("a String sink never fails");
+                out.into_bytes()
+            }
             Self::Json => {
                 let mut out = serde_json::to_vec_pretty(body).expect("a derived DTO serializes");
                 out.push(b'\n');
@@ -43,7 +46,7 @@ pub struct Response {
 
 impl Response {
     /// Creates a successful response carrying raw stdout.
-    pub(super) fn success(stdout: impl Into<Vec<u8>>) -> Self {
+    pub fn success(stdout: impl Into<Vec<u8>>) -> Self {
         Self {
             stdout: stdout.into(),
             stderr: Vec::new(),
@@ -52,22 +55,12 @@ impl Response {
     }
 
     /// Creates a failed response carrying raw stderr.
-    pub(super) fn failure(stderr: impl Into<Vec<u8>>, exit: u8) -> Self {
+    pub fn failure(stderr: impl Into<Vec<u8>>, exit: u8) -> Self {
         Self {
             stdout: Vec::new(),
             stderr: stderr.into(),
             exit,
         }
-    }
-
-    /// Writes both buffered channels to explicit sinks.
-    ///
-    /// # Errors
-    ///
-    /// Returns the first sink write error.
-    pub fn write_to(&self, stdout: &mut dyn Write, stderr: &mut dyn Write) -> io::Result<()> {
-        stdout.write_all(&self.stdout)?;
-        stderr.write_all(&self.stderr)
     }
 }
 
@@ -76,8 +69,16 @@ impl Response {
 #[cfg(target_arch = "wasm32")]
 impl omnia_guest::api::command::IntoExit for Response {
     fn into_exit(self) -> Result<(), u8> {
-        // A refused process channel is unclassified: the `ServerError` class.
-        self.write_to(&mut io::stdout(), &mut io::stderr()).map_err(|_error| 3)?;
+        use std::io::Write as _;
+
+        // A refused process channel is unclassified, so it takes the
+        // exit the one map gives a `ServerError`.
+        std::io::stdout()
+            .write_all(&self.stdout)
+            .and_then(|()| std::io::stderr().write_all(&self.stderr))
+            .map_err(|error| {
+                super::exit_code(&omnia_guest::server_error!("process channel: {error}"))
+            })?;
         if self.exit == 0 { Ok(()) } else { Err(self.exit) }
     }
 }

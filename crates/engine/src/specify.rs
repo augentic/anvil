@@ -1,6 +1,5 @@
-//! The `emery specify` operation.
-
-use std::fmt;
+//! The specification-generation operation: extract every bound source,
+//! reconcile, synthesise, and commit one generation.
 
 use emery_source::Source;
 use omnia_guest::api::{Context, Handler};
@@ -10,29 +9,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract::extract_all;
 use crate::home::{Diff, Home, SpecSet};
+use crate::sources::{SourceBinding, validate};
 use crate::synthesise::{reconcile, synthesise};
 
-/// Input for `emery specify` — the run's source bindings.
-///
-/// The input doubles as the verb's clap surface; field docs are its
-/// `--help` text.
-#[derive(Debug, Default, Clone, Serialize, Deserialize, clap::Args)]
+/// Generate a specification generation from source bindings.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct SpecifyInput {
-    /// Workspace-backed source adapters or local component paths.
-    #[serde(default)]
-    pub adapters: Vec<String>,
-    /// Bind an inline source as `<adapter>=<text>`; repeatable.
-    #[serde(default)]
-    #[arg(long = "description", short = 'd')]
-    pub descriptions: Vec<String>,
-    /// Operator-owned config; the omitted value selects emery.toml.
-    #[serde(default)]
-    #[arg(long, short = 'c', num_args = 0..=1, default_missing_value = crate::sources::CONFIG_FILE)]
-    pub config: Option<String>,
+pub struct Specify {
+    /// The run's source bindings, in extraction order.
+    pub bindings: Vec<SourceBinding>,
 }
 
-/// Successful `emery specify` result.
+/// Successful specification result.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SpecifyBody {
@@ -63,45 +51,13 @@ pub struct SourceDigest {
     pub digest: Digest,
 }
 
-impl fmt::Display for SpecifyBody {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "committed generation {}", self.generation)?;
-        writeln!(f, "  requirements: {}", self.requirements)?;
-        writeln!(f, "  sources: {}", self.sources)?;
-        for entry in &self.digests {
-            writeln!(f, "  digest {}: {}", entry.source, entry.digest)?;
-        }
-        if let Some(diff) = &self.diff {
-            if diff.is_empty() {
-                writeln!(f, "  diff vs {}: none (byte-stable)", diff.from)?;
-            } else {
-                writeln!(f, "  diff vs {}: {}", diff.from, diff.artifacts.join(", "))?;
-                for subject in &diff.added {
-                    writeln!(f, "    + {subject}")?;
-                }
-                for subject in &diff.removed {
-                    writeln!(f, "    - {subject}")?;
-                }
-                for subject in &diff.changed {
-                    writeln!(f, "    ~ {subject}")?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<P: Model + Source + StateStore + BlobStore + Plugins> Handler<P> for SpecifyInput {
+impl<P: Model + Source + StateStore + BlobStore + Plugins> Handler<P> for Specify {
     type Error = Error;
     type Output = SpecifyBody;
 
     async fn handle(self, context: Context<'_, P>) -> Result<Self::Output, Self::Error> {
-        let Self {
-            adapters,
-            descriptions,
-            config,
-        } = self;
-        let bindings = crate::sources::bindings(&adapters, &descriptions, config.as_deref())?;
+        let Self { bindings } = self;
+        validate(&bindings)?;
 
         let sets = extract_all(context.provider, &bindings).await?;
         let rows = reconcile(&sets);

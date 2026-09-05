@@ -27,14 +27,14 @@ omnia_guest::server_error!("{} ({source})", path.display())
 
 ## One body per command, no wrapper newtype
 
-Don't introduce `XxxBody` to hang `Display` off a domain type. Move `Display` onto the domain type. If the same wrapper appears in three command files, it's a domain concept — promote it to the crate that owns the type.
+Don't introduce a wrapper newtype to hang a rendering off a body. Implement the façade's `Text` trait (`crates/cli/src/text.rs`) on the engine body itself — the orphan rule permits a local trait on a foreign type — and keep `std::fmt::Display` off engine bodies altogether: their terminal shape is the CLI's contract, not the engine's. If the same rendering appears in three command files, it's one body — promote it.
 
 ```rust
-// BAD — wrapper newtype existing only to carry Display.
-struct ContextDisplay<'a>(&'a ResolvedContext);
-impl fmt::Display for ContextDisplay<'_> { /* ... */ }
-// GOOD — Display on the domain type.
-impl fmt::Display for ResolvedContext { /* ... */ }
+// BAD — wrapper newtype existing only to carry a rendering.
+struct SpecifyText<'a>(&'a SpecifyBody);
+impl Text for SpecifyText<'_> { /* ... */ }
+// GOOD — Text on the body, in the façade.
+impl Text for SpecifyBody { /* ... */ }
 ```
 
 ## No traits for testability alone

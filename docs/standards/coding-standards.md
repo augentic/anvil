@@ -110,7 +110,7 @@ Reviewers catch the density caps (see [Comments](#comments)) and the 25-characte
 
 ## Format dispatch
 
-Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/engine/src/cli.rs` owns format dispatch through the module-private `Format::encode`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/cli/src/lib.rs` owns format dispatch through the façade's `Format::encode`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -123,11 +123,11 @@ match format {
 Ok(SomeBody::from(&result))
 ```
 
-Text mode renders through the body's `std::fmt::Display` impl; the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
+Text mode renders through the façade's `Text` impl for the body (`crates/cli/src/text.rs`); the JSON path goes through `serde::Serialize` automatically. Engine bodies carry no `Display` — a body's terminal shape is a CLI concern, and an engine `Display` would quietly become part of every other transport's contract. New code must not introduce `match … format`.
 
 ## One emit path
 
-Success bodies and failures leave operations as typed values. The command projector in `emery_engine::cli` renders those values at the command boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, construct an Omnia `Error` (macros for defaults; explicit variants only for the three recovery codes); do not hand-roll a `*ErrBody` DTO. `Format::encode` stays private to `emery_engine::cli`.
+Success bodies and failures leave operations as typed values. The command projector in `emery_cli` renders those values at the command boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, construct an Omnia `Error` (macros for defaults; explicit variants only for the three recovery codes); do not hand-roll a `*ErrBody` DTO. `Format::encode` and the `Text` trait stay inside `emery_cli`.
 
 ## DTOs
 
@@ -169,23 +169,24 @@ impl Body {
     }
 }
 
-// GOOD
+// GOOD — the engine body is a Serialize-only DTO …
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
-struct HandleBody {
-    name: String,
-    status: OutcomeStatus,
-    path: PathBuf,
-}
-
-impl fmt::Display for HandleBody {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}", self.name)
-    }
+pub struct HandleBody {
+    pub name: String,
+    pub status: OutcomeStatus,
+    pub path: PathBuf,
 }
 
 impl From<&Outcome> for HandleBody {
     fn from(outcome: &Outcome) -> Self { /* ... */ }
+}
+
+// … and its text mode lives in the façade (crates/cli/src/text.rs)
+impl Text for HandleBody {
+    fn text(&self, out: &mut dyn fmt::Write) -> fmt::Result {
+        writeln!(out, "{}", self.name)
+    }
 }
 ```
 
@@ -195,7 +196,7 @@ Engine operations return `omnia_guest::Error` (`BadRequest`, `NotFound`, `Server
 
 **Class on a direct match.** Pick the Omnia variant that matches the failure: operator or input refusals are `BadRequest` (exit 1), missing resources are `NotFound` (exit 2), upstream or model failures are `BadGateway` (exit 4). Anything else — I/O, storage, leftover conversions — is `ServerError` (exit 3). Do not invent new codes or new exit slots. See [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes).
 
-**Hint lookup.** Long-form recovery hints live in `cli.rs` (`hint` on `adapter-cli-too-old` / `specify-source-required` / `spec-not-generated`). Adding a new hint extends that lookup, not the error type.
+**Hint lookup.** Long-form recovery hints live in `crates/cli/src/lib.rs` (`hint` on `adapter-cli-too-old` / `specify-source-required` / `spec-not-generated` and the loader discriminants). Adding a new hint extends that lookup, not the error type. Engine descriptions stay transport-neutral — they name the path, adapter, or rule, never a flag, a verb, or "the CLI"; flag-vocabulary recovery text belongs in the hint table.
 
 `unwrap()` and `expect()` are reserved for invariants the type system can't express (e.g. "this enum variant covers `Status::value_variants()`"). Always include a justification string in `expect`. User-facing errors must surface as an Omnia `Error`, not panics.
 
@@ -225,11 +226,11 @@ crates/foo/src/
 
 ## No-op forwarders
 
-A clap-parsed flag that is destructured and silently dropped (`let _ = cli.<flag>;` or pattern matches that never reach a handler) is a YAGNI smell. Either the flag is wired up (the variant carries data and the handler reads it) or it is removed from clap.
+A clap-parsed flag that is destructured and silently dropped (`let _ = cli.<flag>;` or pattern matches that never reach a handler) is a YAGNI smell. Either the flag is wired up (the façade's `*Args::decode` carries it into the engine input and the handler reads it) or it is removed from clap.
 
 ## Wired-but-ignored flags
 
-A flag whose doc-comment says "Currently equivalent to the default …" or whose handler ignores the value is the same defect as `no-op-forwarders` dressed up as documentation. Drop the flag from clap until the differentiated behaviour exists.
+A flag whose doc-comment says "Currently equivalent to the default …" or whose handler ignores the value is the same defect as `no-op-forwarders` dressed up as documentation. Drop the flag from the façade's `*Args` until the differentiated behaviour exists.
 
 ## Drift audit
 

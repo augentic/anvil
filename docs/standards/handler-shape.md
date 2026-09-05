@@ -1,13 +1,13 @@
 # Handler shape
 
-The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/engine`, how paths anchor at the deployed preopen layout, how typed outputs implement `Serialize + Display`, and how the command projector maps terminal results.
+The contract every operation obeys: how an operation becomes an `omnia_guest::api::Handler<P>` in `crates/engine`, how paths anchor at the deployed preopen layout, how typed outputs stay `Serialize`-only DTOs, and how the command façade (`crates/cli`) decodes, dispatches, and projects them.
 
-## Shared handler plumbing (`emery_engine::handler`)
+## Operations (`emery_engine::specify`, `emery_engine::show`)
 
-Every command is implemented by its input type implementing `omnia_guest::api::Handler<P>`:
+Every operation is implemented by its input type implementing `omnia_guest::api::Handler<P>`:
 
-- **`Self`** is a flat serde DTO that doubles as the verb's clap surface: it derives `clap::Args` alongside `Serialize`/`Deserialize` (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields; parsers and defaults ride `#[arg]` attributes). The CLI registers the input directly, so route decoding is infallible by construction.
-- **`handle(self, context)`** anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
+- **`Self`** is a flat, transport-neutral serde DTO (`Serialize`/`Deserialize`, `#[serde(rename_all = "kebab-case")]`): `Specify { bindings: Vec<SourceBinding> }`, `Show { document: Document }`. It carries no clap derives, no flag names, and no carrier knowledge — the same type deserializes from an HTTP body (`omnia_guest::api::http::post::<Specify, P>()`) as is built by the CLI façade.
+- **`handle(self, context)`** validates its input against the rules every transport must get (`emery_engine::sources::validate`: a non-empty list, unique keys, selector parse, `digest`/`registry` gating, preopen-relative roots), anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = omnia_guest::Error`** — handlers return Omnia's protocol error; do not introduce a house error type.
 
 Deterministic handlers bind only the capabilities they use unless their kernel issues model judgments, in which case they additionally bind `Model`. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
@@ -33,15 +33,15 @@ Handlers live beside their domain kernels.
 
 ## The deployed layout (C5)
 
-Handlers anchor at the `.` preopen inside `handle`: paths are constants relative to the project-root mount (the invocation directory natively; `emery_engine::handler::preopen_path` normalizes operator paths inside it), and engine storage is named by fixed key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Handlers never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
+Handlers anchor at the `.` preopen inside `handle`: paths are constants relative to the project-root mount (the invocation directory natively; `emery_engine::preopen::preopen_path` normalizes operator paths inside it and speaks paths, never flag names), and engine storage is named by fixed key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Handlers never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
 
-## Output: `Serialize + Display`
+## Output: `Serialize`-only bodies
 
-Handlers never write to stdout. Each returns a typed body implementing `Serialize` for JSON and `std::fmt::Display` for command text output. There is no house rendering trait: the two standard traits are the whole body contract, and the projector encodes either into memory infallibly.
+Handlers never write to stdout. Each returns a typed body (`SpecifyBody`, `ShowBody`) implementing `Serialize` and nothing presentational: no `Display`, no terminal style. Text-mode rendering is the CLI façade's concern — its local `Text` trait (`crates/cli/src/text.rs`) is implemented for the engine bodies and the failure envelope, and `Format::encode<T: Serialize + Text>` encodes either mode into memory infallibly. The style those `Text` impls follow is [CLI output shapes](../reference/cli-output-shapes.md).
 
 ## Errors and their projections
 
-Handlers return `omnia_guest::Error`. The command projector in `crates/engine/src/cli.rs` owns the 1:1 variant → exit projection and builds the failure envelope from `code()` / `description()`; the envelope is itself a `Serialize + Display` body, so success and failure share one rendering path. Its text form is `error[<code>]: <message>` plus an optional `hint:` line, so the `error` discriminant is grep-stable in both formats and descriptions never repeat it. `exit_code` stays in `emery_engine::cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
+Handlers return `omnia_guest::Error` with transport-neutral descriptions: name the path, the adapter, or the rule — never a flag, a verb, or "the CLI". The command projector in `crates/cli/src/lib.rs` owns the 1:1 variant → exit projection and builds the failure envelope from `code()` / `description()`; the envelope is itself a `Serialize + Text` body, so success and failure share one rendering path. Its text form is `error[<code>]: <message>` plus an optional `hint:` line, so the `error` discriminant is grep-stable in both formats and descriptions never repeat it. Flag-vocabulary recovery text is the façade's `hint` table, keyed by the discriminant. `exit_code` stays in `emery_cli` — there is no second exit table. Do not introduce a house error type or a report-carrying failure wrapper until a gate verb needs one.
 
 ## Exit codes
 
@@ -57,27 +57,29 @@ The Omnia 1:1 exit map is fixed:
 
 Omnia default codes are snake_case (`bad_request`, `not_found`, `server_error`, `bad_gateway`). The three recovery discriminants stay kebab-case so skills can branch on them.
 
-`exit_code` in [`crates/engine/src/cli.rs`](../../crates/engine/src/cli.rs) maps `omnia_guest::Error` variants and is the single source of truth. The command projector uses it for every terminal operation failure. Do not invent new exit codes.
+`exit_code` in [`crates/cli/src/lib.rs`](../../crates/cli/src/lib.rs) maps `omnia_guest::Error` variants and is the single source of truth. The command projector uses it for every terminal operation failure. Do not invent new exit codes.
 
-## The CLI module (`emery_engine::cli`)
+## The command façade (`emery-cli`)
 
-`crates/engine/src/cli.rs` is the whole CLI surface: the clap `App` type, `Client` dispatch, the Emery command projector, and the fixed exit contract. There is no HTTP surface: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router.
+`crates/cli` is the whole CLI surface: the clap `App` type and per-verb `*Args` types, the binding carriers, `Client` dispatch, the Emery command projector, and the fixed exit contract. It is a transport over the engine in exactly the sense omnia's `api::http` overlay is: decode → `Client::call(input, &Metadata)` → encode. There is no HTTP surface shipped: the engine binds no listener, so C3 (no unauthenticated HTTP ingress) is satisfied by absence rather than a refusal router — but the engine permits the overlay unchanged, and that is the litmus for the boundary.
 
-There is no separate `*Args` layer: each handler input derives `clap::Args` and registers as a clap subcommand, so grammar/input drift cannot exist and route decoding is infallible. Field parsers (closed `ValueEnum`s, repeatable flags, defaults) live on the input's `#[arg]` attributes. Global flags (`--format`) stay on `App`, not handler input. A module-level layering rule replaces the old crate boundary: `cli` imports handler input types and `omnia_guest::Error` only, never domain kernels.
+The grammar lives on façade-side `SpecifyArgs` / `ShowArgs` (`clap::Args`, `#[arg]` parsers, `--help` prose) and the closed `DocumentArg` (`clap::ValueEnum`). Each decodes into its engine input by **exhaustive struct literal** (`Specify { bindings }`, `Show { document }`) and an exhaustive `From<DocumentArg> for Document`, so a new engine field or variant is a façade compile error — the same drift guarantee the old fused design had, with one direction of dependency. Global flags (`--format`) stay on `App`. Layering rule: `cli` imports engine inputs, bodies, the binding DTO, `AdapterSelector`, `preopen_path`, and `omnia_guest::Error` — never domain kernels.
 
-## Dispatch contract (`cli.rs`)
+Decoders (`crates/cli/src/bindings.rs`: argv positionals + `--description`, the `--config` `emery.toml` carrier, project-root discovery) return `omnia_guest::Error`, not clap errors, so their refusals ride the same envelope and exit map as handler failures (`--config` mixed with argv bindings is `bad_request` → 1; an unreadable explicit `--config` is `server_error` → 3). Do not express those rules as clap `conflicts_with` / `value_parser` — that would move them to the usage exit (2).
 
-The reusable command grammar lives in `crates/engine/src/cli.rs`. `cli::run` binds a provider into a `Client`, runs one argv, and returns the buffered `Response`. Wire-contract suites call the same `run` and assert on the buffered channels.
+## Dispatch contract (`emery_cli::run`)
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs that grammar over its provider and returns the `Response` itself; `Response` implements `omnia_guest::api::command::IntoExit`, so the macro writes both channels and hands the exit status to `execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
+`emery_cli::run(provider, argv)` is the whole entry: `decode(argv)` parses through clap (usage errors, `--help`, `--version` are already complete responses), `dispatch(app, &Client::new(NAME, provider))` runs the selected verb, and the buffered `Response` comes back. Wire-contract suites call the same `run` and assert on the buffered channels.
 
-Target discipline per leaf arm:
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs `emery_cli::run` over its provider and returns the `Response` itself; `Response` implements `omnia_guest::api::command::IntoExit`, so the macro writes both channels and hands the exit status to `execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
 
-1. Parse global flags and the selected leaf's input — the input is its own clap surface.
-2. Invoke the typed handler directly over the parsed input (`Client::call`).
-3. Project success or handler failure through the command projector; completions remain synthetic CLI behavior.
+Target discipline per verb arm:
 
-Never put domain logic in `cli` or a shim's route match. Manual `Input { … }` construction in a route arm is a shape defect. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+1. Decode the verb's `*Args` into its engine input (`SpecifyArgs::decode`, `ShowArgs::decode`).
+2. Invoke the typed handler over that input (`Client::call`).
+3. Project success or failure through the command projector; completions remain synthetic grammar behaviour and never reach a handler.
+
+Never put domain logic in `cli`. Binding rules that every transport must enforce (uniqueness, selector shape, pin gating, preopen roots, the empty-list refusal) live in `emery_engine::sources::validate`; only the carriers' own grammar (the `<adapter>=<text>` split, the TOML schema and its reserved keys, the exclusivity rule) lives in the façade. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Gotcha — the only version floor is per adapter
 

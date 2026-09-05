@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use emery_engine::cli::{self, Response};
+use emery_cli::Response;
 use emery_source::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
@@ -152,7 +152,7 @@ pub async fn cli<S>(provider: &Provider<S>, argv: &[&str]) -> Response
 where
     S: StateStore + BlobStore + Send + Sync + 'static,
 {
-    cli::run(provider.clone(), argv.iter().copied()).await
+    emery_cli::run(provider.clone(), argv.iter().copied()).await
 }
 
 /// Runs one CLI invocation and asserts success.

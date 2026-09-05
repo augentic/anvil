@@ -645,6 +645,10 @@ async fn config_file_refused() {
 // name — which never loads — cannot carry one.
 #[tokio::test]
 async fn loader_keys_gated() {
+    let pinned_bare = format!(
+        "[[source]]\nname = \"pinned\"\nadapter = \"documentation\"\ndigest = \"{}\"\n",
+        digest("ab")
+    );
     let cases: &[(&str, &str)] = &[
         (
             "[[source]]\nname = \"local\"\nadapter = \"./source.wasm\"\n\
@@ -656,11 +660,7 @@ async fn loader_keys_gated() {
              registry = \"registry.acme.example\"\n",
             "never serves",
         ),
-        (
-            "[[source]]\nname = \"pinned\"\nadapter = \"documentation\"\n\
-             digest = \"sha256:9f2c44aa\"\n",
-            "bare adapter name",
-        ),
+        (pinned_bare.as_str(), "bare adapter name"),
     ];
     for (body, fragment) in cases {
         let dir = project_tempdir();

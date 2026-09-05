@@ -1,0 +1,23 @@
+[package]
+name = "emery-cli"
+description = "The emery command façade: clap grammar, binding carriers, the command projector, and the exit contract over emery-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+categories = ["command-line-utilities", "development-tools"]
+keywords = ["emery", "cli"]
+readme = "../../README.md"
+
+[dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+emery-engine.workspace = true
+omnia-guest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+
+[lints]
+workspace = true

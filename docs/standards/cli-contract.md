@@ -2,7 +2,7 @@
 
 The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1`.
 
-The CLI itself is built in the in-tree Cargo workspace at the repo root. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
+The CLI itself is built in the in-tree Cargo workspace at the repo root: the `emery-cli` crate (`crates/cli`) owns the grammar, the envelope, and the exit contract as a façade over the transport-neutral `emery-engine` operations. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
 ## Rule: all deterministic operations live in the CLI
 

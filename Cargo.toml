@@ -33,7 +33,7 @@ omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-emery-engine.workspace = true
+emery-cli.workspace = true
 omnia-guest.workspace = true
 wasip3.workspace = true
 
@@ -49,7 +49,7 @@ serde_json.workspace = true
 tempfile.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-emery-engine.workspace = true
+emery-cli.workspace = true
 omnia-guest.workspace = true
 omnia-test = { workspace = true, features = ["guest"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
@@ -144,6 +144,7 @@ wasmtime = { version = "48.0.1", default-features = false, features = ["anyhow",
 wit-bindgen = { version = "0.61.1", features = ["async-spawn"] }
 
 emery-adapter = { path = "crates/adapter" }
+emery-cli = { path = "crates/cli" }
 emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-source = { path = "crates/source" }

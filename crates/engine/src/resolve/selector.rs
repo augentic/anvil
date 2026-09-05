@@ -38,7 +38,8 @@ impl AdapterSelector {
     pub fn parse(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
             return Err(bad_request!(
-                "<adapter> must be non-empty and must not have leading or trailing whitespace"
+                "an adapter reference must be non-empty and must not have leading or trailing \
+                 whitespace"
             ));
         }
         if is_github_url(value) {

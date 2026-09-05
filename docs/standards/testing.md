@@ -26,7 +26,7 @@ Capability doubles come from omnia's `omnia-test` crate (a native-only dev-depen
 
 ## Root-led policy
 
-The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_engine::cli::run` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
+The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_cli::run` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
 
 Root suites are organized by operator story, one auto-discovered test binary per verb-level narrative:
 

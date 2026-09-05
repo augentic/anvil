@@ -11,7 +11,7 @@ use emery_source::{DispatchError, Source};
 use omnia_guest::plugins::{Digest, Error as LoadError};
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use crate::handler::preopen_path;
+use crate::preopen::preopen_path;
 use crate::resolve::{self, AdapterSelector};
 use crate::sources::{BindingContent, SourceBinding};
 
@@ -125,7 +125,7 @@ fn pin_agrees(existing: &resolve::Resolved, pin: Option<&Digest>) -> Result<(), 
 fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
-            let relative = preopen_path(Path::new(relative), "source path")?;
+            let relative = preopen_path(Path::new(relative))?;
             let root = if relative == Path::new(".") {
                 PathBuf::from(".")
             } else {
