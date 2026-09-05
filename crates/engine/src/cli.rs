@@ -39,11 +39,14 @@ where
     let app = match App::try_parse_from(argv) {
         Ok(app) => app,
         Err(err) => {
-            let text = err.render().to_string().into_bytes();
+            let text = err.render().to_string();
             return if err.use_stderr() {
-                Response::failure(text, 2)
+                Response::default().outcome(Err::<String, _>(Error::NotFound {
+                    code: "2".to_string(),
+                    description: text,
+                }))
             } else {
-                Response::success(text)
+                Response::default().outcome(Ok(text))
             };
         }
     };
@@ -55,10 +58,12 @@ where
         Verb::Completions { shell } => {
             let mut out = Vec::new();
             clap_complete::generate(shell, &mut App::command(), "emery", &mut out);
-            Response::success(out)
+            Response::default().outcome(Ok(out))
         }
-        Verb::Specify(input) => Response::from((app.format, client.call(input, &metadata).await)),
-        Verb::Show(input) => Response::from((app.format, client.call(input, &metadata).await)),
+        Verb::Specify(input) => {
+            Response::new(app.format).outcome(client.call(input, &metadata).await)
+        }
+        Verb::Show(input) => Response::new(app.format).outcome(client.call(input, &metadata).await),
     }
 }
 
@@ -110,8 +115,10 @@ enum Format {
 }
 
 /// Buffered command output and process exit status.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Response {
+    /// The output format.
+    format: Format,
     /// Bytes written to standard output.
     pub stdout: Vec<u8>,
     /// Bytes written to standard error.
@@ -121,48 +128,45 @@ pub struct Response {
 }
 
 impl Response {
-    /// Create a successful response.
-    #[must_use]
-    pub fn success(stdout: impl Into<Vec<u8>>) -> Self {
+    fn new(format: Format) -> Self {
         Self {
-            stdout: stdout.into(),
+            format,
+            stdout: Vec::new(),
             stderr: Vec::new(),
             exit: 0,
         }
     }
 
-    /// Create a failed response.
-    #[must_use]
-    pub fn failure(stderr: impl Into<Vec<u8>>, exit: u8) -> Self {
-        Self {
-            stdout: Vec::new(),
-            stderr: stderr.into(),
-            exit,
-        }
-    }
-}
-
-impl<T: Render> From<(Format, Result<T, Error>)> for Response {
-    fn from((format, outcome): (Format, Result<T, Error>)) -> Self {
+    fn outcome<T: Render>(self, outcome: Result<T, Error>) -> Self {
         match outcome {
-            Ok(body) => Response::success(emit(format, &body)),
-            Err(err) => Response::failure(emit(format, &Failure::from(&err)), exit_code(&err)),
+            Ok(body) => Self {
+                format: self.format,
+                stdout: self.emit(&body),
+                stderr: Vec::new(),
+                exit: self.exit,
+            },
+            Err(err) => Self {
+                format: self.format,
+                stdout: Vec::new(),
+                stderr: self.emit(&Failure::from(&err)),
+                exit: exit_code(&err),
+            },
         }
     }
-}
 
-// Both sinks are in-memory: a plain DTO serializes and a `Vec` never
-// refuses a write, so projection has no failure path of its own.
-fn emit(format: Format, body: &impl Render) -> Vec<u8> {
-    let mut out = Vec::new();
-    match format {
-        Format::Json => {
-            serde_json::to_writer_pretty(&mut out, body).expect("a plain DTO serializes");
-            out.push(b'\n');
+    // Both sinks are in-memory: a plain DTO serializes and a `Vec` never
+    // refuses a write, so projection has no failure path of its own.
+    fn emit<T: Render>(&self, body: &T) -> Vec<u8> {
+        let mut out = Vec::new();
+        match self.format {
+            Format::Json => {
+                serde_json::to_writer_pretty(&mut out, body).expect("a plain DTO serializes");
+                out.push(b'\n');
+            }
+            Format::Text => body.render(&mut out).expect("a Vec sink never fails"),
         }
-        Format::Text => body.render(&mut out).expect("a Vec sink never fails"),
+        out
     }
-    out
 }
 
 impl From<Response> for Result<(), u8> {
@@ -193,6 +197,18 @@ impl From<&Error> for Failure {
             message: err.description(),
             exit_code: exit_code(err),
         }
+    }
+}
+
+impl Render for String {
+    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
+        w.write_all(self.as_bytes())
+    }
+}
+
+impl Render for Vec<u8> {
+    fn render(&self, w: &mut dyn Write) -> io::Result<()> {
+        w.write_all(self)
     }
 }
 
