@@ -1,21 +1,9 @@
-//! Transport-neutral command plumbing: text-mode rendering and
-//! preopen-relative path normalization.
+//! Preopen-relative path normalization: every operator path anchors
+//! inside the `.` project mount.
 
-use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
 use omnia_guest::{Error, bad_request};
-use serde::Serialize;
-
-/// Human-readable rendering for a serializable command body.
-pub trait Render: Serialize {
-    /// Writes `self` to `w`.
-    ///
-    /// # Errors
-    ///
-    /// Propagates I/O errors.
-    fn render(&self, w: &mut dyn Write) -> std::io::Result<()>;
-}
 
 /// Normalizes an operator path inside the `.` project preopen.
 ///
@@ -23,9 +11,9 @@ pub trait Render: Serialize {
 ///
 /// Returns a `BadRequest` for an absolute path or a relative path that
 /// escapes above the project root.
-pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Error> {
+pub fn preopen_path(path: &Path) -> Result<PathBuf, Error> {
     if path.is_absolute() {
-        return Err(outside_project(path, argument));
+        return Err(outside_project(path));
     }
     let mut normalized = PathBuf::new();
     for component in path.components() {
@@ -34,17 +22,16 @@ pub fn preopen_path(path: &Path, argument: &'static str) -> Result<PathBuf, Erro
             Component::Normal(part) => normalized.push(part),
             Component::ParentDir if normalized.pop() => {}
             Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
-                return Err(outside_project(path, argument));
+                return Err(outside_project(path));
             }
         }
     }
     Ok(if normalized.as_os_str().is_empty() { PathBuf::from(".") } else { normalized })
 }
 
-fn outside_project(path: &Path, flag: &'static str) -> Error {
+fn outside_project(path: &Path) -> Error {
     bad_request!(
-        "invalid argument {flag}: path `{}` must be relative to the project preopen `.` and \
-         must not escape it",
+        "path `{}` must be relative to the project root `.` and must not escape it",
         path.display()
     )
 }

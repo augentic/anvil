@@ -4,10 +4,9 @@
 //! and answer the model's calls in-process, from the caller's own task —
 //! no HTTP shelf, no MCP callback.
 
+use emery_prose::registry::{self, Doc};
 use omnia_guest::model::{Function, Tool, ToolCall};
 use serde_json::{Value, json};
-
-use crate::registry::{self, Doc};
 
 /// The reference tools declared for a docs-carrying judgment.
 #[must_use]

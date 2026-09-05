@@ -1,0 +1,24 @@
+[package]
+name = "emery-source"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "The emery:adapter/source contract, both sides: WIT bindings, the Evidence DTOs, the import-side Source capability, adapter identity, and the claim-id gate"
+categories = ["development-tools"]
+keywords = ["emery", "adapter", "wit"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+omnia-guest.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wit-bindgen.workspace = true

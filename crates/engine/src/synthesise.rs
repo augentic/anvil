@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use emery_adapter::types::{Authority, Claim, ClaimKind};
+use emery_source::types::{Authority, Claim, ClaimKind};
 use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
@@ -11,7 +11,7 @@ use crate::extract::SourceSet;
 use crate::spec::{self, Status, Tag};
 
 /// Validated synthesis output.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Documents {
     /// Behavioural specification.
     pub spec: String,
@@ -20,7 +20,7 @@ pub struct Documents {
 }
 
 /// Provenance a `spec.md` requirement must preserve.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Row {
     /// The minted requirement id (`REQ-NNN`).
     pub id: String,
@@ -39,7 +39,7 @@ pub struct Row {
 }
 
 /// One source's contribution to a requirement group.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Contributor {
     /// The contributing binding key.
     pub source: String,
@@ -149,9 +149,11 @@ fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
 pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
 ) -> Result<Documents, Error> {
+    tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
     let parsed = spec::parse(&spec)?;
     check_rows(&parsed, rows)?;
+    tracing::info!("synthesising design.md");
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
         return Err(bad_request!(

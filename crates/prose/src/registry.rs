@@ -1,11 +1,12 @@
 //! Embedded prose lookup.
 //!
-//! [`crate::registry!`] includes the sorted `DOCS` table emitted by `build.rs`.
+//! [`crate::registry!`] includes the sorted `DOCS` table `emit` writes
+//! at build time.
 
 /// An embedded reference document.
 #[derive(Clone, Copy, Debug)]
 pub struct Doc {
-    /// Adapter-relative path.
+    /// Tree-relative path.
     pub path: &'static str,
     /// Markdown body.
     pub body: &'static str,
@@ -38,7 +39,7 @@ pub fn body(docs: &[Doc], path: &str) -> &'static str {
 ///
 /// ```ignore
 /// mod registry {
-///     emery_adapter::registry!();
+///     emery_prose::registry!();
 /// }
 /// ```
 #[macro_export]
@@ -48,13 +49,13 @@ macro_rules! registry {
 
         include!(concat!(env!("OUT_DIR"), "/prose_docs.rs"));
 
-        /// Every embedded document, sorted by adapter-relative path.
+        /// Every embedded document, sorted by tree-relative path.
         #[must_use]
         pub fn docs() -> &'static [Doc] {
             DOCS
         }
 
-        /// Look up one document by its adapter-relative path.
+        /// Look up one document by its tree-relative path.
         #[must_use]
         pub fn doc(path: &str) -> Option<&'static Doc> {
             $crate::registry::find(DOCS, path)

@@ -6,16 +6,17 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+#[path = "support/verbs.rs"]
+mod verbs;
+
 use std::collections::BTreeSet;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use emery_adapter::types::{Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{DispatchError, Source};
+use emery_source::types::{Evidence, SourceInput, SourceMetadata};
+use emery_source::{DispatchError, Source};
 use omnia_test::guest::Memory;
-
-type Grammar = emery_engine::cli::Cli<Inert>;
 
 // Capabilities are never dispatched; the suite only inspects the grammar.
 #[derive(Clone, Debug, Default)]
@@ -78,36 +79,19 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
     unreachable!("the plugin suite never dispatches Source")
 }
 
-fn grammar() -> Grammar {
-    emery_engine::cli::router(Inert::default())
+/// Runs `argv` through the live grammar over the inert provider.
+async fn grammar(argv: &[&str]) -> emery_cli::Response {
+    emery_cli::run(Inert::default(), argv.iter().copied()).await
 }
 
-// Global flags do not appear in route-specific help.
+// Global flags do not appear in verb-specific help.
 const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
 
-const BUILTIN_PATHS: &[[&str; 1]] = &[["completions"]];
-
 // Each skill's flags validate against its single wrapped verb.
-const SKILL_VERBS: &[(&str, [&str; 1])] = &[("specify", ["specify"])];
+const SKILL_VERBS: &[(&str, &str)] = &[("specify", "specify")];
 
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/emery")
-}
-
-fn known_paths(router: &Grammar) -> (BTreeSet<Vec<String>>, BTreeSet<Vec<String>>) {
-    let mut full: BTreeSet<Vec<String>> = BTreeSet::new();
-    let mut prefixes: BTreeSet<Vec<String>> = BTreeSet::new();
-    for route in router.inventory() {
-        let path: Vec<String> = route.selector().path().to_vec();
-        for len in 1..path.len() {
-            prefixes.insert(path[..len].to_vec());
-        }
-        full.insert(path);
-    }
-    for builtin in BUILTIN_PATHS {
-        full.insert(builtin.map(str::to_string).into());
-    }
-    (full, prefixes)
 }
 
 #[derive(Debug)]
@@ -174,28 +158,25 @@ fn is_kebab(token: &str) -> bool {
         && !token.starts_with('-')
 }
 
-// Return the known route prefix and first unconsumed token.
-fn walk_path<'a>(
-    tokens: &[&'a str], base: &[String], full: &BTreeSet<Vec<String>>,
-    prefixes: &BTreeSet<Vec<String>>,
-) -> (Vec<String>, Option<&'a str>) {
-    let mut path: Vec<String> = base.to_vec();
+// Return the first live verb and the first unconsumed token.
+fn walk_verb<'a>(
+    tokens: &[&'a str], verbs: &BTreeSet<String>,
+) -> (Option<String>, Option<&'a str>) {
     let mut rest = None;
+    let mut verb = None;
     for token in tokens {
         if !is_kebab(token) {
             rest = Some(*token);
             break;
         }
-        let mut candidate = path.clone();
-        candidate.push((*token).to_string());
-        if full.contains(&candidate) || prefixes.contains(&candidate) {
-            path = candidate;
-        } else {
-            rest = Some(*token);
-            break;
+        if verb.is_none() && verbs.contains(*token) {
+            verb = Some((*token).to_owned());
+            continue;
         }
+        rest = Some(*token);
+        break;
     }
-    (path, rest)
+    (verb, rest)
 }
 
 fn flags_of(text: &str) -> Vec<String> {
@@ -215,29 +196,25 @@ fn flags_of(text: &str) -> Vec<String> {
         .collect()
 }
 
-async fn assert_flags(router: &Grammar, path: &[String], text: &str) {
+async fn assert_flags(verb: &str, text: &str) {
     let mut help: Option<String> = None;
     for flag in flags_of(text) {
         if GLOBAL_FLAGS.contains(&flag.as_str()) {
             continue;
         }
         assert!(
-            !path.is_empty(),
+            !verb.is_empty(),
             "flag `{flag}` mentioned with no verb to validate against (in `{text}`)"
         );
         if help.is_none() {
-            let mut argv = vec!["emery"];
-            argv.extend(path.iter().map(String::as_str));
-            argv.push("--help");
-            let response = router.execute(argv).await;
-            assert_eq!(response.exit, 0, "`emery {} --help` must succeed", path.join(" "));
+            let response = grammar(&["emery", verb, "--help"]).await;
+            assert_eq!(response.exit, 0, "`emery {verb} --help` must succeed");
             help = Some(String::from_utf8_lossy(&response.stdout).into_owned());
         }
         let help = help.as_deref().expect("help rendered above");
         assert!(
             help.contains(&flag),
-            "rule names `{flag}` on `emery {}`, but the grammar has no such flag",
-            path.join(" ")
+            "rule names `{flag}` on `emery {verb}`, but the grammar has no such flag"
         );
     }
 }
@@ -248,8 +225,10 @@ async fn rule_matches_router() {
     let rule = plugin_dir().join("rules/emery.mdc");
     let doc = std::fs::read_to_string(&rule)
         .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
-    let router = grammar();
-    let (full, prefixes) = known_paths(&router);
+    let help = grammar(&["emery", "--help"]).await;
+    assert_eq!(help.exit, 0, "`emery --help` must succeed");
+    let verbs: BTreeSet<String> =
+        verbs::verbs(&String::from_utf8_lossy(&help.stdout)).into_iter().collect();
 
     let mentions = mentions(&doc);
     assert!(
@@ -260,31 +239,24 @@ async fn rule_matches_router() {
     for mention in mentions {
         match mention {
             Mention::Cli(text) => {
-                // Resolve alternatives under the first segment's namespace.
                 let mut segments = text.split('|');
                 let first = segments.next().expect("split yields at least one segment");
                 let tokens: Vec<&str> = first.split_whitespace().skip(1).collect();
-                let (path, rest) = walk_path(&tokens, &[], &full, &prefixes);
-                if !full.contains(&path) {
-                    // Namespace-only mentions are valid; unknown verbs are not.
+                let (verb, rest) = walk_verb(&tokens, &verbs);
+                if verb.is_none() {
                     assert!(
                         rest.is_none_or(|token| !is_kebab(token)),
-                        "rule names `emery {} {}`, which is not a routed verb (in `{text}`)",
-                        path.join(" "),
+                        "rule names `emery {}`, which is not a verb (in `{text}`)",
                         rest.unwrap_or_default(),
                     );
                 }
-                assert_flags(&router, &path, first).await;
-                let namespace =
-                    if path.is_empty() { Vec::new() } else { path[..path.len() - 1].to_vec() };
+                assert_flags(verb.as_deref().unwrap_or(""), first).await;
                 for segment in segments {
                     let tokens: Vec<&str> = segment.split_whitespace().collect();
-                    let (alt, _rest) = walk_path(&tokens, &namespace, &full, &prefixes);
+                    let (alt, _rest) = walk_verb(&tokens, &verbs);
                     assert!(
-                        full.contains(&alt),
-                        "rule alternative `{segment}` does not resolve to a routed verb \
-                         under `{}` (in `{text}`)",
-                        namespace.join(" "),
+                        alt.is_some(),
+                        "rule alternative `{segment}` does not resolve to a verb (in `{text}`)",
                     );
                 }
             }
@@ -297,8 +269,7 @@ async fn rule_matches_router() {
                     .unwrap_or_else(|| {
                         panic!("skill `{name}` has no CLI verb mapping in this test — add it")
                     });
-                let path: Vec<String> = verb.map(str::to_string).into();
-                assert_flags(&router, &path, &rest).await;
+                assert_flags(verb, &rest).await;
             }
         }
     }

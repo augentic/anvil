@@ -2,7 +2,7 @@
 
 The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1`.
 
-The CLI itself is built in the in-tree Cargo workspace at the repo root. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
+The CLI itself is built in the in-tree Cargo workspace at the repo root: the `emery-cli` crate (`crates/cli`) owns the grammar, the envelope, and the exit contract as a façade over the transport-neutral `emery-engine` operations. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
 ## Rule: all deterministic operations live in the CLI
 
@@ -22,7 +22,7 @@ Never hand-edit `.emery/` state (the generation store); never `mkdir -p .emery/.
 
 Every CLI verb that skills consume emits a stable **flat body**: the command-specific fields at the top level of a single JSON object. On success the body is exactly that — there is no `ok` discriminant, no `data` wrapper around the payload, and no top-level envelope-version stamp. On failure the flat object carries three top-level keys: `error` (a discriminant string: kebab-case for the three recovery codes, snake_case for Omnia defaults), `message` (a humanised one-liner), and `exit-code` (the integer the binary returns). Skills invoked with `--format json` parse the body and branch on the `error` field rather than on stdout text.
 
-Stream roles are part of the contract: the semantic result body (text or JSON) is stdout; the failure body and live host tracing are stderr. In text mode the failure body's `error:` line renders in ANSI red so it stands out from the surrounding tracing; `NO_COLOR` (any non-empty value), a missing `TERM`, and `TERM=dumb` all disable it, and the JSON envelope never carries styling. Host tracing is selected by the reserved host log flags, peeled from argv before the guest sees it: bare invocations default to INFO progress, `--quiet` turns tracing off, and `--debug` adds backend debug tracing (both flags win over any ambient `RUST_LOG`). Skills follow the plugin rule's tracing contract and relay the semantic result once without repeating tracing lines.
+Stream roles are part of the contract: the semantic result body (text or JSON) is stdout; the failure body and live host tracing are stderr. The failure body carries no styling in either format; colour policy belongs to the host tracing layer alone. Host tracing is selected by the reserved host log flags, peeled from argv before the guest sees it: bare invocations default to INFO progress, `--quiet` turns tracing off, and `--debug` adds backend debug tracing (both flags win over any ambient `RUST_LOG`). Skills follow the plugin rule's tracing contract and relay the semantic result once without repeating tracing lines.
 
 The canonical envelope shapes live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline (house style applied in review).
 

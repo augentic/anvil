@@ -26,7 +26,7 @@ Capability doubles come from omnia's `omnia-test` crate (a native-only dev-depen
 
 ## Root-led policy
 
-The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_engine::cli::router` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
+The root package's `tests/` directory is the default home for every behavior an operator can cause and observe. A root scenario arranges operator inputs (temp files, scripted evidence, scripted model answers), acts through the real entry point — `emery_cli::run` for CLI argv — and observes at public boundaries: exit code, stdout/stderr bytes, the JSON envelope, scripted storage contents.
 
 Root suites are organized by operator story, one auto-discovered test binary per verb-level narrative:
 
@@ -35,7 +35,7 @@ Root suites are organized by operator story, one auto-discovered test binary per
 - `tests/plugin.rs` — plugin-rule mentions against the shipped grammar: live verbs and flags, and that every shipped skill is named by the always-applied rule.
 The component rung, `examples/component/tests/component.rs`, sits beside them as the fourth story — bare-name dispatch to a statically declared adapter, path loads with an agreeing and a disagreeing digest pin, a seamless component refused by the loader, and the reference-tool round-trip served in-process — in its own package only because its fixture build needs a build script the shipped binary must not carry.
 
-Shared scenario plumbing lives in the dir form `tests/support/mod.rs` (invisible to auto-discovery), declared per binary with `mod support;`. Fixtures are root-local under `tests/<binary>/` and embedded with `include_str!` (the component rung reaches the `specify` answers the same way). Root binaries are gated `#![cfg(not(target_arch = "wasm32"))]`.
+Shared scenario plumbing lives in the dir form `tests/support/mod.rs` (invisible to auto-discovery), declared per binary with `mod support;`. `command.rs` and `plugin.rs` path-include `tests/support/verbs.rs` for the live verb set parsed from `emery --help`. Fixtures are root-local under `tests/<binary>/` and embedded with `include_str!` (the component rung reaches the `specify` answers the same way). Root binaries are gated `#![cfg(not(target_arch = "wasm32"))]`.
 
 Root scenarios read like usage documentation, the same way `credibil/dwn`'s `tests/` directory demonstrates its product: a module doc naming the story, a `//` requirement comment above each test, a short identifier, and section comments separating arrange, act, and observe. A new contributor should be able to learn the CLI from `tests/specify.rs` alone.
 

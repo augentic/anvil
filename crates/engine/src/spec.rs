@@ -44,16 +44,20 @@ impl Tag {
 }
 
 /// A parsed spec: the preamble and requirement blocks in document order.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Spec {
     /// Text before the first requirement heading.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "parsed for the AST; consumers walk requirements")
+    )]
     pub preamble: String,
     /// Requirement blocks in document order.
     pub requirements: Vec<Requirement>,
 }
 
 /// One fully parsed requirement block.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Requirement {
     /// The requirement id (`REQ-NNN`).
     pub id: String,

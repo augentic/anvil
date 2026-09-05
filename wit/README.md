@@ -1,6 +1,6 @@
 # `emery:adapter` WIT
 
-This directory owns [`emery.wit`](emery.wit) — the adapter contract alone (one `source` interface exporting `extract` + `metadata`, and the `source-adapter` world — survey and the target world are deleted; retrieve them from tag `v1`) — and publishes it as the wasm-pkg package `emery:adapter`. [augentic/emery-adapters](https://github.com/augentic/emery-adapters) consumes it as a vendored copy. The package is self-contained: it imports nothing outside itself, so this directory carries no `deps/`. The `source-adapter` world imports `source` as well as exporting it, so the SDK's one binding generation also carries the engine guest's caller side (`emery_adapter::source::import`); the guest has no separate WIT world.
+This directory owns [`emery.wit`](emery.wit) — the adapter contract alone (one `source` interface exporting `extract` + `metadata`, and the `source-adapter` world — survey and the target world are deleted; retrieve them from tag `v1`) — and publishes it as the wasm-pkg package `emery:adapter`. [augentic/emery-adapters](https://github.com/augentic/emery-adapters) consumes it as a vendored copy. The package is self-contained: it imports nothing outside itself, so this directory carries no `deps/`. The `source-adapter` world imports `source` as well as exporting it, so the one binding generation in `emery-source` carries both the export side the SDK's `source!` wires into and the engine guest's caller side (`emery_source::wire::import`); the guest has no separate WIT world.
 
 ## Publishing
 

@@ -11,13 +11,13 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use emery_adapter::types::{Authority, ClaimKind, SourceContent};
-use emery_adapter::{DispatchError, types};
+use emery_source::types::{Authority, ClaimKind, SourceContent};
+use emery_source::{DispatchError, types};
 use omnia_guest::model::Error as ModelError;
 use omnia_guest::plugins::{Digest, Error as LoadError, Location};
 use omnia_test::guest::{Memory, Namespaced, Scripted};
 use serde_json::Value;
-use support::{Provider, claim, cli, cli_ok, digest, evidence, requirement};
+use support::{Provider, claim, cli, cli_ok, digest, evidence, fail, requirement};
 
 const SPEC_ANSWER: &str = include_str!("specify/1-spec.md");
 const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
@@ -645,6 +645,10 @@ async fn config_file_refused() {
 // name — which never loads — cannot carry one.
 #[tokio::test]
 async fn loader_keys_gated() {
+    let pinned_bare = format!(
+        "[[source]]\nname = \"pinned\"\nadapter = \"documentation\"\ndigest = \"{}\"\n",
+        digest("ab")
+    );
     let cases: &[(&str, &str)] = &[
         (
             "[[source]]\nname = \"local\"\nadapter = \"./source.wasm\"\n\
@@ -656,11 +660,7 @@ async fn loader_keys_gated() {
              registry = \"registry.acme.example\"\n",
             "never serves",
         ),
-        (
-            "[[source]]\nname = \"pinned\"\nadapter = \"documentation\"\n\
-             digest = \"sha256:9f2c44aa\"\n",
-            "bare adapter name",
-        ),
+        (pinned_bare.as_str(), "bare adapter name"),
     ];
     for (body, fragment) in cases {
         let dir = project_tempdir();
@@ -1073,16 +1073,4 @@ fn generation(storage: &Memory, id: &str, name: &str) -> Vec<u8> {
 fn project_pointer(shared: &Memory, project: &str) -> String {
     let pointer = shared.state(&format!("{project}/spec/current")).expect("current");
     String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string()
-}
-
-// Runs `argv` in JSON mode and asserts the typed failure envelope.
-async fn fail(provider: &Provider, argv: &[&str], exit: u8, code: &str) -> Value {
-    let mut json = vec!["emery", "--format", "json"];
-    json.extend(argv.iter().skip(1).copied());
-    let resp = cli(provider, &json).await;
-    assert_eq!(resp.exit, exit, "{code}: {}", String::from_utf8_lossy(&resp.stderr));
-    let envelope: Value = serde_json::from_slice(&resp.stderr).expect("one JSON envelope");
-    assert_eq!(envelope["error"], code, "{envelope}");
-    assert_eq!(envelope["exit-code"], exit, "{envelope}");
-    envelope
 }

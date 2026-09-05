@@ -11,6 +11,7 @@
 # "cargo:cargo-audit" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:cargo-outdated" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:cargo-llvm-cov" = { version = "latest", depends = ["cargo-binstall"] }
+# "cargo:cargo-sweep" = { version = "latest", depends = ["cargo-binstall"] }
 # "cargo:mdbook-linkcheck2" = { version = "latest", depends = ["cargo-binstall"] }
 
 [task_config]

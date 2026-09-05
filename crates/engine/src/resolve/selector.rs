@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use omnia_guest::{Error, bad_request};
 
 /// An operator-supplied adapter reference.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum AdapterSelector {
     /// Bare unpinned shorthand (`omnia`).
     Bare {
@@ -38,7 +38,8 @@ impl AdapterSelector {
     pub fn parse(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
             return Err(bad_request!(
-                "<adapter> must be non-empty and must not have leading or trailing whitespace"
+                "an adapter reference must be non-empty and must not have leading or trailing \
+                 whitespace"
             ));
         }
         if is_github_url(value) {

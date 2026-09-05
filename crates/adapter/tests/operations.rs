@@ -1,9 +1,9 @@
 //! Source adapter operation tests.
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
-use emery_adapter::registry::Doc;
 use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, repaired};
+use emery_prose::registry::Doc;
 use omnia_test::guest::Scripted;
 
 const DOCS: &[Doc] = &[Doc {

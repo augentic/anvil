@@ -1,6 +1,6 @@
 //! Evidence answer tests.
 
-use emery_adapter::answers::{evidence_schema, parse_evidence, validate_evidence};
+use emery_adapter::answers::{evidence_schema, evidence_tail, parse_evidence};
 use emery_adapter::types::{Authority, Backing, ClaimKind, Error};
 
 #[test]
@@ -103,27 +103,23 @@ fn open_body_fields_lenient() {
     assert_eq!(clean.backing, Some(Backing::Payload("ADR-7".to_string())));
 }
 
+// Parse failures and gate findings both surface as repairable `Internal`.
 #[test]
-fn evidence_tail() {
-    let clean = parse_evidence(
-        r#"{"authority":"documentation","claims":[
-            {"kind":"requirement","id":"password-reset.request"},
-            {"kind":"decision"}
-        ]}"#,
-    )
-    .expect("clean evidence parses");
-    validate_evidence(&clean).expect("clean evidence passes the tail");
+fn tail_is_repairable() {
+    let clean = r#"{"authority":"documentation","claims":[
+        {"kind":"requirement","id":"password-reset.request"},
+        {"kind":"decision"}
+    ]}"#;
+    assert_eq!(evidence_tail(clean).expect("clean evidence passes the tail").claims.len(), 2);
 
-    let malformed = parse_evidence(
-        r#"{"authority":"documentation","claims":[
-            {"kind":"requirement"},
-            {"kind":"criterion","id":"Not.Valid"}
-        ]}"#,
-    )
-    .expect("the tail, not the parser, rejects malformed claims");
-    let Err(Error::Internal(detail)) = validate_evidence(&malformed) else {
+    let Err(Error::Internal(detail)) = evidence_tail(r#"{"authority":"documentation"}"#) else {
+        panic!("an unparseable answer must fail the tail");
+    };
+    assert!(detail.contains("did not deserialize"), "{detail}");
+
+    let malformed = r#"{"authority":"documentation","claims":[{"kind":"requirement"}]}"#;
+    let Err(Error::Internal(detail)) = evidence_tail(malformed) else {
         panic!("malformed evidence must fail the tail");
     };
     assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
-    assert!(detail.contains("`Not.Valid`"), "finding names the malformed id: {detail}");
 }

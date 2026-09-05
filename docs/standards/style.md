@@ -13,7 +13,7 @@ The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module
 
 ## Engine failures are Omnia errors
 
-Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `adapter-cli-too-old`, and `spec-not-generated`. The adapter WIT seam (`emery_adapter::types::Error`) is a different contract — do not replace it with Omnia errors.
+Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `adapter-cli-too-old`, and `spec-not-generated`. The adapter WIT seam (`emery_source::types::Error`) is a different contract — do not replace it with Omnia errors.
 
 ```rust
 // BAD — a house error type, even if it later maps to Omnia.
@@ -27,14 +27,14 @@ omnia_guest::server_error!("{} ({source})", path.display())
 
 ## One body per command, no wrapper newtype
 
-Don't introduce `XxxBody` to hang `Render` off a domain type. Move `Render` onto the domain type, or pass an inline closure to `ctx.emit_with`. If the same wrapper appears in three command files, it's a domain concept — promote it to the crate that owns the type.
+Don't introduce a wrapper newtype to hang a rendering off a body. Implement the façade's `Text` trait (`crates/cli/src/text.rs`) on the engine body itself — the orphan rule permits a local trait on a foreign type — and keep `std::fmt::Display` off engine bodies altogether: their terminal shape is the CLI's contract, not the engine's. If the same rendering appears in three command files, it's one body — promote it.
 
 ```rust
-// BAD — wrapper newtype existing only to carry Render.
-struct ContextRenderInput<'a>(&'a ResolvedContext);
-impl Render for ContextRenderInput<'_> { /* ... */ }
-// GOOD — Render on the domain type, or:
-ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
+// BAD — wrapper newtype existing only to carry a rendering.
+struct SpecifyText<'a>(&'a SpecifyBody);
+impl Text for SpecifyText<'_> { /* ... */ }
+// GOOD — Text on the body, in the façade.
+impl Text for SpecifyBody { /* ... */ }
 ```
 
 ## No traits for testability alone

@@ -10,12 +10,12 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise.
-- All keys are `kebab-case`. Body shapes are pinned by the typed `*Body` DTOs in the CLI workspace and change only with the CLI's own versioning.
-- Stream roles: the semantic result body (text or JSON) is **stdout**; the failure `ErrorBody` and live host tracing are **stderr**. Tracing verbosity is selected by the reserved host log flags (`--debug` / `--quiet`, peeled before the guest sees argv; see [cli-contract.md](../standards/cli-contract.md)).
+- All keys are `kebab-case`. Body shapes are pinned by the typed `*Body` DTOs in `emery-engine` (`Serialize` only) and change only with the CLI's own versioning; the failure envelope is `emery-cli`'s.
+- Stream roles: the semantic result body (text or JSON) is **stdout**; the failure envelope and live host tracing are **stderr**. Tracing verbosity is selected by the reserved host log flags (`--debug` / `--quiet`, peeled before the guest sees argv; see [cli-contract.md](../standards/cli-contract.md)).
 
 ## Text-mode style
 
-Every `Render` impl follows one convention so operators can scan any command's output the same way:
+Every body's `Text` impl (the façade's rendering trait in `crates/cli/src/text.rs`) follows one convention so operators can scan any command's output the same way:
 
 - **Result line first, lowercase, verb-first**: `committed generation 9f8e7d6c…`.
 - **Detail lines are indented `label: value` pairs** with kebab-case labels: `  sources: 3`.
@@ -78,14 +78,15 @@ Emits the shell completion script on stdout (no JSON envelope; the output is the
 
 ## Failure envelope
 
-Every failing verb emits the same flat `ErrorBody` on stderr:
+Every failing verb emits the same flat envelope on stderr:
 
 ```json
 {
   "error": "specify-source-required",
-  "message": "specify-source-required: emery specify requires at least one source: …",
-  "exit-code": 1
+  "message": "a specification run requires at least one source binding",
+  "exit-code": 1,
+  "hint": "`emery specify <adapter>...` generates the spec over the sources named on the invocation; …"
 }
 ```
 
-An optional `hint` key carries a static recovery hint when the error defines one.
+An optional `hint` key carries a static recovery hint when the error defines one; the `message` is transport-neutral (it names the rule, path, or adapter), and flag-vocabulary recovery text lives in the hint. Text mode prints the same envelope as `error[specify-source-required]: a specification run requires at least one source binding` followed by a `hint:` line when one is defined; the discriminant is grep-stable in both formats, so a `message` never repeats it.

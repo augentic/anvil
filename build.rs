@@ -1,9 +1,13 @@
 //! Builds and embeds the wasm32 engine component.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const WASM_TARGET: &str = "wasm32-wasip2";
+
+// The child build's target directory, a sibling of the outer profile
+// directory shared by every outer configuration.
+const NESTED_TARGET: &str = "wasm32-engine";
 
 const TARGET_HINT: &str = "the wasm32 engine could not be built; install the target with `rustup \
                            target add wasm32-wasip2` and retry";
@@ -58,9 +62,8 @@ fn build_engine() -> PathBuf {
 
     // Reuse Cargo from the parent build to stay on its toolchain.
     let cargo = std::env::var_os("CARGO").expect("cargo env");
-    // Isolation avoids the parent's target lock; unsetting CARGO_TARGET_DIR
-    // alone still deadlocks when the user configures build.target-dir.
-    let target_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("engine");
+    let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env"));
+    let target_dir = nested_target_dir(&out_dir);
     let release = std::env::var("PROFILE").as_deref() == Ok("release");
 
     let mut child = Command::new(cargo);
@@ -75,6 +78,9 @@ fn build_engine() -> PathBuf {
     // Sanitize first so ambient CARGO_TARGET_DIR removal cannot clobber this value.
     sanitize(&mut child);
     child.env("CARGO_TARGET_DIR", &target_dir);
+    // Wasmtime ignores guest DWARF unless asked for it; it would only inflate
+    // the nested target directory and the embedded component.
+    child.env("CARGO_PROFILE_DEV_DEBUG", "0");
 
     let status = child
         .status()
@@ -82,6 +88,21 @@ fn build_engine() -> PathBuf {
     assert!(status.success(), "{TARGET_HINT}");
 
     target_dir.join(WASM_TARGET).join(if release { "release" } else { "debug" }).join("emery.wasm")
+}
+
+// `OUT_DIR` is `<target>/<profile>/build/emery-<hash>/out`, and the hash
+// moves with every feature set, profile, or lock change; nesting the child
+// target directory under it left a full wasm32 build tree behind each time.
+// A sibling of the profile directory is reused across those configurations
+// and still holds its own lock, so the child never waits on the parent's.
+// An unexpected layout falls back to the isolated per-hash directory.
+fn nested_target_dir(out_dir: &Path) -> PathBuf {
+    out_dir
+        .ancestors()
+        .nth(2)
+        .filter(|build| build.file_name().is_some_and(|name| name == "build"))
+        .and_then(|build| build.parent()?.parent())
+        .map_or_else(|| out_dir.join("engine"), |target| target.join(NESTED_TARGET))
 }
 
 // Prevent host flags from leaking into wasm; preserve Cargo settings and the

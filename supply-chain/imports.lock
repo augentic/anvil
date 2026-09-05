@@ -245,8 +245,8 @@ user-login = "seanmonstar"
 user-name = "Sean McArthur"
 
 [[publisher.indexmap]]
-version = "2.14.1"
-when = "2026-08-28"
+version = "2.14.2"
+when = "2026-09-05"
 user-id = 539
 user-login = "cuviper"
 user-name = "Josh Stone"
@@ -462,8 +462,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.syn]]
-version = "3.0.4"
-when = "2026-08-24"
+version = "3.0.5"
+when = "2026-09-04"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -1486,18 +1486,6 @@ criteria = "safe-to-deploy"
 delta = "0.2.8 -> 0.2.14"
 notes = "Minor updates, nothing awry. Mostly portability updates."
 
-[[audits.bytecode-alliance.audits.crossbeam-epoch]]
-who = "Alex Crichton <alex@alexcrichton.com>"
-criteria = "safe-to-deploy"
-delta = "0.9.15 -> 0.9.18"
-notes = "Nontrivial update but mostly around dependencies and how `unsafe` code is managed. Everything looks the same shape as before."
-
-[[audits.bytecode-alliance.audits.crossbeam-epoch]]
-who = "Alex Crichton <alex@alexcrichton.com>"
-criteria = "safe-to-deploy"
-delta = "0.9.18 -> 0.9.20"
-notes = "Minor updates, nothing out of place."
-
 [[audits.bytecode-alliance.audits.digest]]
 who = "Benjamin Bouvier <public@benj.me>"
 criteria = "safe-to-deploy"
@@ -2215,24 +2203,6 @@ delta = "0.2.7 -> 0.2.8"
 notes = "This release contains a single fix for an issue that affected Firefox"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
-[[audits.mozilla.audits.crossbeam-epoch]]
-who = "Mike Hommey <mh+mozilla@glandium.org>"
-criteria = "safe-to-deploy"
-delta = "0.9.8 -> 0.9.10"
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.crossbeam-epoch]]
-who = "Mike Hommey <mh+mozilla@glandium.org>"
-criteria = "safe-to-deploy"
-delta = "0.9.10 -> 0.9.13"
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.crossbeam-epoch]]
-who = "Mike Hommey <mh+mozilla@glandium.org>"
-criteria = "safe-to-deploy"
-delta = "0.9.13 -> 0.9.14"
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
 [[audits.mozilla.audits.darling]]
 who = "Mike Hommey <mh+mozilla@glandium.org>"
 criteria = "safe-to-deploy"
@@ -2654,13 +2624,6 @@ who = "Jack Grigg <jack@electriccoin.co>"
 criteria = "safe-to-deploy"
 delta = "0.10.3 -> 0.10.4"
 notes = "Adds panics to prevent a block size of zero from causing unsoundness."
-aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
-
-[[audits.zcash.audits.crossbeam-epoch]]
-who = "Jack Grigg <jack@electriccoin.co>"
-criteria = "safe-to-deploy"
-delta = "0.9.14 -> 0.9.15"
-notes = "Bumps memoffset to 0.9, and unmarks some ARMv7r and Sony Vita targets as not having 64-bit atomics."
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
 [[audits.zcash.audits.darling]]

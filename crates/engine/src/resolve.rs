@@ -5,16 +5,16 @@ mod selector;
 
 use std::path::Path;
 
-use emery_adapter::Source;
+use emery_source::Source;
 use omnia_guest::plugins::{Digest, Location, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 pub use selector::AdapterSelector;
 
-use crate::handler::preopen_path;
+use crate::preopen::preopen_path;
 
 /// One resolved source binding: the routed dispatch id plus, for a
 /// loader-loaded adapter, its resolved content digest.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Resolved {
     /// Routed dispatch id: the package reference for a registry
     /// package, `source:<name>` otherwise.
@@ -85,7 +85,7 @@ pub async fn source<P: Source + Plugins>(
 async fn load<P: Plugins>(
     provider: &P, id: &str, path: &Path, pin: Option<&Digest>,
 ) -> Result<Digest, Error> {
-    let relative = preopen_path(path, "<adapter>")?;
+    let relative = preopen_path(path)?;
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
         return Err(not_found!(
             "adapter `{}` did not resolve to a `.wasm` component file at {} (an adapter is a \
@@ -133,16 +133,16 @@ fn check_floor(
             code: "adapter-cli-too-old".into(),
             description: format!(
                 "emery version {current} is older than the floor {floor} required by adapter \
-                 {name} ({id}); upgrade the CLI"
+                 {name} ({id}); a newer emery is required"
             ),
         });
     }
     Ok(())
 }
 
-// Keep (CLI-unreachable defensive branch): production `current` is the
-// binary's own always-parseable `env!("CARGO_PKG_VERSION")`, so no CLI
-// input can reach the permissive unparseable-version arm.
+// Keep (entry-point-unreachable defensive branch): production `current`
+// is the binary's own always-parseable `env!("CARGO_PKG_VERSION")`, so
+// no operator input can reach the permissive unparseable-version arm.
 #[cfg(test)]
 mod tests {
     use super::check_floor;

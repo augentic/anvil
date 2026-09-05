@@ -1,26 +1,25 @@
 //! Shared scenario plumbing for the root suites: one provider that
-//! scripts every capability (`Model`, `Source`, `Plugins`, storage), the
-//! live command grammar, and the in-process CLI runners.
+//! scripts every capability (`Model`, `Source`, `Plugins`, storage) and
+//! the in-process CLI runners over the live command grammar.
 
 use std::collections::BTreeMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use emery_adapter::types::{
+use emery_cli::Response;
+use emery_source::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
-use emery_adapter::{DispatchError, Source};
-use emery_engine::cli::{self, CommandResponse};
+use emery_source::{DispatchError, Source};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, StateStore};
 use omnia_test::guest::{Memory, Scripted, ScriptedLoader};
 use serde_json::Value;
 
-/// The default scripted requirement statement.
-pub const GREETING: &str = "GET /greeting returns the static string 'hello'.";
+const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 
 /// Dispatched `(routed id, input)` pairs, in call order.
-pub type Recorded = Vec<(String, SourceInput)>;
+type Recorded = Vec<(String, SourceInput)>;
 
 /// A full-length `sha256:` digest from one repeated hex pair.
 pub fn digest(pair: &str) -> Digest {
@@ -148,28 +147,35 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
     }
 }
 
-/// The live command grammar bound over `provider`.
-pub fn router<S>(provider: &Provider<S>) -> cli::Cli<Provider<S>>
-where
-    S: StateStore + BlobStore + Send + Sync + 'static,
-{
-    cli::router(provider.clone())
-}
-
 /// Runs one CLI invocation in-process, returning the raw response.
-pub async fn cli<S>(provider: &Provider<S>, argv: &[&str]) -> CommandResponse
+pub async fn cli<S>(provider: &Provider<S>, argv: &[&str]) -> Response
 where
     S: StateStore + BlobStore + Send + Sync + 'static,
 {
-    router(provider).execute(argv.iter().copied()).await
+    emery_cli::run(provider.clone(), argv.iter().copied()).await
 }
 
 /// Runs one CLI invocation and asserts success.
-pub async fn cli_ok<S>(provider: &Provider<S>, argv: &[&str]) -> CommandResponse
+pub async fn cli_ok<S>(provider: &Provider<S>, argv: &[&str]) -> Response
 where
     S: StateStore + BlobStore + Send + Sync + 'static,
 {
     let resp = cli(provider, argv).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
     resp
+}
+
+/// Runs `argv` in JSON mode and asserts the typed failure envelope.
+pub async fn fail<S>(provider: &Provider<S>, argv: &[&str], exit: u8, code: &str) -> Value
+where
+    S: StateStore + BlobStore + Send + Sync + 'static,
+{
+    let mut json = vec!["emery", "--format", "json"];
+    json.extend(argv.iter().skip(1).copied());
+    let resp = cli(provider, &json).await;
+    assert_eq!(resp.exit, exit, "{code}: {}", String::from_utf8_lossy(&resp.stderr));
+    let envelope: Value = serde_json::from_slice(&resp.stderr).expect("one JSON envelope");
+    assert_eq!(envelope["error"], code, "{envelope}");
+    assert_eq!(envelope["exit-code"], exit, "{envelope}");
+    envelope
 }

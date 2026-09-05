@@ -12,19 +12,18 @@ readme = "../../README.md"
 
 [dependencies]
 anyhow.workspace = true
-clap.workspace = true
-clap_complete.workspace = true
-emery-adapter.workspace = true
+emery-prose.workspace = true
+emery-source.workspace = true
 omnia-guest.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 strum.workspace = true
-toml.workspace = true
+tracing.workspace = true
 
 [build-dependencies]
-emery-prose.workspace = true
+emery-prose = { workspace = true, features = ["emit"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }

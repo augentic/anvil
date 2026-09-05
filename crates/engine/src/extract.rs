@@ -3,22 +3,22 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use emery_adapter::answers::claim_id_findings;
-use emery_adapter::types::{
+use emery_source::claims::claim_id_findings;
+use emery_source::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
-use emery_adapter::{DispatchError, Source};
+use emery_source::{DispatchError, Source};
 use omnia_guest::plugins::{Digest, Error as LoadError};
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use crate::handler::preopen_path;
+use crate::preopen::preopen_path;
 use crate::resolve::{self, AdapterSelector};
 use crate::sources::{BindingContent, SourceBinding};
 
 // On wasm32, the routed id selects the exporting guest through Omnia.
 async fn dispatch<P: Source>(
     provider: &P, id: &str, input: &SourceInput,
-) -> Result<emery_adapter::types::Evidence, Error> {
+) -> Result<emery_source::types::Evidence, Error> {
     provider.extract(id, input).await.map_err(|err| match err {
         DispatchError::Call(failure) => bad_gateway!("source `{id}`: {failure}",),
         extras @ DispatchError::Extras { .. } => bad_gateway!("source `{id}` {extras}",),
@@ -26,13 +26,10 @@ async fn dispatch<P: Source>(
 }
 
 /// A validated claim set extracted from one source.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
-    /// The routed adapter identity: a package reference for a
-    /// registry adapter, `source:<name>` otherwise.
-    pub adapter: String,
     /// Claim-set authority class.
     pub authority: Authority,
     /// The validated claims.
@@ -61,15 +58,16 @@ pub async fn extract_all<P: Source + Plugins>(
     for binding in bindings {
         let resolved = resolve_once(provider, binding, &mut loaded).await?;
         let input = input_for(binding)?;
+        tracing::info!(source = %binding.key, adapter = %resolved.id, "extracting");
         let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
-            adapter: resolved.id,
             authority: evidence.authority,
             claims: evidence.claims,
             digest: resolved.digest,
         };
         validate_set(&set)?;
+        tracing::debug!(source = %set.key, claims = set.claims.len(), "extracted");
         sets.push(set);
     }
     Ok(sets)
@@ -123,7 +121,7 @@ fn pin_agrees(existing: &resolve::Resolved, pin: Option<&Digest>) -> Result<(), 
 fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
     let content = match &binding.content {
         BindingContent::Workspace(relative) => {
-            let relative = preopen_path(Path::new(relative), "source path")?;
+            let relative = preopen_path(Path::new(relative))?;
             let root = if relative == Path::new(".") {
                 PathBuf::from(".")
             } else {

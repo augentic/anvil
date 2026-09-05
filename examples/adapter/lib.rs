@@ -6,9 +6,9 @@ mod guest {
 }
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
-use emery_adapter::registry::{self, Doc};
 use emery_adapter::types::{Context, Error, Evidence, SourceContent, SourceInput, SourceMetadata};
 use emery_adapter::{Model, SourceAdapter, repaired};
+use emery_prose::registry::{self, Doc};
 
 static DOCS: &[Doc] = &[
     Doc {

@@ -20,7 +20,7 @@ path = "src/main.rs"
 
 [dependencies]
 cfg-if.workspace = true
-emery-adapter.workspace = true
+emery-source.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -33,19 +33,23 @@ omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-emery-engine.workspace = true
+emery-cli.workspace = true
 omnia-guest.workspace = true
 wasip3.workspace = true
 
 [build-dependencies]
 omnia.workspace = true
 
+# The SDK and prose registry serve `examples/adapter` only; the shipped
+# guest and runtime link the contract crate alone.
 [dev-dependencies]
+emery-adapter.workspace = true
+emery-prose.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-emery-engine.workspace = true
+emery-cli.workspace = true
 omnia-guest.workspace = true
 omnia-test = { workspace = true, features = ["guest"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
@@ -63,7 +67,7 @@ path = "examples/runtime.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*", "examples/component"]
+members = ["crates/*"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -133,17 +137,20 @@ strum = { version = "0.28", features = ["derive"] }
 tempfile = "3.27.0"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
-toml = "1.1.4"
+toml = "1.1.5"
+tracing = "0.1.44"
 wasip3 = "0.8.0"
 wasmtime = { version = "48.0.1", default-features = false, features = ["anyhow", "component-model-bytes"] }
 wit-bindgen = { version = "0.61.1", features = ["async-spawn"] }
 
 emery-adapter = { path = "crates/adapter" }
+emery-cli = { path = "crates/cli" }
 emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
+emery-source = { path = "crates/source" }
 
 omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
-omnia-core = { version = "0.36.0" }
+omnia-core = "0.36.0"
 omnia-guest = "0.36.0"
 omnia-guest-macros = "0.36.0"
 omnia-host-macros = "0.36.0"
@@ -198,7 +205,10 @@ opt-level = 2
 strip = true
 
 # Optimise WASI debug builds because Cranelift JIT-compiles at run time.
+# Dependencies keep line tables only (workspace crates are unaffected): wasmtime
+# and Cranelift with full debuginfo dominate `target/`.
 [profile.dev.package]
+"*" = { debug = "line-tables-only" }
 cranelift-assembler-x64 = { opt-level = 2 }
 cranelift-bforest = { opt-level = 2 }
 cranelift-bitset = { opt-level = 2 }
