@@ -26,7 +26,7 @@ fn object(id: &str, name: &str) -> String {
 /// A complete, atomically committed spec set.
 ///
 /// Its content-derived id makes identical runs byte-stable.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct SpecSet {
     /// The behavioural specification document.
     pub spec: String,
@@ -66,7 +66,7 @@ fn hex_lower(bytes: &[u8]) -> String {
 }
 
 /// A generation named by the current pointer.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Committed {
     /// Current generation id.
     pub id: String,
@@ -92,7 +92,7 @@ impl Observation {
 }
 
 /// An ephemeral re-mine diff against the superseded generation.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Diff {
     /// The outgoing generation id this run superseded.

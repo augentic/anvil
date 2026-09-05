@@ -31,7 +31,7 @@ pub enum SourceContent {
 }
 
 /// Source operation input.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct SourceInput {
     /// Binding key.
     pub key: String,
@@ -141,7 +141,7 @@ pub enum Backing {
 ///
 /// Open per-kind fields flatten into [`Claim::extras`]. `synopsis` and
 /// `backing` are lenient: malformed shapes become absent.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Claim {
     /// Kind from the closed taxonomy.
@@ -174,7 +174,7 @@ where
 }
 
 /// Extracted claims and their document-level authority.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Evidence {
     /// Document-level authority.

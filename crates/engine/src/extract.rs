@@ -26,13 +26,10 @@ async fn dispatch<P: Source>(
 }
 
 /// A validated claim set extracted from one source.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
-    /// The routed adapter identity: a package reference for a
-    /// registry adapter, `source:<name>` otherwise.
-    pub adapter: String,
     /// Claim-set authority class.
     pub authority: Authority,
     /// The validated claims.
@@ -65,7 +62,6 @@ pub async fn extract_all<P: Source + Plugins>(
         let evidence = dispatch(provider, &resolved.id, &input).await?;
         let set = SourceSet {
             key: binding.key.clone(),
-            adapter: resolved.id,
             authority: evidence.authority,
             claims: evidence.claims,
             digest: resolved.digest,

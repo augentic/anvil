@@ -14,7 +14,7 @@ use crate::preopen::preopen_path;
 
 /// One resolved source binding: the routed dispatch id plus, for a
 /// loader-loaded adapter, its resolved content digest.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Resolved {
     /// Routed dispatch id: the package reference for a registry
     /// package, `source:<name>` otherwise.

@@ -6,7 +6,7 @@ use serde::Serialize;
 use super::text::Text;
 
 /// Command output format.
-#[derive(Copy, Clone, Debug, clap::ValueEnum, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, clap::ValueEnum)]
 pub enum Format {
     /// Human-readable text.
     Text,

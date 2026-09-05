@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use omnia_guest::{Error, bad_request};
 
 /// An operator-supplied adapter reference.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum AdapterSelector {
     /// Bare unpinned shorthand (`omnia`).
     Bare {

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::home::Home;
 
 /// The reviewable documents of one generation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Document {
     /// The behavioural specification document.

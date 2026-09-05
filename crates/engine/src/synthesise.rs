@@ -11,7 +11,7 @@ use crate::extract::SourceSet;
 use crate::spec::{self, Status, Tag};
 
 /// Validated synthesis output.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Documents {
     /// Behavioural specification.
     pub spec: String,
@@ -20,7 +20,7 @@ pub struct Documents {
 }
 
 /// Provenance a `spec.md` requirement must preserve.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Row {
     /// The minted requirement id (`REQ-NNN`).
     pub id: String,
@@ -39,7 +39,7 @@ pub struct Row {
 }
 
 /// One source's contribution to a requirement group.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Contributor {
     /// The contributing binding key.
     pub source: String,

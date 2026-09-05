@@ -7,7 +7,7 @@ use std::future::Future;
 use crate::types::{Evidence, SourceInput, SourceMetadata};
 
 /// Source import dispatch failure.
-#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error)]
 pub enum DispatchError {
     /// Adapter call failure.
     #[error(transparent)]

@@ -14,7 +14,7 @@ use crate::preopen::preopen_path;
 use crate::resolve::AdapterSelector;
 
 /// A source binding for one run.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceBinding {
     /// Stable binding key.
@@ -34,7 +34,7 @@ pub struct SourceBinding {
 }
 
 /// Workspace or inline source content.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BindingContent {
     /// Project-relative read-only root; `.` binds the project.

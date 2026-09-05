@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 /// Adapter catalog identity.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterIdentity {
     /// Kebab-case adapter name.
     pub name: String,
