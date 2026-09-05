@@ -2,13 +2,15 @@
 
 Every Evidence document carries one closed `authority` class. Highest wins:
 
-1. **`intent`** — inline operator directives bound at `emery specify --description`.
-2. **`documentation`** — written product or technical intent the operator supplied.
-3. **`behaviour`** — what legacy code actually does (code, captures, observation sources).
+1. **`intent`** — inline operator directives (the `intent` source adapter is the only first-party emitter).
+2. **`documentation`** — operator-provided written product or technical intent (internal docs, RFCs, product notes). Emitted by the `documentation` source adapter.
+3. **`behaviour`** — what legacy code actually does. Emitted by behaviour sources such as `typescript` and future code or observation adapters.
 
-The **engine** resolves authority deterministically before you are called; the reconciliation rows carry the outcome. You never pick winners, derive `status`, or reorder `Sources:` — you render the rows and write honest prose around them.
+The **engine** resolves authority deterministically before you are called; the reconciliation rows carry the outcome. You never pick winners, derive `status`, or reorder `Sources:` — you render the rows and write honest prose around them. The rendered `Sources:` list orders contributing source keys highest authority first.
 
 ## Status derivation (engine-computed)
+
+When two sources' `requirement` claims share an id but their `statement` extras disagree, a unique highest-authority contributor wins as `divergence`; a tie at the top authority is unresolvable `conflict`.
 
 | Contributing claims | Values | `Status:` | Tag |
 | ------------------- | ------ | --------- | --- |
