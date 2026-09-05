@@ -69,7 +69,7 @@ There is no separate `*Args` layer: each handler input derives `clap::Args` and 
 
 The reusable command grammar lives in `crates/engine/src/cli.rs`. `cli::run` binds a provider into a `Client`, runs one argv, and returns the buffered `Response`. Wire-contract suites call the same `run` and assert on the buffered channels.
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs that grammar over its provider, writes both channels, and returns the exit status, which the macro hands to `omnia_guest::api::command::execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` through `omnia_guest::command!(dispatch)`; `dispatch` runs that grammar over its provider, writes both channels via `Response::write`, and returns the exit status, which the macro hands to `omnia_guest::api::command::execute_wasi` — the WASI last mile that initializes and flushes guest telemetry and exits with the exact status. Every path runs the same grammar and projector.
 
 Target discipline per leaf arm:
 

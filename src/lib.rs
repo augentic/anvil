@@ -13,9 +13,5 @@ impl emery_source::Source for Provider {}
 omnia_guest::command!(dispatch);
 
 async fn dispatch() -> Result<(), u8> {
-    let response = cli::run(Provider, environment::get_arguments()).await;
-    if response.write().is_err() {
-        return Err(3);
-    }
-    if response.exit == 0 { Ok(()) } else { Err(response.exit) }
+    cli::run(Provider, environment::get_arguments()).await.into()
 }

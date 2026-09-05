@@ -2,7 +2,6 @@
 
 use std::ffi::OsString;
 use std::io::{self, Write};
-use std::io::{stderr, stdout};
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
@@ -30,7 +29,7 @@ const COMPLETIONS_DESC: &str = "Generate shell completions.\n\n\
     Pipe into your shell's completion directory. Example: \
     `emery completions zsh > ~/.zsh/_emery`";
 
-/// Parse and execute one argument vector over `provider`.
+/// Parse and execute one argument vector over `provider`, buffering both channels.
 pub async fn run<P, I, T>(provider: P, argv: I) -> Response
 where
     P: Model + Source + StateStore + BlobStore + Plugins + Send + Sync + 'static,
@@ -58,8 +57,8 @@ where
             clap_complete::generate(shell, &mut App::command(), "emery", &mut out);
             Response::success(out)
         }
-        Verb::Specify(input) => project(app.format, client.call(input, &metadata).await),
-        Verb::Show(input) => project(app.format, client.call(input, &metadata).await),
+        Verb::Specify(input) => Response::from((app.format, client.call(input, &metadata).await)),
+        Verb::Show(input) => Response::from((app.format, client.call(input, &metadata).await)),
     }
 }
 
@@ -141,23 +140,14 @@ impl Response {
             exit,
         }
     }
-
-    /// Write both output channels.
-    ///
-    /// # Errors
-    ///
-    /// Returns the first output sink error.
-    pub fn write(&self) -> io::Result<()> {
-        stdout().write_all(&self.stdout)?;
-        stderr().write_all(&self.stderr)?;
-        Ok(())
-    }
 }
 
-fn project(format: Format, outcome: Result<impl Render, Error>) -> Response {
-    match outcome {
-        Ok(body) => Response::success(emit(format, &body)),
-        Err(err) => Response::failure(emit(format, &Failure::from(&err)), exit_code(&err)),
+impl<T: Render> From<(Format, Result<T, Error>)> for Response {
+    fn from((format, outcome): (Format, Result<T, Error>)) -> Self {
+        match outcome {
+            Ok(body) => Response::success(emit(format, &body)),
+            Err(err) => Response::failure(emit(format, &Failure::from(&err)), exit_code(&err)),
+        }
     }
 }
 
@@ -173,6 +163,14 @@ fn emit(format: Format, body: &impl Render) -> Vec<u8> {
         Format::Text => body.render(&mut out).expect("a Vec sink never fails"),
     }
     out
+}
+
+impl From<Response> for Result<(), u8> {
+    fn from(response: Response) -> Self {
+        io::stdout().write_all(&response.stdout).map_err(|_| 3)?;
+        io::stderr().write_all(&response.stderr).map_err(|_| 3)?;
+        if response.exit == 0 { Ok(()) } else { Err(response.exit) }
+    }
 }
 
 /// The failure envelope.
