@@ -6,60 +6,78 @@ mod selector;
 use std::path::Path;
 
 use emery_source::Source;
-use omnia_guest::plugins::{Digest, Location, PluginRef};
+use omnia_guest::plugins::{Digest, Location, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 pub use selector::AdapterSelector;
 
 use crate::preopen::preopen_path;
 
-/// Resolves a selector to its routed dispatch id, loading a local
-/// component or registry package through `loader` and enforcing the
-/// adapter's `emery` compatibility floor over `source`.
-///
-/// # Errors
-///
-/// Returns selector, load, or floor failures.
-pub async fn resolve<P: Source + Plugins>(
-    provider: &P, selector: &AdapterSelector, pin: Option<&Digest>, registry: Option<&str>,
-) -> Result<Resolved, Error> {
-    let name = selector.name()?;
-    let resolved = match selector {
-        AdapterSelector::Package {
-            namespace,
-            name,
-            version,
-        } => {
-            let request = PluginRef::builder()
-                .package(format!("{namespace}:{name}@{version}"))
-                .location(Location::Registry(registry.map(ToOwned::to_owned)))
-                .maybe_digest(pin.cloned())
-                .build();
-            let plugin = Plugins::load(provider, &request).await?;
-            
-            Resolved {
-                id: plugin.id().to_owned(),
-                digest: Some(plugin.digest().clone()),
-            }
-        }
-        AdapterSelector::Component { path } => {
-            let id = format!("source:{name}");
-            let digest = load(provider, &id, path, pin).await?;
-            Resolved {
-                id,
-                digest: Some(digest),
-            }
-        }
-        AdapterSelector::Bare { .. } => Resolved {
-            id: format!("source:{name}"),
-            digest: None,
-        },
-    };
+/// One run's adapter resolution over a provider: loads memoize by
+/// identity for the run, so a second binding on the same adapter
+/// resolves to the held guest and a disagreeing pin refuses
+/// `already-active` from the memo rather than the host.
+pub struct Resolver<'a, P: Plugins> {
+    provider: &'a P,
+    loader: PluginCache<&'a P>,
+}
 
-    let metadata = Source::metadata(provider, &resolved.id);
-    let floor = parse_floor(metadata.emery_floor.as_deref(), &name, &resolved.id)?;
-    check_floor(floor.as_ref(), env!("CARGO_PKG_VERSION"), &name, &resolved.id)?;
+impl<'a, P: Source + Plugins> Resolver<'a, P> {
+    /// An empty memo over `provider`.
+    pub const fn new(provider: &'a P) -> Self {
+        Self {
+            provider,
+            loader: PluginCache::new(provider),
+        }
+    }
 
-    Ok(resolved)
+    /// Resolves a selector to its routed dispatch id, loading a local
+    /// component or registry package and enforcing the adapter's `emery`
+    /// compatibility floor.
+    ///
+    /// # Errors
+    ///
+    /// Returns selector, load, or floor failures.
+    pub async fn resolve(
+        &self, selector: &AdapterSelector, pin: Option<&Digest>, registry: Option<&str>,
+    ) -> Result<Resolved, Error> {
+        let name = selector.name()?;
+        let resolved = match selector {
+            AdapterSelector::Package {
+                namespace,
+                name,
+                version,
+            } => {
+                let request = PluginRef::builder()
+                    .package(format!("{namespace}:{name}@{version}"))
+                    .location(Location::Registry(registry.map(ToOwned::to_owned)))
+                    .maybe_digest(pin.cloned())
+                    .build();
+                let plugin = Plugins::load(&self.loader, &request).await?;
+                Resolved {
+                    id: plugin.id().to_owned(),
+                    digest: Some(plugin.digest().clone()),
+                }
+            }
+            AdapterSelector::Component { path } => {
+                let id = format!("source:{name}");
+                let digest = load(&self.loader, &id, path, pin).await?;
+                Resolved {
+                    id,
+                    digest: Some(digest),
+                }
+            }
+            AdapterSelector::Bare { .. } => Resolved {
+                id: format!("source:{name}"),
+                digest: None,
+            },
+        };
+
+        let metadata = Source::metadata(self.provider, &resolved.id);
+        let floor = parse_floor(metadata.emery_floor.as_deref(), &name, &resolved.id)?;
+        check_floor(floor.as_ref(), env!("CARGO_PKG_VERSION"), &name, &resolved.id)?;
+
+        Ok(resolved)
+    }
 }
 
 /// One resolved source binding: the routed dispatch id plus, for a
@@ -76,8 +94,8 @@ pub struct Resolved {
 // The loader reads the file fresh — nothing is mirrored, so a deleted
 // file refuses on the next run. The engine keeps only the operator-typo
 // gate: a missing or non-component path refuses typed before any load.
-async fn load<P: Plugins>(
-    plugins: &P, id: &str, path: &Path, pin: Option<&Digest>,
+async fn load<L: Plugins>(
+    loader: &L, id: &str, path: &Path, pin: Option<&Digest>,
 ) -> Result<Digest, Error> {
     let relative = preopen_path(path)?;
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
@@ -94,7 +112,7 @@ async fn load<P: Plugins>(
         .location(Location::Path(relative.display().to_string()))
         .maybe_digest(pin.cloned())
         .build();
-    let plugin = plugins.load(&request).await?;
+    let plugin = Plugins::load(loader, &request).await?;
 
     Ok(plugin.digest().clone())
 }
