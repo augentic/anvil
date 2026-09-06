@@ -6,20 +6,20 @@ mod selector;
 use std::path::Path;
 
 use emery_source::Source;
-use omnia_guest::plugins::{Digest, Error as LoadError, Location, PluginRef};
+use omnia_guest::plugins::{Digest, Location, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 pub use selector::AdapterSelector;
 
 use crate::preopen::preopen_path;
 
 /// Resolves a selector to its routed dispatch id, loading a local
-/// component or registry package through the deployment's loader and
-/// enforcing the adapter's `emery` compatibility floor.
+/// component or registry package through `loader` and enforcing the
+/// adapter's `emery` compatibility floor over `source`.
 ///
 /// # Errors
 ///
 /// Returns selector, load, or floor failures.
-pub async fn source<P: Source + Plugins>(
+pub async fn resolve<P: Source + Plugins>(
     provider: &P, selector: &AdapterSelector, pin: Option<&Digest>, registry: Option<&str>,
 ) -> Result<Resolved, Error> {
     let name = selector.name()?;
@@ -35,6 +35,7 @@ pub async fn source<P: Source + Plugins>(
                 .maybe_digest(pin.cloned())
                 .build();
             let plugin = Plugins::load(provider, &request).await?;
+            
             Resolved {
                 id: plugin.id().to_owned(),
                 digest: Some(plugin.digest().clone()),
@@ -63,7 +64,7 @@ pub async fn source<P: Source + Plugins>(
 
 /// One resolved source binding: the routed dispatch id plus, for a
 /// loader-loaded adapter, its resolved content digest.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Resolved {
     /// Routed dispatch id: the package reference for a registry
     /// package, `source:<name>` otherwise.
@@ -72,25 +73,11 @@ pub struct Resolved {
     pub digest: Option<Digest>,
 }
 
-impl Resolved {
-    // Refuses a pin that disagrees with an already-loaded guest.
-    pub(crate) fn pin_agrees(&self, pin: Option<&Digest>) -> Result<(), Error> {
-        match (pin, self.digest.as_ref()) {
-            (Some(pin), Some(held)) if pin != held => Err(LoadError::AlreadyActive(format!(
-                "package `{}` is already active with digest {held}, which is not the requested pin",
-                self.id
-            ))
-            .into()),
-            _ => Ok(()),
-        }
-    }
-}
-
 // The loader reads the file fresh — nothing is mirrored, so a deleted
 // file refuses on the next run. The engine keeps only the operator-typo
 // gate: a missing or non-component path refuses typed before any load.
 async fn load<P: Plugins>(
-    provider: &P, id: &str, path: &Path, pin: Option<&Digest>,
+    plugins: &P, id: &str, path: &Path, pin: Option<&Digest>,
 ) -> Result<Digest, Error> {
     let relative = preopen_path(path)?;
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
@@ -107,7 +94,7 @@ async fn load<P: Plugins>(
         .location(Location::Path(relative.display().to_string()))
         .maybe_digest(pin.cloned())
         .build();
-    let plugin = Plugins::load(provider, &request).await?;
+    let plugin = plugins.load(&request).await?;
 
     Ok(plugin.digest().clone())
 }

@@ -1,14 +1,11 @@
 //! Source extraction: resolve each binding, extract over the `Source`
 //! capability, and re-run the A8 claim gate fail-closed.
 
-use std::collections::BTreeMap;
-
 use emery_source::types::{Authority, Claim};
 use emery_source::{Source, claims};
-use omnia_guest::plugins::Digest;
+use omnia_guest::plugins::{Digest, PluginCache};
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use crate::resolve::{AdapterSelector, Resolved};
 use crate::sources::SourceBinding;
 
 /// Resolves, extracts, and validates every source binding.
@@ -16,24 +13,14 @@ pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
-    let mut loaded: BTreeMap<String, Resolved> = BTreeMap::new();
+    // The host binds one identity per run: a second binding on the same
+    // adapter extracts over the held guest, and a disagreeing pin refuses
+    // already-active from the memo instead of the host.
+    let plugins = PluginCache::new(provider);
 
     for binding in bindings {
         let input = binding.input()?;
-        let key = AdapterSelector::parse(&binding.adapter)?.load_key()?;
-
-        // The loader registers one identity per run; a second binding
-        // that reuses the adapter extracts over the already-loaded guest.
-        let resolved = if let Some(resolved) = key.as_ref().and_then(|key| loaded.get(key)) {
-            resolved.pin_agrees(binding.digest.as_ref())?;
-            resolved.clone()
-        } else {
-            let resolved = binding.resolve(provider).await?;
-            if let Some(key) = key {
-                loaded.insert(key, resolved.clone());
-            }
-            resolved
-        };
+        let resolved = binding.resolve(provider).await?;
 
         tracing::debug!(source = %binding.key, "extracting");
         let evidence = Source::extract(provider, &resolved.id, &input)

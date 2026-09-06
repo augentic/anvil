@@ -83,20 +83,6 @@ impl AdapterSelector {
             Self::Component { path } => name_from_component(path),
         }
     }
-
-    // The loader identity key; bare names dispatch statically and never
-    // share a loaded guest.
-    pub(crate) fn load_key(&self) -> Result<Option<String>, Error> {
-        Ok(match self {
-            Self::Bare { .. } => None,
-            Self::Package {
-                namespace,
-                name,
-                version,
-            } => Some(format!("{namespace}:{name}@{version}")),
-            Self::Component { .. } => Some(format!("source:{}", self.name()?)),
-        })
-    }
 }
 
 // The kebab-case adapter name of a component filename.

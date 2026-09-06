@@ -63,12 +63,10 @@ pub struct SourceBinding {
 }
 
 impl SourceBinding {
-    // Loads this binding's adapter under its pin and registry override.
-    pub(crate) async fn resolve<P: Source + Plugins>(
-        &self, provider: &P,
-    ) -> Result<Resolved, Error> {
+    /// Resolves this binding's adapter under its pin and registry override.
+    pub async fn resolve<P: Source + Plugins>(&self, provider: &P) -> Result<Resolved, Error> {
         let selector = AdapterSelector::parse(&self.adapter)?;
-        resolve::source(provider, &selector, self.digest.as_ref(), self.registry.as_deref()).await
+        resolve::resolve(provider, &selector, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
     // Maps this binding to the adapter `extract` input.
