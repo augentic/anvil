@@ -29,13 +29,10 @@ async fn concurrent_commit_conflicts() {
         "typed failure: {}",
         err.description()
     );
-    assert_eq!(
-        store.current().await.expect("current").expect("committed").id,
-        winner.id,
-        "the pointer still names the winner"
-    );
+    let (current, _) = store.current().await.expect("current").expect("committed");
+    assert_eq!(current, winner, "the pointer still names the winner");
     let spec =
-        memory.object("spec", &format!("generations/{}/spec.md", winner.id)).expect("winning spec");
+        memory.object("spec", &format!("generations/{winner}/spec.md")).expect("winning spec");
     assert_eq!(spec, b"# Spec winner\n", "the winning generation is intact");
 }
 

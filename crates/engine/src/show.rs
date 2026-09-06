@@ -42,7 +42,7 @@ async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
     let store = Store::new(context.provider);
-    let Some((committed, set)) = store.current_set().await? else {
+    let Some((id, set)) = store.current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
             description: "no specification generation has been committed".into(),
@@ -54,7 +54,7 @@ async fn show<P: StateStore + BlobStore>(
     };
 
     Ok(ShowBody {
-        generation: committed.id,
+        generation: id,
         document: input.document,
         body,
     })

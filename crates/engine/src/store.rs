@@ -1,6 +1,12 @@
-//! Content-addressed spec generations behind a swapped `current` pointer.
+//! Content-addressed specifications
+//!
+//! The store manages the content-addressed specifications of a deployment.
+//! It is responsible for committing new specifications, reading the current
+//! specification, and pruning old specifications.
 
-use omnia_guest::{BlobStore, BlobStoreExt, CasError, Error, StateStore, server_error};
+use std::fmt::Display;
+
+use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -23,26 +29,16 @@ impl<'p, S: StateStore + BlobStore> Store<'p, S> {
         Self { store }
     }
 
-    /// Commits `set` by writing its generation, swapping the pointer, and pruning its predecessor.
+    /// Commits `set` by writing its generation, swapping the pointer, and
+    /// pruning its predecessor; returns the committed generation id.
     ///
     /// # Errors
     ///
     /// Fails if the observation is stale.
     /// Propagates write, swap, and prune failures.
-    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
+    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<String, Error> {
         let id = set.id();
-
-        // `wasi:blobstore` writes need an existing container; only some
-        // backends create one on `get-container`.
-        let exists = BlobStore::container_exists(self.store, CONTAINER)
-            .await
-            .map_err(|err| failed("checking the generation container", &err))?;
-        if !exists {
-            BlobStore::create_container(self.store, CONTAINER)
-                .await
-                .map_err(|err| failed("creating the generation container", &err))?;
-        }
-
+        self.ensure_container().await?;
         for (name, body) in set.files() {
             BlobStore::put(self.store, CONTAINER, &object(&id, name), body.as_bytes())
                 .await
@@ -61,63 +57,30 @@ impl<'p, S: StateStore + BlobStore> Store<'p, S> {
                 ));
             }
             Err(CasError::Store(message)) => {
-                return Err(failed("swapping the generation pointer", &anyhow::anyhow!(message)));
+                return Err(failed("swapping the generation pointer", &message));
             }
         }
         self.prune(observed, &id).await?;
 
-        Ok(Committed { id })
+        Ok(id)
     }
 
-    /// Returns the current generation, or `None` before the first commit.
-    ///
-    /// # Errors
-    ///
-    /// Fails closed for a dangling or incomplete generation.
-    /// Propagates read failures.
-    pub async fn current(&self) -> Result<Option<Committed>, Error> {
-        let raw = StateStore::get(self.store, CURRENT)
-            .await
-            .map_err(|err| failed("reading the generation pointer", &err))?;
-        let Some(raw) = raw else {
-            return Ok(None);
-        };
-        let id = String::from_utf8_lossy(&raw).trim().to_string();
-
-        for name in SPECS {
-            let present = BlobStoreExt::has(self.store, CONTAINER, &object(&id, name))
-                .await
-                .map_err(|err| failed("probing a generation document", &err))?;
-            if !present {
-                return Err(server_error!(
-                    "the generation pointer names `{id}` but `{name}` is missing; re-run \
-                     `emery specify` to commit a fresh generation",
-                ));
-            }
-        }
-
-        Ok(Some(Committed { id }))
-    }
-
-    /// Returns the current generation and its complete document set,
+    /// Returns the current generation id and its complete document set,
     /// or `None` before the first commit.
     ///
     /// # Errors
     ///
     /// Fails closed for a dangling, incomplete, or unreadable
     /// generation. Propagates read failures.
-    pub async fn current_set(&self) -> Result<Option<(Committed, SpecSet)>, Error> {
-        let Some(committed) = self.current().await? else {
+    pub async fn current(&self) -> Result<Option<(String, SpecSet)>, Error> {
+        let raw = StateStore::get(self.store, CURRENT)
+            .await
+            .map_err(|err| failed("reading the generation pointer", &err))?;
+        let Some(id) = raw.as_deref().map(pointer_id) else {
             return Ok(None);
         };
-        let Some((_, set)) = self.load(&committed.id).await else {
-            return Err(server_error!(
-                "the generation pointer names `{}` but its documents cannot be read; re-run \
-                 `emery specify` to commit a fresh generation",
-                committed.id
-            ));
-        };
-        Ok(Some((committed, set)))
+        let set = self.load(&id).await?;
+        Ok(Some((id, set)))
     }
 
     /// Observes CAS input and the outgoing set without failing.
@@ -126,44 +89,75 @@ impl<'p, S: StateStore + BlobStore> Store<'p, S> {
     /// the following CAS remains authoritative and fail-closed.
     pub async fn observe(&self) -> Observation {
         let pointer = StateStore::get(self.store, CURRENT).await.ok().flatten();
-        let outgoing = match &pointer {
-            Some(raw) => {
-                let id = String::from_utf8_lossy(raw).trim().to_string();
-                let outgoing = self.load(&id).await;
-                if outgoing.is_none() {
-                    tracing::warn!(generation = %id, "current generation unreadable; diff suppressed");
-                }
-                outgoing
+        let superseded = pointer.as_deref().map(pointer_id);
+        let mut outgoing = None;
+        if let Some(id) = &superseded {
+            match self.load(id).await {
+                Ok(set) => outgoing = Some(set),
+                Err(err) => tracing::warn!(generation = %id, %err, "diff suppressed"),
             }
-            None => None,
-        };
-        Observation { pointer, outgoing }
+        }
+        Observation {
+            pointer,
+            superseded,
+            outgoing,
+        }
     }
 
-    // Advisory reads collapse incomplete or unreadable generations to `None`.
-    async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
-        let mut bodies = Vec::with_capacity(SPECS.len());
-        for name in SPECS {
-            let bytes =
-                BlobStore::get(self.store, CONTAINER, &object(id, name)).await.ok().flatten()?;
-            bodies.push(String::from_utf8(bytes).ok()?);
+    // `wasi:blobstore` writes need an existing container; only some
+    // backends create one on `get-container`.
+    async fn ensure_container(&self) -> Result<(), Error> {
+        let exists = BlobStore::container_exists(self.store, CONTAINER)
+            .await
+            .map_err(|err| failed("checking the generation container", &err))?;
+        if !exists {
+            BlobStore::create_container(self.store, CONTAINER)
+                .await
+                .map_err(|err| failed("creating the generation container", &err))?;
         }
-        let design = bodies.pop()?;
-        let spec = bodies.pop()?;
-        Some((id.to_string(), SpecSet { spec, design }))
+        Ok(())
+    }
+
+    async fn load(&self, id: &str) -> Result<SpecSet, Error> {
+        let spec = self.read(id, SPECS[0]).await?;
+        let design = self.read(id, SPECS[1]).await?;
+        Ok(SpecSet { spec, design })
+    }
+
+    // A named generation whose document is absent or malformed is corruption.
+    async fn read(&self, id: &str, name: &str) -> Result<String, Error> {
+        let bytes = BlobStore::get(self.store, CONTAINER, &object(id, name))
+            .await
+            .map_err(|err| failed("reading a generation document", &err))?;
+        let Some(bytes) = bytes else {
+            return Err(server_error!(
+                "the generation pointer names `{}` but `{}` is missing; re-run `emery specify` \
+                 to commit a fresh generation",
+                id,
+                name
+            ));
+        };
+        String::from_utf8(bytes).map_err(|err| {
+            server_error!(
+                "the generation pointer names `{}` but `{}` is not UTF-8 ({}); re-run `emery \
+                 specify` to commit a fresh generation",
+                id,
+                name,
+                err
+            )
+        })
     }
 
     // Only the observed predecessor is pruned; other orphaned objects are inert.
     async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
-        let Some(raw) = &observed.pointer else {
+        let Some(superseded) = &observed.superseded else {
             return Ok(());
         };
-        let superseded = String::from_utf8_lossy(raw).trim().to_string();
         if superseded == keep || superseded.is_empty() {
             return Ok(());
         }
         for name in SPECS {
-            BlobStore::delete(self.store, CONTAINER, &object(&superseded, name))
+            BlobStore::delete(self.store, CONTAINER, &object(superseded, name))
                 .await
                 .map_err(|err| failed("pruning the superseded generation", &err))?;
         }
@@ -199,15 +193,8 @@ impl SpecSet {
             hasher.update((body.len() as u64).to_be_bytes());
             hasher.update(body.as_bytes());
         }
-        hex_lower(&hasher.finalize())
+        hex::encode(hasher.finalize())
     }
-}
-
-/// A generation named by the current pointer.
-#[derive(Clone, Debug)]
-pub struct Committed {
-    /// Current generation id.
-    pub id: String,
 }
 
 /// Pointer state observed before a compare-and-swap commit.
@@ -215,17 +202,20 @@ pub struct Committed {
 /// One observation drives both the CAS and advisory diff.
 #[derive(Clone, Debug)]
 pub struct Observation {
-    // Unreadable pointers appear absent so the subsequent CAS fails closed.
+    // The CAS expectation, byte-exact; an unreadable pointer appears
+    // absent so the subsequent CAS fails closed.
     pointer: Option<Vec<u8>>,
+    // The generation the pointer names, which `commit` prunes.
+    superseded: Option<String>,
     // Advisory diff input; absent when no complete set is readable.
-    outgoing: Option<(String, SpecSet)>,
+    outgoing: Option<SpecSet>,
 }
 
 impl Observation {
-    /// Returns the complete outgoing generation when readable.
+    /// Returns the outgoing generation id and documents when readable.
     #[must_use]
     pub fn into_outgoing(self) -> Option<(String, SpecSet)> {
-        self.outgoing
+        self.superseded.zip(self.outgoing)
     }
 }
 
@@ -265,13 +255,12 @@ impl Diff {
             let old = old.subjects();
             let new = new.subjects();
             for (subject, block) in &new {
-                match old.get(subject) {
-                    None => added.push((*subject).to_string()),
-                    Some(previous) if !previous.same_as(block) => {
-                        changed.push((*subject).to_string());
-                    }
-                    Some(_) => {}
-                }
+                let bucket = match old.get(subject) {
+                    None => &mut added,
+                    Some(previous) if !previous.same_as(block) => &mut changed,
+                    Some(_) => continue,
+                };
+                bucket.push((*subject).to_string());
             }
             removed.extend(
                 old.keys().filter(|subject| !new.contains_key(*subject)).map(ToString::to_string),
@@ -297,20 +286,15 @@ impl Diff {
     }
 }
 
-fn failed(action: &str, err: &anyhow::Error) -> Error {
-    server_error!("storage-failed: {action}: {err:#}",)
-}
-
-fn hex_lower(bytes: &[u8]) -> String {
-    const DIGITS: &[u8; 16] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len().saturating_mul(2));
-    for &byte in bytes {
-        out.push(char::from(DIGITS[usize::from(byte >> 4)]));
-        out.push(char::from(DIGITS[usize::from(byte & 0x0f)]));
-    }
-    out
+// `{:#}` prints an `anyhow` chain in full; plain messages are unaffected.
+fn failed(action: &str, err: &impl Display) -> Error {
+    server_error!("storage-failed: {}: {:#}", action, err)
 }
 
 fn object(id: &str, name: &str) -> String {
     format!("generations/{id}/{name}")
+}
+
+fn pointer_id(raw: &[u8]) -> String {
+    String::from_utf8_lossy(raw).trim().to_string()
 }

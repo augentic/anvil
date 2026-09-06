@@ -1111,6 +1111,7 @@ dependencies = [
  "anyhow",
  "emery-prose",
  "emery-source",
+ "hex",
  "omnia-guest",
  "omnia-test",
  "semver",

@@ -68,7 +68,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     // One observation feeds both the CAS expected value and the
     // re-mine diff, computed in memory and emitted only here.
     let observed = store.observe().await;
-    let committed = store.commit(&set, &observed).await?;
+    let id = store.commit(&set, &observed).await?;
     let diff =
         observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
 
@@ -83,7 +83,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
         .collect();
 
     Ok(SpecifyBody {
-        generation: committed.id,
+        generation:id,
         requirements: rows.len(),
         sources: sets.len(),
         diff,
