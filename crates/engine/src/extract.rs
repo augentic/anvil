@@ -1,61 +1,44 @@
-//! # Extract
-//!
-//! Source extraction and claim validation.
+//! Source extraction: resolve each binding, extract over the `Source`
+//! capability, and re-run the A8 claim gate fail-closed.
 
 use std::collections::BTreeMap;
 
 use emery_source::types::{Authority, Claim};
-use emery_source::{DispatchError, Source, claims};
+use emery_source::{Source, claims};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use crate::resolve::{self, AdapterSelector};
+use crate::resolve::{AdapterSelector, Resolved};
 use crate::sources::SourceBinding;
 
 /// Resolves, extracts, and validates every source binding.
-///
-/// # Errors
-///
-/// Propagates resolution, extract, and claim-gate failures.
 pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
-    let mut loaded: BTreeMap<String, resolve::Resolved> = BTreeMap::new();
+    let mut loaded: BTreeMap<String, Resolved> = BTreeMap::new();
 
     for binding in bindings {
-        let selector = AdapterSelector::parse(&binding.adapter)?;
-        let key = selector.load_key()?;
+        let input = binding.input()?;
+        let key = AdapterSelector::parse(&binding.adapter)?.load_key()?;
 
         // The loader registers one identity per run; a second binding
         // that reuses the adapter extracts over the already-loaded guest.
-        let resolved = if let Some(existing) = key.as_ref().and_then(|key| loaded.get(key)) {
-            existing.pin_agrees(binding.digest.as_ref())?;
-            existing.clone()
+        let resolved = if let Some(resolved) = key.as_ref().and_then(|key| loaded.get(key)) {
+            resolved.pin_agrees(binding.digest.as_ref())?;
+            resolved.clone()
         } else {
-            let resolved = resolve::source(
-                provider,
-                &selector,
-                binding.digest.as_ref(),
-                binding.registry.as_deref(),
-            )
-            .await?;
+            let resolved = binding.resolve(provider).await?;
             if let Some(key) = key {
                 loaded.insert(key, resolved.clone());
             }
             resolved
         };
 
-        let input = binding.input()?;
-        tracing::info!(source = %binding.key, "extracting");
-
-        let evidence =
-            Source::extract(provider, &resolved.id, &input).await.map_err(|err| match err {
-                DispatchError::Call(failure) => bad_gateway!("source `{}`: {failure}", resolved.id),
-                extras @ DispatchError::Extras { .. } => {
-                    bad_gateway!("source `{}` {extras}", resolved.id)
-                }
-            })?;
+        tracing::debug!(source = %binding.key, "extracting");
+        let evidence = Source::extract(provider, &resolved.id, &input)
+            .await
+            .map_err(|err| bad_gateway!("source `{}`: {err}", resolved.id))?;
 
         let set = SourceSet {
             key: binding.key.clone(),
@@ -63,7 +46,6 @@ pub async fn extract_all<P: Source + Plugins>(
             claims: evidence.claims,
             digest: resolved.digest,
         };
-
         set.validate()?;
         sets.push(set);
     }
@@ -72,7 +54,7 @@ pub async fn extract_all<P: Source + Plugins>(
 }
 
 /// A validated claim set extracted from one source.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
@@ -87,13 +69,12 @@ pub struct SourceSet {
 impl SourceSet {
     // Validates claim grammar and required extras fail-closed (A8).
     fn validate(&self) -> Result<(), Error> {
-        if let findings = claims::findings(&self.claims)
-            && !findings.is_empty()
-        {
+        let findings = claims::findings(&self.claims);
+        if !findings.is_empty() {
             return Err(bad_request!(
-                "source `{}` returned an invalid claim set (A8 fail-closed): {}",
+                "source `{}` returned an invalid claim set (A8 fail-closed):\n{}",
                 self.key,
-                findings.join("; ")
+                findings.join("\n")
             ));
         }
         Ok(())

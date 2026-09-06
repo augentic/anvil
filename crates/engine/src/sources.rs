@@ -4,13 +4,14 @@
 
 use std::path::{Path, PathBuf};
 
+use emery_source::Source;
 use emery_source::types::{SourceContent, SourceInput, SourceWorkspace};
 use omnia_guest::plugins::Digest;
-use omnia_guest::{Error, bad_request};
+use omnia_guest::{Error, Plugins, bad_request};
 use serde::{Deserialize, Serialize};
 
 use crate::preopen::preopen_path;
-use crate::resolve::AdapterSelector;
+use crate::resolve::{self, AdapterSelector, Resolved};
 
 /// Checks a run's binding list before anything loads.
 ///
@@ -62,6 +63,14 @@ pub struct SourceBinding {
 }
 
 impl SourceBinding {
+    // Loads this binding's adapter under its pin and registry override.
+    pub(crate) async fn resolve<P: Source + Plugins>(
+        &self, provider: &P,
+    ) -> Result<Resolved, Error> {
+        let selector = AdapterSelector::parse(&self.adapter)?;
+        resolve::source(provider, &selector, self.digest.as_ref(), self.registry.as_deref()).await
+    }
+
     // Maps this binding to the adapter `extract` input.
     pub(crate) fn input(&self) -> Result<SourceInput, Error> {
         let content = match &self.content {

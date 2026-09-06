@@ -141,8 +141,8 @@ pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Err
 /// Resolves, extracts, and validates every source binding.
 pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
     for binding in bindings {
-        let resolved = /* … */;
         let input = binding.input()?;
+        let resolved = /* … */;
 
         let evidence = Source::extract(provider, &resolved.id, &input)
             .await
