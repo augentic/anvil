@@ -67,6 +67,97 @@ impl omnia_guest::Plugins for Inert {
     }
 }
 
+#[derive(Debug)]
+enum Mention {
+    Cli(String),
+    Skill { name: String, rest: String },
+}
+
+// Global flags do not appear in verb-specific help.
+const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
+
+// Each skill's flags validate against its single wrapped verb.
+const SKILL_VERBS: &[(&str, &str)] = &[("specify", "specify")];
+
+/// Runs `argv` through the live grammar over the inert provider.
+async fn grammar(argv: &[&str]) -> emery_cli::Response {
+    emery_cli::run(Inert::default(), argv.iter().copied()).await
+}
+
+// Plugin-rule CLI mentions must resolve to live verbs and flags.
+#[tokio::test]
+async fn rule_matches_router() {
+    let rule = plugin_dir().join("rules/emery.mdc");
+    let doc = std::fs::read_to_string(&rule)
+        .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
+    let help = grammar(&["emery", "--help"]).await;
+    assert_eq!(help.exit, 0, "`emery --help` must succeed");
+    let verbs: BTreeSet<String> =
+        verbs::verbs(&String::from_utf8_lossy(&help.stdout)).into_iter().collect();
+
+    let mentions = mentions(&doc);
+    assert!(
+        mentions.iter().any(|mention| matches!(mention, Mention::Cli(_))),
+        "the rule mentions no `emery` command at all — the extractor regressed"
+    );
+
+    for mention in mentions {
+        match mention {
+            Mention::Cli(text) => {
+                let mut segments = text.split('|');
+                let first = segments.next().expect("split yields at least one segment");
+                let tokens: Vec<&str> = first.split_whitespace().skip(1).collect();
+                let (verb, rest) = walk_verb(&tokens, &verbs);
+                if verb.is_none() {
+                    assert!(
+                        rest.is_none_or(|token| !is_kebab(token)),
+                        "rule names `emery {}`, which is not a verb (in `{text}`)",
+                        rest.unwrap_or_default(),
+                    );
+                }
+                assert_flags(verb.as_deref().unwrap_or(""), first).await;
+                for segment in segments {
+                    let tokens: Vec<&str> = segment.split_whitespace().collect();
+                    let (alt, _rest) = walk_verb(&tokens, &verbs);
+                    assert!(
+                        alt.is_some(),
+                        "rule alternative `{segment}` does not resolve to a verb (in `{text}`)",
+                    );
+                }
+            }
+            Mention::Skill { name, rest } => {
+                let skill = plugin_dir().join("skills").join(&name).join("SKILL.md");
+                assert!(skill.is_file(), "rule names `/emery:{name}`, but {skill:?} is missing");
+                let verb = SKILL_VERBS
+                    .iter()
+                    .find_map(|(skill, verb)| (*skill == name).then_some(*verb))
+                    .unwrap_or_else(|| {
+                        panic!("skill `{name}` has no CLI verb mapping in this test — add it")
+                    });
+                assert_flags(verb, &rest).await;
+            }
+        }
+    }
+}
+
+// Every shipped skill is named by the always-applied rule.
+#[test]
+fn rule_names_every_skill() {
+    let doc = std::fs::read_to_string(plugin_dir().join("rules/emery.mdc")).expect("rule");
+    let skills = std::fs::read_dir(plugin_dir().join("skills")).expect("skills dir");
+    for entry in skills {
+        let entry = entry.expect("skill entry");
+        if !entry.path().join("SKILL.md").is_file() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        assert!(
+            doc.contains(&format!("/emery:{name}")) || doc.contains(&format!("skills/{name}/")),
+            "shipped skill `{name}` is not mentioned by the always-applied rule"
+        );
+    }
+}
+
 fn never_dispatched() -> Result<omnia_guest::model::Reply, omnia_guest::model::Error> {
     unreachable!("the plugin suite never dispatches the model")
 }
@@ -79,25 +170,8 @@ fn never_extracted() -> Result<Evidence, DispatchError> {
     unreachable!("the plugin suite never dispatches Source")
 }
 
-/// Runs `argv` through the live grammar over the inert provider.
-async fn grammar(argv: &[&str]) -> emery_cli::Response {
-    emery_cli::run(Inert::default(), argv.iter().copied()).await
-}
-
-// Global flags do not appear in verb-specific help.
-const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--version"];
-
-// Each skill's flags validate against its single wrapped verb.
-const SKILL_VERBS: &[(&str, &str)] = &[("specify", "specify")];
-
 fn plugin_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/emery")
-}
-
-#[derive(Debug)]
-enum Mention {
-    Cli(String),
-    Skill { name: String, rest: String },
 }
 
 // Require a standalone `emery`, excluding `.emery/` and `emery-adapters`.
@@ -215,80 +289,6 @@ async fn assert_flags(verb: &str, text: &str) {
         assert!(
             help.contains(&flag),
             "rule names `{flag}` on `emery {verb}`, but the grammar has no such flag"
-        );
-    }
-}
-
-// Plugin-rule CLI mentions must resolve to live verbs and flags.
-#[tokio::test]
-async fn rule_matches_router() {
-    let rule = plugin_dir().join("rules/emery.mdc");
-    let doc = std::fs::read_to_string(&rule)
-        .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
-    let help = grammar(&["emery", "--help"]).await;
-    assert_eq!(help.exit, 0, "`emery --help` must succeed");
-    let verbs: BTreeSet<String> =
-        verbs::verbs(&String::from_utf8_lossy(&help.stdout)).into_iter().collect();
-
-    let mentions = mentions(&doc);
-    assert!(
-        mentions.iter().any(|mention| matches!(mention, Mention::Cli(_))),
-        "the rule mentions no `emery` command at all — the extractor regressed"
-    );
-
-    for mention in mentions {
-        match mention {
-            Mention::Cli(text) => {
-                let mut segments = text.split('|');
-                let first = segments.next().expect("split yields at least one segment");
-                let tokens: Vec<&str> = first.split_whitespace().skip(1).collect();
-                let (verb, rest) = walk_verb(&tokens, &verbs);
-                if verb.is_none() {
-                    assert!(
-                        rest.is_none_or(|token| !is_kebab(token)),
-                        "rule names `emery {}`, which is not a verb (in `{text}`)",
-                        rest.unwrap_or_default(),
-                    );
-                }
-                assert_flags(verb.as_deref().unwrap_or(""), first).await;
-                for segment in segments {
-                    let tokens: Vec<&str> = segment.split_whitespace().collect();
-                    let (alt, _rest) = walk_verb(&tokens, &verbs);
-                    assert!(
-                        alt.is_some(),
-                        "rule alternative `{segment}` does not resolve to a verb (in `{text}`)",
-                    );
-                }
-            }
-            Mention::Skill { name, rest } => {
-                let skill = plugin_dir().join("skills").join(&name).join("SKILL.md");
-                assert!(skill.is_file(), "rule names `/emery:{name}`, but {skill:?} is missing");
-                let verb = SKILL_VERBS
-                    .iter()
-                    .find_map(|(skill, verb)| (*skill == name).then_some(*verb))
-                    .unwrap_or_else(|| {
-                        panic!("skill `{name}` has no CLI verb mapping in this test — add it")
-                    });
-                assert_flags(verb, &rest).await;
-            }
-        }
-    }
-}
-
-// Every shipped skill is named by the always-applied rule.
-#[test]
-fn rule_names_every_skill() {
-    let doc = std::fs::read_to_string(plugin_dir().join("rules/emery.mdc")).expect("rule");
-    let skills = std::fs::read_dir(plugin_dir().join("skills")).expect("skills dir");
-    for entry in skills {
-        let entry = entry.expect("skill entry");
-        if !entry.path().join("SKILL.md").is_file() {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().into_owned();
-        assert!(
-            doc.contains(&format!("/emery:{name}")) || doc.contains(&format!("skills/{name}/")),
-            "shipped skill `{name}` is not mentioned by the always-applied rule"
         );
     }
 }

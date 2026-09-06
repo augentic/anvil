@@ -44,58 +44,6 @@ const NAME: &str = "emery";
 // Clap's usage-error status; help and version print to stdout and exit 0.
 const EXIT_USAGE: u8 = 2;
 
-/// Parse and execute one argument vector over `provider`, buffering both channels.
-pub async fn run<P, I, T>(provider: P, argv: I) -> Response
-where
-    P: Provider,
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    match decode(argv) {
-        Ok(app) => dispatch(app, &Client::new(NAME, provider)).await,
-        Err(response) => response,
-    }
-}
-
-// The decode leg: clap parses argv, and its own outcomes — usage errors,
-// help, version — are already complete responses.
-fn decode<I, T>(argv: I) -> Result<App, Response>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    App::try_parse_from(argv).map_err(|err| {
-        let rendered = err.render().to_string();
-        if err.use_stderr() {
-            Response::failure(rendered, EXIT_USAGE)
-        } else {
-            Response::success(rendered)
-        }
-    })
-}
-
-// The call-and-encode leg: each verb decodes into its engine input,
-// runs through the client, and projects. `completions` is synthetic
-// grammar behaviour and never reaches a handler.
-//
-// The metadata stays default: a wasm32 guest has no clock or entropy
-// capability to mint a request id from without a new dependency.
-async fn dispatch<P: Provider>(app: App, client: &Client<P>) -> Response {
-    let metadata = Metadata::default();
-    match app.verb {
-        Verb::Completions { shell } => {
-            let mut out = Vec::new();
-            clap_complete::generate(shell, &mut App::command(), NAME, &mut out);
-            Response::success(out)
-        }
-        Verb::Specify(grammar) => match grammar.decode() {
-            Ok(input) => project(app.format, client.call(input, &metadata).await),
-            Err(error) => refuse(app.format, &error),
-        },
-        Verb::Show(grammar) => project(app.format, client.call(grammar.decode(), &metadata).await),
-    }
-}
-
 // `bin_name` pins usage text to `emery`: Omnia forwards the routed id as
 // argv[0], and clap only reads argv[0] when `bin_name` is unset.
 #[derive(Debug, Parser)]
@@ -196,20 +144,6 @@ impl From<DocumentArg> for Document {
     }
 }
 
-// The command projector: the success body rides stdout, the failure
-// envelope rides stderr with its exit status.
-fn project<T: Serialize + Text>(format: Format, outcome: Result<T, Error>) -> Response {
-    match outcome {
-        Ok(body) => Response::success(format.encode(&body)),
-        Err(error) => refuse(format, &error),
-    }
-}
-
-fn refuse(format: Format, error: &Error) -> Response {
-    let exit = exit_code(error);
-    Response::failure(format.encode(&Failure::new(error, exit)), exit)
-}
-
 /// The failure envelope.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -241,6 +175,72 @@ impl Text for Failure {
         }
         Ok(())
     }
+}
+
+/// Parse and execute one argument vector over `provider`, buffering both channels.
+pub async fn run<P, I, T>(provider: P, argv: I) -> Response
+where
+    P: Provider,
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    match decode(argv) {
+        Ok(app) => dispatch(app, &Client::new(NAME, provider)).await,
+        Err(response) => response,
+    }
+}
+
+// The decode leg: clap parses argv, and its own outcomes — usage errors,
+// help, version — are already complete responses.
+fn decode<I, T>(argv: I) -> Result<App, Response>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    App::try_parse_from(argv).map_err(|err| {
+        let rendered = err.render().to_string();
+        if err.use_stderr() {
+            Response::failure(rendered, EXIT_USAGE)
+        } else {
+            Response::success(rendered)
+        }
+    })
+}
+
+// The call-and-encode leg: each verb decodes into its engine input,
+// runs through the client, and projects. `completions` is synthetic
+// grammar behaviour and never reaches a handler.
+//
+// The metadata stays default: a wasm32 guest has no clock or entropy
+// capability to mint a request id from without a new dependency.
+async fn dispatch<P: Provider>(app: App, client: &Client<P>) -> Response {
+    let metadata = Metadata::default();
+    match app.verb {
+        Verb::Completions { shell } => {
+            let mut out = Vec::new();
+            clap_complete::generate(shell, &mut App::command(), NAME, &mut out);
+            Response::success(out)
+        }
+        Verb::Specify(grammar) => match grammar.decode() {
+            Ok(input) => project(app.format, client.call(input, &metadata).await),
+            Err(error) => refuse(app.format, &error),
+        },
+        Verb::Show(grammar) => project(app.format, client.call(grammar.decode(), &metadata).await),
+    }
+}
+
+// The command projector: the success body rides stdout, the failure
+// envelope rides stderr with its exit status.
+fn project<T: Serialize + Text>(format: Format, outcome: Result<T, Error>) -> Response {
+    match outcome {
+        Ok(body) => Response::success(format.encode(&body)),
+        Err(error) => refuse(format, &error),
+    }
+}
+
+fn refuse(format: Format, error: &Error) -> Response {
+    let exit = exit_code(error);
+    Response::failure(format.encode(&Failure::new(error, exit)), exit)
 }
 
 /// The failure-code authority: the Omnia 1:1 exit map.

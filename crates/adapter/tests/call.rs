@@ -26,23 +26,6 @@ const DOCS: &[Doc] = &[
     },
 ];
 
-fn ctx<'a>(docs: &'static [Doc], root: &'a Path) -> Context<'a> {
-    Context {
-        adapter_id: "target:contracts",
-        project_root: root,
-        docs,
-        lend: Some(".".to_string()),
-    }
-}
-
-fn call(name: &str, arguments: &serde_json::Value) -> ToolCall {
-    ToolCall {
-        id: format!("call-{name}"),
-        name: name.to_string(),
-        arguments: arguments.to_string(),
-    }
-}
-
 #[tokio::test]
 async fn assembles_and_parses() {
     let model = Scripted::answering([r#"{"done":true}"#]);
@@ -316,4 +299,21 @@ async fn value_omits_workspace() {
         .expect("value leg succeeds");
 
     assert_eq!(model.requests()[0].workspace, None);
+}
+
+fn ctx<'a>(docs: &'static [Doc], root: &'a Path) -> Context<'a> {
+    Context {
+        adapter_id: "target:contracts",
+        project_root: root,
+        docs,
+        lend: Some(".".to_string()),
+    }
+}
+
+fn call(name: &str, arguments: &serde_json::Value) -> ToolCall {
+    ToolCall {
+        id: format!("call-{name}"),
+        name: name.to_string(),
+        arguments: arguments.to_string(),
+    }
 }

@@ -83,6 +83,20 @@ impl AdapterSelector {
     }
 }
 
+/// Derives a kebab-case adapter name from a component filename.
+///
+/// # Errors
+///
+/// Returns a `BadRequest` for an unusable stem.
+pub fn name_from_component(path: &Path) -> Result<String, Error> {
+    let stem = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .ok_or_else(|| bad_request!("cannot derive adapter name from {}", path.display()))?;
+    let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
+    Ok(stem.replace('_', "-"))
+}
+
 fn is_github_url(value: &str) -> bool {
     value.starts_with("https://github.com/")
 }
@@ -147,18 +161,4 @@ fn is_first_party_name(name: &str) -> bool {
     };
     first.is_ascii_lowercase()
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-}
-
-/// Derives a kebab-case adapter name from a component filename.
-///
-/// # Errors
-///
-/// Returns a `BadRequest` for an unusable stem.
-pub fn name_from_component(path: &Path) -> Result<String, Error> {
-    let stem = path
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .ok_or_else(|| bad_request!("cannot derive adapter name from {}", path.display()))?;
-    let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
-    Ok(stem.replace('_', "-"))
 }

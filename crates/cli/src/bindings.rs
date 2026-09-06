@@ -13,6 +13,34 @@ use omnia_guest::{Error, bad_request, server_error};
 /// The project-root config discovered by a bindingless run.
 pub const CONFIG_FILE: &str = "emery.toml";
 
+// The operator-authored schema: ordered `[[source]]` entries whose
+// `name` is the binding key, with exactly one optional content key.
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConfigFile {
+    #[serde(default)]
+    source: Vec<SourceEntry>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+struct SourceEntry {
+    name: String,
+    adapter: String,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    git: Option<String>,
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    registry: Option<String>,
+    #[serde(default)]
+    digest: Option<String>,
+}
+
 /// Decodes the run's binding list from the `specify` arguments.
 ///
 /// # Errors
@@ -73,6 +101,12 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
         });
     }
     Ok(bindings)
+}
+
+fn split_description(entry: &str) -> Result<(&str, &str), Error> {
+    entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
+        bad_request!("invalid argument --description: expected `<adapter>=<text>`, got `{entry}`",)
+    })
 }
 
 // The operator-owned file carrier: parsed fail-closed, never written
@@ -152,38 +186,4 @@ fn adapter_value(selector: &AdapterSelector, raw: &str, base: &Path) -> Result<S
 // refusing any path outside the `.` project preopen.
 fn resolved(base: &Path, relative: &Path) -> Result<PathBuf, Error> {
     preopen_path(&base.join(relative))
-}
-
-fn split_description(entry: &str) -> Result<(&str, &str), Error> {
-    entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
-        bad_request!("invalid argument --description: expected `<adapter>=<text>`, got `{entry}`",)
-    })
-}
-
-// The operator-authored schema: ordered `[[source]]` entries whose
-// `name` is the binding key, with exactly one optional content key.
-#[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ConfigFile {
-    #[serde(default)]
-    source: Vec<SourceEntry>,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct SourceEntry {
-    name: String,
-    adapter: String,
-    #[serde(default)]
-    path: Option<String>,
-    #[serde(default)]
-    git: Option<String>,
-    #[serde(default)]
-    url: Option<String>,
-    #[serde(default)]
-    description: Option<String>,
-    #[serde(default)]
-    registry: Option<String>,
-    #[serde(default)]
-    digest: Option<String>,
 }

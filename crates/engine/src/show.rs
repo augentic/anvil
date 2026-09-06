@@ -7,6 +7,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::home::Home;
 
+/// Read one document of the current generation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Show {
+    /// Which document to read.
+    pub document: Document,
+}
+
 /// The reviewable documents of one generation.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -15,14 +23,6 @@ pub enum Document {
     Spec,
     /// The rebuild design document.
     Design,
-}
-
-/// Read one document of the current generation.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct Show {
-    /// Which document to read.
-    pub document: Document,
 }
 
 /// Successful review result.

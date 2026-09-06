@@ -14,14 +14,7 @@ pub const SPEC_CONTAINER: &str = "spec";
 /// Keyvalue entry naming the current generation.
 pub const CURRENT_KEY: &str = "spec/current";
 
-const GENERATIONS_DIR: &str = "generations";
-
-// Digest order is part of the generation identity.
 const FILES: [&str; 2] = ["spec.md", "design.md"];
-
-fn object(id: &str, name: &str) -> String {
-    format!("{GENERATIONS_DIR}/{id}/{name}")
-}
 
 /// A complete, atomically committed spec set.
 ///
@@ -53,16 +46,6 @@ impl SpecSet {
         }
         hex_lower(&hasher.finalize())
     }
-}
-
-fn hex_lower(bytes: &[u8]) -> String {
-    const DIGITS: &[u8; 16] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len().saturating_mul(2));
-    for &byte in bytes {
-        out.push(char::from(DIGITS[usize::from(byte >> 4)]));
-        out.push(char::from(DIGITS[usize::from(byte & 0x0f)]));
-    }
-    out
 }
 
 /// A generation named by the current pointer.
@@ -155,18 +138,6 @@ impl Diff {
             && self.removed.is_empty()
             && self.changed.is_empty()
     }
-}
-
-fn subjects(spec: &spec::Spec) -> BTreeMap<&str, &spec::Requirement> {
-    spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
-}
-
-// Positional ids do not define requirement identity.
-fn same_block(old: &spec::Requirement, new: &spec::Requirement) -> bool {
-    old.status == new.status
-        && old.tag == new.tag
-        && old.sources == new.sources
-        && old.body == new.body
 }
 
 /// Spec generations over a deployment's storage capabilities.
@@ -324,4 +295,30 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         }
         Ok(())
     }
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len().saturating_mul(2));
+    for &byte in bytes {
+        out.push(char::from(DIGITS[usize::from(byte >> 4)]));
+        out.push(char::from(DIGITS[usize::from(byte & 0x0f)]));
+    }
+    out
+}
+
+fn subjects(spec: &spec::Spec) -> BTreeMap<&str, &spec::Requirement> {
+    spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
+}
+
+// Positional ids do not define requirement identity.
+fn same_block(old: &spec::Requirement, new: &spec::Requirement) -> bool {
+    old.status == new.status
+        && old.tag == new.tag
+        && old.sources == new.sources
+        && old.body == new.body
+}
+
+fn object(id: &str, name: &str) -> String {
+    format!("generations/{id}/{name}")
 }

@@ -106,6 +106,28 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
     rows
 }
 
+/// Synthesises both documents and validates the model answers.
+///
+/// # Errors
+///
+/// Returns model, AST, provenance, or empty-design failures.
+pub async fn synthesise<M: Model>(
+    model: &M, sets: &[SourceSet], rows: &[Row],
+) -> Result<Documents, Error> {
+    tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
+    let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
+    let parsed = spec::parse(&spec)?;
+    check_rows(&parsed, rows)?;
+    tracing::info!("synthesising design.md");
+    let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
+    if design.trim().is_empty() {
+        return Err(bad_request!(
+            "`design.md` must carry the rebuild design: the model answered an empty document"
+        ));
+    }
+    Ok(Documents { spec, design })
+}
+
 // Matching statements agree; a unique top authority wins divergence;
 // disagreeing top-authority peers conflict.
 fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
@@ -139,28 +161,6 @@ fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
         winner,
         contributors,
     }
-}
-
-/// Synthesises both documents and validates the model answers.
-///
-/// # Errors
-///
-/// Returns model, AST, provenance, or empty-design failures.
-pub async fn synthesise<M: Model>(
-    model: &M, sets: &[SourceSet], rows: &[Row],
-) -> Result<Documents, Error> {
-    tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
-    let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
-    let parsed = spec::parse(&spec)?;
-    check_rows(&parsed, rows)?;
-    tracing::info!("synthesising design.md");
-    let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
-    if design.trim().is_empty() {
-        return Err(bad_request!(
-            "`design.md` must carry the rebuild design: the model answered an empty document"
-        ));
-    }
-    Ok(Documents { spec, design })
 }
 
 // Prompt order is significant.

@@ -1,13 +1,14 @@
-//! Source extraction and fail-closed claim validation.
+//! # Extract
+//!
+//! Source extraction and claim validation.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use emery_source::claims::claim_id_findings;
 use emery_source::types::{
     Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
 };
-use emery_source::{DispatchError, Source};
+use emery_source::{DispatchError, Source, claims};
 use omnia_guest::plugins::{Digest, Error as LoadError};
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
@@ -15,14 +16,17 @@ use crate::preopen::preopen_path;
 use crate::resolve::{self, AdapterSelector};
 use crate::sources::{BindingContent, SourceBinding};
 
-// On wasm32, the routed id selects the exporting guest through Omnia.
-async fn dispatch<P: Source>(
-    provider: &P, id: &str, input: &SourceInput,
-) -> Result<emery_source::types::Evidence, Error> {
-    provider.extract(id, input).await.map_err(|err| match err {
-        DispatchError::Call(failure) => bad_gateway!("source `{id}`: {failure}",),
-        extras @ DispatchError::Extras { .. } => bad_gateway!("source `{id}` {extras}",),
-    })
+/// A validated claim set extracted from one source.
+#[derive(Debug, Clone)]
+pub struct SourceSet {
+    /// The authored binding key.
+    pub key: String,
+    /// Claim-set authority class.
+    pub authority: Authority,
+    /// The validated claims.
+    pub claims: Vec<Claim>,
+    /// Resolved content digest of a loader-loaded adapter.
+    pub digest: Option<Digest>,
 }
 
 /// A validated claim set extracted from one source.
@@ -55,6 +59,7 @@ pub async fn extract_all<P: Source + Plugins>(
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
     let mut loaded = BTreeMap::new();
+
     for binding in bindings {
         let resolved = resolve_once(provider, binding, &mut loaded).await?;
         let input = input_for(binding)?;
@@ -70,7 +75,50 @@ pub async fn extract_all<P: Source + Plugins>(
         tracing::debug!(source = %set.key, claims = set.claims.len(), "extracted");
         sets.push(set);
     }
+
     Ok(sets)
+}
+
+/// Returns the required extras for a claim kind.
+///
+/// Widening this closed table is a contract change.
+#[must_use]
+pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
+    match kind {
+        ClaimKind::Requirement => &["statement"],
+        ClaimKind::Criterion => &["criterion"],
+        ClaimKind::Example => &["replay-digest"],
+        _ => &[],
+    }
+}
+
+/// Validates claim grammar and required extras fail-closed.
+///
+/// # Errors
+///
+/// Returns a `BadRequest` when claim grammar or required extras fail.
+pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
+    let findings = claims::id_findings(&set.claims);
+    if !findings.is_empty() {
+        return Err(bad_request!(
+            "source `{}` returned an invalid claim set: {}",
+            set.key,
+            findings.join("; ")
+        ));
+    }
+    for claim in &set.claims {
+        for key in required_extras(claim.kind) {
+            if !claim.extras.contains_key(*key) {
+                let label = claim.id.clone().unwrap_or_else(|| claim.kind.to_string());
+                return Err(bad_request!(
+                    "required per-kind extras are absent (A8 fail-closed): source `{}` claim \
+                     `{label}` is missing `{key}`",
+                    set.key
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 // The loader registers one identity per run; a second binding that
@@ -140,44 +188,12 @@ fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
     })
 }
 
-/// Returns the required extras for a claim kind.
-///
-/// Widening this closed table is a contract change.
-#[must_use]
-pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
-    match kind {
-        ClaimKind::Requirement => &["statement"],
-        ClaimKind::Criterion => &["criterion"],
-        ClaimKind::Example => &["replay-digest"],
-        _ => &[],
-    }
-}
-
-/// Validates claim grammar and required extras fail-closed.
-///
-/// # Errors
-///
-/// Returns a `BadRequest` when claim grammar or required extras fail.
-pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
-    let findings = claim_id_findings(&set.claims);
-    if !findings.is_empty() {
-        return Err(bad_request!(
-            "source `{}` returned an invalid claim set: {}",
-            set.key,
-            findings.join("; ")
-        ));
-    }
-    for claim in &set.claims {
-        for key in required_extras(claim.kind) {
-            if !claim.extras.contains_key(*key) {
-                let label = claim.id.clone().unwrap_or_else(|| claim.kind.to_string());
-                return Err(bad_request!(
-                    "required per-kind extras are absent (A8 fail-closed): source `{}` claim \
-                     `{label}` is missing `{key}`",
-                    set.key
-                ));
-            }
-        }
-    }
-    Ok(())
+// On wasm32, the routed id selects the exporting guest through Omnia.
+async fn dispatch<P: Source>(
+    provider: &P, id: &str, input: &SourceInput,
+) -> Result<emery_source::types::Evidence, Error> {
+    provider.extract(id, input).await.map_err(|err| match err {
+        DispatchError::Call(failure) => bad_gateway!("source `{id}`: {failure}",),
+        extras @ DispatchError::Extras { .. } => bad_gateway!("source `{id}` {extras}",),
+    })
 }

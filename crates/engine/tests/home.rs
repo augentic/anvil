@@ -9,13 +9,6 @@
 use emery_engine::home::{Home, SpecSet};
 use omnia_test::guest::Memory;
 
-fn set(spec: &str) -> SpecSet {
-    SpecSet {
-        spec: spec.to_string(),
-        design: "# Design\n".to_string(),
-    }
-}
-
 #[tokio::test]
 async fn concurrent_commit_conflicts() {
     let store = Memory::default();
@@ -44,4 +37,11 @@ async fn concurrent_commit_conflicts() {
     let spec =
         store.object("spec", &format!("generations/{}/spec.md", winner.id)).expect("winning spec");
     assert_eq!(spec, b"# Spec winner\n", "the winning generation is intact");
+}
+
+fn set(spec: &str) -> SpecSet {
+    SpecSet {
+        spec: spec.to_string(),
+        design: "# Design\n".to_string(),
+    }
 }

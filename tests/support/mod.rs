@@ -21,11 +21,6 @@ const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 /// Dispatched `(routed id, input)` pairs, in call order.
 type Recorded = Vec<(String, SourceInput)>;
 
-/// A full-length `sha256:` digest from one repeated hex pair.
-pub fn digest(pair: &str) -> Digest {
-    format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
-}
-
 /// Scripted `Source`: per-key evidence, per-adapter floors, and a
 /// record of every dispatch. An unscripted key answers the greeting
 /// requirement as documentation evidence.
@@ -37,30 +32,6 @@ pub struct SourceScript {
     pub floors: BTreeMap<String, String>,
     /// Every extract dispatch, recorded for call assertions.
     pub calls: Arc<Mutex<Recorded>>,
-}
-
-/// A claim of `kind` carrying one required extra.
-pub fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
-    let mut extras = serde_json::Map::new();
-    extras.insert(extra.0.to_string(), Value::String(extra.1.to_string()));
-    Claim {
-        kind,
-        id: Some(id.to_string()),
-        path: None,
-        synopsis: None,
-        backing: Some(Backing::Payload(extra.1.to_string())),
-        extras,
-    }
-}
-
-/// A requirement claim carrying its required `statement` extra.
-pub fn requirement(id: &str, statement: &str) -> Claim {
-    claim(ClaimKind::Requirement, id, ("statement", statement))
-}
-
-/// An evidence document over `claims`.
-pub const fn evidence(authority: Authority, claims: Vec<Claim>) -> Evidence {
-    Evidence { authority, claims }
 }
 
 /// The scripted provider behind every root scenario.
@@ -178,4 +149,33 @@ where
     assert_eq!(envelope["error"], code, "{envelope}");
     assert_eq!(envelope["exit-code"], exit, "{envelope}");
     envelope
+}
+
+/// A full-length `sha256:` digest from one repeated hex pair.
+pub fn digest(pair: &str) -> Digest {
+    format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
+}
+
+/// A claim of `kind` carrying one required extra.
+pub fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
+    let mut extras = serde_json::Map::new();
+    extras.insert(extra.0.to_string(), Value::String(extra.1.to_string()));
+    Claim {
+        kind,
+        id: Some(id.to_string()),
+        path: None,
+        synopsis: None,
+        backing: Some(Backing::Payload(extra.1.to_string())),
+        extras,
+    }
+}
+
+/// A requirement claim carrying its required `statement` extra.
+pub fn requirement(id: &str, statement: &str) -> Claim {
+    claim(ClaimKind::Requirement, id, ("statement", statement))
+}
+
+/// An evidence document over `claims`.
+pub const fn evidence(authority: Authority, claims: Vec<Claim>) -> Evidence {
+    Evidence { authority, claims }
 }

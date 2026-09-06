@@ -13,6 +13,60 @@ use serde_json::Value;
 use support::{Provider, cli, cli_ok, fail};
 use verbs::verbs;
 
+struct Case {
+    name: &'static str,
+    argv: &'static [&'static str],
+    exit: u8,
+    stdout: &'static str,
+    stderr: &'static str,
+    json_channels: bool,
+}
+
+const fn cases() -> [Case; 5] {
+    [
+        Case {
+            name: "help",
+            argv: &["emery", "--help"],
+            exit: 0,
+            stdout: "Usage: emery [OPTIONS] <COMMAND>",
+            stderr: "",
+            json_channels: false,
+        },
+        Case {
+            name: "version",
+            argv: &["emery", "--version"],
+            exit: 0,
+            stdout: concat!("emery ", env!("CARGO_PKG_VERSION")),
+            stderr: "",
+            json_channels: false,
+        },
+        Case {
+            name: "completions",
+            argv: &["emery", "completions", "zsh"],
+            exit: 0,
+            stdout: "_emery",
+            stderr: "",
+            json_channels: false,
+        },
+        Case {
+            name: "specify source required",
+            argv: &["emery", "specify"],
+            exit: 1,
+            stdout: "",
+            stderr: "specify-source-required",
+            json_channels: false,
+        },
+        Case {
+            name: "show not generated",
+            argv: &["emery", "--format", "json", "show", "spec"],
+            exit: 2,
+            stdout: "",
+            stderr: "spec-not-generated",
+            json_channels: true,
+        },
+    ]
+}
+
 // Deleted verbs are deleted from the grammar, not hidden.
 #[tokio::test]
 async fn route_budget() {
@@ -188,60 +242,6 @@ async fn argv_zero_replaced() {
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
     assert!(stderr.contains("Usage: emery specify"), "{stderr}");
     assert!(!stderr.contains("emery:engine@0.1.0"));
-}
-
-struct Case {
-    name: &'static str,
-    argv: &'static [&'static str],
-    exit: u8,
-    stdout: &'static str,
-    stderr: &'static str,
-    json_channels: bool,
-}
-
-const fn cases() -> [Case; 5] {
-    [
-        Case {
-            name: "help",
-            argv: &["emery", "--help"],
-            exit: 0,
-            stdout: "Usage: emery [OPTIONS] <COMMAND>",
-            stderr: "",
-            json_channels: false,
-        },
-        Case {
-            name: "version",
-            argv: &["emery", "--version"],
-            exit: 0,
-            stdout: concat!("emery ", env!("CARGO_PKG_VERSION")),
-            stderr: "",
-            json_channels: false,
-        },
-        Case {
-            name: "completions",
-            argv: &["emery", "completions", "zsh"],
-            exit: 0,
-            stdout: "_emery",
-            stderr: "",
-            json_channels: false,
-        },
-        Case {
-            name: "specify source required",
-            argv: &["emery", "specify"],
-            exit: 1,
-            stdout: "",
-            stderr: "specify-source-required",
-            json_channels: false,
-        },
-        Case {
-            name: "show not generated",
-            argv: &["emery", "--format", "json", "show", "spec"],
-            exit: 2,
-            stdout: "",
-            stderr: "spec-not-generated",
-            json_channels: true,
-        },
-    ]
 }
 
 // The stdout/stderr channel contract, table-driven across the surface.

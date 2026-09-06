@@ -73,59 +73,6 @@ pub struct Requirement {
     pub body: String,
 }
 
-/// Parse `text` under the fail-closed grammar.
-///
-/// # Errors
-///
-/// Returns one `BadRequest` aggregating all grammar findings.
-pub fn parse(text: &str) -> Result<Spec, Error> {
-    let mut findings: Vec<String> = Vec::new();
-    let mut requirements: Vec<Requirement> = Vec::new();
-    let mut preamble: Vec<&str> = Vec::new();
-    let mut block: Option<Block> = None;
-
-    for (idx, line) in text.lines().enumerate() {
-        let line_no = idx + 1;
-        let stripped = line.trim_end();
-        if let Some(rest) = stripped.strip_prefix(HEADING) {
-            if let Some(done) = block.take() {
-                done.finish(&mut requirements, &mut findings);
-            }
-            block = Some(Block::open(rest.trim(), line_no, &mut findings));
-        } else if let Some(open) = block.as_mut() {
-            open.line(stripped, line_no, &mut findings);
-        } else {
-            preamble.push(stripped);
-        }
-    }
-    if let Some(done) = block.take() {
-        done.finish(&mut requirements, &mut findings);
-    }
-
-    if requirements.is_empty() {
-        findings.push(format!("the document carries no `{HEADING}` block"));
-    }
-    let mut seen: Vec<&str> = Vec::new();
-    for requirement in &requirements {
-        if seen.contains(&requirement.id.as_str()) {
-            findings.push(format!("duplicate requirement id `{}`", requirement.id));
-        }
-        seen.push(&requirement.id);
-    }
-
-    if findings.is_empty() {
-        Ok(Spec {
-            preamble: preamble.join("\n"),
-            requirements,
-        })
-    } else {
-        Err(bad_request!(
-            "`spec.md` must parse under the fail-closed spec AST: {}",
-            findings.join("; ")
-        ))
-    }
-}
-
 // Metadata must precede the first body line.
 struct Block {
     line_no: usize,
@@ -240,6 +187,59 @@ impl Block {
             status,
             body: trim_edges(&body),
         });
+    }
+}
+
+/// Parse `text` under the fail-closed grammar.
+///
+/// # Errors
+///
+/// Returns one `BadRequest` aggregating all grammar findings.
+pub fn parse(text: &str) -> Result<Spec, Error> {
+    let mut findings: Vec<String> = Vec::new();
+    let mut requirements: Vec<Requirement> = Vec::new();
+    let mut preamble: Vec<&str> = Vec::new();
+    let mut block: Option<Block> = None;
+
+    for (idx, line) in text.lines().enumerate() {
+        let line_no = idx + 1;
+        let stripped = line.trim_end();
+        if let Some(rest) = stripped.strip_prefix(HEADING) {
+            if let Some(done) = block.take() {
+                done.finish(&mut requirements, &mut findings);
+            }
+            block = Some(Block::open(rest.trim(), line_no, &mut findings));
+        } else if let Some(open) = block.as_mut() {
+            open.line(stripped, line_no, &mut findings);
+        } else {
+            preamble.push(stripped);
+        }
+    }
+    if let Some(done) = block.take() {
+        done.finish(&mut requirements, &mut findings);
+    }
+
+    if requirements.is_empty() {
+        findings.push(format!("the document carries no `{HEADING}` block"));
+    }
+    let mut seen: Vec<&str> = Vec::new();
+    for requirement in &requirements {
+        if seen.contains(&requirement.id.as_str()) {
+            findings.push(format!("duplicate requirement id `{}`", requirement.id));
+        }
+        seen.push(&requirement.id);
+    }
+
+    if findings.is_empty() {
+        Ok(Spec {
+            preamble: preamble.join("\n"),
+            requirements,
+        })
+    } else {
+        Err(bad_request!(
+            "`spec.md` must parse under the fail-closed spec AST: {}",
+            findings.join("; ")
+        ))
     }
 }
 

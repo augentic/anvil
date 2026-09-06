@@ -7,20 +7,25 @@ use crate::types::{Claim, ClaimKind, Error, Evidence};
 /// enforced in code.
 pub const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
-fn is_kebab(value: &str) -> bool {
-    !value.is_empty()
-        && value.split('-').all(|seg| {
-            !seg.is_empty() && seg.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
-        })
-}
-
-fn is_dotted_kebab(value: &str) -> bool {
-    !value.is_empty() && value.split('.').all(is_kebab)
+/// Enforces required dotted-kebab claim IDs.
+///
+/// # Errors
+///
+/// Returns [`Error::Internal`] with one finding per violation.
+pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
+    let findings = id_findings(&evidence.claims);
+    if findings.is_empty() {
+        return Ok(());
+    }
+    Err(Error::Internal(format!(
+        "extract answer failed deterministic validation:\n{}",
+        findings.join("\n")
+    )))
 }
 
 /// Findings for dotted-kebab claim ids and required-id kinds.
 #[must_use]
-pub fn claim_id_findings(claims: &[Claim]) -> Vec<String> {
+pub fn id_findings(claims: &[Claim]) -> Vec<String> {
     let mut findings = Vec::new();
     for (index, claim) in claims.iter().enumerate() {
         match &claim.id {
@@ -42,18 +47,13 @@ pub fn claim_id_findings(claims: &[Claim]) -> Vec<String> {
     findings
 }
 
-/// Enforces required dotted-kebab claim IDs.
-///
-/// # Errors
-///
-/// Returns [`Error::Internal`] with one finding per violation.
-pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
-    let findings = claim_id_findings(&evidence.claims);
-    if findings.is_empty() {
-        return Ok(());
-    }
-    Err(Error::Internal(format!(
-        "extract answer failed deterministic validation:\n{}",
-        findings.join("\n")
-    )))
+fn is_kebab(value: &str) -> bool {
+    !value.is_empty()
+        && value.split('-').all(|seg| {
+            !seg.is_empty() && seg.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        })
+}
+
+fn is_dotted_kebab(value: &str) -> bool {
+    !value.is_empty() && value.split('.').all(is_kebab)
 }

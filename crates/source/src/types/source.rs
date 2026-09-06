@@ -163,16 +163,6 @@ pub struct Claim {
     pub extras: serde_json::Map<String, serde_json::Value>,
 }
 
-// Treat a malformed open field as absent.
-fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: serde::de::DeserializeOwned,
-{
-    let value = serde_json::Value::deserialize(deserializer)?;
-    Ok(T::deserialize(value).ok())
-}
-
 /// Extracted claims and their document-level authority.
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -181,4 +171,14 @@ pub struct Evidence {
     pub authority: Authority,
     /// Extracted claims.
     pub claims: Vec<Claim>,
+}
+
+// Treat a malformed open field as absent.
+fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(T::deserialize(value).ok())
 }

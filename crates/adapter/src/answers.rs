@@ -1,6 +1,6 @@
 //! Evidence answer parsing and validation.
 
-pub use emery_source::claims::{DOTTED_KEBAB_PATTERN, claim_id_findings, validate_evidence};
+pub use emery_source::claims::{DOTTED_KEBAB_PATTERN, id_findings, validate_evidence};
 use schemars::generate::SchemaSettings;
 use serde_json::{Value, json};
 
@@ -57,15 +57,6 @@ pub fn evidence_schema() -> String {
     serde_json::to_string(&value).expect("generated answer schema serialises")
 }
 
-/// Parses an evidence answer.
-///
-/// # Errors
-///
-/// Returns a JSON error if the answer is not [`Evidence`].
-pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
-    serde_json::from_str(answer)
-}
-
 /// Parses and validates an evidence answer for [`crate::repaired`].
 ///
 /// # Errors
@@ -76,4 +67,13 @@ pub fn evidence_tail(answer: &str) -> Result<Evidence, Error> {
         .map_err(|err| Error::Internal(format!("evidence answer did not deserialize: {err}")))?;
     validate_evidence(&evidence)?;
     Ok(evidence)
+}
+
+/// Parses an evidence answer.
+///
+/// # Errors
+///
+/// Returns a JSON error if the answer is not [`Evidence`].
+pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
+    serde_json::from_str(answer)
 }
