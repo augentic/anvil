@@ -128,7 +128,7 @@ async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Res
 /// Resolves, extracts, and validates every source binding.
 pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
     for binding in bindings {
-        let resolved = resolve_once(provider, binding, &mut loaded).await?;
+        let resolved = /* … */;
         let evidence = dispatch(provider, &resolved.id, &binding.input()?).await?;
         let set = SourceSet { /* … */ };
         set.validate()?;
@@ -141,7 +141,7 @@ pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Err
 /// Resolves, extracts, and validates every source binding.
 pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
     for binding in bindings {
-        let resolved = resolve_once(provider, binding, &mut loaded).await?;
+        let resolved = /* … */;
         let input = binding.input()?;
 
         let evidence = Source::extract(provider, &resolved.id, &input)
@@ -163,10 +163,6 @@ impl SourceSet {
     // Validates claim grammar and required extras fail-closed (A8).
     fn validate(&self) -> Result<(), Error> { /* … */ }
 }
-
-// The loader registers one identity per run; a second binding that
-// reuses the adapter extracts over the already-loaded guest.
-async fn resolve_once<P: Source + Plugins>(...) -> Result<Resolved, Error> { /* … */ }
 ```
 
 ## Format dispatch

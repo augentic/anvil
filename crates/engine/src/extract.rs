@@ -21,10 +21,31 @@ pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
-    let mut loaded = BTreeMap::new();
+    let mut loaded: BTreeMap<String, resolve::Resolved> = BTreeMap::new();
 
     for binding in bindings {
-        let resolved = resolve_once(provider, binding, &mut loaded).await?;
+        let selector = AdapterSelector::parse(&binding.adapter)?;
+        let key = selector.load_key()?;
+
+        // The loader registers one identity per run; a second binding
+        // that reuses the adapter extracts over the already-loaded guest.
+        let resolved = if let Some(existing) = key.as_ref().and_then(|key| loaded.get(key)) {
+            existing.pin_agrees(binding.digest.as_ref())?;
+            existing.clone()
+        } else {
+            let resolved = resolve::source(
+                provider,
+                &selector,
+                binding.digest.as_ref(),
+                binding.registry.as_deref(),
+            )
+            .await?;
+            if let Some(key) = key {
+                loaded.insert(key, resolved.clone());
+            }
+            resolved
+        };
+
         let input = binding.input()?;
         tracing::info!(source = %binding.key, "extracting");
 
@@ -48,29 +69,6 @@ pub async fn extract_all<P: Source + Plugins>(
     }
 
     Ok(sets)
-}
-
-// The loader registers one identity per run; a second binding that
-// reuses the adapter extracts over the already-loaded guest.
-async fn resolve_once<P: Source + Plugins>(
-    provider: &P, binding: &SourceBinding, loaded: &mut BTreeMap<String, resolve::Resolved>,
-) -> Result<resolve::Resolved, Error> {
-    let selector = AdapterSelector::parse(&binding.adapter)?;
-    let key = selector.load_key()?;
-
-    if let Some(existing) = key.as_ref().and_then(|key| loaded.get(key)) {
-        existing.pin_agrees(binding.digest.as_ref())?;
-        return Ok(existing.clone());
-    }
-
-    let resolved =
-        resolve::source(provider, &selector, binding.digest.as_ref(), binding.registry.as_deref())
-            .await?;
-    if let Some(key) = key {
-        loaded.insert(key, resolved.clone());
-    }
-
-    Ok(resolved)
 }
 
 /// A validated claim set extracted from one source.
