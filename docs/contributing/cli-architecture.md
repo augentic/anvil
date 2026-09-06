@@ -45,13 +45,13 @@ Progress is `tracing`, never stdout: the engine emits a handful of INFO events a
 
 The exit-code contract is part of the public interface for operators and skill wrappers; `exit_code` in `crates/cli/src/lib.rs` maps `omnia_guest::Error` variants and is the single source of truth:
 
-| Code | Variant          | Meaning                                                                                                                                        |
-| ---- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0`  | `EXIT_SUCCESS`   | Operation completed successfully                                                                                                               |
-| `1`  | `BadRequest`     | Operator or input refusal. The `error` field is `specify-source-required`, `adapter-cli-too-old`, a loader refusal (`refused`, `already-active`), or the Omnia default `bad_request`. |
-| `2`  | `NotFound`       | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework). |
-| `3`  | `ServerError`    | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error` or the loader's `internal`.                               |
-| `4`  | `BadGateway`     | Upstream, model, or component-acquisition failure. The `error` field is the Omnia default `bad_gateway` or the loader's `unavailable`.        |
+| Code | Variant        | Meaning                                                                                                                                                                               |
+| ---- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | `EXIT_SUCCESS` | Operation completed successfully                                                                                                                                                      |
+| `1`  | `BadRequest`   | Operator or input refusal. The `error` field is `specify-source-required`, `adapter-cli-too-old`, a loader refusal (`refused`, `already-active`), or the Omnia default `bad_request`. |
+| `2`  | `NotFound`     | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework).                                    |
+| `3`  | `ServerError`  | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error` or the loader's `internal`.                                           |
+| `4`  | `BadGateway`   | Upstream, model, or component-acquisition failure. The `error` field is the Omnia default `bad_gateway` or the loader's `unavailable`.                                                |
 
 Guest commands inherit the same contract: `emery_cli` projects parser, decoder, and handler outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
 
@@ -67,4 +67,4 @@ The pattern for a command operation:
 
 ## Public Rust API
 
-The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::home::Home` or `emery_cli::run`.
+The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::store::Store` or `emery_cli::run`.

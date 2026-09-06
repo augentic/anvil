@@ -76,7 +76,7 @@ impl SourceBinding {
         let content = match &self.content {
             BindingContent::Workspace(relative) => {
                 // `.` spans the project preopen, including `.emery/`, until
-                // guest capability profiles can exclude the output home.
+                // guest capability profiles can exclude the generation store.
                 let relative = preopen_path(Path::new(relative))?;
                 let root = if relative == Path::new(".") {
                     PathBuf::from(".")

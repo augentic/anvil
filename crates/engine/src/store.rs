@@ -4,24 +4,20 @@ use omnia_guest::{BlobStore, BlobStoreExt, CasError, Error, StateStore, server_e
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::{spec, storage};
+use crate::spec;
 
-/// Blobstore container for spec generations.
-pub const SPEC_CONTAINER: &str = "spec";
-
-/// Keyvalue entry naming the current generation.
-pub const CURRENT_KEY: &str = "spec/current";
-
-const FILES: [&str; 2] = ["spec.md", "design.md"];
+const CONTAINER: &str = "spec";
+const CURRENT: &str = "spec/current";
+const SPECS: [&str; 2] = ["spec.md", "design.md"];
 
 /// Spec generations over a deployment's storage capabilities.
 #[derive(Clone, Copy, Debug)]
-pub struct Home<'p, S> {
+pub struct Store<'p, S> {
     store: &'p S,
 }
 
-impl<'p, S: StateStore + BlobStore> Home<'p, S> {
-    /// Creates an output home over `store`.
+impl<'p, S: StateStore + BlobStore> Store<'p, S> {
+    /// Creates a generation store over `store`.
     #[must_use]
     pub const fn new(store: &'p S) -> Self {
         Self { store }
@@ -38,28 +34,24 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
 
         // `wasi:blobstore` writes need an existing container; only some
         // backends create one on `get-container`.
-        let exists = BlobStore::container_exists(self.store, SPEC_CONTAINER)
+        let exists = BlobStore::container_exists(self.store, CONTAINER)
             .await
-            .map_err(|err| storage::failed("checking the generation container", &err))?;
+            .map_err(|err| failed("checking the generation container", &err))?;
         if !exists {
-            BlobStore::create_container(self.store, SPEC_CONTAINER)
+            BlobStore::create_container(self.store, CONTAINER)
                 .await
-                .map_err(|err| storage::failed("creating the generation container", &err))?;
+                .map_err(|err| failed("creating the generation container", &err))?;
         }
+
         for (name, body) in set.files() {
-            BlobStore::put(self.store, SPEC_CONTAINER, &object(&id, name), body.as_bytes())
+            BlobStore::put(self.store, CONTAINER, &object(&id, name), body.as_bytes())
                 .await
-                .map_err(|err| storage::failed("committing a generation document", &err))?;
+                .map_err(|err| failed("committing a generation document", &err))?;
         }
 
         let value = format!("{id}\n");
-        match StateStore::cas(
-            self.store,
-            CURRENT_KEY,
-            observed.pointer.as_deref(),
-            value.as_bytes(),
-        )
-        .await
+        match StateStore::cas(self.store, CURRENT, observed.pointer.as_deref(), value.as_bytes())
+            .await
         {
             Ok(()) => {}
             Err(CasError::Conflict(_)) => {
@@ -69,10 +61,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
                 ));
             }
             Err(CasError::Store(message)) => {
-                return Err(storage::failed(
-                    "swapping the generation pointer",
-                    &anyhow::anyhow!(message),
-                ));
+                return Err(failed("swapping the generation pointer", &anyhow::anyhow!(message)));
             }
         }
         self.prune(observed, &id).await?;
@@ -87,18 +76,18 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     /// Fails closed for a dangling or incomplete generation.
     /// Propagates read failures.
     pub async fn current(&self) -> Result<Option<Committed>, Error> {
-        let raw = StateStore::get(self.store, CURRENT_KEY)
+        let raw = StateStore::get(self.store, CURRENT)
             .await
-            .map_err(|err| storage::failed("reading the generation pointer", &err))?;
+            .map_err(|err| failed("reading the generation pointer", &err))?;
         let Some(raw) = raw else {
             return Ok(None);
         };
         let id = String::from_utf8_lossy(&raw).trim().to_string();
 
-        for name in FILES {
-            let present = BlobStoreExt::has(self.store, SPEC_CONTAINER, &object(&id, name))
+        for name in SPECS {
+            let present = BlobStoreExt::has(self.store, CONTAINER, &object(&id, name))
                 .await
-                .map_err(|err| storage::failed("probing a generation document", &err))?;
+                .map_err(|err| failed("probing a generation document", &err))?;
             if !present {
                 return Err(server_error!(
                     "the generation pointer names `{id}` but `{name}` is missing; re-run \
@@ -136,7 +125,7 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     /// Corrupt or unreadable state suppresses only the advisory diff;
     /// the following CAS remains authoritative and fail-closed.
     pub async fn observe(&self) -> Observation {
-        let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
+        let pointer = StateStore::get(self.store, CURRENT).await.ok().flatten();
         let outgoing = match &pointer {
             Some(raw) => {
                 let id = String::from_utf8_lossy(raw).trim().to_string();
@@ -153,12 +142,10 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
 
     // Advisory reads collapse incomplete or unreadable generations to `None`.
     async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
-        let mut bodies = Vec::with_capacity(FILES.len());
-        for name in FILES {
-            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(id, name))
-                .await
-                .ok()
-                .flatten()?;
+        let mut bodies = Vec::with_capacity(SPECS.len());
+        for name in SPECS {
+            let bytes =
+                BlobStore::get(self.store, CONTAINER, &object(id, name)).await.ok().flatten()?;
             bodies.push(String::from_utf8(bytes).ok()?);
         }
         let design = bodies.pop()?;
@@ -175,10 +162,10 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
         if superseded == keep || superseded.is_empty() {
             return Ok(());
         }
-        for name in FILES {
-            BlobStore::delete(self.store, SPEC_CONTAINER, &object(&superseded, name))
+        for name in SPECS {
+            BlobStore::delete(self.store, CONTAINER, &object(&superseded, name))
                 .await
-                .map_err(|err| storage::failed("pruning the superseded generation", &err))?;
+                .map_err(|err| failed("pruning the superseded generation", &err))?;
         }
         Ok(())
     }
@@ -199,7 +186,7 @@ impl SpecSet {
     /// Returns documents in generation-digest order.
     #[must_use]
     pub fn files(&self) -> [(&'static str, &str); 2] {
-        [(FILES[0], &self.spec), (FILES[1], &self.design)]
+        [(SPECS[0], &self.spec), (SPECS[1], &self.design)]
     }
 
     /// Returns the SHA-256 generation id over length-prefixed names and bodies.
@@ -308,6 +295,10 @@ impl Diff {
             && self.removed.is_empty()
             && self.changed.is_empty()
     }
+}
+
+fn failed(action: &str, err: &anyhow::Error) -> Error {
+    server_error!("storage-failed: {action}: {err:#}",)
 }
 
 fn hex_lower(bytes: &[u8]) -> String {

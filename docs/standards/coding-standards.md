@@ -115,7 +115,7 @@ A module reads top-down: what it does, what it yields, how. **Review only.**
 - **Order**: module doc, `use`, constants, the public entry function(s), the public types those entries take or return (each `struct`/`enum` immediately followed by its `impl` blocks), then private helpers in call order, then `#[cfg(test)]`. A private state machine or DTO the entry uses goes *below* the entry, not above it.
 - **Phases, not statements**: one blank line separates the phases of a function body (acquire → transform → validate → return) and precedes a trailing `Ok(...)` when the body has more than a few statements. Do not blank-line every statement.
 - **Comment by visibility**: exported items carry `///`. Private and `pub(crate)` items carry a `//` line only when it answers "why" — a comment that restates the name is deleted. Clippy's `missing_errors_doc` / `missing_panics_doc` only check exported items, so a `# Errors` section on a non-exported fn is noise, not a requirement; reducing visibility is the lever that lets you drop it.
-- **Inline single-use wrappers**: a private fn with one caller whose body is one expression, and whose name adds nothing the expression does not say, is inlined at the call site. Keep the fn when it has two or more callers, names a concept the call site should not spell out (`storage::failed`), or is a multi-step body.
+- **Inline single-use wrappers**: a private fn with one caller whose body is one expression, and whose name adds nothing the expression does not say, is inlined at the call site. Keep the fn when it has two or more callers, names a concept the call site should not spell out (`store::failed`), or is a multi-step body.
 - **Name the capability at the dispatch site**: when the receiver is a generic bounded by more than one capability trait (`P: Source + Plugins`, `S: StateStore + BlobStore`), call `Source::extract(provider, …)` / `BlobStore::put(store, …)` rather than `provider.extract(…)`, so the seam being crossed is visible without resolving the bound.
 - **Keep an `impl` with its type**: no `impl ForeignType` in a consumer module. A consumer that needs behaviour over a type it does not own writes a free fn taking `&Type`.
 
@@ -126,7 +126,7 @@ async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Res
 }
 
 /// Resolves, extracts, and validates every source binding.
-pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
     for binding in bindings {
         let resolved = /* … */;
         let evidence = dispatch(provider, &resolved.id, &binding.input()?).await?;
@@ -139,7 +139,7 @@ pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Err
 
 // GOOD — entry first, capability named, phases separated, wrapper inlined
 /// Resolves, extracts, and validates every source binding.
-pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
     for binding in bindings {
         let input = binding.input()?;
         let resolved = /* … */;
@@ -198,13 +198,13 @@ Response DTOs (`*Body`, `*Row`) are **top-level** structs under `mod`. Declaring
 
 **Field-type allowlist.** DTO fields use the strictest type the wire shape supports:
 
-| Domain | Type | Notes |
-|---|---|---|
-| Filesystem path | `PathBuf` | never `String`; serde's default carries the path losslessly |
-| Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]` | drop `.to_string()` at construction |
-| Stable kebab discriminant | `&'static str` | lives in the binary |
-| Timestamp written into JSON | `jiff::Timestamp` with the engine crate's `serde_time::rfc3339` adapter (or `rfc3339_opt` on `Option<Timestamp>`) | serde owns the format |
-| Count | `usize` | JSON has neither `u32` nor `u64` |
+| Domain                                   | Type                                                                                                              | Notes                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Filesystem path                          | `PathBuf`                                                                                                         | never `String`; serde's default carries the path losslessly |
+| Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]`                                                       | drop `.to_string()` at construction                         |
+| Stable kebab discriminant                | `&'static str`                                                                                                    | lives in the binary                                         |
+| Timestamp written into JSON              | `jiff::Timestamp` with the engine crate's `serde_time::rfc3339` adapter (or `rfc3339_opt` on `Option<Timestamp>`) | serde owns the format                                       |
+| Count                                    | `usize`                                                                                                           | JSON has neither `u32` nor `u64`                            |
 
 **Single-variant enums are dead overhead.** Drop either the variant or the enum; the type's name already says "this DTO represents kind X". The `BriefAction::Init` pattern is the canonical example of what not to add.
 

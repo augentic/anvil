@@ -36,7 +36,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 - Keep `/emery:*` skill bodies ultrathin invoke-and-relay — body style is guidance in [`docs/standards/cli-contract.md`](docs/standards/cli-contract.md)
 - `make links` must pass before submitting a pull request that touches docs. See [Quality gates](docs/contributing/quality-gates.md#consistency-links).
 - Use kebab-case for file names, change names, and adapter identifiers
-- Generation behavior belongs in guest orchestrations or adapter prompts, not in skill bodies
+- Store behavior belongs in guest orchestrations or adapter prompts, not in skill bodies
 
 ## Developer's Certificate of Origin
 

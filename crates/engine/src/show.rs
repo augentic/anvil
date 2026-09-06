@@ -5,7 +5,7 @@ use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::home::Home;
+use crate::store::Store;
 
 /// Read one document of the current generation.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -41,8 +41,8 @@ pub struct ShowBody {
 async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
-    let home = Home::new(context.provider);
-    let Some((committed, set)) = home.current_set().await? else {
+    let store = Store::new(context.provider);
+    let Some((committed, set)) = store.current_set().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
             description: "no specification generation has been committed".into(),

@@ -6,10 +6,10 @@ How the `emery` runtime binds engine storage, and how deployments other than the
 
 Engine state — the generation store and the `current` pointer — is reachable only through the storage capabilities (`omnia_guest::StateStore` / `BlobStore` on the guest side). The names the engine uses are flat, deployment-neutral formulas:
 
-| Surface | Kind | Name |
-| --- | --- | --- |
-| Current-generation pointer | keyvalue key | `spec/current` |
-| Generation documents | blobstore container `spec` | `generations/<id>/<doc>.md` |
+| Surface                    | Kind                       | Name                        |
+| -------------------------- | -------------------------- | --------------------------- |
+| Current-generation pointer | keyvalue key               | `spec/current`              |
+| Store documents            | blobstore container `spec` | `generations/<id>/<doc>.md` |
 
 The host side of the boundary is a backend type implementing `omnia::Backend` (connection options compiled into the `hosts:` row, or loaded from the environment when the row carries none) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the boundary exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.
 
@@ -29,13 +29,13 @@ The `multi_project_isolation` scenario in [`tests/specify.rs`](../../tests/speci
 
 `omnia-backends` ships host clients that drop into the same `hosts:` table:
 
-| Backend | keyvalue | blobstore | Environment configuration |
-| --- | --- | --- | --- |
-| `omnia-filesystem` | yes | yes | `FILESYSTEM_ROOT` |
-| `omnia-redis` | yes | — | `REDIS_URL` |
-| `omnia-nats` | yes | yes | `NATS_ADDR` |
-| `omnia-mongodb` | — | yes | `MONGODB_URL` |
-| `omnia-azure-blob` | — | yes | `AZURE_BLOB_ENDPOINT` |
+| Backend            | keyvalue | blobstore | Environment configuration |
+| ------------------ | -------- | --------- | ------------------------- |
+| `omnia-filesystem` | yes      | yes       | `FILESYSTEM_ROOT`         |
+| `omnia-redis`      | yes      | —         | `REDIS_URL`               |
+| `omnia-nats`       | yes      | yes       | `NATS_ADDR`               |
+| `omnia-mongodb`    | —        | yes       | `MONGODB_URL`             |
+| `omnia-azure-blob` | —        | yes       | `AZURE_BLOB_ENDPOINT`     |
 
 The environment variables apply to a bare `hosts:` row; a row carrying compiled-in connect options (`Backend(options)`, as the shipped profile does for its filesystem root) ignores them. Credentials and endpoints live in the host binding's environment, never in engine state or operator files.
 

@@ -49,7 +49,7 @@ The two adapter validators — `contract` and `vectis` — are in-guest adapter 
 
 ## Layout boundary
 
-`.emery/` is framework-managed state every CLI verb writes through, and `emery_engine::home::Home` is its one owner: the spec output home (generation documents plus the `current` pointer) over the deployment's storage capabilities. Do not hard-code `.emery/` paths elsewhere; a new `.emery/` location lands on that owner.
+`.emery/` is framework-managed state every CLI verb writes through, and `emery_engine::store::Store` is its one owner: the generation store (generation documents plus the `current` pointer) over the deployment's storage capabilities. Do not hard-code `.emery/` paths elsewhere; a new `.emery/` location lands on that owner.
 
 ## Time injection
 

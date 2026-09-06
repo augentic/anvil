@@ -1,14 +1,13 @@
 //! Emery's specification-generation engine.
 
 mod extract;
-pub mod home;
 pub mod preopen;
 mod resolve;
 pub mod show;
 pub mod sources;
 mod spec;
 pub mod specify;
-mod storage;
+pub mod store;
 mod synthesise;
 
 use emery_source::Source;

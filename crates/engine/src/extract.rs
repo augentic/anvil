@@ -10,7 +10,7 @@ use crate::resolve::Resolver;
 use crate::sources::SourceBinding;
 
 /// Resolves, extracts, and validates every source binding.
-pub async fn extract_all<P: Source + Plugins>(
+pub async fn extract<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());

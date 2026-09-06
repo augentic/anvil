@@ -7,9 +7,9 @@ use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::extract::extract_all;
-use crate::home::{Diff, Home, SpecSet};
+use crate::extract::extract;
 use crate::sources::{SourceBinding, validate};
+use crate::store::{Diff, SpecSet, Store};
 use crate::synthesise::{reconcile, synthesise};
 
 /// Generate a specification generation from source bindings.
@@ -56,7 +56,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     let Specify { bindings } = input;
     validate(&bindings)?;
 
-    let sets = extract_all(context.provider, &bindings).await?;
+    let sets = extract(context.provider, &bindings).await?;
     let rows = reconcile(&sets);
     let documents = synthesise(context.provider, &sets, &rows).await?;
 
@@ -64,11 +64,11 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
         spec: documents.spec,
         design: documents.design,
     };
-    let home = Home::new(context.provider);
+    let store = Store::new(context.provider);
     // One observation feeds both the CAS expected value and the
     // re-mine diff, computed in memory and emitted only here.
-    let observed = home.observe().await;
-    let committed = home.commit(&set, &observed).await?;
+    let observed = store.observe().await;
+    let committed = store.commit(&set, &observed).await?;
     let diff =
         observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
 
