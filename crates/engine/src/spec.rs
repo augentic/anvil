@@ -58,6 +58,59 @@ impl Tag {
     }
 }
 
+/// Parse `text` under the fail-closed grammar.
+///
+/// # Errors
+///
+/// Returns one `BadRequest` aggregating all grammar findings.
+pub fn parse(text: &str) -> Result<Spec, Error> {
+    let mut findings: Vec<String> = Vec::new();
+    let mut requirements: Vec<Requirement> = Vec::new();
+    let mut preamble: Vec<&str> = Vec::new();
+    let mut block: Option<Block> = None;
+
+    for (idx, line) in text.lines().enumerate() {
+        let line_no = idx + 1;
+        let stripped = line.trim_end();
+        if let Some(rest) = stripped.strip_prefix(HEADING) {
+            if let Some(done) = block.take() {
+                done.finish(&mut requirements, &mut findings);
+            }
+            block = Some(Block::open(rest.trim(), line_no, &mut findings));
+        } else if let Some(open) = block.as_mut() {
+            open.line(stripped, line_no, &mut findings);
+        } else {
+            preamble.push(stripped);
+        }
+    }
+    if let Some(done) = block.take() {
+        done.finish(&mut requirements, &mut findings);
+    }
+
+    if requirements.is_empty() {
+        findings.push(format!("the document carries no `{HEADING}` block"));
+    }
+    let mut seen: Vec<&str> = Vec::new();
+    for requirement in &requirements {
+        if seen.contains(&requirement.id.as_str()) {
+            findings.push(format!("duplicate requirement id `{}`", requirement.id));
+        }
+        seen.push(&requirement.id);
+    }
+
+    if findings.is_empty() {
+        Ok(Spec {
+            preamble: preamble.join("\n"),
+            requirements,
+        })
+    } else {
+        Err(bad_request!(
+            "`spec.md` must parse under the fail-closed spec AST: {}",
+            findings.join("; ")
+        ))
+    }
+}
+
 /// A parsed spec: the preamble and requirement blocks in document order.
 #[derive(Debug, Clone)]
 pub struct Spec {
@@ -89,8 +142,7 @@ pub struct Requirement {
 }
 
 impl Spec {
-    /// Requirement blocks keyed by heading subject.
-    #[must_use]
+    // Requirement blocks keyed by heading subject.
     pub(crate) fn subjects(&self) -> BTreeMap<&str, &Requirement> {
         self.requirements
             .iter()
@@ -100,8 +152,7 @@ impl Spec {
 }
 
 impl Requirement {
-    /// Whether reviewable content matches, ignoring positional ids.
-    #[must_use]
+    // Whether reviewable content matches, ignoring positional ids.
     pub(crate) fn same_as(&self, other: &Self) -> bool {
         self.status == other.status
             && self.tag == other.tag
@@ -224,59 +275,6 @@ impl Block {
             status,
             body: trim_edges(&body),
         });
-    }
-}
-
-/// Parse `text` under the fail-closed grammar.
-///
-/// # Errors
-///
-/// Returns one `BadRequest` aggregating all grammar findings.
-pub fn parse(text: &str) -> Result<Spec, Error> {
-    let mut findings: Vec<String> = Vec::new();
-    let mut requirements: Vec<Requirement> = Vec::new();
-    let mut preamble: Vec<&str> = Vec::new();
-    let mut block: Option<Block> = None;
-
-    for (idx, line) in text.lines().enumerate() {
-        let line_no = idx + 1;
-        let stripped = line.trim_end();
-        if let Some(rest) = stripped.strip_prefix(HEADING) {
-            if let Some(done) = block.take() {
-                done.finish(&mut requirements, &mut findings);
-            }
-            block = Some(Block::open(rest.trim(), line_no, &mut findings));
-        } else if let Some(open) = block.as_mut() {
-            open.line(stripped, line_no, &mut findings);
-        } else {
-            preamble.push(stripped);
-        }
-    }
-    if let Some(done) = block.take() {
-        done.finish(&mut requirements, &mut findings);
-    }
-
-    if requirements.is_empty() {
-        findings.push(format!("the document carries no `{HEADING}` block"));
-    }
-    let mut seen: Vec<&str> = Vec::new();
-    for requirement in &requirements {
-        if seen.contains(&requirement.id.as_str()) {
-            findings.push(format!("duplicate requirement id `{}`", requirement.id));
-        }
-        seen.push(&requirement.id);
-    }
-
-    if findings.is_empty() {
-        Ok(Spec {
-            preamble: preamble.join("\n"),
-            requirements,
-        })
-    } else {
-        Err(bad_request!(
-            "`spec.md` must parse under the fail-closed spec AST: {}",
-            findings.join("; ")
-        ))
     }
 }
 

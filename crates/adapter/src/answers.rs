@@ -63,17 +63,8 @@ pub fn evidence_schema() -> String {
 ///
 /// Returns [`Error::Internal`] on parse or validation failure.
 pub fn evidence_tail(answer: &str) -> Result<Evidence, Error> {
-    let evidence = parse_evidence(answer)
+    let evidence: Evidence = serde_json::from_str(answer)
         .map_err(|err| Error::Internal(format!("evidence answer did not deserialize: {err}")))?;
     evidence.validate()?;
     Ok(evidence)
-}
-
-/// Parses an evidence answer.
-///
-/// # Errors
-///
-/// Returns a JSON error if the answer is not [`Evidence`].
-pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
-    serde_json::from_str(answer)
 }

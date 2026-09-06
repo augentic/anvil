@@ -42,13 +42,14 @@ impl AdapterSelector {
                  whitespace"
             ));
         }
-        if is_github_url(value) {
+        if value.starts_with("https://github.com/") {
             return Err(bad_request!(
                 "GitHub adapter URIs are not supported (`{value}`): a source checkout does not \
                  yield a usable adapter artifact. Pin a published component \
                  (`emery:<name>@<semver>`) or point at a local `.wasm` component file",
             ));
         }
+
         if let Some(package) = recognize_package(value) {
             return package;
         }
@@ -64,6 +65,7 @@ impl AdapterSelector {
                 },
             ));
         }
+
         let path = value.strip_prefix("file://").unwrap_or(value);
         Ok(Self::Component {
             path: PathBuf::from(path),
@@ -82,13 +84,8 @@ impl AdapterSelector {
         }
     }
 
-    /// Returns the loader identity key, if this selector loads a guest.
-    ///
-    /// Bare names dispatch statically and do not share a loaded guest.
-    ///
-    /// # Errors
-    ///
-    /// Returns a `BadRequest` for an unusable component stem.
+    // The loader identity key; bare names dispatch statically and never
+    // share a loaded guest.
     pub(crate) fn load_key(&self) -> Result<Option<String>, Error> {
         Ok(match self {
             Self::Bare { .. } => None,
@@ -102,11 +99,7 @@ impl AdapterSelector {
     }
 }
 
-/// Derives a kebab-case adapter name from a component filename.
-///
-/// # Errors
-///
-/// Returns a `BadRequest` for an unusable stem.
+// The kebab-case adapter name of a component filename.
 fn name_from_component(path: &Path) -> Result<String, Error> {
     let stem = path
         .file_stem()
@@ -114,10 +107,6 @@ fn name_from_component(path: &Path) -> Result<String, Error> {
         .ok_or_else(|| bad_request!("cannot derive adapter name from {}", path.display()))?;
     let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
     Ok(stem.replace('_', "-"))
-}
-
-fn is_github_url(value: &str) -> bool {
-    value.starts_with("https://github.com/")
 }
 
 // `None` means another selector grammar may handle the value.

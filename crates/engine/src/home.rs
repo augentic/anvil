@@ -1,6 +1,6 @@
 //! Content-addressed spec generations behind a swapped `current` pointer.
 
-use omnia_guest::{BlobStore, BlobStoreExt as _, CasError, Error, StateStore, server_error};
+use omnia_guest::{BlobStore, BlobStoreExt, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -13,6 +13,169 @@ pub const SPEC_CONTAINER: &str = "spec";
 pub const CURRENT_KEY: &str = "spec/current";
 
 const FILES: [&str; 2] = ["spec.md", "design.md"];
+
+/// Spec generations over a deployment's storage capabilities.
+#[derive(Clone, Copy, Debug)]
+pub struct Home<'p, S> {
+    store: &'p S,
+}
+
+impl<'p, S: StateStore + BlobStore> Home<'p, S> {
+    /// Creates an output home over `store`.
+    #[must_use]
+    pub const fn new(store: &'p S) -> Self {
+        Self { store }
+    }
+
+    /// Commits `set` by writing its generation, swapping the pointer, and pruning its predecessor.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the observation is stale.
+    /// Propagates write, swap, and prune failures.
+    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
+        let id = set.id();
+
+        // `wasi:blobstore` writes need an existing container; only some
+        // backends create one on `get-container`.
+        let exists = BlobStore::container_exists(self.store, SPEC_CONTAINER)
+            .await
+            .map_err(|err| storage::failed("checking the generation container", &err))?;
+        if !exists {
+            BlobStore::create_container(self.store, SPEC_CONTAINER)
+                .await
+                .map_err(|err| storage::failed("creating the generation container", &err))?;
+        }
+        for (name, body) in set.files() {
+            BlobStore::put(self.store, SPEC_CONTAINER, &object(&id, name), body.as_bytes())
+                .await
+                .map_err(|err| storage::failed("committing a generation document", &err))?;
+        }
+
+        let value = format!("{id}\n");
+        match StateStore::cas(
+            self.store,
+            CURRENT_KEY,
+            observed.pointer.as_deref(),
+            value.as_bytes(),
+        )
+        .await
+        {
+            Ok(()) => {}
+            Err(CasError::Conflict(_)) => {
+                return Err(server_error!(
+                    "a concurrent `emery specify` committed first and swapped the generation \
+                     pointer; re-run `emery specify` to commit against the new current generation"
+                ));
+            }
+            Err(CasError::Store(message)) => {
+                return Err(storage::failed(
+                    "swapping the generation pointer",
+                    &anyhow::anyhow!(message),
+                ));
+            }
+        }
+        self.prune(observed, &id).await?;
+
+        Ok(Committed { id })
+    }
+
+    /// Returns the current generation, or `None` before the first commit.
+    ///
+    /// # Errors
+    ///
+    /// Fails closed for a dangling or incomplete generation.
+    /// Propagates read failures.
+    pub async fn current(&self) -> Result<Option<Committed>, Error> {
+        let raw = StateStore::get(self.store, CURRENT_KEY)
+            .await
+            .map_err(|err| storage::failed("reading the generation pointer", &err))?;
+        let Some(raw) = raw else {
+            return Ok(None);
+        };
+        let id = String::from_utf8_lossy(&raw).trim().to_string();
+
+        for name in FILES {
+            let present = BlobStoreExt::has(self.store, SPEC_CONTAINER, &object(&id, name))
+                .await
+                .map_err(|err| storage::failed("probing a generation document", &err))?;
+            if !present {
+                return Err(server_error!(
+                    "the generation pointer names `{id}` but `{name}` is missing; re-run \
+                     `emery specify` to commit a fresh generation",
+                ));
+            }
+        }
+
+        Ok(Some(Committed { id }))
+    }
+
+    /// Returns the current generation and its complete document set,
+    /// or `None` before the first commit.
+    ///
+    /// # Errors
+    ///
+    /// Fails closed for a dangling, incomplete, or unreadable
+    /// generation. Propagates read failures.
+    pub async fn current_set(&self) -> Result<Option<(Committed, SpecSet)>, Error> {
+        let Some(committed) = self.current().await? else {
+            return Ok(None);
+        };
+        let Some((_, set)) = self.load(&committed.id).await else {
+            return Err(server_error!(
+                "the generation pointer names `{}` but its documents cannot be read; re-run \
+                 `emery specify` to commit a fresh generation",
+                committed.id
+            ));
+        };
+        Ok(Some((committed, set)))
+    }
+
+    /// Observes CAS input and the outgoing set without failing.
+    ///
+    /// Corrupt or unreadable state suppresses only the advisory diff;
+    /// the following CAS remains authoritative and fail-closed.
+    pub async fn observe(&self) -> Observation {
+        let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
+        let outgoing = match &pointer {
+            Some(raw) => self.load(String::from_utf8_lossy(raw).trim()).await,
+            None => None,
+        };
+        Observation { pointer, outgoing }
+    }
+
+    // Advisory reads collapse incomplete or unreadable generations to `None`.
+    async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
+        let mut bodies = Vec::with_capacity(FILES.len());
+        for name in FILES {
+            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(id, name))
+                .await
+                .ok()
+                .flatten()?;
+            bodies.push(String::from_utf8(bytes).ok()?);
+        }
+        let design = bodies.pop()?;
+        let spec = bodies.pop()?;
+        Some((id.to_string(), SpecSet { spec, design }))
+    }
+
+    // Only the observed predecessor is pruned; other orphaned objects are inert.
+    async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
+        let Some(raw) = &observed.pointer else {
+            return Ok(());
+        };
+        let superseded = String::from_utf8_lossy(raw).trim().to_string();
+        if superseded == keep || superseded.is_empty() {
+            return Ok(());
+        }
+        for name in FILES {
+            BlobStore::delete(self.store, SPEC_CONTAINER, &object(&superseded, name))
+                .await
+                .map_err(|err| storage::failed("pruning the superseded generation", &err))?;
+        }
+        Ok(())
+    }
+}
 
 /// A complete, atomically committed spec set.
 ///
@@ -102,6 +265,7 @@ impl Diff {
             .filter(|((_, old), (_, new))| old != new)
             .map(|((name, _), _)| (*name).to_string())
             .collect();
+
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
         if let (Ok(old), Ok(new)) = (spec::parse(&outgoing.spec), spec::parse(&incoming.spec)) {
             let old = old.subjects();
@@ -119,6 +283,7 @@ impl Diff {
                 old.keys().filter(|subject| !new.contains_key(*subject)).map(ToString::to_string),
             );
         }
+
         Self {
             from,
             artifacts,
@@ -135,163 +300,6 @@ impl Diff {
             && self.added.is_empty()
             && self.removed.is_empty()
             && self.changed.is_empty()
-    }
-}
-
-/// Spec generations over a deployment's storage capabilities.
-#[derive(Clone, Copy, Debug)]
-pub struct Home<'p, S> {
-    store: &'p S,
-}
-
-impl<'p, S: StateStore + BlobStore> Home<'p, S> {
-    /// Creates an output home over `store`.
-    #[must_use]
-    pub const fn new(store: &'p S) -> Self {
-        Self { store }
-    }
-
-    /// Commits `set` by writing its generation, swapping the pointer, and pruning its predecessor.
-    ///
-    /// # Errors
-    ///
-    /// Fails if the observation is stale.
-    /// Propagates write, swap, and prune failures.
-    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<Committed, Error> {
-        let id = set.id();
-        // `wasi:blobstore` writes need an existing container; only some
-        // backends create one on `get-container`.
-        let exists = self
-            .store
-            .container_exists(SPEC_CONTAINER)
-            .await
-            .map_err(|err| storage::failed("checking the generation container", &err))?;
-        if !exists {
-            self.store
-                .create_container(SPEC_CONTAINER)
-                .await
-                .map_err(|err| storage::failed("creating the generation container", &err))?;
-        }
-        for (name, body) in set.files() {
-            self.store
-                .put(SPEC_CONTAINER, &object(&id, name), body.as_bytes())
-                .await
-                .map_err(|err| storage::failed("committing a generation document", &err))?;
-        }
-        let value = format!("{id}\n");
-        match self.store.cas(CURRENT_KEY, observed.pointer.as_deref(), value.as_bytes()).await {
-            Ok(()) => {}
-            Err(CasError::Conflict(_)) => {
-                return Err(server_error!(
-                    "a concurrent `emery specify` committed first and swapped the generation \
-                     pointer; re-run `emery specify` to commit against the new current generation"
-                ));
-            }
-            Err(CasError::Store(message)) => {
-                return Err(storage::failed(
-                    "swapping the generation pointer",
-                    &anyhow::anyhow!(message),
-                ));
-            }
-        }
-        self.prune(observed, &id).await?;
-        Ok(Committed { id })
-    }
-
-    /// Returns the current generation, or `None` before the first commit.
-    ///
-    /// # Errors
-    ///
-    /// Fails closed for a dangling or incomplete generation.
-    /// Propagates read failures.
-    pub async fn current(&self) -> Result<Option<Committed>, Error> {
-        let raw = StateStore::get(self.store, CURRENT_KEY)
-            .await
-            .map_err(|err| storage::failed("reading the generation pointer", &err))?;
-        let Some(raw) = raw else {
-            return Ok(None);
-        };
-        let id = String::from_utf8_lossy(&raw).trim().to_string();
-        for name in FILES {
-            let present = self
-                .store
-                .has(SPEC_CONTAINER, &object(&id, name))
-                .await
-                .map_err(|err| storage::failed("probing a generation document", &err))?;
-            if !present {
-                return Err(server_error!(
-                    "the generation pointer names `{id}` but `{name}` is missing; re-run \
-                     `emery specify` to commit a fresh generation",
-                ));
-            }
-        }
-        Ok(Some(Committed { id }))
-    }
-
-    /// Returns the current generation and its complete document set,
-    /// or `None` before the first commit.
-    ///
-    /// # Errors
-    ///
-    /// Fails closed for a dangling, incomplete, or unreadable
-    /// generation. Propagates read failures.
-    pub async fn current_set(&self) -> Result<Option<(Committed, SpecSet)>, Error> {
-        let Some(committed) = self.current().await? else {
-            return Ok(None);
-        };
-        let Some((_, set)) = self.load(&committed.id).await else {
-            return Err(server_error!(
-                "the generation pointer names `{}` but its documents cannot be read; re-run \
-                 `emery specify` to commit a fresh generation",
-                committed.id
-            ));
-        };
-        Ok(Some((committed, set)))
-    }
-
-    /// Observes CAS input and the outgoing set without failing.
-    ///
-    /// Corrupt or unreadable state suppresses only the advisory diff;
-    /// the following CAS remains authoritative and fail-closed.
-    pub async fn observe(&self) -> Observation {
-        let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
-        let outgoing = match &pointer {
-            Some(raw) => self.load(String::from_utf8_lossy(raw).trim()).await,
-            None => None,
-        };
-        Observation { pointer, outgoing }
-    }
-
-    // Advisory reads collapse incomplete or unreadable generations to `None`.
-    async fn load(&self, id: &str) -> Option<(String, SpecSet)> {
-        let mut bodies = Vec::with_capacity(FILES.len());
-        for name in FILES {
-            let bytes = BlobStore::get(self.store, SPEC_CONTAINER, &object(id, name))
-                .await
-                .ok()
-                .flatten()?;
-            bodies.push(String::from_utf8(bytes).ok()?);
-        }
-        let design = bodies.pop()?;
-        let spec = bodies.pop()?;
-        Some((id.to_string(), SpecSet { spec, design }))
-    }
-
-    // Only the observed predecessor is pruned; other orphaned objects are inert.
-    async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
-        let Some(raw) = &observed.pointer else {
-            return Ok(());
-        };
-        let superseded = String::from_utf8_lossy(raw).trim().to_string();
-        if superseded == keep || superseded.is_empty() {
-            return Ok(());
-        }
-        for name in FILES {
-            BlobStore::delete(self.store, SPEC_CONTAINER, &object(&superseded, name))
-                .await
-                .map_err(|err| storage::failed("pruning the superseded generation", &err))?;
-        }
-        Ok(())
     }
 }
 

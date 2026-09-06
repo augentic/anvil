@@ -12,46 +12,9 @@ pub use selector::AdapterSelector;
 
 use crate::preopen::preopen_path;
 
-/// One resolved source binding: the routed dispatch id plus, for a
-/// loader-loaded adapter, its resolved content digest.
-#[derive(Debug, Clone)]
-pub struct Resolved {
-    /// Routed dispatch id: the package reference for a registry
-    /// package, `source:<name>` otherwise.
-    pub id: String,
-    /// Resolved sha256 digest of the loaded component bytes.
-    pub digest: Option<Digest>,
-}
-
-impl Resolved {
-    /// Refuses a pin that disagrees with an already-loaded guest.
-    ///
-    /// # Errors
-    ///
-    /// Returns `AlreadyActive` when `pin` disagrees with the held digest.
-    pub(crate) fn pin_agrees(&self, pin: Option<&Digest>) -> Result<(), Error> {
-        match (pin, self.digest.as_ref()) {
-            (Some(pin), Some(held)) if pin != held => Err(LoadError::AlreadyActive(format!(
-                "package `{}` is already active with digest {held}, which is not the requested pin",
-                self.id
-            ))
-            .into()),
-            _ => Ok(()),
-        }
-    }
-}
-
-/// Resolves a selector to its routed dispatch id.
-///
-/// A local component or a registry package loads through the
-/// deployment's `omnia:plugins/loader` capability — a component read
-/// fresh on every run, a package fetched from the binding's registry
-/// override or the acquirer's default endpoint — with the binding's
-/// optional sha256 pin verified host-side before validation. The
-/// loader registers a package under its own reference
-/// (`<namespace>:<name>@<version>`), which becomes the routed id.
-/// Every resolution enforces the adapter's declared `emery`
-/// compatibility floor.
+/// Resolves a selector to its routed dispatch id, loading a local
+/// component or registry package through the deployment's loader and
+/// enforcing the adapter's `emery` compatibility floor.
 ///
 /// # Errors
 ///
@@ -71,7 +34,7 @@ pub async fn source<P: Source + Plugins>(
                 .location(Location::Registry(registry.map(ToOwned::to_owned)))
                 .maybe_digest(pin.cloned())
                 .build();
-            let plugin = provider.load(&request).await?;
+            let plugin = Plugins::load(provider, &request).await?;
             Resolved {
                 id: plugin.id().to_owned(),
                 digest: Some(plugin.digest().clone()),
@@ -90,16 +53,42 @@ pub async fn source<P: Source + Plugins>(
             digest: None,
         },
     };
-    let metadata = provider.metadata(&resolved.id);
+
+    let metadata = Source::metadata(provider, &resolved.id);
     let floor = parse_floor(metadata.emery_floor.as_deref(), &name, &resolved.id)?;
     check_floor(floor.as_ref(), env!("CARGO_PKG_VERSION"), &name, &resolved.id)?;
+
     Ok(resolved)
 }
 
-// The loader reads the file fresh through the deployment's acquirer —
-// nothing is mirrored, so a deleted source file refuses on the next
-// run. The engine keeps only the operator-typo gate: a missing or
-// non-component path refuses typed before any load request.
+/// One resolved source binding: the routed dispatch id plus, for a
+/// loader-loaded adapter, its resolved content digest.
+#[derive(Debug, Clone)]
+pub struct Resolved {
+    /// Routed dispatch id: the package reference for a registry
+    /// package, `source:<name>` otherwise.
+    pub id: String,
+    /// Resolved sha256 digest of the loaded component bytes.
+    pub digest: Option<Digest>,
+}
+
+impl Resolved {
+    // Refuses a pin that disagrees with an already-loaded guest.
+    pub(crate) fn pin_agrees(&self, pin: Option<&Digest>) -> Result<(), Error> {
+        match (pin, self.digest.as_ref()) {
+            (Some(pin), Some(held)) if pin != held => Err(LoadError::AlreadyActive(format!(
+                "package `{}` is already active with digest {held}, which is not the requested pin",
+                self.id
+            ))
+            .into()),
+            _ => Ok(()),
+        }
+    }
+}
+
+// The loader reads the file fresh — nothing is mirrored, so a deleted
+// file refuses on the next run. The engine keeps only the operator-typo
+// gate: a missing or non-component path refuses typed before any load.
 async fn load<P: Plugins>(
     provider: &P, id: &str, path: &Path, pin: Option<&Digest>,
 ) -> Result<Digest, Error> {
@@ -112,12 +101,14 @@ async fn load<P: Plugins>(
             relative.display()
         ));
     }
+
     let request = PluginRef::builder()
         .package(id)
         .location(Location::Path(relative.display().to_string()))
         .maybe_digest(pin.cloned())
         .build();
-    let plugin = provider.load(&request).await?;
+    let plugin = Plugins::load(provider, &request).await?;
+
     Ok(plugin.digest().clone())
 }
 

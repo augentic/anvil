@@ -1,17 +1,45 @@
 //! Per-run source bindings: the transport-neutral binding DTO and the
-//! rules every binding obeys before anything loads.
-//!
-//! The binding list is an input, never engine state: nothing here is
-//! persisted, and the engine never writes a binding list anywhere.
+//! rules every binding obeys before anything loads. The list is an
+//! input, never engine state.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use emery_source::types::{SourceContent, SourceInput, SourceWorkspace};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, bad_request};
 use serde::{Deserialize, Serialize};
 
 use crate::preopen::preopen_path;
 use crate::resolve::AdapterSelector;
+
+/// Checks a run's binding list before anything loads.
+///
+/// # Errors
+///
+/// Returns a `BadRequest` for an empty list (`specify-source-required`),
+/// a repeated key, a malformed selector, a `digest` on a bare name the
+/// loader never acquires, a `registry` on a selector the registry never
+/// serves, or a workspace root outside the project preopen.
+pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
+    if bindings.is_empty() {
+        return Err(Error::BadRequest {
+            code: "specify-source-required".into(),
+            description: "a specification run requires at least one source binding".into(),
+        });
+    }
+
+    for (index, binding) in bindings.iter().enumerate() {
+        if bindings[..index].iter().any(|earlier| earlier.key == binding.key) {
+            return Err(bad_request!(
+                "each source binds once: source `{}` is bound twice",
+                binding.key
+            ));
+        }
+        binding.validate()?;
+    }
+
+    Ok(())
+}
 
 /// A source binding for one run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,41 +61,33 @@ pub struct SourceBinding {
     pub registry: Option<String>,
 }
 
-/// Workspace or inline source content.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BindingContent {
-    /// Project-relative read-only root; `.` binds the project.
-    Workspace(String),
-    /// Inline description text; no filesystem view.
-    Description(String),
-}
-
-/// Checks a run's binding list before anything loads.
-///
-/// # Errors
-///
-/// Returns a `BadRequest` for an empty list (`specify-source-required`),
-/// a repeated key, a malformed selector, a `digest` on a bare name the
-/// loader never acquires, a `registry` on a selector the registry never
-/// serves, or a workspace root outside the project preopen.
-pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
-    if bindings.is_empty() {
-        return Err(source_required());
-    }
-    for (index, binding) in bindings.iter().enumerate() {
-        if bindings[..index].iter().any(|earlier| earlier.key == binding.key) {
-            return Err(bad_request!(
-                "each source binds once: source `{}` is bound twice",
-                binding.key
-            ));
-        }
-        binding.validate()?;
-    }
-    Ok(())
-}
-
 impl SourceBinding {
+    // Maps this binding to the adapter `extract` input.
+    pub(crate) fn input(&self) -> Result<SourceInput, Error> {
+        let content = match &self.content {
+            BindingContent::Workspace(relative) => {
+                // `.` spans the project preopen, including `.emery/`, until
+                // guest capability profiles can exclude the output home.
+                let relative = preopen_path(Path::new(relative))?;
+                let root = if relative == Path::new(".") {
+                    PathBuf::from(".")
+                } else {
+                    Path::new(".").join(&relative)
+                };
+                SourceContent::Workspace(SourceWorkspace {
+                    id: self.key.clone(),
+                    root: root.display().to_string(),
+                })
+            }
+            BindingContent::Description(text) => SourceContent::Value(text.clone()),
+        };
+
+        Ok(SourceInput {
+            key: self.key.clone(),
+            content,
+        })
+    }
+
     fn validate(&self) -> Result<(), Error> {
         let selector = AdapterSelector::parse(&self.adapter)?;
         selector.name()?;
@@ -106,9 +126,12 @@ impl SourceBinding {
     }
 }
 
-fn source_required() -> Error {
-    Error::BadRequest {
-        code: "specify-source-required".into(),
-        description: "a specification run requires at least one source binding".into(),
-    }
+/// Workspace or inline source content.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BindingContent {
+    /// Project-relative read-only root; `.` binds the project.
+    Workspace(String),
+    /// Inline description text; no filesystem view.
+    Description(String),
 }

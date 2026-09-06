@@ -52,6 +52,7 @@ async fn show<P: StateStore + BlobStore>(
         Document::Spec => set.spec,
         Document::Design => set.design,
     };
+
     Ok(ShowBody {
         generation: committed.id,
         document: input.document,

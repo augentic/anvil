@@ -8,46 +8,19 @@ use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
 use crate::extract::SourceSet;
-use crate::spec::{self, Status, Tag};
+use crate::spec::{self, Spec, Status, Tag};
 
-/// Validated synthesis output.
-#[derive(Debug, Clone)]
-pub struct Documents {
-    /// Behavioural specification.
-    pub spec: String,
-    /// Technical design.
-    pub design: String,
-}
+// Prompt order is significant.
+const SPEC_PROSE: &[&str] = &[
+    "synthesis/synthesise.md",
+    "synthesis/authority.md",
+    "synthesis/claim-reconciliation.md",
+    "synthesis/requirement-block.md",
+    "synthesis/spec-format.md",
+    "synthesis/tags.md",
+];
 
-/// Provenance a `spec.md` requirement must preserve.
-#[derive(Debug, Clone)]
-pub struct Row {
-    /// The minted requirement id (`REQ-NNN`).
-    pub id: String,
-    /// Claim-group subject or appended gap description.
-    pub subject: String,
-    /// The resolved status.
-    pub status: Status,
-    /// Heading tag mirroring `status`.
-    pub tag: Option<Tag>,
-    /// Contributing source keys, highest authority first.
-    pub sources: Vec<String>,
-    /// Winning contributor index for a divergence.
-    pub winner: Option<usize>,
-    /// Every contributing requirement claim.
-    pub contributors: Vec<Contributor>,
-}
-
-/// One source's contribution to a requirement group.
-#[derive(Debug, Clone)]
-pub struct Contributor {
-    /// The contributing binding key.
-    pub source: String,
-    /// The source's authority class.
-    pub authority: Authority,
-    /// The claim's required `statement` extra.
-    pub statement: String,
-}
+const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-format.md"];
 
 /// Reconciles requirements by authority and appends uncovered acceptance gaps.
 #[must_use]
@@ -100,6 +73,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
             contributors: Vec::new(),
         });
     }
+
     for (index, row) in rows.iter_mut().enumerate() {
         row.id = format!("REQ-{:03}", index + 1);
     }
@@ -116,8 +90,8 @@ pub async fn synthesise<M: Model>(
 ) -> Result<Documents, Error> {
     tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
-    let parsed = spec::parse(&spec)?;
-    parsed.check_rows(rows)?;
+    check_rows(&spec::parse(&spec)?, rows)?;
+
     tracing::info!("synthesising design.md");
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
@@ -125,7 +99,47 @@ pub async fn synthesise<M: Model>(
             "`design.md` must carry the rebuild design: the model answered an empty document"
         ));
     }
+
     Ok(Documents { spec, design })
+}
+
+/// Validated synthesis output.
+#[derive(Debug, Clone)]
+pub struct Documents {
+    /// Behavioural specification.
+    pub spec: String,
+    /// Technical design.
+    pub design: String,
+}
+
+/// Provenance a `spec.md` requirement must preserve.
+#[derive(Debug, Clone)]
+pub struct Row {
+    /// The minted requirement id (`REQ-NNN`).
+    pub id: String,
+    /// Claim-group subject or appended gap description.
+    pub subject: String,
+    /// The resolved status.
+    pub status: Status,
+    /// Heading tag mirroring `status`.
+    pub tag: Option<Tag>,
+    /// Contributing source keys, highest authority first.
+    pub sources: Vec<String>,
+    /// Winning contributor index for a divergence.
+    pub winner: Option<usize>,
+    /// Every contributing requirement claim.
+    pub contributors: Vec<Contributor>,
+}
+
+/// One source's contribution to a requirement group.
+#[derive(Debug, Clone)]
+pub struct Contributor {
+    /// The contributing binding key.
+    pub source: String,
+    /// The source's authority class.
+    pub authority: Authority,
+    /// The claim's required `statement` extra.
+    pub statement: String,
 }
 
 // Matching statements agree; a unique top authority wins divergence;
@@ -133,8 +147,11 @@ pub async fn synthesise<M: Model>(
 fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
     let sources: Vec<String> =
         contributors.iter().map(|contributor| contributor.source.clone()).collect();
-    let normalised: Vec<String> =
-        contributors.iter().map(|contributor| normalise(&contributor.statement)).collect();
+    let normalised: Vec<String> = contributors
+        .iter()
+        .map(|contributor| contributor.statement.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect();
+
     let agreed = normalised.iter().all(|value| value == &normalised[0]);
     let (status, winner) = if agreed {
         (Status::Agreed, None)
@@ -152,6 +169,7 @@ fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
             (Status::Conflict, None)
         }
     };
+
     Row {
         id: String::new(),
         subject: subject.to_string(),
@@ -163,18 +181,6 @@ fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
     }
 }
 
-// Prompt order is significant.
-const SPEC_PROSE: &[&str] = &[
-    "synthesis/synthesise.md",
-    "synthesis/authority.md",
-    "synthesis/claim-reconciliation.md",
-    "synthesis/requirement-block.md",
-    "synthesis/spec-format.md",
-    "synthesis/tags.md",
-];
-
-const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-format.md"];
-
 async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<String, Error> {
     let system =
         prose.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n");
@@ -185,13 +191,14 @@ async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<Str
             content: user.to_string(),
         }])
         .build();
-    let reply = model.complete(request).await.map_err(|err| bad_gateway!(err))?;
+    let reply = Model::complete(model, request).await.map_err(|err| bad_gateway!(err))?;
     Ok(reply.answer)
 }
 
 fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
     let mut prompt = String::from("Author `spec.md`.\n\n");
     render_claims(&mut prompt, sets);
+
     prompt.push_str("\n## Reconciliation rows (render exactly, in order)\n\n");
     for row in rows {
         let tag = row.tag.map(|tag| format!(" [{tag}]")).unwrap_or_default();
@@ -243,51 +250,44 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
 }
 
 // The model may not drop, reorder, or rewrite reconciliation rows.
-impl spec::Spec {
-    fn check_rows(&self, rows: &[Row]) -> Result<(), Error> {
-        if self.requirements.len() != rows.len() {
+fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
+    if spec.requirements.len() != rows.len() {
+        return Err(mismatch(&format!(
+            "expected {} requirement blocks, found {}",
+            rows.len(),
+            spec.requirements.len()
+        )));
+    }
+
+    for (requirement, row) in spec.requirements.iter().zip(rows) {
+        if requirement.id != row.id {
+            return Err(mismatch(&format!("expected `{}`, found `{}`", row.id, requirement.id)));
+        }
+        // Headings are the reconciliation and re-mine-diff identity.
+        if requirement.name != row.subject {
             return Err(mismatch(&format!(
-                "expected {} requirement blocks, found {}",
-                rows.len(),
-                self.requirements.len()
+                "`{}` must head its subject `{}`, found `{}`",
+                row.id, row.subject, requirement.name
             )));
         }
-        for (requirement, row) in self.requirements.iter().zip(rows) {
-            if requirement.id != row.id {
-                return Err(mismatch(&format!(
-                    "expected `{}`, found `{}`",
-                    row.id, requirement.id
-                )));
-            }
-            // headings must be reconciliation and re-mine-diff identity
-            if requirement.name != row.subject {
-                return Err(mismatch(&format!(
-                    "`{}` must head its subject `{}`, found `{}`",
-                    row.id, row.subject, requirement.name
-                )));
-            }
-            if requirement.status != row.status || requirement.tag != row.tag {
-                return Err(mismatch(&format!(
-                    "`{}` must carry `Status: {}` and its mirroring tag",
-                    row.id, row.status
-                )));
-            }
-            if requirement.sources != row.sources {
-                return Err(mismatch(&format!(
-                    "`{}` must cite `Sources: [{}]`",
-                    row.id,
-                    row.sources.join(", ")
-                )));
-            }
+        if requirement.status != row.status || requirement.tag != row.tag {
+            return Err(mismatch(&format!(
+                "`{}` must carry `Status: {}` and its mirroring tag",
+                row.id, row.status
+            )));
         }
-        Ok(())
+        if requirement.sources != row.sources {
+            return Err(mismatch(&format!(
+                "`{}` must cite `Sources: [{}]`",
+                row.id,
+                row.sources.join(", ")
+            )));
+        }
     }
+
+    Ok(())
 }
 
 fn mismatch(detail: &str) -> Error {
     bad_request!("the model answer must render every reconciliation row verbatim: {detail}",)
-}
-
-fn normalise(statement: &str) -> String {
-    statement.split_whitespace().collect::<Vec<_>>().join(" ")
 }

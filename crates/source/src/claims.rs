@@ -8,53 +8,6 @@ use crate::types::{Claim, ClaimKind, Error, Evidence};
 /// enforced in code.
 pub const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
-impl ClaimKind {
-    /// Returns the extras this kind must carry.
-    ///
-    /// Widening this closed table is a contract change.
-    #[must_use]
-    pub const fn required_extras(self) -> &'static [&'static str] {
-        match self {
-            Self::Requirement => &["statement"],
-            Self::Criterion => &["criterion"],
-            Self::Example => &["replay-digest"],
-            _ => &[],
-        }
-    }
-}
-
-impl Claim {
-    /// The `statement` extra; empty when absent.
-    ///
-    /// The extract gate guarantees a requirement carries this extra.
-    #[must_use]
-    pub fn statement(&self) -> String {
-        match self.extras.get("statement") {
-            Some(serde_json::Value::String(text)) => text.clone(),
-            Some(other) => other.to_string(),
-            None => String::new(),
-        }
-    }
-}
-
-impl Evidence {
-    /// Enforces claim-id grammar and required extras fail-closed.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Internal`] with one finding per violation.
-    pub fn validate(&self) -> Result<(), Error> {
-        let findings = findings(&self.claims);
-        if findings.is_empty() {
-            return Ok(());
-        }
-        Err(Error::Internal(format!(
-            "extract answer failed deterministic validation:\n{}",
-            findings.join("\n")
-        )))
-    }
-}
-
 /// Every id and extras finding over `claims`.
 #[must_use]
 pub fn findings(claims: &[Claim]) -> Vec<String> {
@@ -105,13 +58,60 @@ pub fn extras_findings(claims: &[Claim]) -> Vec<String> {
     findings
 }
 
+impl Evidence {
+    /// Enforces claim-id grammar and required extras fail-closed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Internal`] with one finding per violation.
+    pub fn validate(&self) -> Result<(), Error> {
+        let findings = findings(&self.claims);
+        if findings.is_empty() {
+            return Ok(());
+        }
+        Err(Error::Internal(format!(
+            "extract answer failed deterministic validation:\n{}",
+            findings.join("\n")
+        )))
+    }
+}
+
+impl ClaimKind {
+    /// Returns the extras this kind must carry.
+    ///
+    /// Widening this closed table is a contract change.
+    #[must_use]
+    pub const fn required_extras(self) -> &'static [&'static str] {
+        match self {
+            Self::Requirement => &["statement"],
+            Self::Criterion => &["criterion"],
+            Self::Example => &["replay-digest"],
+            _ => &[],
+        }
+    }
+}
+
+impl Claim {
+    /// The `statement` extra; empty when absent.
+    ///
+    /// The extract gate guarantees a requirement carries this extra.
+    #[must_use]
+    pub fn statement(&self) -> String {
+        match self.extras.get("statement") {
+            Some(serde_json::Value::String(text)) => text.clone(),
+            Some(other) => other.to_string(),
+            None => String::new(),
+        }
+    }
+}
+
+fn is_dotted_kebab(value: &str) -> bool {
+    !value.is_empty() && value.split('.').all(is_kebab)
+}
+
 fn is_kebab(value: &str) -> bool {
     !value.is_empty()
         && value.split('-').all(|seg| {
             !seg.is_empty() && seg.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         })
-}
-
-fn is_dotted_kebab(value: &str) -> bool {
-    !value.is_empty() && value.split('.').all(is_kebab)
 }

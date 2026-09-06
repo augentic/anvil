@@ -1,7 +1,6 @@
 //! The emery command façade: clap grammar, binding carriers, handler
-//! dispatch through `omnia_guest::api::Client`, the command projector,
-//! and the exit contract — a transport over the `emery-engine`
-//! operations.
+//! dispatch, the command projector, and the exit contract — a
+//! transport over the `emery-engine` operations.
 
 mod bindings;
 mod output;
@@ -43,6 +42,19 @@ const NAME: &str = "emery";
 
 // Clap's usage-error status; help and version print to stdout and exit 0.
 const EXIT_USAGE: u8 = 2;
+
+/// Parse and execute one argument vector over `provider`, buffering both channels.
+pub async fn run<P, I, T>(provider: P, argv: I) -> Response
+where
+    P: Provider,
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    match decode(argv) {
+        Ok(app) => dispatch(app, &Client::new(NAME, provider)).await,
+        Err(response) => response,
+    }
+}
 
 // `bin_name` pins usage text to `emery`: Omnia forwards the routed id as
 // argv[0], and clap only reads argv[0] when `bin_name` is unset.
@@ -144,7 +156,7 @@ impl From<DocumentArg> for Document {
     }
 }
 
-/// The failure envelope.
+// The failure envelope.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct Failure {
@@ -177,19 +189,6 @@ impl Text for Failure {
     }
 }
 
-/// Parse and execute one argument vector over `provider`, buffering both channels.
-pub async fn run<P, I, T>(provider: P, argv: I) -> Response
-where
-    P: Provider,
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    match decode(argv) {
-        Ok(app) => dispatch(app, &Client::new(NAME, provider)).await,
-        Err(response) => response,
-    }
-}
-
 // The decode leg: clap parses argv, and its own outcomes — usage errors,
 // help, version — are already complete responses.
 fn decode<I, T>(argv: I) -> Result<App, Response>
@@ -207,13 +206,10 @@ where
     })
 }
 
-// The call-and-encode leg: each verb decodes into its engine input,
-// runs through the client, and projects. `completions` is synthetic
-// grammar behaviour and never reaches a handler.
-//
-// The metadata stays default: a wasm32 guest has no clock or entropy
-// capability to mint a request id from without a new dependency.
+// The call-and-encode leg: each verb decodes into its engine input, runs
+// through the client, and projects. `completions` never reaches a handler.
 async fn dispatch<P: Provider>(app: App, client: &Client<P>) -> Response {
+    // A wasm32 guest has no clock or entropy to mint a request id from.
     let metadata = Metadata::default();
     match app.verb {
         Verb::Completions { shell } => {
@@ -243,7 +239,7 @@ fn refuse(format: Format, error: &Error) -> Response {
     Response::failure(format.encode(&Failure::new(error, exit)), exit)
 }
 
-/// The failure-code authority: the Omnia 1:1 exit map.
+// The failure-code authority: the Omnia 1:1 exit map.
 const fn exit_code(error: &Error) -> u8 {
     match error {
         Error::BadRequest { .. } => 1,

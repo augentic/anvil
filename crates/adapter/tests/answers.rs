@@ -1,7 +1,7 @@
 //! Evidence answer tests.
 
-use emery_adapter::answers::{evidence_schema, evidence_tail, parse_evidence};
-use emery_adapter::types::{Authority, Backing, ClaimKind, Error};
+use emery_adapter::answers::{evidence_schema, evidence_tail};
+use emery_adapter::types::{Authority, Backing, ClaimKind, Error, Evidence};
 
 #[test]
 fn schema_tracks_dto() {
@@ -33,7 +33,7 @@ fn schema_tracks_dto() {
 
 #[test]
 fn evidence_deserializes() {
-    let evidence = parse_evidence(
+    let evidence: Evidence = serde_json::from_str(
         r#"{
             "authority": "behaviour",
             "claims": [
@@ -84,7 +84,7 @@ fn evidence_deserializes() {
 // Unpinned `synopsis` and `backing` shapes become absent, not fatal.
 #[test]
 fn open_body_fields_lenient() {
-    let evidence = parse_evidence(
+    let evidence: Evidence = serde_json::from_str(
         r#"{
             "authority": "documentation",
             "claims": [

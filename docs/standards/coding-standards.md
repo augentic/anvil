@@ -108,6 +108,67 @@ The codebase optimises for short reading over short writing. Concretely:
 
 Reviewers catch the density caps (see [Comments](#comments)) and the 25-character identifier cap (see [Naming](#naming)). Clippy's `module_name_repetitions` catches the in-module restatement cases.
 
+## Module shape
+
+A module reads top-down: what it does, what it yields, how. **Review only.**
+
+- **Order**: module doc, `use`, constants, the public entry function(s), the public types those entries take or return (each `struct`/`enum` immediately followed by its `impl` blocks), then private helpers in call order, then `#[cfg(test)]`. A private state machine or DTO the entry uses goes *below* the entry, not above it.
+- **Phases, not statements**: one blank line separates the phases of a function body (acquire → transform → validate → return) and precedes a trailing `Ok(...)` when the body has more than a few statements. Do not blank-line every statement.
+- **Comment by visibility**: exported items carry `///`. Private and `pub(crate)` items carry a `//` line only when it answers "why" — a comment that restates the name is deleted. Clippy's `missing_errors_doc` / `missing_panics_doc` only check exported items, so a `# Errors` section on a non-exported fn is noise, not a requirement; reducing visibility is the lever that lets you drop it.
+- **Inline single-use wrappers**: a private fn with one caller whose body is one expression, and whose name adds nothing the expression does not say, is inlined at the call site. Keep the fn when it has two or more callers, names a concept the call site should not spell out (`storage::failed`), or is a multi-step body.
+- **Name the capability at the dispatch site**: when the receiver is a generic bounded by more than one capability trait (`P: Source + Plugins`, `S: StateStore + BlobStore`), call `Source::extract(provider, …)` / `BlobStore::put(store, …)` rather than `provider.extract(…)`, so the seam being crossed is visible without resolving the bound.
+- **Keep an `impl` with its type**: no `impl ForeignType` in a consumer module. A consumer that needs behaviour over a type it does not own writes a free fn taking `&Type`.
+
+```rust
+// BAD — entry buried under a private helper, wrapper with one caller
+async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Result<Evidence, Error> {
+    provider.extract(id, input).await.map_err(|err| bad_gateway!("source `{id}`: {err}"))
+}
+
+/// Resolves, extracts, and validates every source binding.
+pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+    for binding in bindings {
+        let resolved = resolve_once(provider, binding, &mut loaded).await?;
+        let evidence = dispatch(provider, &resolved.id, &binding.input()?).await?;
+        let set = SourceSet { /* … */ };
+        set.validate()?;
+        sets.push(set);
+    }
+    Ok(sets)
+}
+
+// GOOD — entry first, capability named, phases separated, wrapper inlined
+/// Resolves, extracts, and validates every source binding.
+pub async fn extract_all<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+    for binding in bindings {
+        let resolved = resolve_once(provider, binding, &mut loaded).await?;
+        let input = binding.input()?;
+
+        let evidence = Source::extract(provider, &resolved.id, &input)
+            .await
+            .map_err(|err| bad_gateway!("source `{}`: {err}", resolved.id))?;
+
+        let set = SourceSet { /* … */ };
+        set.validate()?;
+        sets.push(set);
+    }
+
+    Ok(sets)
+}
+
+/// A validated claim set extracted from one source.
+pub struct SourceSet { /* … */ }
+
+impl SourceSet {
+    // Validates claim grammar and required extras fail-closed (A8).
+    fn validate(&self) -> Result<(), Error> { /* … */ }
+}
+
+// The loader registers one identity per run; a second binding that
+// reuses the adapter extracts over the already-loaded guest.
+async fn resolve_once<P: Source + Plugins>(...) -> Result<Resolved, Error> { /* … */ }
+```
+
 ## Format dispatch
 
 Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/cli/src/lib.rs` owns format dispatch through the façade's `Format::encode`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.

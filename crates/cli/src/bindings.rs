@@ -1,7 +1,6 @@
 //! The binding carriers: argv positionals plus `--description`, the
 //! operator-owned `emery.toml` named by `--config`, and project-root
-//! discovery for a run naming no bindings at all. Each decodes into
-//! the engine's binding list; the engine validates the list itself.
+//! discovery for a run naming no bindings at all.
 
 use std::path::{Path, PathBuf};
 
@@ -12,6 +11,88 @@ use omnia_guest::{Error, bad_request, server_error};
 
 /// The project-root config discovered by a bindingless run.
 pub const CONFIG_FILE: &str = "emery.toml";
+
+/// Decodes the run's binding list from the `specify` arguments.
+///
+/// # Errors
+///
+/// Returns a `BadRequest` when `--config` is mixed with positional
+/// adapters or `--description` bindings, and propagates the argv,
+/// file, and discovery decoder failures.
+pub fn decode(
+    adapters: &[String], descriptions: &[String], config: Option<&str>,
+) -> Result<Vec<SourceBinding>, Error> {
+    match config {
+        Some(path) => {
+            if !adapters.is_empty() || !descriptions.is_empty() {
+                return Err(bad_request!(
+                    "--config cannot be combined with positional `<adapter>` or `--description` \
+                     bindings; the file carries the whole binding list"
+                ));
+            }
+            let path = preopen_path(Path::new(path))
+                .map_err(|err| bad_request!("invalid argument --config: {}", err.description()))?;
+            from_file(&path)
+        }
+        None if adapters.is_empty() && descriptions.is_empty() => discover(),
+        None => from_argv(adapters, descriptions),
+    }
+}
+
+// A missing project-root file yields the empty list the engine refuses
+// typed; a parse failure still refuses typed.
+fn discover() -> Result<Vec<SourceBinding>, Error> {
+    let path = Path::new(CONFIG_FILE);
+    let present = path.try_exists().map_err(|source| server_error!("{CONFIG_FILE} ({source})",))?;
+    if present { from_file(path) } else { Ok(Vec::new()) }
+}
+
+// Each positional adapter lends the workspace at `.`; each
+// `--description` entry is inline. The key is the adapter name.
+fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceBinding>, Error> {
+    let mut bindings = Vec::new();
+    for value in adapters {
+        bindings.push(SourceBinding {
+            key: AdapterSelector::parse(value)?.name()?,
+            adapter: value.clone(),
+            content: BindingContent::Workspace(".".to_string()),
+            digest: None,
+            registry: None,
+        });
+    }
+
+    for entry in descriptions {
+        let (adapter, text) =
+            entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
+                bad_request!(
+                    "invalid argument --description: expected `<adapter>=<text>`, got `{entry}`",
+                )
+            })?;
+        bindings.push(SourceBinding {
+            key: AdapterSelector::parse(adapter)?.name()?,
+            adapter: adapter.to_string(),
+            content: BindingContent::Description(text.to_string()),
+            digest: None,
+            registry: None,
+        });
+    }
+
+    Ok(bindings)
+}
+
+// The operator-owned file: parsed fail-closed, never written by the engine.
+fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
+    let raw = std::fs::read_to_string(path)
+        .map_err(|source| server_error!("{} ({source})", path.display()))?;
+    let file: ConfigFile =
+        toml::from_str(&raw).map_err(|err| bad_request!("{}: {err}", path.display()))?;
+
+    let base = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    file.source.iter().map(|entry| binding(entry, base)).collect()
+}
 
 // The operator-authored schema: ordered `[[source]]` entries whose
 // `name` is the binding key, with exactly one optional content key.
@@ -41,88 +122,6 @@ struct SourceEntry {
     digest: Option<String>,
 }
 
-/// Decodes the run's binding list from the `specify` arguments.
-///
-/// # Errors
-///
-/// Returns a `BadRequest` when `--config` is mixed with positional
-/// adapters or `--description` bindings, and propagates the argv,
-/// file, and discovery decoder failures.
-pub fn decode(
-    adapters: &[String], descriptions: &[String], config: Option<&str>,
-) -> Result<Vec<SourceBinding>, Error> {
-    match config {
-        Some(path) => {
-            if !adapters.is_empty() || !descriptions.is_empty() {
-                return Err(bad_request!(
-                    "--config cannot be combined with positional `<adapter>` or `--description` \
-                     bindings; the file carries the whole binding list"
-                ));
-            }
-            let path = preopen_path(Path::new(path))
-                .map_err(|err| bad_request!("invalid argument --config: {}", err.description()))?;
-            from_file(&path)
-        }
-        None if adapters.is_empty() && descriptions.is_empty() => discover(),
-        None => from_argv(adapters, descriptions),
-    }
-}
-
-// The discovery fallback: a bindingless run reads the project-root
-// `emery.toml` when present; a missing file yields the empty list the
-// engine refuses typed, and a parse failure still refuses typed.
-fn discover() -> Result<Vec<SourceBinding>, Error> {
-    let path = Path::new(CONFIG_FILE);
-    let present = path.try_exists().map_err(|source| server_error!("{CONFIG_FILE} ({source})",))?;
-    if present { from_file(path) } else { Ok(Vec::new()) }
-}
-
-// Argv bindings: each positional adapter lends the workspace at `.`;
-// each `--description` entry is inline. The key is the adapter name.
-fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceBinding>, Error> {
-    let mut bindings = Vec::new();
-    for value in adapters {
-        bindings.push(SourceBinding {
-            key: AdapterSelector::parse(value)?.name()?,
-            adapter: value.clone(),
-            content: BindingContent::Workspace(".".to_string()),
-            digest: None,
-            registry: None,
-        });
-    }
-    for entry in descriptions {
-        let (adapter, text) = split_description(entry)?;
-        bindings.push(SourceBinding {
-            key: AdapterSelector::parse(adapter)?.name()?,
-            adapter: adapter.to_string(),
-            content: BindingContent::Description(text.to_string()),
-            digest: None,
-            registry: None,
-        });
-    }
-    Ok(bindings)
-}
-
-fn split_description(entry: &str) -> Result<(&str, &str), Error> {
-    entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
-        bad_request!("invalid argument --description: expected `<adapter>=<text>`, got `{entry}`",)
-    })
-}
-
-// The operator-owned file carrier: parsed fail-closed, never written
-// by the engine, reached through `--config` or root discovery.
-fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
-    let raw = std::fs::read_to_string(path)
-        .map_err(|source| server_error!("{} ({source})", path.display()))?;
-    let file: ConfigFile =
-        toml::from_str(&raw).map_err(|err| bad_request!("{}: {err}", path.display()))?;
-    let base = path
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    file.source.iter().map(|entry| binding(entry, base)).collect()
-}
-
 fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     let name = &entry.name;
     let selector = AdapterSelector::parse(&entry.adapter)?;
@@ -131,6 +130,7 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
         .as_deref()
         .map(|pin| pin.parse().map_err(|err| bad_request!("source `{name}`: {err}",)))
         .transpose()?;
+
     let locations = [
         entry.path.is_some(),
         entry.git.is_some(),
@@ -155,6 +155,7 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
              reserved and not yet supported — bind a local `path` or inline `description`",
         ));
     }
+
     let content = match (&entry.path, &entry.description) {
         (Some(relative), None) => {
             BindingContent::Workspace(resolved(base, Path::new(relative))?.display().to_string())
@@ -163,27 +164,24 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
         (None, None) => BindingContent::Workspace(".".to_string()),
         (Some(_), Some(_)) => unreachable!("two content keys refused above"),
     };
+    // A local component path resolves relative to the file, like Cargo
+    // `path` dependencies; other selector kinds pass through unchanged.
+    let adapter = match &selector {
+        AdapterSelector::Component { path } => resolved(base, path)?.display().to_string(),
+        _ => entry.adapter.clone(),
+    };
+
     Ok(SourceBinding {
         key: name.clone(),
-        adapter: adapter_value(&selector, &entry.adapter, base)?,
+        adapter,
         content,
         digest,
         registry: entry.registry.clone(),
     })
 }
 
-// A local component selector in the file resolves relative to the
-// file, like Cargo `path` dependencies; other selector kinds pass
-// through unchanged.
-fn adapter_value(selector: &AdapterSelector, raw: &str, base: &Path) -> Result<String, Error> {
-    match selector {
-        AdapterSelector::Component { path } => Ok(resolved(base, path)?.display().to_string()),
-        _ => Ok(raw.to_string()),
-    }
-}
-
-// Anchor `relative` at the file's directory and normalise lexically,
-// refusing any path outside the `.` project preopen.
+// Anchors `relative` at the file's directory, refusing any path outside
+// the `.` project preopen.
 fn resolved(base: &Path, relative: &Path) -> Result<PathBuf, Error> {
     preopen_path(&base.join(relative))
 }

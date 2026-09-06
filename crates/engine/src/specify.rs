@@ -33,10 +33,8 @@ pub struct SpecifyBody {
     /// Diff from the predecessor; absent on the first run.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
-    /// Resolved content digests of loader-loaded adapters (local
-    /// components and registry packages) — commit one as its
-    /// binding's `digest` pin to make the load reproducible
-    /// (trust-on-first-use).
+    /// Resolved digests of loader-loaded adapters; commit one as its
+    /// binding's `digest` pin to make the load reproducible.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<SourceDigest>,
 }
@@ -73,6 +71,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     let committed = home.commit(&set, &observed).await?;
     let diff =
         observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
+
     let digests = sets
         .iter()
         .filter_map(|source| {
@@ -82,6 +81,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
             })
         })
         .collect();
+
     Ok(SpecifyBody {
         generation: committed.id,
         requirements: rows.len(),
