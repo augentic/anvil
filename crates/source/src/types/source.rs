@@ -62,6 +62,18 @@ pub enum Authority {
     Behaviour,
 }
 
+impl Authority {
+    /// Lower ranks outrank higher ranks (`intent` = 0).
+    #[must_use]
+    pub const fn rank(self) -> u8 {
+        match self {
+            Self::Intent => 0,
+            Self::Documentation => 1,
+            Self::Behaviour => 2,
+        }
+    }
+}
+
 impl fmt::Display for Authority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {

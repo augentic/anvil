@@ -44,7 +44,7 @@ impl SourceAdapter for Probe {
 #[tokio::test]
 async fn source_dispatch() {
     let model = Scripted::answering([
-        r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim"}]}"#,
+        r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim","statement":"One."}]}"#,
     ]);
     let ctx = Context {
         adapter_id: "source:probe",

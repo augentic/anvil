@@ -6,7 +6,7 @@ mod selector;
 use std::path::Path;
 
 use emery_source::Source;
-use omnia_guest::plugins::{Digest, Location, PluginRef};
+use omnia_guest::plugins::{Digest, Error as LoadError, Location, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 pub use selector::AdapterSelector;
 
@@ -21,6 +21,24 @@ pub struct Resolved {
     pub id: String,
     /// Resolved sha256 digest of the loaded component bytes.
     pub digest: Option<Digest>,
+}
+
+impl Resolved {
+    /// Refuses a pin that disagrees with an already-loaded guest.
+    ///
+    /// # Errors
+    ///
+    /// Returns `AlreadyActive` when `pin` disagrees with the held digest.
+    pub(crate) fn pin_agrees(&self, pin: Option<&Digest>) -> Result<(), Error> {
+        match (pin, self.digest.as_ref()) {
+            (Some(pin), Some(held)) if pin != held => Err(LoadError::AlreadyActive(format!(
+                "package `{}` is already active with digest {held}, which is not the requested pin",
+                self.id
+            ))
+            .into()),
+            _ => Ok(()),
+        }
+    }
 }
 
 /// Resolves a selector to its routed dispatch id.

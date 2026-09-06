@@ -1,7 +1,5 @@
 //! Content-addressed spec generations behind a swapped `current` pointer.
 
-use std::collections::BTreeMap;
-
 use omnia_guest::{BlobStore, BlobStoreExt as _, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -106,12 +104,12 @@ impl Diff {
             .collect();
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
         if let (Ok(old), Ok(new)) = (spec::parse(&outgoing.spec), spec::parse(&incoming.spec)) {
-            let old = subjects(&old);
-            let new = subjects(&new);
+            let old = old.subjects();
+            let new = new.subjects();
             for (subject, block) in &new {
                 match old.get(subject) {
                     None => added.push((*subject).to_string()),
-                    Some(previous) if !same_block(previous, block) => {
+                    Some(previous) if !previous.same_as(block) => {
                         changed.push((*subject).to_string());
                     }
                     Some(_) => {}
@@ -305,18 +303,6 @@ fn hex_lower(bytes: &[u8]) -> String {
         out.push(char::from(DIGITS[usize::from(byte & 0x0f)]));
     }
     out
-}
-
-fn subjects(spec: &spec::Spec) -> BTreeMap<&str, &spec::Requirement> {
-    spec.requirements.iter().map(|requirement| (requirement.name.as_str(), requirement)).collect()
-}
-
-// Positional ids do not define requirement identity.
-fn same_block(old: &spec::Requirement, new: &spec::Requirement) -> bool {
-    old.status == new.status
-        && old.tag == new.tag
-        && old.sources == new.sources
-        && old.body == new.body
 }
 
 fn object(id: &str, name: &str) -> String {

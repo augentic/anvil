@@ -1,5 +1,6 @@
 //! Deterministic claim validation shared by the engine's extract gate
-//! and the SDK's answer tail.
+//! and the SDK's answer tail: claim-id grammar and the required
+//! per-kind extras (A8).
 
 use crate::types::{Claim, ClaimKind, Error, Evidence};
 
@@ -7,20 +8,59 @@ use crate::types::{Claim, ClaimKind, Error, Evidence};
 /// enforced in code.
 pub const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
-/// Enforces required dotted-kebab claim IDs.
-///
-/// # Errors
-///
-/// Returns [`Error::Internal`] with one finding per violation.
-pub fn validate_evidence(evidence: &Evidence) -> Result<(), Error> {
-    let findings = id_findings(&evidence.claims);
-    if findings.is_empty() {
-        return Ok(());
+impl ClaimKind {
+    /// Returns the extras this kind must carry.
+    ///
+    /// Widening this closed table is a contract change.
+    #[must_use]
+    pub const fn required_extras(self) -> &'static [&'static str] {
+        match self {
+            Self::Requirement => &["statement"],
+            Self::Criterion => &["criterion"],
+            Self::Example => &["replay-digest"],
+            _ => &[],
+        }
     }
-    Err(Error::Internal(format!(
-        "extract answer failed deterministic validation:\n{}",
-        findings.join("\n")
-    )))
+}
+
+impl Claim {
+    /// The `statement` extra; empty when absent.
+    ///
+    /// The extract gate guarantees a requirement carries this extra.
+    #[must_use]
+    pub fn statement(&self) -> String {
+        match self.extras.get("statement") {
+            Some(serde_json::Value::String(text)) => text.clone(),
+            Some(other) => other.to_string(),
+            None => String::new(),
+        }
+    }
+}
+
+impl Evidence {
+    /// Enforces claim-id grammar and required extras fail-closed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Internal`] with one finding per violation.
+    pub fn validate(&self) -> Result<(), Error> {
+        let findings = findings(&self.claims);
+        if findings.is_empty() {
+            return Ok(());
+        }
+        Err(Error::Internal(format!(
+            "extract answer failed deterministic validation:\n{}",
+            findings.join("\n")
+        )))
+    }
+}
+
+/// Every id and extras finding over `claims`.
+#[must_use]
+pub fn findings(claims: &[Claim]) -> Vec<String> {
+    let mut findings = id_findings(claims);
+    findings.extend(extras_findings(claims));
+    findings
 }
 
 /// Findings for dotted-kebab claim ids and required-id kinds.
@@ -39,9 +79,27 @@ pub fn id_findings(claims: &[Claim]) -> Vec<String> {
                 ClaimKind::Requirement | ClaimKind::Criterion | ClaimKind::Example
             ) =>
             {
-                findings.push(format!("- claim {index}: `{:?}` claims require an id", claim.kind));
+                findings.push(format!("- claim {index}: `{}` claims require an id", claim.kind));
             }
             _ => {}
+        }
+    }
+    findings
+}
+
+/// Findings for absent required per-kind extras.
+#[must_use]
+pub fn extras_findings(claims: &[Claim]) -> Vec<String> {
+    let mut findings = Vec::new();
+    for (index, claim) in claims.iter().enumerate() {
+        for key in claim.kind.required_extras() {
+            if !claim.extras.contains_key(*key) {
+                let label = claim.id.as_deref().unwrap_or("<unnamed>");
+                findings.push(format!(
+                    "- claim {index}: `{}` claim `{label}` is missing its required `{key}` extra",
+                    claim.kind
+                ));
+            }
         }
     }
     findings

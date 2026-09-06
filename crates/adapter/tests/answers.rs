@@ -103,11 +103,13 @@ fn open_body_fields_lenient() {
     assert_eq!(clean.backing, Some(Backing::Payload("ADR-7".to_string())));
 }
 
-// Parse failures and gate findings both surface as repairable `Internal`.
+// Parse failures and gate findings — id grammar and required extras
+// alike — surface as repairable `Internal`, so the adapter repairs a
+// claim the engine would otherwise refuse.
 #[test]
 fn tail_is_repairable() {
     let clean = r#"{"authority":"documentation","claims":[
-        {"kind":"requirement","id":"password-reset.request"},
+        {"kind":"requirement","id":"password-reset.request","statement":"Users reset by email."},
         {"kind":"decision"}
     ]}"#;
     assert_eq!(evidence_tail(clean).expect("clean evidence passes the tail").claims.len(), 2);
@@ -122,4 +124,5 @@ fn tail_is_repairable() {
         panic!("malformed evidence must fail the tail");
     };
     assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
+    assert!(detail.contains("missing its required `statement`"), "and the extra: {detail}");
 }

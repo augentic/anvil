@@ -81,6 +81,25 @@ impl AdapterSelector {
             Self::Component { path } => name_from_component(path),
         }
     }
+
+    /// Returns the loader identity key, if this selector loads a guest.
+    ///
+    /// Bare names dispatch statically and do not share a loaded guest.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `BadRequest` for an unusable component stem.
+    pub(crate) fn load_key(&self) -> Result<Option<String>, Error> {
+        Ok(match self {
+            Self::Bare { .. } => None,
+            Self::Package {
+                namespace,
+                name,
+                version,
+            } => Some(format!("{namespace}:{name}@{version}")),
+            Self::Component { .. } => Some(format!("source:{}", self.name()?)),
+        })
+    }
 }
 
 /// Derives a kebab-case adapter name from a component filename.
@@ -88,7 +107,7 @@ impl AdapterSelector {
 /// # Errors
 ///
 /// Returns a `BadRequest` for an unusable stem.
-pub fn name_from_component(path: &Path) -> Result<String, Error> {
+fn name_from_component(path: &Path) -> Result<String, Error> {
     let stem = path
         .file_stem()
         .and_then(|stem| stem.to_str())

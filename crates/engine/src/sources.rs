@@ -62,41 +62,48 @@ pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
                 binding.key
             ));
         }
-        let selector = AdapterSelector::parse(&binding.adapter)?;
+        binding.validate()?;
+    }
+    Ok(())
+}
+
+impl SourceBinding {
+    fn validate(&self) -> Result<(), Error> {
+        let selector = AdapterSelector::parse(&self.adapter)?;
         selector.name()?;
-        registry_allowed(binding, &selector)?;
-        digest_allowed(binding, &selector)?;
-        if let BindingContent::Workspace(relative) = &binding.content {
+        self.registry_allowed(&selector)?;
+        self.digest_allowed(&selector)?;
+        if let BindingContent::Workspace(relative) = &self.content {
             preopen_path(Path::new(relative))?;
         }
+        Ok(())
     }
-    Ok(())
-}
 
-// The endpoint override only steers registry acquisition, so it rides
-// only a package-shaped selector.
-fn registry_allowed(binding: &SourceBinding, selector: &AdapterSelector) -> Result<(), Error> {
-    if binding.registry.is_some() && !matches!(selector, AdapterSelector::Package { .. }) {
-        return Err(bad_request!(
-            "source `{}` sets `registry` on an adapter the registry never serves; the override \
-             only applies to registry package references (`<namespace>:<name>@<version>`)",
-            binding.key
-        ));
+    // The endpoint override only steers registry acquisition, so it rides
+    // only a package-shaped selector.
+    fn registry_allowed(&self, selector: &AdapterSelector) -> Result<(), Error> {
+        if self.registry.is_some() && !matches!(selector, AdapterSelector::Package { .. }) {
+            return Err(bad_request!(
+                "source `{}` sets `registry` on an adapter the registry never serves; the override \
+                 only applies to registry package references (`<namespace>:<name>@<version>`)",
+                self.key
+            ));
+        }
+        Ok(())
     }
-    Ok(())
-}
 
-// The pin binds exact component bytes, so it rides only a selector
-// the loader acquires — a local component path or a registry package.
-fn digest_allowed(binding: &SourceBinding, selector: &AdapterSelector) -> Result<(), Error> {
-    if binding.digest.is_some() && matches!(selector, AdapterSelector::Bare { .. }) {
-        return Err(bad_request!(
-            "source `{}` sets `digest` on a bare adapter name the loader never acquires; pin a \
-             local component path or an exact registry package reference instead",
-            binding.key
-        ));
+    // The pin binds exact component bytes, so it rides only a selector
+    // the loader acquires — a local component path or a registry package.
+    fn digest_allowed(&self, selector: &AdapterSelector) -> Result<(), Error> {
+        if self.digest.is_some() && matches!(selector, AdapterSelector::Bare { .. }) {
+            return Err(bad_request!(
+                "source `{}` sets `digest` on a bare adapter name the loader never acquires; pin a \
+                 local component path or an exact registry package reference instead",
+                self.key
+            ));
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 fn source_required() -> Error {

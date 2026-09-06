@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use emery_source::types::{Authority, Claim, ClaimKind};
+use emery_source::types::{Authority, ClaimKind};
 use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
@@ -66,7 +66,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
                     groups.entry(id).or_default().push(Contributor {
                         source: set.key.clone(),
                         authority: set.authority,
-                        statement: statement(claim),
+                        statement: claim.statement(),
                     });
                 }
                 ClaimKind::Criterion => criteria.push(id),
@@ -81,7 +81,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
         let mut contributors = groups.remove(subject).unwrap_or_default();
         // Highest authority first; the sort is stable, so binding
         // order is conserved within a class.
-        contributors.sort_by_key(|contributor| rank(contributor.authority));
+        contributors.sort_by_key(|contributor| contributor.authority.rank());
         rows.push(resolve(subject, contributors));
         let covered =
             criteria.iter().any(|id| *id == subject || id.starts_with(&format!("{subject}.")));
@@ -94,7 +94,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
             id: String::new(),
             subject: format!("{subject} acceptance criteria"),
             status: Status::Unknown,
-            tag: Some(Tag::Unknown),
+            tag: Status::Unknown.tag(),
             sources: Vec::new(),
             winner: None,
             contributors: Vec::new(),
@@ -117,7 +117,7 @@ pub async fn synthesise<M: Model>(
     tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
     let parsed = spec::parse(&spec)?;
-    check_rows(&parsed, rows)?;
+    parsed.check_rows(rows)?;
     tracing::info!("synthesising design.md");
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
@@ -136,27 +136,27 @@ fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
     let normalised: Vec<String> =
         contributors.iter().map(|contributor| normalise(&contributor.statement)).collect();
     let agreed = normalised.iter().all(|value| value == &normalised[0]);
-    let (status, tag, winner) = if agreed {
-        (Status::Agreed, None, None)
+    let (status, winner) = if agreed {
+        (Status::Agreed, None)
     } else {
-        let top = rank(contributors[0].authority);
+        let top = contributors[0].authority.rank();
         let top_values: Vec<&String> = contributors
             .iter()
             .zip(&normalised)
-            .filter(|(contributor, _)| rank(contributor.authority) == top)
+            .filter(|(contributor, _)| contributor.authority.rank() == top)
             .map(|(_, value)| value)
             .collect();
         if top_values.iter().all(|value| *value == top_values[0]) {
-            (Status::Divergence, Some(Tag::Divergence), Some(0))
+            (Status::Divergence, Some(0))
         } else {
-            (Status::Conflict, Some(Tag::Conflict), None)
+            (Status::Conflict, None)
         }
     };
     Row {
         id: String::new(),
         subject: subject.to_string(),
         status,
-        tag,
+        tag: status.tag(),
         sources,
         winner,
         contributors,
@@ -243,64 +243,51 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
 }
 
 // The model may not drop, reorder, or rewrite reconciliation rows.
-fn check_rows(parsed: &spec::Spec, rows: &[Row]) -> Result<(), Error> {
-    if parsed.requirements.len() != rows.len() {
-        return Err(mismatch(&format!(
-            "expected {} requirement blocks, found {}",
-            rows.len(),
-            parsed.requirements.len()
-        )));
+impl spec::Spec {
+    fn check_rows(&self, rows: &[Row]) -> Result<(), Error> {
+        if self.requirements.len() != rows.len() {
+            return Err(mismatch(&format!(
+                "expected {} requirement blocks, found {}",
+                rows.len(),
+                self.requirements.len()
+            )));
+        }
+        for (requirement, row) in self.requirements.iter().zip(rows) {
+            if requirement.id != row.id {
+                return Err(mismatch(&format!(
+                    "expected `{}`, found `{}`",
+                    row.id, requirement.id
+                )));
+            }
+            // headings must be reconciliation and re-mine-diff identity
+            if requirement.name != row.subject {
+                return Err(mismatch(&format!(
+                    "`{}` must head its subject `{}`, found `{}`",
+                    row.id, row.subject, requirement.name
+                )));
+            }
+            if requirement.status != row.status || requirement.tag != row.tag {
+                return Err(mismatch(&format!(
+                    "`{}` must carry `Status: {}` and its mirroring tag",
+                    row.id, row.status
+                )));
+            }
+            if requirement.sources != row.sources {
+                return Err(mismatch(&format!(
+                    "`{}` must cite `Sources: [{}]`",
+                    row.id,
+                    row.sources.join(", ")
+                )));
+            }
+        }
+        Ok(())
     }
-    for (requirement, row) in parsed.requirements.iter().zip(rows) {
-        if requirement.id != row.id {
-            return Err(mismatch(&format!("expected `{}`, found `{}`", row.id, requirement.id)));
-        }
-        // headings must be reconciliation and re-mine-diff identity
-        if requirement.name != row.subject {
-            return Err(mismatch(&format!(
-                "`{}` must head its subject `{}`, found `{}`",
-                row.id, row.subject, requirement.name
-            )));
-        }
-        if requirement.status != row.status || requirement.tag != row.tag {
-            return Err(mismatch(&format!(
-                "`{}` must carry `Status: {}` and its mirroring tag",
-                row.id, row.status
-            )));
-        }
-        if requirement.sources != row.sources {
-            return Err(mismatch(&format!(
-                "`{}` must cite `Sources: [{}]`",
-                row.id,
-                row.sources.join(", ")
-            )));
-        }
-    }
-    Ok(())
 }
 
 fn mismatch(detail: &str) -> Error {
     bad_request!("the model answer must render every reconciliation row verbatim: {detail}",)
 }
 
-// The extract gate guarantees this extra exists.
-fn statement(claim: &Claim) -> String {
-    match claim.extras.get("statement") {
-        Some(serde_json::Value::String(text)) => text.clone(),
-        Some(other) => other.to_string(),
-        None => String::new(),
-    }
-}
-
 fn normalise(statement: &str) -> String {
     statement.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-// Lower ranks outrank higher ranks.
-const fn rank(authority: Authority) -> u8 {
-    match authority {
-        Authority::Intent => 0,
-        Authority::Documentation => 1,
-        Authority::Behaviour => 2,
-    }
 }

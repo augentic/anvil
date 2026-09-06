@@ -1,5 +1,7 @@
 //! Fail-closed `spec.md` AST.
 
+use std::collections::BTreeMap;
+
 use omnia_guest::{Error, bad_request};
 
 /// Markdown heading prefix opening a requirement block.
@@ -29,6 +31,19 @@ pub enum Tag {
     Conflict,
     /// `[divergence]`.
     Divergence,
+}
+
+impl Status {
+    /// The heading tag this status must pair with; `None` for `agreed`.
+    #[must_use]
+    pub const fn tag(self) -> Option<Tag> {
+        match self {
+            Self::Agreed => None,
+            Self::Unknown => Some(Tag::Unknown),
+            Self::Conflict => Some(Tag::Conflict),
+            Self::Divergence => Some(Tag::Divergence),
+        }
+    }
 }
 
 impl Tag {
@@ -71,6 +86,28 @@ pub struct Requirement {
     pub status: Status,
     /// Body text with blank edges trimmed.
     pub body: String,
+}
+
+impl Spec {
+    /// Requirement blocks keyed by heading subject.
+    #[must_use]
+    pub(crate) fn subjects(&self) -> BTreeMap<&str, &Requirement> {
+        self.requirements
+            .iter()
+            .map(|requirement| (requirement.name.as_str(), requirement))
+            .collect()
+    }
+}
+
+impl Requirement {
+    /// Whether reviewable content matches, ignoring positional ids.
+    #[must_use]
+    pub(crate) fn same_as(&self, other: &Self) -> bool {
+        self.status == other.status
+            && self.tag == other.tag
+            && self.sources == other.sources
+            && self.body == other.body
+    }
 }
 
 // Metadata must precede the first body line.

@@ -5,11 +5,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use emery_source::types::{
-    Authority, Claim, ClaimKind, SourceContent, SourceInput, SourceWorkspace,
-};
+use emery_source::types::{Authority, Claim, SourceContent, SourceInput, SourceWorkspace};
 use emery_source::{DispatchError, Source, claims};
-use omnia_guest::plugins::{Digest, Error as LoadError};
+use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
 use crate::preopen::preopen_path;
@@ -29,17 +27,27 @@ pub struct SourceSet {
     pub digest: Option<Digest>,
 }
 
-/// A validated claim set extracted from one source.
-#[derive(Debug, Clone)]
-pub struct SourceSet {
-    /// The authored binding key.
-    pub key: String,
-    /// Claim-set authority class.
-    pub authority: Authority,
-    /// The validated claims.
-    pub claims: Vec<Claim>,
-    /// Resolved content digest of a loader-loaded adapter.
-    pub digest: Option<Digest>,
+impl SourceSet {
+    /// Validates claim grammar and required extras fail-closed (A8).
+    ///
+    /// The engine re-runs the contract's [`claims`] gate over the wire
+    /// because it cannot trust the guest to have run the SDK tail.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `BadRequest` naming every finding.
+    pub fn validate(&self) -> Result<(), Error> {
+        if let findings = claims::findings(&self.claims)
+            && !findings.is_empty()
+        {
+            return Err(bad_request!(
+                "source `{}` returned an invalid claim set (A8 fail-closed): {}",
+                self.key,
+                findings.join("; ")
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// Resolves, extracts, and validates every source binding.
@@ -53,7 +61,7 @@ pub struct SourceSet {
 ///
 /// # Errors
 ///
-/// Propagates resolution, extract, and [`validate_set`] failures.
+/// Propagates resolution, extract, and [`SourceSet::validate`] failures.
 pub async fn extract_all<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
@@ -62,63 +70,23 @@ pub async fn extract_all<P: Source + Plugins>(
 
     for binding in bindings {
         let resolved = resolve_once(provider, binding, &mut loaded).await?;
-        let input = input_for(binding)?;
-        tracing::info!(source = %binding.key, adapter = %resolved.id, "extracting");
+        let input = binding.input()?;
+        tracing::debug!(source = %binding.key, adapter = %resolved.id, "extracting");
         let evidence = dispatch(provider, &resolved.id, &input).await?;
+
         let set = SourceSet {
             key: binding.key.clone(),
             authority: evidence.authority,
             claims: evidence.claims,
             digest: resolved.digest,
         };
-        validate_set(&set)?;
+
+        set.validate()?;
         tracing::debug!(source = %set.key, claims = set.claims.len(), "extracted");
         sets.push(set);
     }
 
     Ok(sets)
-}
-
-/// Returns the required extras for a claim kind.
-///
-/// Widening this closed table is a contract change.
-#[must_use]
-pub const fn required_extras(kind: ClaimKind) -> &'static [&'static str] {
-    match kind {
-        ClaimKind::Requirement => &["statement"],
-        ClaimKind::Criterion => &["criterion"],
-        ClaimKind::Example => &["replay-digest"],
-        _ => &[],
-    }
-}
-
-/// Validates claim grammar and required extras fail-closed.
-///
-/// # Errors
-///
-/// Returns a `BadRequest` when claim grammar or required extras fail.
-pub fn validate_set(set: &SourceSet) -> Result<(), Error> {
-    let findings = claims::id_findings(&set.claims);
-    if !findings.is_empty() {
-        return Err(bad_request!(
-            "source `{}` returned an invalid claim set: {}",
-            set.key,
-            findings.join("; ")
-        ));
-    }
-    for claim in &set.claims {
-        for key in required_extras(claim.kind) {
-            if !claim.extras.contains_key(*key) {
-                let label = claim.id.clone().unwrap_or_else(|| claim.kind.to_string());
-                return Err(bad_request!(
-                    "required per-kind extras are absent (A8 fail-closed): source `{}` claim \
-                     `{label}` is missing `{key}`",
-                    set.key
-                ));
-            }
-        }
-    }
-    Ok(())
 }
 
 // The loader registers one identity per run; a second binding that
@@ -127,9 +95,9 @@ async fn resolve_once<P: Source + Plugins>(
     provider: &P, binding: &SourceBinding, loaded: &mut BTreeMap<String, resolve::Resolved>,
 ) -> Result<resolve::Resolved, Error> {
     let selector = AdapterSelector::parse(&binding.adapter)?;
-    let key = load_key(&selector)?;
+    let key = selector.load_key()?;
     if let Some(existing) = key.as_ref().and_then(|key| loaded.get(key)) {
-        pin_agrees(existing, binding.digest.as_ref())?;
+        existing.pin_agrees(binding.digest.as_ref())?;
         return Ok(existing.clone());
     }
     let resolved =
@@ -138,54 +106,34 @@ async fn resolve_once<P: Source + Plugins>(
     if let Some(key) = key {
         loaded.insert(key, resolved.clone());
     }
+
     Ok(resolved)
 }
 
-fn load_key(selector: &AdapterSelector) -> Result<Option<String>, Error> {
-    Ok(match selector {
-        AdapterSelector::Bare { .. } => None,
-        AdapterSelector::Package {
-            namespace,
-            name,
-            version,
-        } => Some(format!("{namespace}:{name}@{version}")),
-        AdapterSelector::Component { .. } => Some(format!("source:{}", selector.name()?)),
-    })
-}
-
-fn pin_agrees(existing: &resolve::Resolved, pin: Option<&Digest>) -> Result<(), Error> {
-    match (pin, existing.digest.as_ref()) {
-        (Some(pin), Some(held)) if pin != held => Err(LoadError::AlreadyActive(format!(
-            "package `{}` is already active with digest {held}, which is not the requested pin",
-            existing.id
-        ))
-        .into()),
-        _ => Ok(()),
+impl SourceBinding {
+    // `.` spans the project preopen, including `.emery/`, until guest
+    // capability profiles can exclude the output home.
+    fn input(&self) -> Result<SourceInput, Error> {
+        let content = match &self.content {
+            BindingContent::Workspace(relative) => {
+                let relative = preopen_path(Path::new(relative))?;
+                let root = if relative == Path::new(".") {
+                    PathBuf::from(".")
+                } else {
+                    Path::new(".").join(&relative)
+                };
+                SourceContent::Workspace(SourceWorkspace {
+                    id: self.key.clone(),
+                    root: root.display().to_string(),
+                })
+            }
+            BindingContent::Description(text) => SourceContent::Value(text.clone()),
+        };
+        Ok(SourceInput {
+            key: self.key.clone(),
+            content,
+        })
     }
-}
-
-// `.` spans the project preopen, including `.emery/`, until guest
-// capability profiles can exclude the output home.
-fn input_for(binding: &SourceBinding) -> Result<SourceInput, Error> {
-    let content = match &binding.content {
-        BindingContent::Workspace(relative) => {
-            let relative = preopen_path(Path::new(relative))?;
-            let root = if relative == Path::new(".") {
-                PathBuf::from(".")
-            } else {
-                Path::new(".").join(&relative)
-            };
-            SourceContent::Workspace(SourceWorkspace {
-                id: binding.key.clone(),
-                root: root.display().to_string(),
-            })
-        }
-        BindingContent::Description(text) => SourceContent::Value(text.clone()),
-    };
-    Ok(SourceInput {
-        key: binding.key.clone(),
-        content,
-    })
 }
 
 // On wasm32, the routed id selects the exporting guest through Omnia.
