@@ -138,7 +138,14 @@ impl<'p, S: StateStore + BlobStore> Home<'p, S> {
     pub async fn observe(&self) -> Observation {
         let pointer = StateStore::get(self.store, CURRENT_KEY).await.ok().flatten();
         let outgoing = match &pointer {
-            Some(raw) => self.load(String::from_utf8_lossy(raw).trim()).await,
+            Some(raw) => {
+                let id = String::from_utf8_lossy(raw).trim().to_string();
+                let outgoing = self.load(&id).await;
+                if outgoing.is_none() {
+                    tracing::warn!(generation = %id, "current generation unreadable; diff suppressed");
+                }
+                outgoing
+            }
             None => None,
         };
         Observation { pointer, outgoing }

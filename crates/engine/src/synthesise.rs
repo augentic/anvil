@@ -88,7 +88,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
 pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
 ) -> Result<Documents, Error> {
-    tracing::info!(sources = sets.len(), requirements = rows.len(), "synthesising spec.md");
+    tracing::info!("synthesising spec.md");
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
     check_rows(&spec::parse(&spec)?, rows)?;
 
