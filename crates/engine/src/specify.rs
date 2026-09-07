@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::extract::extract;
 use crate::sources::{SourceBinding, validate};
 pub use crate::store::Diff;
-use crate::store::{Revision, Store};
+use crate::store::Store;
 use crate::synthesise::{reconcile, synthesise};
 
 /// Generate a specification revision from source bindings.
@@ -60,18 +60,8 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
 
     let sets = extract(context.provider, &bindings).await?;
     let rows = reconcile(&sets);
-    let documents = synthesise(context.provider, &sets, &rows).await?;
-
-    let revision = Revision {
-        spec: documents.spec,
-        design: documents.design,
-    };
-    let store = Store::new(context.provider);
-    // One observation feeds both the re-mine diff, computed in memory and
-    // emitted only here, and the CAS that consumes it.
-    let observed = store.observe().await;
-    let diff = observed.outgoing().map(|outgoing| Diff::between(outgoing, &revision));
-    let id = store.commit(&revision, observed).await?;
+    let revision = synthesise(context.provider, &sets, &rows).await?;
+    let committed = Store::new(context.provider).commit(&revision).await?;
 
     let digests = sets
         .iter()
@@ -84,10 +74,10 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
         .collect();
 
     Ok(SpecifyBody {
-        revision: id,
+        revision: committed.id,
         requirements: rows.len(),
         sources: sets.len(),
-        diff,
+        diff: committed.diff,
         digests,
     })
 }

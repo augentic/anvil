@@ -2,7 +2,8 @@
 //! rules every binding obeys before anything loads. The list is an
 //! input, never engine state.
 
-use std::path::{Path, PathBuf};
+use std::collections::BTreeSet;
+use std::path::Path;
 
 use emery_source::Source;
 use emery_source::types::{SourceContent, SourceInput, SourceWorkspace};
@@ -11,15 +12,15 @@ use omnia_guest::{Error, Plugins, bad_request};
 use serde::{Deserialize, Serialize};
 
 use crate::plugin::{AdapterRef, Loaded, Loader};
-use crate::preopen_path;
+use crate::{is_kebab, preopen_path};
 
 /// Checks a run's binding list before anything loads.
 ///
 /// # Errors
 ///
 /// Returns a `BadRequest` for an empty list (`specify-source-required`),
-/// a repeated key, a malformed selector, a `digest` on a bare name the
-/// loader never acquires, a `registry` on a selector the registry never
+/// a malformed or repeated key, a `digest` on a bare name the loader
+/// never acquires, a `registry` on a selector the registry never
 /// serves, or a workspace root outside the project preopen.
 pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
     if bindings.is_empty() {
@@ -29,9 +30,13 @@ pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
         });
     }
 
-    for (index, binding) in bindings.iter().enumerate() {
-        if bindings[..index].iter().any(|earlier| earlier.key == binding.key) {
-            let key = &binding.key;
+    let mut keys = BTreeSet::new();
+    for binding in bindings {
+        let key = binding.key.as_str();
+        if !is_kebab(key) {
+            return Err(bad_request!("source `{key}` is not a kebab-case key"));
+        }
+        if !keys.insert(key) {
             return Err(bad_request!("source `{key}` is bound twice"));
         }
         binding.validate()?;
@@ -44,10 +49,10 @@ pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceBinding {
-    /// Stable binding key.
+    /// Stable kebab-case binding key.
     pub key: String,
-    /// The adapter selector value.
-    pub adapter: String,
+    /// The adapter selector.
+    pub adapter: AdapterRef,
     /// What the adapter extracts.
     pub content: BindingContent,
     /// Optional sha256 content pin for a loader-loaded adapter,
@@ -65,69 +70,36 @@ impl SourceBinding {
     pub(crate) async fn load<P: Source + Plugins>(
         &self, loader: &Loader<'_, P>,
     ) -> Result<Loaded, Error> {
-        let selector: AdapterRef = self.adapter.parse()?;
-        loader.load(&selector, self.digest.as_ref(), self.registry.as_deref()).await
+        loader.load(&self.adapter, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
     // Maps this binding to the adapter `extract` input.
     pub(crate) fn input(&self) -> Result<SourceInput, Error> {
-        let content = match &self.content {
-            BindingContent::Workspace(relative) => {
-                // `.` spans the project preopen, including `.emery/`, until
-                // guest capability profiles can exclude the revision store.
-                let relative = preopen_path(Path::new(relative))?;
-                let root = if relative == Path::new(".") {
-                    PathBuf::from(".")
-                } else {
-                    Path::new(".").join(&relative)
-                };
-                SourceContent::Workspace(SourceWorkspace {
-                    id: self.key.clone(),
-                    root: root.display().to_string(),
-                })
-            }
-            BindingContent::Description(text) => SourceContent::Value(text.clone()),
-        };
-
         Ok(SourceInput {
             key: self.key.clone(),
-            content,
+            content: self.content.source(&self.key)?,
         })
     }
 
+    // The endpoint override only steers registry acquisition and the pin
+    // binds exact component bytes, so each rides only the selector shapes
+    // the loader acquires that way; the root is the one `input` builds.
     fn validate(&self) -> Result<(), Error> {
-        let selector: AdapterRef = self.adapter.parse()?;
-        self.registry_allowed(&selector)?;
-        self.digest_allowed(&selector)?;
-        if let BindingContent::Workspace(relative) = &self.content {
-            preopen_path(Path::new(relative))?;
-        }
-        Ok(())
-    }
-
-    // The endpoint override only steers registry acquisition, so it rides
-    // only a package-shaped selector.
-    fn registry_allowed(&self, selector: &AdapterRef) -> Result<(), Error> {
-        if self.registry.is_some() && !matches!(selector, AdapterRef::Package { .. }) {
-            let key = &self.key;
+        let key = &self.key;
+        if self.registry.is_some() && !matches!(self.adapter, AdapterRef::Package { .. }) {
             return Err(bad_request!(
                 "source `{key}`: `registry` requires a package adapter \
                  (`<namespace>:<name>@<version>`)"
             ));
         }
-        Ok(())
-    }
-
-    // The pin binds exact component bytes, so it rides only a selector
-    // the loader acquires — a local component path or a registry package.
-    fn digest_allowed(&self, selector: &AdapterRef) -> Result<(), Error> {
-        if self.digest.is_some() && matches!(selector, AdapterRef::Bare(_)) {
-            let key = &self.key;
+        if self.digest.is_some() && matches!(self.adapter, AdapterRef::Bare(_)) {
             return Err(bad_request!(
                 "source `{key}`: `digest` requires a `.wasm` path or package adapter, not a bare \
                  name"
             ));
         }
+        self.input()?;
+
         Ok(())
     }
 }
@@ -140,4 +112,27 @@ pub enum BindingContent {
     Workspace(String),
     /// Inline description text; no filesystem view.
     Description(String),
+}
+
+impl BindingContent {
+    // The one place a content variant meets the adapter's input.
+    fn source(&self, key: &str) -> Result<SourceContent, Error> {
+        Ok(match self {
+            // `.` spans the project preopen, including `.emery/`, until
+            // guest capability profiles can exclude the revision store.
+            Self::Workspace(relative) => {
+                let relative = preopen_path(Path::new(relative))?;
+                let root = if relative == Path::new(".") {
+                    relative
+                } else {
+                    Path::new(".").join(relative)
+                };
+                SourceContent::Workspace(SourceWorkspace {
+                    id: key.to_owned(),
+                    root: root.display().to_string(),
+                })
+            }
+            Self::Description(text) => SourceContent::Value(text.clone()),
+        })
+    }
 }

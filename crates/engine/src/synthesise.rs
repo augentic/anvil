@@ -1,14 +1,14 @@
 //! Deterministic reconciliation and fail-closed model synthesis.
 
-use std::collections::BTreeMap;
-use std::fmt::Write as _;
+use std::fmt::{Display, Write as _};
 
 use emery_source::types::{Authority, ClaimKind};
 use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
 use crate::extract::SourceSet;
-use crate::spec::{self, Spec, Status, Tag};
+use crate::spec::{Spec, Status};
+use crate::store::Revision;
 
 // Prompt order is significant.
 const SPEC_PROSE: &[&str] = &[
@@ -25,22 +25,23 @@ const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-for
 /// Reconciles requirements by authority and appends uncovered acceptance gaps.
 #[must_use]
 pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
-    let mut order: Vec<&str> = Vec::new();
-    let mut groups: BTreeMap<&str, Vec<Contributor>> = BTreeMap::new();
+    // Groups keep first-seen order, which is the row order.
+    let mut groups: Vec<(&str, Vec<Contributor>)> = Vec::new();
     let mut criteria: Vec<&str> = Vec::new();
     for set in sets {
         for claim in &set.claims {
             let Some(id) = claim.id.as_deref() else { continue };
             match claim.kind {
                 ClaimKind::Requirement => {
-                    if !groups.contains_key(id) {
-                        order.push(id);
-                    }
-                    groups.entry(id).or_default().push(Contributor {
+                    let contributor = Contributor {
                         source: set.key.clone(),
                         authority: set.authority,
                         statement: claim.statement(),
-                    });
+                    };
+                    match groups.iter_mut().find(|(subject, _)| *subject == id) {
+                        Some((_, contributors)) => contributors.push(contributor),
+                        None => groups.push((id, vec![contributor])),
+                    }
                 }
                 ClaimKind::Criterion => criteria.push(id),
                 _ => {}
@@ -48,35 +49,23 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
         }
     }
 
-    let mut rows: Vec<Row> = Vec::new();
-    let mut gaps: Vec<&str> = Vec::new();
-    for subject in order {
-        let mut contributors = groups.remove(subject).unwrap_or_default();
+    let mut rows = Vec::with_capacity(groups.len());
+    let mut gaps = Vec::new();
+    for (subject, mut contributors) in groups {
         // Highest authority first; the sort is stable, so binding
         // order is conserved within a class.
         contributors.sort_by_key(|contributor| contributor.authority.rank());
-        rows.push(resolve(subject, contributors));
-        let covered =
-            criteria.iter().any(|id| *id == subject || id.starts_with(&format!("{subject}.")));
+        rows.push(Row::resolve(subject, contributors));
+
+        // A criterion covers its own subject or a dotted child of it.
+        let covered = criteria.iter().any(|id| {
+            id.strip_prefix(subject).is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
+        });
         if !covered {
             gaps.push(subject);
         }
     }
-    for subject in gaps {
-        rows.push(Row {
-            id: String::new(),
-            subject: format!("{subject} acceptance criteria"),
-            status: Status::Unknown,
-            tag: Status::Unknown.tag(),
-            sources: Vec::new(),
-            winner: None,
-            contributors: Vec::new(),
-        });
-    }
-
-    for (index, row) in rows.iter_mut().enumerate() {
-        row.id = format!("REQ-{:03}", index + 1);
-    }
+    rows.extend(gaps.into_iter().map(Row::gap));
     rows
 }
 
@@ -87,10 +76,10 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
 /// Returns model, AST, provenance, or empty-design failures.
 pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
-) -> Result<Documents, Error> {
+) -> Result<Revision, Error> {
     tracing::info!("synthesising spec.md");
     let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
-    check_rows(&spec::parse(&spec)?, rows)?;
+    check_rows(&spec.parse()?, rows)?;
 
     tracing::info!("synthesising design.md");
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
@@ -98,35 +87,53 @@ pub async fn synthesise<M: Model>(
         return Err(bad_request!("model returned an empty `design.md`"));
     }
 
-    Ok(Documents { spec, design })
+    Ok(Revision { spec, design })
 }
 
-/// Validated synthesis output.
-#[derive(Debug, Clone)]
-pub struct Documents {
-    /// Behavioural specification.
-    pub spec: String,
-    /// Technical design.
-    pub design: String,
-}
-
-/// Provenance a `spec.md` requirement must preserve.
+/// Provenance a `spec.md` requirement must preserve. The id is
+/// positional, the heading tag mirrors the status, the sources are the
+/// contributors in order, and a divergence's winner is the first.
 #[derive(Debug, Clone)]
 pub struct Row {
-    /// The minted requirement id (`REQ-NNN`).
-    pub id: String,
     /// Claim-group subject or appended gap description.
     pub subject: String,
     /// The resolved status.
     pub status: Status,
-    /// Heading tag mirroring `status`.
-    pub tag: Option<Tag>,
-    /// Contributing source keys, highest authority first.
-    pub sources: Vec<String>,
-    /// Winning contributor index for a divergence.
-    pub winner: Option<usize>,
-    /// Every contributing requirement claim.
+    /// Every contributing requirement claim, highest authority first.
     pub contributors: Vec<Contributor>,
+}
+
+impl Row {
+    // Matching statements agree; a unique top authority wins divergence;
+    // disagreeing top-authority peers conflict.
+    fn resolve(subject: &str, contributors: Vec<Contributor>) -> Self {
+        let status = if all_equal(contributors.iter()) {
+            Status::Agreed
+        } else {
+            let top = contributors[0].authority.rank();
+            let peers = contributors.iter().take_while(|peer| peer.authority.rank() == top);
+            if all_equal(peers) { Status::Divergence } else { Status::Conflict }
+        };
+
+        Self {
+            subject: subject.to_string(),
+            status,
+            contributors,
+        }
+    }
+
+    // An acceptance gap: unknown, with no contributing source to cite.
+    fn gap(subject: &str) -> Self {
+        Self {
+            subject: format!("{subject} acceptance criteria"),
+            status: Status::Unknown,
+            contributors: Vec::new(),
+        }
+    }
+
+    fn sources(&self) -> impl Iterator<Item = &str> {
+        self.contributors.iter().map(|contributor| contributor.source.as_str())
+    }
 }
 
 /// One source's contribution to a requirement group.
@@ -140,43 +147,22 @@ pub struct Contributor {
     pub statement: String,
 }
 
-// Matching statements agree; a unique top authority wins divergence;
-// disagreeing top-authority peers conflict.
-fn resolve(subject: &str, contributors: Vec<Contributor>) -> Row {
-    let sources: Vec<String> =
-        contributors.iter().map(|contributor| contributor.source.clone()).collect();
-    let normalised: Vec<String> = contributors
-        .iter()
-        .map(|contributor| contributor.statement.split_whitespace().collect::<Vec<_>>().join(" "))
-        .collect();
-
-    let agreed = normalised.iter().all(|value| value == &normalised[0]);
-    let (status, winner) = if agreed {
-        (Status::Agreed, None)
-    } else {
-        let top = contributors[0].authority.rank();
-        let top_values: Vec<&String> = contributors
-            .iter()
-            .zip(&normalised)
-            .filter(|(contributor, _)| contributor.authority.rank() == top)
-            .map(|(_, value)| value)
-            .collect();
-        if top_values.iter().all(|value| *value == top_values[0]) {
-            (Status::Divergence, Some(0))
-        } else {
-            (Status::Conflict, None)
-        }
-    };
-
-    Row {
-        id: String::new(),
-        subject: subject.to_string(),
-        status,
-        tag: status.tag(),
-        sources,
-        winner,
-        contributors,
+impl Contributor {
+    // Statements compare with whitespace collapsed.
+    fn normalised(&self) -> String {
+        self.statement.split_whitespace().collect::<Vec<_>>().join(" ")
     }
+}
+
+fn all_equal<'a>(mut contributors: impl Iterator<Item = &'a Contributor>) -> bool {
+    let Some(first) = contributors.next() else { return true };
+    let first = first.normalised();
+    contributors.all(|contributor| contributor.normalised() == first)
+}
+
+// Requirement ids are positional: the first row is `REQ-001`.
+fn req_id(index: usize) -> String {
+    format!("REQ-{:03}", index + 1)
 }
 
 async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<String, Error> {
@@ -198,18 +184,20 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
     render_claims(&mut prompt, sets);
 
     prompt.push_str("\n## Reconciliation rows (render exactly, in order)\n\n");
-    for row in rows {
-        let tag = row.tag.map(|tag| format!(" [{tag}]")).unwrap_or_default();
-        let sources = row.sources.join(", ");
+    for (index, row) in rows.iter().enumerate() {
+        let tag = row.status.tag().map(|tag| format!(" [{tag}]")).unwrap_or_default();
+        let sources = row.sources().collect::<Vec<_>>().join(", ");
         let _ = writeln!(
             prompt,
             "- {id} — heading `### Requirement: {subject}{tag}` — Status: {status} — Sources: [{sources}]",
-            id = row.id,
+            id = req_id(index),
             subject = row.subject,
             status = row.status,
         );
-        for (index, contributor) in row.contributors.iter().enumerate() {
-            let role = if row.winner == Some(index) { "winner" } else { "contributor" };
+        // Authority resolves a divergence in favour of the top contributor.
+        let divergence = row.status == Status::Divergence;
+        for (position, contributor) in row.contributors.iter().enumerate() {
+            let role = if divergence && position == 0 { "winner" } else { "contributor" };
             let _ = writeln!(
                 prompt,
                 "  - {role}: {source} ({authority}): {statement}",
@@ -241,7 +229,7 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
         for claim in &set.claims {
             let id = claim.id.as_deref().unwrap_or("-");
             let synopsis = claim.synopsis.as_deref().unwrap_or("");
-            let extras = serde_json::Value::Object(claim.extras.clone());
+            let extras = serde_json::to_string(&claim.extras).unwrap_or_default();
             let _ = writeln!(prompt, "- {kind} `{id}` — {synopsis} — {extras}", kind = claim.kind);
         }
     }
@@ -252,41 +240,38 @@ fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
     if spec.requirements.len() != rows.len() {
         let expected = rows.len();
         let found = spec.requirements.len();
-        return Err(mismatch(&format!("expected {expected} requirement blocks, found {found}")));
+        return Err(mismatch(format!("expected {expected} requirement blocks, found {found}")));
     }
 
-    for (requirement, row) in spec.requirements.iter().zip(rows) {
-        if requirement.id != row.id {
-            let expected = &row.id;
+    for (index, (requirement, row)) in spec.requirements.iter().zip(rows).enumerate() {
+        let id = req_id(index);
+        if requirement.id != id {
             let found = &requirement.id;
-            return Err(mismatch(&format!("expected `{expected}`, found `{found}`")));
+            return Err(mismatch(format!("expected `{id}`, found `{found}`")));
         }
         // Headings are the reconciliation and re-mine-diff identity.
         if requirement.name != row.subject {
-            let id = &row.id;
             let subject = &row.subject;
             let found = &requirement.name;
-            return Err(mismatch(&format!(
+            return Err(mismatch(format!(
                 "`{id}` must head its subject `{subject}`, found `{found}`"
             )));
         }
-        if requirement.status != row.status || requirement.tag != row.tag {
-            let id = &row.id;
+        if requirement.status != row.status {
             let status = row.status;
-            return Err(mismatch(&format!(
+            return Err(mismatch(format!(
                 "`{id}` must carry `Status: {status}` and its mirroring tag"
             )));
         }
-        if requirement.sources != row.sources {
-            let id = &row.id;
-            let sources = row.sources.join(", ");
-            return Err(mismatch(&format!("`{id}` must cite `Sources: [{sources}]`")));
+        if !requirement.sources.iter().map(String::as_str).eq(row.sources()) {
+            let sources = row.sources().collect::<Vec<_>>().join(", ");
+            return Err(mismatch(format!("`{id}` must cite `Sources: [{sources}]`")));
         }
     }
 
     Ok(())
 }
 
-fn mismatch(detail: &str) -> Error {
+fn mismatch(detail: impl Display) -> Error {
     bad_request!("model `spec.md` does not match the reconciliation rows: {detail}")
 }

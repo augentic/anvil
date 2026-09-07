@@ -1,25 +1,23 @@
 //! Source-adapter loading over the `omnia:plugins/loader` seam: the typed
 //! selector, the per-run load memo, and the adapter `emery-version` gate.
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::LazyLock;
 
 use emery_source::Source;
 use omnia_guest::plugins::{Digest, Location, Plugin, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::preopen_path;
-
-// The running emery, parsed once for the minimum-version gate.
-static EMERY: LazyLock<semver::Version> =
-    LazyLock::new(|| env!("CARGO_PKG_VERSION").parse().expect("CARGO_PKG_VERSION is valid semver"));
+use crate::{is_kebab, preopen_path};
 
 /// One run's adapter loads over a provider: loads memoize by identity
 /// for the run, so a second binding on the same adapter reuses the held
 /// guest and a disagreeing pin refuses `already-active` from the memo
 /// rather than the host.
-pub(crate) struct Loader<'a, P: Source + Plugins> {
+pub struct Loader<'a, P: Source + Plugins> {
     provider: &'a P,
     // The memo wraps the same provider; `PluginCache` exposes no accessor
     // for it, so the version gate keeps its own reference.
@@ -28,7 +26,7 @@ pub(crate) struct Loader<'a, P: Source + Plugins> {
 
 impl<'a, P: Source + Plugins> Loader<'a, P> {
     /// An empty memo over `provider`.
-    pub(crate) const fn new(provider: &'a P) -> Self {
+    pub const fn new(provider: &'a P) -> Self {
         Self {
             provider,
             cache: PluginCache::new(provider),
@@ -42,7 +40,7 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
     /// # Errors
     ///
     /// Returns selector, load, or version failures.
-    pub(crate) async fn load(
+    pub async fn load(
         &self, selector: &AdapterRef, pin: Option<&Digest>, registry: Option<&str>,
     ) -> Result<Loaded, Error> {
         let name = selector.name();
@@ -68,7 +66,9 @@ fn check_version<P: Source>(provider: &P, name: &str, id: &str) -> Result<(), Er
         bad_request!("adapter `{name}` ({id}) has an invalid `emery-version` `{declared}`: {err}")
     })?;
 
-    if *EMERY < minimum {
+    // The running version is this crate's own, so it always parses.
+    let running = semver::Version::parse(env!("CARGO_PKG_VERSION"));
+    if running.is_ok_and(|running| running < minimum) {
         return Err(Error::BadRequest {
             code: "unsupported-version".into(),
             description: format!("adapter {name} ({id}) requires emery {minimum} or newer"),
@@ -81,12 +81,12 @@ fn check_version<P: Source>(provider: &P, name: &str, id: &str) -> Result<(), Er
 /// One loaded source adapter: the routed dispatch id plus, for a
 /// loader-loaded adapter, its content digest.
 #[derive(Debug)]
-pub(crate) struct Loaded {
+pub struct Loaded {
     /// Routed dispatch id: the package reference for a registry
     /// package, `source:<name>` otherwise.
-    pub(crate) id: String,
+    pub id: String,
     /// Sha256 digest of the loaded component bytes.
-    pub(crate) digest: Option<Digest>,
+    pub digest: Option<Digest>,
 }
 
 impl From<Plugin> for Loaded {
@@ -167,6 +167,21 @@ impl FromStr for AdapterRef {
     }
 }
 
+impl fmt::Display for AdapterRef {
+    // The selector as an operator writes it; a component renders its path.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Package {
+                namespace,
+                name,
+                version,
+            } => write!(f, "{namespace}:{name}@{version}"),
+            Self::Bare(name) => f.write_str(name),
+            Self::Component { path, .. } => path.display().fmt(f),
+        }
+    }
+}
+
 impl AdapterRef {
     fn package(namespace: &str, rest: &str, original: &str) -> Result<Self, Error> {
         let (name, version) = rest
@@ -218,14 +233,9 @@ impl AdapterRef {
     ) -> Result<Option<PluginRef>, Error> {
         let (package, location) = match self {
             Self::Bare(_) => return Ok(None),
-            Self::Package {
-                namespace,
-                name,
-                version,
-            } => (
-                format!("{namespace}:{name}@{version}"),
-                Location::Registry(registry.map(ToOwned::to_owned)),
-            ),
+            Self::Package { .. } => {
+                (self.to_string(), Location::Registry(registry.map(ToOwned::to_owned)))
+            }
             // The host loader reads the file fresh — nothing is mirrored, so
             // a deleted file refuses on the next run — and would refuse a
             // missing path itself. The engine keeps only the operator-typo
@@ -255,8 +265,18 @@ impl AdapterRef {
     }
 }
 
-// Equivalent to `^[a-z][a-z0-9-]*$`.
-fn is_kebab(name: &str) -> bool {
-    name.starts_with(|c: char| c.is_ascii_lowercase())
-        && name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+// On the wire a selector is its operator string, parsed on the way in
+// so a binding never carries an unparsed reference.
+impl Serialize for AdapterRef {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for AdapterRef {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(|err: Error| D::Error::custom(err.description()))
+    }
 }

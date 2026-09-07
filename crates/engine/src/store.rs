@@ -9,7 +9,7 @@ use omnia_guest::{BlobStore, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::spec;
+use crate::spec::Spec;
 
 /// Keyvalue key holding the current revision id.
 pub const CURRENT: &str = "current-revision";
@@ -33,14 +33,25 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Self { store }
     }
 
-    /// Commits `revision` by writing its documents, swapping the current
-    /// id, and pruning its predecessor; returns the committed revision id.
+    /// Commits `revision`: observes the current id once, diffs against
+    /// the readable predecessor, writes the documents, swaps the current
+    /// id, and prunes the predecessor.
     ///
-    /// Fails if `observed` is stale or storage refuses the write. A lost
-    /// swap leaves the written documents as an inert, unreferenced orphan.
-    pub async fn commit(
-        &self, revision: &Revision, observed: Observation,
-    ) -> Result<String, Error> {
+    /// Fails if another run swapped the id since it was observed or
+    /// storage refuses the write.
+    pub async fn commit(&self, revision: &Revision) -> Result<Committed, Error> {
+        // One observation feeds both the advisory diff and the CAS.
+        let observed = self.observe().await;
+        let diff = observed.outgoing.as_ref().map(|outgoing| Diff::between(outgoing, revision));
+        let id = self.swap(revision, observed).await?;
+
+        Ok(Committed { id, diff })
+    }
+
+    // Writes the documents and swaps the current id against `observed`.
+    // A lost swap leaves the written documents as an inert, unreferenced
+    // orphan.
+    async fn swap(&self, revision: &Revision, observed: Observation) -> Result<String, Error> {
         if !BlobStore::container_exists(self.store, CONTAINER).await? {
             BlobStore::create_container(self.store, CONTAINER).await?;
         }
@@ -83,11 +94,10 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Ok(Some(revision))
     }
 
-    /// Observes the CAS token and the outgoing revision without failing.
-    ///
-    /// Corrupt or unreadable state suppresses only the advisory diff;
-    /// the following CAS remains authoritative and fail-closed.
-    pub async fn observe(&self) -> Observation {
+    // Observes the CAS token and the outgoing revision without failing.
+    // Corrupt or unreadable state suppresses only the advisory diff; the
+    // following CAS remains authoritative and fail-closed.
+    async fn observe(&self) -> Observation {
         let token = StateStore::get(self.store, CURRENT).await.ok().flatten();
 
         let outgoing = if let Some(id) = token.as_deref().and_then(|raw| str::from_utf8(raw).ok()) {
@@ -160,11 +170,20 @@ impl Revision {
     }
 }
 
-/// The current revision observed before a compare-and-swap commit.
-///
-/// One observation drives one CAS and its advisory diff.
+/// A committed revision: its id and the advisory re-mine diff against
+/// the revision it superseded, when one was readable.
 #[derive(Debug)]
-pub struct Observation {
+pub struct Committed {
+    /// The committed revision id.
+    pub id: String,
+    /// Absent on the first commit and when the predecessor was unreadable.
+    pub diff: Option<Diff>,
+}
+
+// The current revision observed before a compare-and-swap; one
+// observation drives one CAS and its advisory diff.
+#[derive(Debug)]
+struct Observation {
     // The raw CAS token exactly as storage holds it. Absent before the
     // first commit; also absent when storage could not be read, so the
     // subsequent CAS fails closed against a present key.
@@ -174,12 +193,6 @@ pub struct Observation {
 }
 
 impl Observation {
-    /// The complete outgoing revision, when one was readable.
-    #[must_use]
-    pub const fn outgoing(&self) -> Option<&Revision> {
-        self.outgoing.as_ref()
-    }
-
     // The predecessor the token names; a non-UTF-8 token names no blobs.
     fn previous(&self) -> Option<&str> {
         self.token.as_deref().and_then(|raw| str::from_utf8(raw).ok())
@@ -206,7 +219,7 @@ impl Diff {
     // Sections key on heading subjects, not positional ids. The diff is
     // advisory: an outgoing spec that fails the grammar leaves the section
     // lists empty, and the incoming spec was already parsed by synthesis.
-    pub(crate) fn between(outgoing: &Revision, incoming: &Revision) -> Self {
+    fn between(outgoing: &Revision, incoming: &Revision) -> Self {
         let artifacts = outgoing
             .files()
             .iter()
@@ -216,7 +229,7 @@ impl Diff {
             .collect();
 
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
-        if let (Ok(old), Ok(new)) = (spec::parse(&outgoing.spec), spec::parse(&incoming.spec)) {
+        if let (Ok(old), Ok(new)) = (outgoing.spec.parse::<Spec>(), incoming.spec.parse::<Spec>()) {
             let old = old.subjects();
             let new = new.subjects();
             for (subject, block) in &new {
@@ -250,8 +263,9 @@ impl Diff {
 }
 
 // Keep (entry-point-unreachable): two runs racing one current id cannot
-// be arranged through the CLI, which observes and commits inside a single
-// `specify`. Everything else the store does is owned by the root scenarios.
+// be arranged through the CLI, whose `commit` observes and swaps inside a
+// single `specify`. Everything else the store does is owned by the root
+// scenarios.
 #[cfg(test)]
 mod tests {
     use omnia_test::guest::Memory;
@@ -266,10 +280,10 @@ mod tests {
         // Both runs observe the empty store; the winner swaps first.
         let stale = store.observe().await;
         let observed = store.observe().await;
-        let winner = store.commit(&revision("# Spec winner\n"), observed).await.expect("commit");
+        let winner = store.swap(&revision("# Spec winner\n"), observed).await.expect("commit");
 
         let err = store
-            .commit(&revision("# Spec loser\n"), stale)
+            .swap(&revision("# Spec loser\n"), stale)
             .await
             .expect_err("a stale observation must never last-write-wins over the swapped id");
         assert_eq!(err.code(), "server_error", "typed failure");

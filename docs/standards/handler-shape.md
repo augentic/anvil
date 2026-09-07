@@ -7,7 +7,7 @@ The contract every operation obeys: how an operation becomes an `omnia_guest::ap
 Every operation is implemented by its input type implementing `omnia_guest::api::Handler<P>`:
 
 - **`Self`** is a flat, transport-neutral serde DTO (`Serialize`/`Deserialize`, `#[serde(rename_all = "kebab-case")]`): `Specify { bindings: Vec<SourceBinding> }`, `Show { document: Document }`. It carries no clap derives, no flag names, and no carrier knowledge — the same type deserializes from an HTTP body (`omnia_guest::api::http::post::<Specify, P>()`) as is built by the CLI façade.
-- **`handle(self, context)`** validates its input against the rules every transport must get (`emery_engine::sources::validate`: a non-empty list, unique keys, selector parse, `digest`/`registry` gating, preopen-relative roots), anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
+- **`handle(self, context)`** validates its input against the rules every transport must get (`emery_engine::sources::validate`: a non-empty list, kebab-case unique keys, `digest`/`registry` gating, preopen-relative roots; the `adapter` field is the typed `AdapterRef`, so a malformed selector refuses at the DTO boundary), anchors at the deployed layout, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = omnia_guest::Error`** — handlers return Omnia's protocol error; do not introduce a house error type.
 
 Deterministic handlers bind only the capabilities they use unless their kernel issues model judgments, in which case they additionally bind `Model`. Paths and adapter dispatch are not provider capabilities: paths are fixed constants relative to named preopens, and adapter operations ride the `emery:adapter/source` WIT imports directly.
@@ -79,7 +79,7 @@ Target discipline per verb arm:
 2. Invoke the typed handler over that input (`Client::call`).
 3. Project success or failure through the command projector; completions remain synthetic grammar behaviour and never reach a handler.
 
-Never put domain logic in `cli`. Binding rules that every transport must enforce (uniqueness, selector shape, pin gating, preopen roots, the empty-list refusal) live in `emery_engine::sources::validate`; only the carriers' own grammar (the `<adapter>=<text>` split, the TOML schema and its reserved keys, the exclusivity rule) lives in the façade. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `cli`. Binding rules that every transport must enforce (key grammar and uniqueness, pin gating, preopen roots, the empty-list refusal) live in `emery_engine::sources::validate`; only the carriers' own grammar (the `<adapter>=<text>` split, the TOML schema and its reserved keys, the exclusivity rule) lives in the façade. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Gotcha — the only version requirement is per adapter
 

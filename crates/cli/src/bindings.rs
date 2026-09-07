@@ -53,9 +53,10 @@ fn discover() -> Result<Vec<SourceBinding>, Error> {
 fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceBinding>, Error> {
     let mut bindings = Vec::new();
     for value in adapters {
+        let adapter: AdapterRef = value.parse()?;
         bindings.push(SourceBinding {
-            key: value.parse::<AdapterRef>()?.name().to_owned(),
-            adapter: value.clone(),
+            key: adapter.name().to_owned(),
+            adapter,
             content: BindingContent::Workspace(".".to_string()),
             digest: None,
             registry: None,
@@ -63,15 +64,17 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
     }
 
     for entry in descriptions {
-        let (adapter, text) =
-            entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
-                bad_request!(
-                    "invalid argument --description: expected `<adapter>=<text>`, got `{entry}`"
-                )
-            })?;
+        let Some((selector, text)) =
+            entry.split_once('=').filter(|(selector, _)| !selector.is_empty())
+        else {
+            return Err(bad_request!(
+                "invalid argument --description: expected `<adapter>=<text>`, got `{entry}`"
+            ));
+        };
+        let adapter: AdapterRef = selector.parse()?;
         bindings.push(SourceBinding {
-            key: adapter.parse::<AdapterRef>()?.name().to_owned(),
-            adapter: adapter.to_string(),
+            key: adapter.name().to_owned(),
+            adapter,
             content: BindingContent::Description(text.to_string()),
             digest: None,
             registry: None,
@@ -129,7 +132,15 @@ struct SourceEntry {
 
 fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     let name = &entry.name;
-    let selector: AdapterRef = entry.adapter.parse()?;
+    // A local component path resolves relative to the file, like Cargo
+    // `path` dependencies; other selector kinds pass through unchanged.
+    let adapter = match entry.adapter.parse::<AdapterRef>()? {
+        AdapterRef::Component { name, path } => AdapterRef::Component {
+            name,
+            path: resolved(base, &path)?,
+        },
+        other => other,
+    };
     let digest = entry
         .digest
         .as_deref()
@@ -165,12 +176,6 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
         (None, Some(text)) => BindingContent::Description(text.clone()),
         (None, None) => BindingContent::Workspace(".".to_string()),
         (Some(_), Some(_)) => unreachable!("two content keys refused above"),
-    };
-    // A local component path resolves relative to the file, like Cargo
-    // `path` dependencies; other selector kinds pass through unchanged.
-    let adapter = match &selector {
-        AdapterRef::Component { path, .. } => resolved(base, path)?.display().to_string(),
-        _ => entry.adapter.clone(),
     };
 
     Ok(SourceBinding {
