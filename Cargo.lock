@@ -1125,7 +1125,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
- "strum 0.28.0",
  "tokio",
  "tracing",
 ]
