@@ -54,18 +54,31 @@ Density caps are **review only** — clippy and rustfmt cannot express them. The
 //! Historical rename detail belongs in git history, not module docs.
 
 // GOOD
-//! Commits `spec.md` and `design.md` as one revision. Other state
-//! is minted by its owning verbs, not by `specify`.
+//! The `specify` operation
+//!
+//! Emery's central operation: given a list of source bindings, extract each
+//! source's claims, reconcile them under authority precedence, synthesise
+//! `spec.md` and `design.md`, and commit the pair as one new revision.
+//!
+//! The result reports what was committed — the revision id, the counts, and
+//! the diff against the superseded revision — so a caller can see what
+//! changed without reading the documents.
 ```
 
-The composition-root failure mode is the essay that restates architecture and hides the tip. Collapse the essay; keep the tip at the site that needs it:
+The composition-root failure mode is the essay that restates architecture and hides the tip. The module doc says what the deployment is and why it is fixed; the operational tip stays at the site that needs it:
 
 ```rust
 // BAD — 22-line //! deployment tour restating AGENTS.md, with the one
 // operational fact (the read-only project mount) buried in the middle.
 
 // GOOD
-//! The shipped `emery` executable: one `omnia::runtime!` invocation.
+//! The `emery` executable
+//!
+//! The shipped runtime: one omnia deployment that embeds the engine guest
+//! and declares everything it is allowed to touch.
+//!
+//! The deployment is fixed at compile time so a given `emery` binary always
+//! runs with the same policy; there is no runtime configuration to audit.
 
 // …inside the macro body:
 // The invocation directory mounts read-only — nothing writes the tree.

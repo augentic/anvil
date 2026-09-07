@@ -1,29 +1,27 @@
-//! Parsed `spec.md` requirements
+//! # Parse `spec.md`
 //!
-//! Parses `spec.md` into requirement blocks, each of which must carry:
+//! Models generate `spec.md`, so its shape is verified rather than trusted.
+//! The parser splits the document into `### Requirement:` blocks, checks each
+//! block's header and body, and rejects the whole document with one error
+//! listing every finding, so a malformed spec is never committed or diffed.
 //!
-//! - a `### Requirement:` heading whose `[tag]` mirrors its `Status:`
-//! - an `ID:` / `Sources:` / `Status:` header
-//! - a body
-//!
-//! Parsing collects every finding and rejects the whole document with one
-//! error, so a malformed spec is never committed or diffed.
-//!
-//! Models write `spec.md`, so the engine cannot entirely trust it. Synthesis parses
-//! the draft to check the model preserved the reconciliation rows, and the store
-//! parses both revisions to report the re-mine diff.
+//! Synthesis parses the draft to check the model preserved the reconciliation
+//! rows; the store parses both revisions to report the re-mine diff.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
 use omnia_guest::{Error, bad_request};
+use strum::VariantNames;
 
 use crate::is_kebab;
 
-// Markdown heading prefix opening a requirement block.
 const HEADING: &str = "### Requirement:";
 
-/// A parsed spec: the requirement blocks in document order.
+// A right-trimmed line with its 1-based number.
+type Line<'a> = (usize, &'a str);
+
+/// A parsed spec with requirement blocks in document order.
 #[derive(Debug, Clone)]
 pub struct Spec {
     /// Requirement blocks in document order.
@@ -33,37 +31,31 @@ pub struct Spec {
 impl FromStr for Spec {
     type Err = Error;
 
-    /// Parses `text` under the fail-closed grammar.
-    ///
-    /// # Errors
-    ///
-    /// Returns one `BadRequest` aggregating all grammar findings.
     fn from_str(text: &str) -> Result<Self, Error> {
-        let mut findings: Vec<String> = Vec::new();
-        let mut requirements: Vec<Requirement> = Vec::new();
-        let mut block: Option<Block> = None;
+        let lines: Vec<Line<'_>> =
+            text.lines().enumerate().map(|(i, line)| (i + 1, line.trim_end())).collect();
+        let headings: Vec<(usize, &str)> = lines
+            .iter()
+            .enumerate()
+            .filter_map(|(i, (_, line))| line.strip_prefix(HEADING).map(|h| (i, h.trim())))
+            .collect();
 
-        // Text before the first heading is preamble, carried by the
-        // document bytes alone.
-        for (idx, line) in text.lines().enumerate() {
-            let line_no = idx + 1;
-            let line = line.trim_end();
-            if let Some(heading) = line.strip_prefix(HEADING) {
-                if let Some(done) = block.take() {
-                    done.finish(&mut requirements, &mut findings);
-                }
-                block = Some(Block::open(heading.trim(), line_no, &mut findings));
-            } else if let Some(open) = block.as_mut() {
-                open.line(line, line_no, &mut findings);
+        // Text before the first heading is preamble.
+        let mut findings = Vec::new();
+        let mut requirements = Vec::new();
+        for (k, &(start, heading)) in headings.iter().enumerate() {
+            let end = headings.get(k + 1).map_or(lines.len(), |&(i, _)| i);
+            match Requirement::parse(lines[start].0, heading, &lines[start + 1..end]) {
+                Ok(requirement) => requirements.push(requirement),
+                Err(block) => findings.extend(block),
             }
         }
-        if let Some(done) = block.take() {
-            done.finish(&mut requirements, &mut findings);
-        }
 
-        if requirements.is_empty() {
+        if headings.is_empty() {
             findings.push(format!("the document carries no `{HEADING}` block"));
         }
+
+        // check that the document carries no duplicate requirement ids
         let mut seen = BTreeSet::new();
         for requirement in &requirements {
             if !seen.insert(requirement.id.as_str()) {
@@ -72,22 +64,20 @@ impl FromStr for Spec {
             }
         }
 
-        if findings.is_empty() {
-            Ok(Self { requirements })
-        } else {
-            let findings = findings.join("; ");
-            Err(bad_request!("`spec.md` is malformed: {findings}"))
+        // reject the document if there are any violations
+        if !findings.is_empty() {
+            let findings = findings.join(";\n");
+            return Err(bad_request!("`spec.md` is malformed: {findings}"));
         }
+
+        Ok(Self { requirements })
     }
 }
 
 impl Spec {
     // Requirement blocks keyed by heading subject.
     pub fn subjects(&self) -> BTreeMap<&str, &Requirement> {
-        self.requirements
-            .iter()
-            .map(|requirement| (requirement.name.as_str(), requirement))
-            .collect()
+        self.requirements.iter().map(|r| (r.name.as_str(), r)).collect()
     }
 }
 
@@ -111,11 +101,87 @@ impl Requirement {
     pub fn same_as(&self, other: &Self) -> bool {
         self.status == other.status && self.sources == other.sources && self.body == other.body
     }
+
+    // `heading` is the text after `### Requirement:`; `rest` runs to the next
+    // heading. Every finding in the block is reported, not just the first.
+    fn parse(line_no: usize, heading: &str, rest: &[Line<'_>]) -> Result<Self, Vec<String>> {
+        let mut findings = Vec::new();
+
+        let (name, token) = split_tag(heading);
+        if name.is_empty() {
+            findings.push(format!("line {line_no}: requirement heading has no name"));
+        }
+        let tag = token.and_then(|token| {
+            let tag = token.parse::<Status>().ok().and_then(Status::tag);
+            if tag.is_none() {
+                findings.push(format!("line {line_no}: unknown heading tag `[{token}]`"));
+            }
+            tag
+        });
+
+        let (mut header, body) = split_header(rest, &mut findings);
+        let mut take = |key: &str| {
+            let field = header.remove(key);
+            if field.is_none() {
+                findings.push(format!("line {line_no}: no `{key}:` line"));
+            }
+            field
+        };
+        let (id, sources, status) = (take("ID"), take("Sources"), take("Status"));
+
+        let id = id.map_or_else(String::new, |(n, id)| {
+            if !is_req_id(id) {
+                findings.push(format!("line {n}: malformed id `{id}` (expected `REQ-NNN`)"));
+            }
+            id.to_string()
+        });
+        let sources = sources.map_or_else(Vec::new, |(n, raw)| {
+            let keys: Vec<String> = source_keys(raw).map(str::to_string).collect();
+            for key in keys.iter().filter(|key| !is_kebab(key)) {
+                findings.push(format!("line {n}: malformed source key `{key}`"));
+            }
+            keys
+        });
+        let Some((n, raw)) = status else { return Err(findings) };
+        let Ok(status) = raw.parse::<Status>() else {
+            let expected = Status::VARIANTS.join(", ");
+            findings
+                .push(format!("line {n}: unknown `Status: {raw}` (expected one of {expected})"));
+            return Err(findings);
+        };
+
+        // `Sources: []` is legal exactly when `Status: unknown` — an
+        // evidence-less requirement has no contributing source to cite.
+        if sources.is_empty() && status != Status::Unknown {
+            findings.push(format!("line {line_no}: empty `Sources:` but not `Status: unknown`"));
+        }
+        if tag != status.tag() {
+            let found = tag.map_or_else(
+                || "no heading tag".to_string(),
+                |tag| format!("heading tag `[{tag}]`"),
+            );
+            findings.push(format!("line {line_no}: {found} does not mirror `Status: {status}`"));
+        }
+
+        if !findings.is_empty() {
+            return Err(findings);
+        }
+        let body: Vec<&str> = body.iter().map(|(_, line)| *line).collect();
+        Ok(Self {
+            id,
+            name: name.to_string(),
+            sources,
+            status,
+            body: body.join("\n").trim_matches('\n').to_string(),
+        })
+    }
 }
 
 /// Closed requirement `Status:` vocabulary. Every status but `agreed`
 /// doubles as the `[tag]` its heading must carry.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString, strum::VariantNames,
+)]
 #[strum(serialize_all = "kebab-case")]
 pub enum Status {
     /// One source, or multiple sources that agree.
@@ -138,164 +204,43 @@ impl Status {
     }
 }
 
-// Metadata must precede the first body line.
-struct Block {
-    line_no: usize,
-    name: String,
-    tag: Option<Status>,
-    id: Option<String>,
-    sources: Option<Vec<String>>,
-    status: Option<Status>,
-    body: Vec<String>,
-    in_metadata: bool,
-}
-
-impl Block {
-    fn open(heading: &str, line_no: usize, findings: &mut Vec<String>) -> Self {
-        let (name, tag) = split_tag(heading, line_no, findings);
-        if name.is_empty() {
-            findings.push(format!("line {line_no}: requirement heading has no name"));
-        }
-        Self {
-            line_no,
-            name,
-            tag,
-            id: None,
-            sources: None,
-            status: None,
-            body: Vec::new(),
-            in_metadata: true,
-        }
-    }
-
-    fn line(&mut self, line: &str, line_no: usize, findings: &mut Vec<String>) {
-        if self.in_metadata {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                return;
-            }
-            match trimmed.split_once(':') {
-                Some(("ID", rest)) => {
-                    set_once(&mut self.id, rest.trim().to_string(), "ID:", line_no, findings);
-                    return;
-                }
-                Some(("Sources", rest)) => {
-                    let keys = parse_sources(rest, line_no, findings);
-                    set_once(&mut self.sources, keys, "Sources:", line_no, findings);
-                    return;
-                }
-                Some(("Status", rest)) => {
-                    let raw = rest.trim();
-                    match raw.parse::<Status>() {
-                        Ok(status) => {
-                            set_once(&mut self.status, status, "Status:", line_no, findings);
-                        }
-                        Err(_) => findings.push(format!(
-                            "line {line_no}: unknown `Status: {raw}` (expected agreed, unknown, conflict, or divergence)"
-                        )),
+// The header is every leading `Key:` line; the first other non-blank
+// line begins the body.
+fn split_header<'a>(
+    lines: &'a [Line<'a>], findings: &mut Vec<String>,
+) -> (BTreeMap<&'a str, Line<'a>>, &'a [Line<'a>]) {
+    let mut header = BTreeMap::new();
+    let mut rest = lines;
+    while let [(n, line), tail @ ..] = rest {
+        let line = line.trim();
+        if !line.is_empty() {
+            match line.split_once(':') {
+                Some((key @ ("ID" | "Sources" | "Status"), value)) => {
+                    if header.insert(key, (*n, value.trim())).is_some() {
+                        findings.push(format!("line {n}: duplicate `{key}:` line"));
                     }
-                    return;
                 }
-                _ => self.in_metadata = false,
+                _ => break,
             }
         }
-        self.body.push(line.to_string());
+        rest = tail;
     }
-
-    fn finish(self, requirements: &mut Vec<Requirement>, findings: &mut Vec<String>) {
-        let Self {
-            line_no,
-            name,
-            tag,
-            id,
-            sources,
-            status,
-            body,
-            ..
-        } = self;
-        let subject = format!("requirement at line {line_no}");
-
-        let id = id.unwrap_or_else(|| {
-            findings.push(format!("{subject}: no `ID:` line"));
-            String::new()
-        });
-        if !id.is_empty() && !is_req_id(&id) {
-            findings.push(format!("{subject}: malformed id `{id}` (expected `REQ-NNN`)"));
-        }
-        let sources = sources.unwrap_or_else(|| {
-            findings.push(format!("{subject}: no `Sources:` line"));
-            Vec::new()
-        });
-        let Some(status) = status else {
-            findings.push(format!("{subject}: no `Status:` line"));
-            return;
-        };
-
-        // `Sources: []` is legal exactly when `Status: unknown` — an
-        // evidence-less requirement has no contributing source to cite.
-        if sources.is_empty() && status != Status::Unknown {
-            findings.push(format!("{subject}: empty `Sources:` but not `Status: unknown`"));
-        }
-        match tag {
-            Some(tag) if tag != status => findings.push(format!(
-                "{subject}: heading tag `[{tag}]` disagrees with `Status: {status}`"
-            )),
-            None if status != Status::Agreed => findings.push(format!(
-                "{subject}: `Status: {status}` without the `[{status}]` heading tag"
-            )),
-            _ => {}
-        }
-
-        // Lines are already right-trimmed, so blank edges are bare newlines.
-        requirements.push(Requirement {
-            id,
-            name,
-            sources,
-            status,
-            body: body.join("\n").trim_matches('\n').to_string(),
-        });
-    }
+    (header, rest)
 }
 
-// A trailing `[tag]` that names no tagged status is a finding, not
-// part of the name.
-fn split_tag(
-    heading: &str, line_no: usize, findings: &mut Vec<String>,
-) -> (String, Option<Status>) {
-    if let Some(open) = heading.rfind(" [")
-        && heading.ends_with(']')
-    {
-        let token = &heading[open + 2..heading.len() - 1];
-        let tag = token.parse::<Status>().ok().and_then(Status::tag);
-        if tag.is_none() {
-            findings.push(format!("line {line_no}: unknown heading tag `[{token}]`"));
-        }
-        return (heading[..open].trim_end().to_string(), tag);
-    }
-    (heading.to_string(), None)
+// A trailing ` [token]` is split off the name; the caller decides what it means.
+fn split_tag(heading: &str) -> (&str, Option<&str>) {
+    heading
+        .strip_suffix(']')
+        .and_then(|inner| inner.rsplit_once(" ["))
+        .map_or((heading, None), |(name, token)| (name.trim_end(), Some(token)))
 }
 
-fn set_once<T>(
-    slot: &mut Option<T>, value: T, label: &str, line_no: usize, findings: &mut Vec<String>,
-) {
-    if slot.is_some() {
-        findings.push(format!("line {line_no}: duplicate `{label}` line"));
-    }
-    *slot = Some(value);
-}
-
-fn parse_sources(rest: &str, line_no: usize, findings: &mut Vec<String>) -> Vec<String> {
-    let trimmed = rest.trim();
-    let inner = trimmed.strip_prefix('[').map_or(trimmed, str::trim_start);
-    let inner = inner.strip_suffix(']').map_or(inner, str::trim_end);
-    let keys: Vec<String> =
-        inner.split(',').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect();
-    for key in &keys {
-        if !is_kebab(key) {
-            findings.push(format!("line {line_no}: malformed source key `{key}`"));
-        }
-    }
-    keys
+// `[a, b]`; the brackets are optional so a bare list still reads.
+fn source_keys(raw: &str) -> impl Iterator<Item = &str> {
+    let inner = raw.strip_prefix('[').unwrap_or(raw);
+    let inner = inner.strip_suffix(']').unwrap_or(inner);
+    inner.split(',').map(str::trim).filter(|key| !key.is_empty())
 }
 
 fn is_req_id(id: &str) -> bool {
@@ -343,7 +288,7 @@ Status: unknown
 ";
 
     #[test]
-    fn reviewable_set_parses() {
+    fn parses_correctly() {
         let spec: Spec = REVIEWABLE.parse().expect("the reviewable set parses");
         assert_eq!(spec.requirements.len(), 3);
 
@@ -361,7 +306,7 @@ Status: unknown
     }
 
     #[test]
-    fn violations_fail_typed() {
+    fn violations_fail() {
         let cases: &[(&str, &str)] = &[
             ("# Title only, no blocks\n", "no `### Requirement:` block"),
             ("### Requirement: No id\n\nSources: [a]\nStatus: agreed\n\nBody.\n", "no `ID:` line"),
@@ -383,11 +328,11 @@ Status: unknown
             ),
             (
                 "### Requirement: Untagged conflict\n\nID: REQ-001\nSources: [a, b]\nStatus: conflict\n\nBody.\n",
-                "without the `[conflict]` heading tag",
+                "no heading tag does not mirror `Status: conflict`",
             ),
             (
                 "### Requirement: Mistagged [conflict]\n\nID: REQ-001\nSources: [a]\nStatus: agreed\n\nBody.\n",
-                "disagrees with `Status: agreed`",
+                "heading tag `[conflict]` does not mirror `Status: agreed`",
             ),
             (
                 "### Requirement: Stray tag [wip]\n\nID: REQ-001\nSources: [a]\nStatus: agreed\n\nBody.\n",
@@ -415,6 +360,7 @@ Status: unknown
                 "duplicate `ID:` line",
             ),
         ];
+
         for (text, fragment) in cases {
             let err = text.parse::<Spec>().expect_err(fragment);
             assert_eq!(err.code(), "bad_request", "typed code for {fragment}");
