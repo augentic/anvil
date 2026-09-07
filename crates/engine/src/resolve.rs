@@ -41,6 +41,8 @@ impl<'a, P: Source + Plugins> Resolver<'a, P> {
         &self, selector: &AdapterSelector, pin: Option<&Digest>, registry: Option<&str>,
     ) -> Result<Resolved, Error> {
         let name = selector.name()?;
+
+        // resolve the adapter to its routed dispatch id and digest
         let resolved = match selector {
             AdapterSelector::Package {
                 namespace,
@@ -53,14 +55,17 @@ impl<'a, P: Source + Plugins> Resolver<'a, P> {
                     .maybe_digest(pin.cloned())
                     .build();
                 let plugin = Plugins::load(&self.loader, &request).await?;
+                let digest = plugin.digest().clone();
+
                 Resolved {
                     id: plugin.id().to_owned(),
-                    digest: Some(plugin.digest().clone()),
+                    digest: Some(digest),
                 }
             }
             AdapterSelector::Component { path } => {
                 let id = format!("source:{name}");
                 let digest = load(&self.loader, &id, path, pin).await?;
+
                 Resolved {
                     id,
                     digest: Some(digest),
@@ -72,6 +77,7 @@ impl<'a, P: Source + Plugins> Resolver<'a, P> {
             },
         };
 
+        // check the adapter's minimum `emery-version`
         let metadata = Source::metadata(self.provider, &resolved.id);
         let minimum = parse_minimum(metadata.emery_version.as_deref(), &name, &resolved.id)?;
         check_minimum(minimum.as_ref(), env!("CARGO_PKG_VERSION"), &name, &resolved.id)?;
@@ -117,7 +123,7 @@ async fn load<L: Plugins>(
     Ok(plugin.digest().clone())
 }
 
-// A missing minimum admits; a malformed minimum refuses typed.
+// Get the adapter's minimum `emery-version` from its metadata.
 fn parse_minimum(
     minimum: Option<&str>, name: &str, id: &str,
 ) -> Result<Option<semver::Version>, Error> {
@@ -130,7 +136,7 @@ fn parse_minimum(
     })
 }
 
-// An unparseable running version is permissive to preserve recovery.
+// Check the adapter's minimum `emery-version` against the running version.
 fn check_minimum(
     minimum: Option<&semver::Version>, current: &str, name: &str, id: &str,
 ) -> Result<(), Error> {

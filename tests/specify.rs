@@ -654,14 +654,14 @@ async fn loader_keys_gated() {
         (
             "[[source]]\nname = \"local\"\nadapter = \"./source.wasm\"\n\
              registry = \"registry.acme.example\"\n",
-            "never serves",
+            "`registry` requires a package adapter",
         ),
         (
             "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\n\
              registry = \"registry.acme.example\"\n",
-            "never serves",
+            "`registry` requires a package adapter",
         ),
-        (pinned_bare.as_str(), "bare adapter name"),
+        (pinned_bare.as_str(), "not a bare name"),
     ];
     for (body, fragment) in cases {
         let dir = project_tempdir();
