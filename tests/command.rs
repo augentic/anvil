@@ -122,7 +122,7 @@ async fn specify_without_sources() {
     let response = cli(&provider, &["emery", "specify"]).await;
     assert_eq!(response.exit, 1);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("at least one source"), "{stderr}");
+    assert!(stderr.contains("no source bindings"), "{stderr}");
 
     fail(&provider, &["emery", "specify"], 1, "specify-source-required").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");

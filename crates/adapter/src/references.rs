@@ -56,13 +56,13 @@ pub fn answer(docs: &[Doc], call: &ToolCall) -> Result<String, String> {
         }
         "read_doc" => {
             let arguments: Value = serde_json::from_str(&call.arguments)
-                .map_err(|err| format!("read_doc arguments are not a JSON object: {err}"))?;
+                .map_err(|err| format!("read_doc: invalid arguments: {err}"))?;
             let path = arguments
                 .get("path")
                 .and_then(Value::as_str)
                 .ok_or_else(|| "read_doc requires a string `path` argument".to_string())?;
             registry::resolve(docs, path).map_or_else(
-                || Err(format!("document `{path}` is not embedded in this adapter")),
+                || Err(format!("no document `{path}`")),
                 |body| Ok(json!({ "path": path, "body": body }).to_string()),
             )
         }

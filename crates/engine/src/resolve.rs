@@ -126,10 +126,7 @@ fn parse_minimum(
     };
 
     semver::Version::parse(minimum).map(Some).map_err(|err| {
-        bad_request!(
-            "adapter `{name}` ({id}) has an invalid `emery-version` (`{minimum}`): \
-            expected an exact version such as `1.2.3`, but got `{err}`"
-        )
+        bad_request!("adapter `{name}` ({id}) has an invalid `emery-version` `{minimum}`: {err}")
     })
 }
 
@@ -147,9 +144,7 @@ fn check_minimum(
     if version < *minimum {
         return Err(Error::BadRequest {
             code: "unsupported-version".into(),
-            description: format!(
-                "unsupported adapter. Update emery to {minimum} to use adapter {name} ({id})"
-            ),
+            description: format!("adapter {name} ({id}) requires emery {minimum} or newer"),
         });
     }
 

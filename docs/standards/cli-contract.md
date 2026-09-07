@@ -30,7 +30,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 - `specify-source-required` — `emery specify` without a source binding and with no project-root `emery.toml` to discover.
 - `spec-not-generated` — `emery show` before any revision is committed.
-- `adapter-cli-too-old` — an adapter's declared minimum `emery-version` is newer than the running binary.
+- `unsupported-version` — an adapter's declared minimum `emery-version` is newer than the running binary.
 - `refused` — the loader rejected the request: a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or a location kind this deployment does not serve; the message names which.
 - `unavailable` — the deployment's acquirer could not produce a registry package (network, endpoint, or a missing exact version); check connectivity and the binding's `registry` override.
 
@@ -41,12 +41,12 @@ The CLI uses the Omnia 1:1 exit map. The authoritative definition lives in [`AGE
 | Code | Name | Skills see it on |
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
-| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `adapter-cli-too-old`, the loader's kebab-case refusals — `refused` and `already-active` — or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `adapter-cli-too-old`, tell the operator to update the installed binary through its install channel. |
+| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `unsupported-version`, the loader's kebab-case refusals — `refused` and `already-active` — or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `unsupported-version`, tell the operator to update the installed binary through its install channel. |
 | `2` | `NotFound` | Missing resource (`spec-not-generated`, or the Omnia default `not_found`). Clap usage and unknown-verb also exit 2 (framework). |
 | `3` | `ServerError` | Unclassified default: I/O, storage (`server_error`, or the loader's `internal`). |
 | `4` | `BadGateway` | Upstream, model, or component-acquisition failure (`bad_gateway`, the loader's `unavailable`). |
 
-Skills should branch on the exit code first (success vs failure class) and on the three kebab recovery discriminants second (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`). Other failures share the Omnia snake_case default for that class (`bad_request`, `not_found`, `server_error`, `bad_gateway`). New exit codes are not invented by skills or the CLI.
+Skills should branch on the exit code first (success vs failure class) and on the three kebab recovery discriminants second (`specify-source-required`, `unsupported-version`, `spec-not-generated`). Other failures share the Omnia snake_case default for that class (`bad_request`, `not_found`, `server_error`, `bad_gateway`). New exit codes are not invented by skills or the CLI.
 
 ## Cross-references
 

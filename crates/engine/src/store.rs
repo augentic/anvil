@@ -120,7 +120,7 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
             .context("reading revision document")?
             .ok_or_else(|| server_error!("revision `{id}` does not contain `{name}`"))?;
         let body = String::from_utf8(bytes)
-            .with_context(|| format!("revision `{id}` contains `{name}` but it is not UTF-8"))?;
+            .with_context(|| format!("revision `{id}`: `{name}` is not UTF-8"))?;
         Ok(body)
     }
 }

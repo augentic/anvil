@@ -56,7 +56,7 @@ docs/              Developer Guide (mdBook; reference + contributing + standards
 | Code | Name | When |
 | ---- | ------------------------ | ------------------------------------------------------------------ |
 | 0 | `EXIT_SUCCESS` | Command succeeded. |
-| 1 | `BadRequest` | Operator or input refusal. The `error` field is `specify-source-required`, `adapter-cli-too-old`, a loader refusal (`refused`, `already-active`), or the Omnia default `bad_request`. |
+| 1 | `BadRequest` | Operator or input refusal. The `error` field is `specify-source-required`, `unsupported-version`, a loader refusal (`refused`, `already-active`), or the Omnia default `bad_request`. |
 | 2 | `NotFound` | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework). |
 | 3 | `ServerError` | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error` or the loader's `internal`. |
 | 4 | `BadGateway` | Upstream, model, or component-acquisition failure. The `error` field is the Omnia default `bad_gateway` or the loader's `unavailable`. |

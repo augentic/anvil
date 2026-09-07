@@ -54,12 +54,12 @@ fn missing_extras_fail_closed() {
     assert!(id_findings(&bare.claims).is_empty(), "ids are well-formed");
     let findings = extras_findings(&bare.claims);
     assert_eq!(findings.len(), 2, "one finding per absent extra: {findings:?}");
-    assert!(findings[0].contains("`password-reset.request` is missing its required `statement`"));
-    assert!(findings[1].contains("`password-reset.stale` is missing its required `replay-digest`"));
+    assert!(findings[0].contains("`password-reset.request` is missing extra `statement`"));
+    assert!(findings[1].contains("`password-reset.stale` is missing extra `replay-digest`"));
     let Err(Error::Internal(detail)) = bare.validate() else {
         panic!("absent extras must fail the gate");
     };
-    assert!(detail.contains("missing its required `statement`"), "{detail}");
+    assert!(detail.contains("missing extra `statement`"), "{detail}");
 }
 
 fn evidence(json: &str) -> Evidence {

@@ -59,9 +59,7 @@ impl SourceSet {
         if !findings.is_empty() {
             let key = &self.key;
             let findings = findings.join("\n");
-            return Err(bad_request!(
-                "source `{key}` returned an invalid claim set (A8 fail-closed):\n{findings}"
-            ));
+            return Err(bad_request!("source `{key}` returned invalid claims:\n{findings}"));
         }
         Ok(())
     }

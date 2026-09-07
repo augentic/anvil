@@ -124,5 +124,5 @@ fn tail_is_repairable() {
         panic!("malformed evidence must fail the tail");
     };
     assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
-    assert!(detail.contains("missing its required `statement`"), "and the extra: {detail}");
+    assert!(detail.contains("missing extra `statement`"), "and the extra: {detail}");
 }

@@ -25,14 +25,14 @@ pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
     if bindings.is_empty() {
         return Err(Error::BadRequest {
             code: "specify-source-required".into(),
-            description: "a specification run requires at least one source binding".into(),
+            description: "no source bindings".into(),
         });
     }
 
     for (index, binding) in bindings.iter().enumerate() {
         if bindings[..index].iter().any(|earlier| earlier.key == binding.key) {
             let key = &binding.key;
-            return Err(bad_request!("each source binds once: source `{key}` is bound twice"));
+            return Err(bad_request!("source `{key}` is bound twice"));
         }
         binding.validate()?;
     }
@@ -112,8 +112,7 @@ impl SourceBinding {
         if self.registry.is_some() && !matches!(selector, AdapterSelector::Package { .. }) {
             let key = &self.key;
             return Err(bad_request!(
-                "source `{key}` sets `registry` on an adapter the registry never serves; the \
-                 override only applies to registry package references \
+                "source `{key}`: `registry` requires a package adapter \
                  (`<namespace>:<name>@<version>`)"
             ));
         }
@@ -126,8 +125,8 @@ impl SourceBinding {
         if self.digest.is_some() && matches!(selector, AdapterSelector::Bare { .. }) {
             let key = &self.key;
             return Err(bad_request!(
-                "source `{key}` sets `digest` on a bare adapter name the loader never acquires; \
-                 pin a local component path or an exact registry package reference instead"
+                "source `{key}`: `digest` requires a `.wasm` path or package adapter, not a bare \
+                 name"
             ));
         }
         Ok(())

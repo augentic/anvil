@@ -37,16 +37,12 @@ impl AdapterSelector {
     /// Returns typed errors for malformed values, GitHub URLs, or invalid pins.
     pub fn parse(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
-            return Err(bad_request!(
-                "an adapter reference must be non-empty and must not have leading or trailing \
-                 whitespace"
-            ));
+            return Err(bad_request!("adapter reference is empty or has surrounding whitespace"));
         }
         if value.starts_with("https://github.com/") {
             return Err(bad_request!(
-                "GitHub adapter URIs are not supported (`{value}`): a source checkout does not \
-                 yield a usable adapter artifact. Pin a published component \
-                 (`emery:<name>@<semver>`) or point at a local `.wasm` component file"
+                "adapter `{value}`: GitHub URLs are not supported; use `emery:<name>@<version>` \
+                 or a local `.wasm` path"
             ));
         }
 
@@ -110,20 +106,15 @@ fn parse_validated_package(
 ) -> Result<AdapterSelector, Error> {
     let (name, version) = rest.split_once('@').ok_or_else(|| {
         bad_request!(
-            "adapter package reference `{original}` must pin an exact SemVer version \
-             (`{namespace}:<name>@<version>`); there is no branch or tag defaulting"
+            "adapter `{original}` is missing `@<version>` (expected \
+             `{namespace}:<name>@<version>`)"
         )
     })?;
     if name.is_empty() {
-        return Err(bad_request!(
-            "adapter package reference `{original}` is missing a package name before `@`"
-        ));
+        return Err(bad_request!("adapter `{original}` is missing a name before `@`"));
     }
     let version = semver::Version::parse(version).map_err(|err| {
-        bad_request!(
-            "adapter package reference `{original}` must pin an exact SemVer version, not \
-             `{version}`: {err}"
-        )
+        bad_request!("adapter `{original}` has an invalid version `{version}`: {err}")
     })?;
     Ok(AdapterSelector::Package {
         namespace: namespace.to_string(),

@@ -25,8 +25,7 @@ pub fn decode(
         Some(path) => {
             if !adapters.is_empty() || !descriptions.is_empty() {
                 return Err(bad_request!(
-                    "--config cannot be combined with positional `<adapter>` or `--description` \
-                     bindings; the file carries the whole binding list"
+                    "--config cannot be combined with `<adapter>` or `--description`"
                 ));
             }
             let path = preopen_path(Path::new(path)).map_err(|err| {
@@ -44,7 +43,8 @@ pub fn decode(
 // typed; a parse failure still refuses typed.
 fn discover() -> Result<Vec<SourceBinding>, Error> {
     let path = Path::new(CONFIG_FILE);
-    let present = path.try_exists().map_err(|source| server_error!("{CONFIG_FILE} ({source})"))?;
+    let present =
+        path.try_exists().map_err(|source| server_error!("reading {CONFIG_FILE}: {source}"))?;
     if present { from_file(path) } else { Ok(Vec::new()) }
 }
 
@@ -85,7 +85,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
 fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
     let raw = std::fs::read_to_string(path).map_err(|source| {
         let path = path.display();
-        server_error!("{path} ({source})")
+        server_error!("reading {path}: {source}")
     })?;
     let file: ConfigFile = toml::from_str(&raw).map_err(|err| {
         let path = path.display();
@@ -144,20 +144,17 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     ];
     if locations.iter().filter(|present| **present).count() > 1 {
         return Err(bad_request!(
-            "source `{name}` names more than one of `path`, `git`, `url`, `description`; exactly \
-             one content key is allowed (omitted means the workspace lend at `.`)"
+            "source `{name}` sets more than one of `path`, `git`, `url`, `description`"
         ));
     }
     if let Some(remote) = entry.git.as_deref().or(entry.url.as_deref()) {
         if remote.starts_with("git+") {
             return Err(bad_request!(
-                "source `{name}` uses Cargo's machine-written source-id form (`git+…`); write \
-                 the plain URL with an optional `@ref` suffix"
+                "source `{name}`: drop the `git+` prefix and write the plain URL"
             ));
         }
         return Err(bad_request!(
-            "source `{name}` names a remote location (`git` / `url`); remote read views are \
-             reserved and not yet supported — bind a local `path` or inline `description`"
+            "source `{name}`: `git` and `url` are not supported; use `path` or `description`"
         ));
     }
 

@@ -106,7 +106,7 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
         })
     } else {
         let findings = findings.join("; ");
-        Err(bad_request!("`spec.md` must parse under the fail-closed spec AST: {findings}"))
+        Err(bad_request!("`spec.md` is malformed: {findings}"))
     }
 }
 
@@ -212,7 +212,7 @@ impl Block {
                         set_once(&mut self.status, status, "Status:", line_no, findings);
                     }
                     Err(_) => findings.push(format!(
-                        "line {line_no}: unrecognised `Status: {raw}` (one of `agreed | unknown | conflict | divergence`)"
+                        "line {line_no}: unknown `Status: {raw}` (expected agreed, unknown, conflict, or divergence)"
                     )),
                 }
                 return;
@@ -285,7 +285,7 @@ fn split_tag(heading: &str, line_no: usize, findings: &mut Vec<String>) -> (Stri
         let token = &heading[open + 2..heading.len() - 1];
         let tag = token.parse::<Tag>().ok();
         if tag.is_none() {
-            findings.push(format!("line {line_no}: unrecognised heading tag `[{token}]`"));
+            findings.push(format!("line {line_no}: unknown heading tag `[{token}]`"));
         }
         return (heading[..open].trim_end().to_string(), tag);
     }
@@ -433,7 +433,7 @@ Status: unknown
             ),
             (
                 "### Requirement: Bad status\n\nID: REQ-001\nSources: [a]\nStatus: resolved\n\nBody.\n",
-                "unrecognised `Status: resolved`",
+                "unknown `Status: resolved`",
             ),
             (
                 "### Requirement: Untagged conflict\n\nID: REQ-001\nSources: [a, b]\nStatus: conflict\n\nBody.\n",
@@ -445,7 +445,7 @@ Status: unknown
             ),
             (
                 "### Requirement: Stray tag [wip]\n\nID: REQ-001\nSources: [a]\nStatus: agreed\n\nBody.\n",
-                "unrecognised heading tag `[wip]`",
+                "unknown heading tag `[wip]`",
             ),
             (
                 "### Requirement: Evidence-less but agreed\n\nID: REQ-001\nSources: []\nStatus: agreed\n\nBody.\n",

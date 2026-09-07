@@ -251,20 +251,20 @@ const fn exit_code(error: &Error) -> u8 {
 
 fn hint(code: &str) -> Option<&'static str> {
     match code {
-        "adapter-cli-too-old" => Some(
-            "update the installed binary through its install channel: `brew upgrade emery`, or `cargo install --git https://github.com/augentic/emery --locked`",
+        "unsupported-version" => Some(
+            "update emery: `brew upgrade emery`, or `cargo install --git https://github.com/augentic/emery --locked`",
         ),
         "specify-source-required" => Some(
-            "`emery specify <adapter>...` generates the spec over the sources named on the invocation; a bindingless run reads the project-root `emery.toml` when present — there is no other persisted binding list",
+            "pass one or more adapters to `emery specify`, or add an `emery.toml` at the project root",
         ),
         "spec-not-generated" => {
             Some("run `emery specify <adapter>...` to commit a revision, then re-run show")
         }
         "refused" => Some(
-            "the loader refused the request: a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or a location kind this deployment does not serve; the message names which",
+            "the loader refused the component; the message above names why (digest, export, or location)",
         ),
         "unavailable" => Some(
-            "the deployment's acquirer could not produce the package: check the network, that the exact version exists at the registry, and the binding's `registry` override (the default endpoint is compiled into the binary)",
+            "the registry could not supply the package: check the network, the exact version, and any `registry` override",
         ),
         _ => None,
     }

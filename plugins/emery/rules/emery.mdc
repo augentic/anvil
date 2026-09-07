@@ -44,7 +44,7 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 | Error code | What it means | Next action |
 |------------|---------------|-------------|
 | `specify-source-required` | `emery specify` was run without naming a source, and no project-root `emery.toml` was found | `emery specify <adapter>` (and/or `--description <adapter>=<text>`, or `--config [<path>]`) |
-| `adapter-cli-too-old` | The installed binary is older than an adapter's declared minimum `emery-version` | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
+| `unsupported-version` | The installed binary is older than an adapter's declared minimum `emery-version` | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
 | `spec-not-generated` | `emery show` was run before any revision was committed | `/emery:specify <adapter>` first |
 | `refused` | The loader rejected the request (a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or an unserved location) | Read the message: update or drop the binding's `digest`, or fix the artifact / location |
 | `unavailable` | The registry fetch for a package adapter failed (network, endpoint, or a missing exact version) | Check connectivity, that the exact version exists, and the binding's `registry` override, then rerun |

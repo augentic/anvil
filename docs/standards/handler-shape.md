@@ -50,7 +50,7 @@ The Omnia 1:1 exit map is fixed:
 | Code | Name            | When                                                                                                                                                          |
 | ---- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0    | `EXIT_SUCCESS`  | Command succeeded                                                                                                                                             |
-| 1    | `BadRequest`    | Operator or input refusal. The `error` field is `specify-source-required`, `adapter-cli-too-old`, or the Omnia default `bad_request`.                          |
+| 1    | `BadRequest`    | Operator or input refusal. The `error` field is `specify-source-required`, `unsupported-version`, or the Omnia default `bad_request`.                          |
 | 2    | `NotFound`      | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework).             |
 | 3    | `ServerError`   | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error`.                                              |
 | 4    | `BadGateway`    | Upstream or model failure. The `error` field is the Omnia default `bad_gateway`.                                                                               |
@@ -83,4 +83,4 @@ Never put domain logic in `cli`. Binding rules that every transport must enforce
 
 ## Gotcha — the only version requirement is per adapter
 
-There is no project-level `emery` version requirement: the adapter's minimum `emery-version` (from `metadata`, enforced during resolve as `adapter-cli-too-old`) is a `BadRequest`. Don't reintroduce a version check at a route or handler site.
+There is no project-level `emery` version requirement: the adapter's minimum `emery-version` (from `metadata`, enforced during resolve as `unsupported-version`) is a `BadRequest`. Don't reintroduce a version check at a route or handler site.

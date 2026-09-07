@@ -50,9 +50,8 @@ pub fn extras_findings(claims: &[Claim]) -> Vec<String> {
             if !claim.extras.contains_key(*key) {
                 let label = claim.id.as_deref().unwrap_or("<unnamed>");
                 let kind = claim.kind;
-                findings.push(format!(
-                    "- claim {index}: `{kind}` claim `{label}` is missing its required `{key}` extra"
-                ));
+                findings
+                    .push(format!("- claim {index}: `{kind}` `{label}` is missing extra `{key}`"));
             }
         }
     }
@@ -71,7 +70,7 @@ impl Evidence {
             return Ok(());
         }
         let findings = findings.join("\n");
-        Err(Error::Internal(format!("extract answer failed deterministic validation:\n{findings}")))
+        Err(Error::Internal(format!("invalid claims:\n{findings}")))
     }
 }
 

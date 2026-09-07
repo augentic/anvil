@@ -95,9 +95,7 @@ pub async fn synthesise<M: Model>(
     tracing::info!("synthesising design.md");
     let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
     if design.trim().is_empty() {
-        return Err(bad_request!(
-            "`design.md` must carry the rebuild design: the model answered an empty document"
-        ));
+        return Err(bad_request!("model returned an empty `design.md`"));
     }
 
     Ok(Documents { spec, design })
@@ -290,5 +288,5 @@ fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
 }
 
 fn mismatch(detail: &str) -> Error {
-    bad_request!("the model answer must render every reconciliation row verbatim: {detail}")
+    bad_request!("model `spec.md` does not match the reconciliation rows: {detail}")
 }

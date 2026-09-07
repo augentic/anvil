@@ -455,7 +455,7 @@ async fn version_too_new() {
     let mut provider = Provider::idle();
     provider.source.versions.insert("docs".to_string(), "99.0.0".to_string());
 
-    fail(&provider, &["emery", "specify", "docs"], 1, "adapter-cli-too-old").await;
+    fail(&provider, &["emery", "specify", "docs"], 1, "unsupported-version").await;
 }
 
 // A model answer outside the fail-closed spec AST is refused, one
@@ -588,19 +588,19 @@ async fn config_file_refused() {
             "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\ngit = \"https://github.com/acme/api@v2\"\n",
             1,
             "bad_request",
-            "remote location",
+            "`git` and `url` are not supported",
         ),
         (
             "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\nurl = \"https://example.com/openapi.yaml\"\n",
             1,
             "bad_request",
-            "remote location",
+            "`git` and `url` are not supported",
         ),
         (
             "[[source]]\nname = \"upstream\"\nadapter = \"documentation\"\ngit = \"git+https://github.com/acme/api#deadbeef\"\n",
             1,
             "bad_request",
-            "source-id form",
+            "drop the `git+` prefix",
         ),
         (
             "[[source]]\nname = \"docs\"\nadapter = \"documentation\"\npath = \"../../outside\"\n",
@@ -989,9 +989,9 @@ async fn load_failures_typed() {
 #[tokio::test]
 async fn package_ref_refused() {
     let cases: &[(&str, &str)] = &[
-        ("emery:demo", "must pin an exact SemVer"),
-        ("emery:demo@main", "not `main`"),
-        ("emery:@1.2.0", "missing a package name"),
+        ("emery:demo", "missing `@<version>`"),
+        ("emery:demo@main", "invalid version `main`"),
+        ("emery:@1.2.0", "missing a name before `@`"),
     ];
     for (reference, fragment) in cases {
         let provider = Provider::idle();

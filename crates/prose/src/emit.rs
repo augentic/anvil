@@ -129,7 +129,7 @@ fn check_links(file: &Path) -> Result<()> {
             let path = dir.join(path);
             if !path.exists() {
                 bail!(
-                    "dangling reference in {}: `{target}` does not resolve (checked {})",
+                    "{}: broken link `{target}` ({} does not exist)",
                     file.display(),
                     path.display()
                 );
