@@ -100,10 +100,8 @@ async fn load<L: Plugins>(
     let relative = preopen_path(path)?;
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
         return Err(not_found!(
-            "adapter `{}` did not resolve to a `.wasm` component file at {} (an adapter is a \
-             single WebAssembly component)",
-            path.display(),
-            relative.display()
+            "adapter `{path}` did not resolve to a `.wasm` component file at {relative} (an \
+             adapter is a single WebAssembly component)"
         ));
     }
 
@@ -127,7 +125,7 @@ fn parse_floor(
     semver::Version::parse(floor).map(Some).map_err(|err| {
         bad_request!(
             "an adapter's metadata answer declares a semver `emery-floor`: adapter `{name}` \
-             ({id}) declares `emery-floor: {floor}`, which is not an exact semver: {err}",
+             ({id}) declares `emery-floor: {floor}`, which is not an exact semver: {err}"
         )
     })
 }

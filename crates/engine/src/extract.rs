@@ -21,9 +21,10 @@ pub async fn extract<P: Source + Plugins>(
         let adapter = binding.resolve(&resolver).await?;
 
         tracing::debug!(source = %binding.key, "extracting");
-        let evidence = Source::extract(provider, &adapter.id, &input)
+        let id = &adapter.id;
+        let evidence = Source::extract(provider, id, &input)
             .await
-            .map_err(|err| bad_gateway!("source `{}`: {err}", adapter.id))?;
+            .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
 
         let set = SourceSet {
             key: binding.key.clone(),
@@ -56,10 +57,10 @@ impl SourceSet {
     fn validate(&self) -> Result<(), Error> {
         let findings = claims::findings(&self.claims);
         if !findings.is_empty() {
+            let key = &self.key;
+            let findings = findings.join("\n");
             return Err(bad_request!(
-                "source `{}` returned an invalid claim set (A8 fail-closed):\n{}",
-                self.key,
-                findings.join("\n")
+                "source `{key}` returned an invalid claim set (A8 fail-closed):\n{findings}"
             ));
         }
         Ok(())

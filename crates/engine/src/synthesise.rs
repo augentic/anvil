@@ -252,36 +252,37 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
 // The model may not drop, reorder, or rewrite reconciliation rows.
 fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
     if spec.requirements.len() != rows.len() {
-        return Err(mismatch(&format!(
-            "expected {} requirement blocks, found {}",
-            rows.len(),
-            spec.requirements.len()
-        )));
+        let expected = rows.len();
+        let found = spec.requirements.len();
+        return Err(mismatch(&format!("expected {expected} requirement blocks, found {found}")));
     }
 
     for (requirement, row) in spec.requirements.iter().zip(rows) {
         if requirement.id != row.id {
-            return Err(mismatch(&format!("expected `{}`, found `{}`", row.id, requirement.id)));
+            let expected = &row.id;
+            let found = &requirement.id;
+            return Err(mismatch(&format!("expected `{expected}`, found `{found}`")));
         }
         // Headings are the reconciliation and re-mine-diff identity.
         if requirement.name != row.subject {
+            let id = &row.id;
+            let subject = &row.subject;
+            let found = &requirement.name;
             return Err(mismatch(&format!(
-                "`{}` must head its subject `{}`, found `{}`",
-                row.id, row.subject, requirement.name
+                "`{id}` must head its subject `{subject}`, found `{found}`"
             )));
         }
         if requirement.status != row.status || requirement.tag != row.tag {
+            let id = &row.id;
+            let status = row.status;
             return Err(mismatch(&format!(
-                "`{}` must carry `Status: {}` and its mirroring tag",
-                row.id, row.status
+                "`{id}` must carry `Status: {status}` and its mirroring tag"
             )));
         }
         if requirement.sources != row.sources {
-            return Err(mismatch(&format!(
-                "`{}` must cite `Sources: [{}]`",
-                row.id,
-                row.sources.join(", ")
-            )));
+            let id = &row.id;
+            let sources = row.sources.join(", ");
+            return Err(mismatch(&format!("`{id}` must cite `Sources: [{sources}]`")));
         }
     }
 
@@ -289,5 +290,5 @@ fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
 }
 
 fn mismatch(detail: &str) -> Error {
-    bad_request!("the model answer must render every reconciliation row verbatim: {detail}",)
+    bad_request!("the model answer must render every reconciliation row verbatim: {detail}")
 }

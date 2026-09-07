@@ -30,8 +30,10 @@ pub fn decode(
                      bindings; the file carries the whole binding list"
                 ));
             }
-            let path = preopen_path(Path::new(path))
-                .map_err(|err| bad_request!("invalid argument --config: {}", err.description()))?;
+            let path = preopen_path(Path::new(path)).map_err(|err| {
+                let description = err.description();
+                bad_request!("invalid argument --config: {description}")
+            })?;
             from_file(&path)
         }
         None if adapters.is_empty() && descriptions.is_empty() => discover(),
@@ -43,7 +45,7 @@ pub fn decode(
 // typed; a parse failure still refuses typed.
 fn discover() -> Result<Vec<SourceBinding>, Error> {
     let path = Path::new(CONFIG_FILE);
-    let present = path.try_exists().map_err(|source| server_error!("{CONFIG_FILE} ({source})",))?;
+    let present = path.try_exists().map_err(|source| server_error!("{CONFIG_FILE} ({source})"))?;
     if present { from_file(path) } else { Ok(Vec::new()) }
 }
 
@@ -65,7 +67,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
         let (adapter, text) =
             entry.split_once('=').filter(|(adapter, _)| !adapter.is_empty()).ok_or_else(|| {
                 bad_request!(
-                    "invalid argument --description: expected `<adapter>=<text>`, got `{entry}`",
+                    "invalid argument --description: expected `<adapter>=<text>`, got `{entry}`"
                 )
             })?;
         bindings.push(SourceBinding {
@@ -82,10 +84,8 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
 
 // The operator-owned file: parsed fail-closed, never written by the engine.
 fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
-    let raw = std::fs::read_to_string(path)
-        .map_err(|source| server_error!("{} ({source})", path.display()))?;
-    let file: ConfigFile =
-        toml::from_str(&raw).map_err(|err| bad_request!("{}: {err}", path.display()))?;
+    let raw = std::fs::read_to_string(path).map_err(|source| server_error!("{path} ({source})"))?;
+    let file: ConfigFile = toml::from_str(&raw).map_err(|err| bad_request!("{path}: {err}"))?;
 
     let base = path
         .parent()
@@ -128,7 +128,7 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     let digest = entry
         .digest
         .as_deref()
-        .map(|pin| pin.parse().map_err(|err| bad_request!("source `{name}`: {err}",)))
+        .map(|pin| pin.parse().map_err(|err| bad_request!("source `{name}`: {err}")))
         .transpose()?;
 
     let locations = [
@@ -140,19 +140,19 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     if locations.iter().filter(|present| **present).count() > 1 {
         return Err(bad_request!(
             "source `{name}` names more than one of `path`, `git`, `url`, `description`; exactly \
-             one content key is allowed (omitted means the workspace lend at `.`)",
+             one content key is allowed (omitted means the workspace lend at `.`)"
         ));
     }
     if let Some(remote) = entry.git.as_deref().or(entry.url.as_deref()) {
         if remote.starts_with("git+") {
             return Err(bad_request!(
                 "source `{name}` uses Cargo's machine-written source-id form (`git+…`); write \
-                 the plain URL with an optional `@ref` suffix",
+                 the plain URL with an optional `@ref` suffix"
             ));
         }
         return Err(bad_request!(
             "source `{name}` names a remote location (`git` / `url`); remote read views are \
-             reserved and not yet supported — bind a local `path` or inline `description`",
+             reserved and not yet supported — bind a local `path` or inline `description`"
         ));
     }
 

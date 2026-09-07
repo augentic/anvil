@@ -32,7 +32,8 @@ pub fn id_findings(claims: &[Claim]) -> Vec<String> {
                 ClaimKind::Requirement | ClaimKind::Criterion | ClaimKind::Example
             ) =>
             {
-                findings.push(format!("- claim {index}: `{}` claims require an id", claim.kind));
+                let kind = claim.kind;
+                findings.push(format!("- claim {index}: `{kind}` claims require an id"));
             }
             _ => {}
         }
@@ -48,9 +49,9 @@ pub fn extras_findings(claims: &[Claim]) -> Vec<String> {
         for key in claim.kind.required_extras() {
             if !claim.extras.contains_key(*key) {
                 let label = claim.id.as_deref().unwrap_or("<unnamed>");
+                let kind = claim.kind;
                 findings.push(format!(
-                    "- claim {index}: `{}` claim `{label}` is missing its required `{key}` extra",
-                    claim.kind
+                    "- claim {index}: `{kind}` claim `{label}` is missing its required `{key}` extra"
                 ));
             }
         }
@@ -69,10 +70,8 @@ impl Evidence {
         if findings.is_empty() {
             return Ok(());
         }
-        Err(Error::Internal(format!(
-            "extract answer failed deterministic validation:\n{}",
-            findings.join("\n")
-        )))
+        let findings = findings.join("\n");
+        Err(Error::Internal(format!("extract answer failed deterministic validation:\n{findings}")))
     }
 }
 

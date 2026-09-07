@@ -22,7 +22,7 @@ enum Error {
     ReadRegistry { path: PathBuf, source: io::Error },
 }
 // GOOD — Omnia class via the crate-root macro.
-omnia_guest::server_error!("{} ({source})", path.display())
+omnia_guest::server_error!("{path} ({source})")
 ```
 
 ## One body per command, no wrapper newtype

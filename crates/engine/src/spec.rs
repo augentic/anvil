@@ -93,7 +93,8 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
     let mut seen: Vec<&str> = Vec::new();
     for requirement in &requirements {
         if seen.contains(&requirement.id.as_str()) {
-            findings.push(format!("duplicate requirement id `{}`", requirement.id));
+            let id = &requirement.id;
+            findings.push(format!("duplicate requirement id `{id}`"));
         }
         seen.push(&requirement.id);
     }
@@ -104,10 +105,8 @@ pub fn parse(text: &str) -> Result<Spec, Error> {
             requirements,
         })
     } else {
-        Err(bad_request!(
-            "`spec.md` must parse under the fail-closed spec AST: {}",
-            findings.join("; ")
-        ))
+        let findings = findings.join("; ");
+        Err(bad_request!("`spec.md` must parse under the fail-closed spec AST: {findings}"))
     }
 }
 

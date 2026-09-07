@@ -144,9 +144,10 @@ pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> 
         let input = binding.input()?;
         let resolved = /* … */;
 
-        let evidence = Source::extract(provider, &resolved.id, &input)
+        let id = &resolved.id;
+        let evidence = Source::extract(provider, id, &input)
             .await
-            .map_err(|err| bad_gateway!("source `{}`: {err}", resolved.id))?;
+            .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
 
         let set = SourceSet { /* … */ };
         set.validate()?;

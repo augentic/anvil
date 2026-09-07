@@ -1011,6 +1011,21 @@ async fn corrupt_current() {
     fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
 }
 
+// The store is content-addressed: a committed document rewritten under
+// its id no longer hashes to it, and `show` refuses rather than render
+// bytes the id never named.
+#[tokio::test]
+async fn tampered_revision() {
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    cli_ok(&provider, &["emery", "specify", "docs"]).await;
+    let id = current(&provider.storage);
+
+    provider.storage.insert_object("revisions", &format!("{id}/spec.md"), b"# Rewritten\n");
+
+    fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
+}
+
 // One shared store, two project-scoped views: multi-project isolation
 // is host policy over the engine's flat keys, with no engine change
 // (portable-storage step 8).

@@ -31,10 +31,8 @@ pub fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
 
     for (index, binding) in bindings.iter().enumerate() {
         if bindings[..index].iter().any(|earlier| earlier.key == binding.key) {
-            return Err(bad_request!(
-                "each source binds once: source `{}` is bound twice",
-                binding.key
-            ));
+            let key = &binding.key;
+            return Err(bad_request!("each source binds once: source `{key}` is bound twice"));
         }
         binding.validate()?;
     }
@@ -112,10 +110,11 @@ impl SourceBinding {
     // only a package-shaped selector.
     fn registry_allowed(&self, selector: &AdapterSelector) -> Result<(), Error> {
         if self.registry.is_some() && !matches!(selector, AdapterSelector::Package { .. }) {
+            let key = &self.key;
             return Err(bad_request!(
-                "source `{}` sets `registry` on an adapter the registry never serves; the override \
-                 only applies to registry package references (`<namespace>:<name>@<version>`)",
-                self.key
+                "source `{key}` sets `registry` on an adapter the registry never serves; the \
+                 override only applies to registry package references \
+                 (`<namespace>:<name>@<version>`)"
             ));
         }
         Ok(())
@@ -125,10 +124,10 @@ impl SourceBinding {
     // the loader acquires — a local component path or a registry package.
     fn digest_allowed(&self, selector: &AdapterSelector) -> Result<(), Error> {
         if self.digest.is_some() && matches!(selector, AdapterSelector::Bare { .. }) {
+            let key = &self.key;
             return Err(bad_request!(
-                "source `{}` sets `digest` on a bare adapter name the loader never acquires; pin a \
-                 local component path or an exact registry package reference instead",
-                self.key
+                "source `{key}` sets `digest` on a bare adapter name the loader never acquires; \
+                 pin a local component path or an exact registry package reference instead"
             ));
         }
         Ok(())

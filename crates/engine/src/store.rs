@@ -42,38 +42,42 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         for (name, body) in revision.files() {
             BlobStore::put(self.store, CONTAINER, &format!("{id}/{name}"), body.as_bytes())
                 .await
-                .context("committing a revision document")?;
+                .context("writing a revision document")?;
         }
 
         let expected = observed.current.as_deref().map(str::as_bytes);
         StateStore::cas(self.store, CURRENT, expected, id.as_bytes())
             .await
-            .context("swapping the current revision id")?;
+            .context("swapping current revision")?;
 
-        self.prune(observed, &id).await?;
+        // delete the previous (superseded) revision
+        if let Some(previous) = &observed.current
+            && previous != &id
+        {
+            for name in DOCS {
+                BlobStore::delete(self.store, CONTAINER, &format!("{previous}/{name}"))
+                    .await
+                    .context("deleting the previous revision")?;
+            }
+        }
 
         Ok(id)
     }
 
-    /// Returns the current revision id and its complete document set, or
-    /// `None` before the first commit. Fails closed for a dangling,
-    /// incomplete, or unreadable revision.
-    pub async fn current(&self) -> Result<Option<(String, Revision)>, Error> {
-        let raw = StateStore::get(self.store, CURRENT)
-            .await
-            .context("reading the current revision id")?;
-        let Some(raw) = raw else {
+    /// Returns the current revision and its id, or `None` before the
+    /// first commit. Fails closed for a dangling, incomplete, unreadable,
+    /// or tampered revision.
+    pub async fn current(&self) -> Result<Option<Committed>, Error> {
+        let Some(raw) =
+            StateStore::get(self.store, CURRENT).await.context("getting current revision id")?
+        else {
             return Ok(None);
         };
-        let id = String::from_utf8(raw).map_err(|err| {
-            server_error!(
-                "the current revision id is not UTF-8 ({}); re-run `emery specify` to commit a \
-                 fresh revision",
-                err
-            )
-        })?;
+
+        let id = String::from_utf8(raw).context("parsing revision id to UTF-8")?;
         let revision = self.load(&id).await?;
-        Ok(Some((id, revision)))
+
+        Ok(Some(Committed { id, revision }))
     }
 
     /// Observes CAS input and the outgoing revision without failing.
@@ -113,6 +117,8 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Ok(())
     }
 
+    // The store is content-addressed: documents that no longer hash to
+    // the id they sit under are corruption, not a revision.
     async fn load(&self, id: &str) -> Result<Revision, Error> {
         let spec = self.read(id, DOCS[0]).await?;
         let design = self.read(id, DOCS[1]).await?;
@@ -124,39 +130,10 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         let bytes = BlobStore::get(self.store, CONTAINER, &format!("{id}/{name}"))
             .await
             .context("reading a revision document")?
-            .ok_or_else(|| {
-                server_error!(
-                    "the current revision id names `{}` but `{}` is missing; re-run `emery \
-                     specify` to commit a fresh revision",
-                    id,
-                    name
-                )
-            })?;
+            .ok_or_else(|| server_error!("revision `{id}` does not contain `{name}`"))?;
         String::from_utf8(bytes).map_err(|err| {
-            server_error!(
-                "the current revision id names `{}` but `{}` is not UTF-8 ({}); re-run `emery \
-                 specify` to commit a fresh revision",
-                id,
-                name,
-                err
-            )
+            server_error!("revision `{id}` contains `{name}` but it is not UTF-8 ({err})")
         })
-    }
-
-    // Only the observed predecessor is pruned; other orphaned objects are inert.
-    async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
-        let Some(superseded) = &observed.current else {
-            return Ok(());
-        };
-        if superseded == keep {
-            return Ok(());
-        }
-        for name in DOCS {
-            BlobStore::delete(self.store, CONTAINER, &format!("{superseded}/{name}"))
-                .await
-                .context("pruning the superseded revision")?;
-        }
-        Ok(())
     }
 }
 
@@ -190,6 +167,19 @@ impl Revision {
     }
 }
 
+/// A revision read back under the id storage names it by.
+///
+/// The id is the stored compare-and-swap token, kept beside the
+/// documents rather than derived from them so a reader sees what
+/// storage said; `Store::load` has already checked the two agree.
+#[derive(Clone, Debug)]
+pub struct Committed {
+    /// The stored revision id.
+    pub id: String,
+    /// The revision's documents.
+    pub revision: Revision,
+}
+
 /// The current revision observed before a compare-and-swap commit.
 ///
 /// One observation drives both the CAS and advisory diff.
@@ -204,8 +194,9 @@ pub struct Observation {
 }
 
 impl Observation {
-    pub fn into_outgoing(self) -> Option<(String, Revision)> {
-        self.current.zip(self.outgoing)
+    /// The complete outgoing revision, when one was readable.
+    pub fn into_outgoing(self) -> Option<Committed> {
+        self.current.zip(self.outgoing).map(|(id, revision)| Committed { id, revision })
     }
 }
 
@@ -302,8 +293,8 @@ mod tests {
             "typed failure: {}",
             err.description()
         );
-        let (current, _) = store.current().await.expect("current").expect("committed");
-        assert_eq!(current, winner, "the current id still names the winner");
+        let current = store.current().await.expect("current").expect("committed");
+        assert_eq!(current.id, winner, "the current id still names the winner");
         let spec = memory.object("revisions", &format!("{winner}/spec.md")).expect("winning spec");
         assert_eq!(spec, b"# Spec winner\n", "the winning revision is intact");
     }
