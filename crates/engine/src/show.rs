@@ -1,13 +1,11 @@
-//! # Show operation
-//!
-//! The `Show` operation reads a document from the current specification
-//! revision.
+//! The review operation: read one document of the current
+//! specification revision.
 
 use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::store::Store;
+use crate::store::{Revision, Store};
 
 /// Read one document of the current revision.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -27,6 +25,16 @@ pub enum Document {
     Design,
 }
 
+impl Document {
+    // The one place a document variant meets its revision field.
+    fn body(self, revision: Revision) -> String {
+        match self {
+            Self::Spec => revision.spec,
+            Self::Design => revision.design,
+        }
+    }
+}
+
 /// Successful review result.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -35,7 +43,7 @@ pub struct ShowBody {
     pub revision: String,
     /// Which document `body` carries.
     pub document: Document,
-    /// The document bytes.
+    /// The document body.
     pub body: String,
 }
 
@@ -43,24 +51,18 @@ pub struct ShowBody {
 async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
-    let store = Store::new(context.provider);
+    let Show { document } = input;
 
-    let Some(revision) = store.current().await? else {
+    let Some(revision) = Store::new(context.provider).current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
             description: "no specification revision has been committed".into(),
         });
     };
 
-    let id = revision.id();
-    let body = match input.document {
-        Document::Spec => revision.spec,
-        Document::Design => revision.design,
-    };
-
     Ok(ShowBody {
-        revision: id,
-        document: input.document,
-        body,
+        revision: revision.id(),
+        document,
+        body: document.body(revision),
     })
 }
