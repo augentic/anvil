@@ -3,6 +3,7 @@
 //! Loads plugins from the registry or local filesystem.
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use emery_source::Source;
 use omnia_guest::plugins::{Digest, Location, PluginCache, PluginRef};
@@ -40,12 +41,9 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
     ) -> Result<Loaded, Error> {
         let name = selector.name()?;
 
-        // load the adapter to its routed dispatch id and digest
         let loaded = match selector {
             AdapterSelector::Package {
-                namespace,
-                name,
-                version,
+                namespace, version, ..
             } => {
                 let request = PluginRef::builder()
                     .package(format!("{namespace}:{name}@{version}"))
@@ -53,16 +51,15 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
                     .maybe_digest(pin.cloned())
                     .build();
                 let plugin = Plugins::load(&self.cache, &request).await?;
-                let digest = plugin.digest().clone();
 
                 Loaded {
                     id: plugin.id().to_owned(),
-                    digest: Some(digest),
+                    digest: Some(plugin.digest().clone()),
                 }
             }
             AdapterSelector::Component { path } => {
                 let id = format!("source:{name}");
-                let digest = load_file(&self.cache, &id, path, pin).await?;
+                let digest = self.load_file(&id, path, pin).await?;
 
                 Loaded {
                     id,
@@ -75,10 +72,61 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
             },
         };
 
-        // check the adapter's minimum `emery-version`
-        check_version(self.provider, &name, &loaded.id)?;
+        self.check_version(&name, &loaded.id)?;
 
         Ok(loaded)
+    }
+
+    // The loader reads the file fresh — nothing is mirrored, so a deleted
+    // file refuses on the next run. The engine keeps only the operator-typo
+    // gate: a missing or non-component path refuses typed before any load.
+    async fn load_file(
+        &self, id: &str, path: &Path, pin: Option<&Digest>,
+    ) -> Result<Digest, Error> {
+        let relative = preopen_path(path)?;
+        if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
+            let path = path.display();
+            let relative = relative.display();
+
+            return Err(not_found!(
+                "adapter `{path}` did not resolve to a `.wasm` component at {relative}"
+            ));
+        }
+
+        let request = PluginRef::builder()
+            .package(id)
+            .location(Location::Path(relative.display().to_string()))
+            .maybe_digest(pin.cloned())
+            .build();
+        let plugin = Plugins::load(&self.cache, &request).await?;
+
+        Ok(plugin.digest().clone())
+    }
+
+    // Refuse when the running emery is older than the adapter's minimum.
+    fn check_version(&self, name: &str, id: &str) -> Result<(), Error> {
+        let metadata = Source::metadata(self.provider, id);
+        let Some(adapter_version) = metadata.emery_version.as_deref() else {
+            return Ok(());
+        };
+        let adapter_semver = semver::Version::parse(adapter_version).map_err(|err| {
+            bad_request!(
+                "adapter `{name}` ({id}) has an invalid `emery-version` `{adapter_version}`: {err}"
+            )
+        })?;
+
+        let emery_semver = semver::Version::parse(env!("CARGO_PKG_VERSION"))
+            .expect("CARGO_PKG_VERSION is valid semver");
+        if emery_semver < adapter_semver {
+            return Err(Error::BadRequest {
+                code: "unsupported-version".into(),
+                description: format!(
+                    "adapter {name} ({id}) requires emery {adapter_semver} or newer"
+                ),
+            });
+        }
+
+        Ok(())
     }
 }
 
@@ -91,60 +139,6 @@ pub struct Loaded {
     pub id: String,
     /// Sha256 digest of the loaded component bytes.
     pub digest: Option<Digest>,
-}
-
-// The loader reads the file fresh — nothing is mirrored, so a deleted
-// file refuses on the next run. The engine keeps only the operator-typo
-// gate: a missing or non-component path refuses typed before any load.
-async fn load_file<L: Plugins>(
-    cache: &L, id: &str, path: &Path, pin: Option<&Digest>,
-) -> Result<Digest, Error> {
-    let relative = preopen_path(path)?;
-    if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
-        let path = path.display();
-        let relative = relative.display();
-
-        return Err(not_found!(
-            "adapter `{path}` did not resolve to a `.wasm` component at {relative}"
-        ));
-    }
-
-    let request = PluginRef::builder()
-        .package(id)
-        .location(Location::Path(relative.display().to_string()))
-        .maybe_digest(pin.cloned())
-        .build();
-    let plugin = Plugins::load(cache, &request).await?;
-
-    Ok(plugin.digest().clone())
-}
-
-// Check the adapter's minimum `emery-version` against the running version.
-fn check_version<S: Source>(source: &S, name: &str, id: &str) -> Result<(), Error> {
-    // get the adapter's minimum `emery-version` from its metadata
-    let metadata = Source::metadata(source, id);
-    let Some(adapter_version) = metadata.emery_version.as_deref() else {
-        return Ok(());
-    };
-    let adapter_semver = semver::Version::parse(adapter_version).map_err(|err| {
-        bad_request!(
-            "adapter `{name}` ({id}) has an invalid `emery-version` `{adapter_version}`: {err}"
-        )
-    })?;
-
-    // the running emery version is the crate's own, always valid semver
-    let emery_semver = semver::Version::parse(env!("CARGO_PKG_VERSION"))
-        .expect("CARGO_PKG_VERSION is valid semver");
-
-    // refuse when the running version is older than the adapter's minimum
-    if emery_semver < adapter_semver {
-        return Err(Error::BadRequest {
-            code: "unsupported-version".into(),
-            description: format!("adapter {name} ({id}) requires emery {adapter_semver} or newer"),
-        });
-    }
-
-    Ok(())
 }
 
 /// An operator-supplied adapter reference.
@@ -172,37 +166,46 @@ pub enum AdapterSelector {
     },
 }
 
-impl AdapterSelector {
+impl FromStr for AdapterSelector {
+    type Err = Error;
+
     /// Parses an adapter argument without filesystem access.
     ///
     /// # Errors
     ///
     /// Returns typed errors for malformed values, GitHub URLs, or invalid pins.
-    pub fn parse(value: &str) -> Result<Self, Error> {
+    fn from_str(value: &str) -> Result<Self, Error> {
         if value.trim().is_empty() || value != value.trim() {
             return Err(bad_request!("adapter reference is empty or has surrounding whitespace"));
         }
         if value.starts_with("https://github.com/") {
-            return Err(bad_request!(
-                "adapter `{value}`: GitHub URLs are not supported; use `emery:<name>@<version>` \
-                 or a local `.wasm` path"
-            ));
+            return Err(bad_request!("adapter `{value}`: GitHub URLs are not supported"));
         }
 
-        if let Some(package) = recognize_package(value) {
-            return package;
+        if let Some((namespace, rest)) = value.split_once(':') {
+            // URL authorities and Windows drive paths are not package references.
+            if !rest.starts_with('/') && is_first_party(namespace) {
+                return Self::parse_package(namespace, rest, value);
+            }
         }
-        if let Some((name, version)) = parse_shorthand(value) {
-            return Ok(version.map_or_else(
-                || Self::Bare {
-                    name: name.to_string(),
-                },
-                |version| Self::Package {
-                    namespace: "emery".to_string(),
-                    name: name.to_string(),
-                    version,
-                },
-            ));
+        match value.split_once('@') {
+            // `<name>@<version>` is sugar for the `emery` namespace; a
+            // non-SemVer suffix falls through to the path grammar.
+            Some((name, version)) if is_first_party(name) => {
+                if let Ok(version) = semver::Version::parse(version) {
+                    return Ok(Self::Package {
+                        namespace: "emery".to_string(),
+                        name: name.to_string(),
+                        version,
+                    });
+                }
+            }
+            None if is_first_party(value) => {
+                return Ok(Self::Bare {
+                    name: value.to_string(),
+                });
+            }
+            Some(_) | None => {}
         }
 
         let path = value.strip_prefix("file://").unwrap_or(value);
@@ -210,7 +213,9 @@ impl AdapterSelector {
             path: PathBuf::from(path),
         })
     }
+}
 
+impl AdapterSelector {
     /// Returns the kebab-case adapter name.
     ///
     /// # Errors
@@ -219,63 +224,38 @@ impl AdapterSelector {
     pub fn name(&self) -> Result<String, Error> {
         match self {
             Self::Bare { name } | Self::Package { name, .. } => Ok(name.clone()),
-            Self::Component { path } => component_name(path),
+            Self::Component { path } => {
+                let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
+                    let path = path.display();
+                    bad_request!("cannot derive adapter name from {path}")
+                })?;
+                let stem = stem
+                    .strip_prefix("emery_")
+                    .or_else(|| stem.strip_prefix("emery-"))
+                    .unwrap_or(stem);
+                Ok(stem.replace('_', "-"))
+            }
         }
     }
-}
 
-// The kebab-case adapter name of a component filename.
-fn component_name(path: &Path) -> Result<String, Error> {
-    let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
-        let path = path.display();
-        bad_request!("cannot derive adapter name from {path}")
-    })?;
-    let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
-    Ok(stem.replace('_', "-"))
-}
-
-// `None` means another selector grammar may handle the value.
-fn recognize_package(value: &str) -> Option<Result<AdapterSelector, Error>> {
-    let (namespace, rest) = value.split_once(':')?;
-    // URL authorities and Windows drive paths are not package references.
-    if rest.starts_with('/') || !is_first_party(namespace) {
-        return None;
-    }
-    Some(parse_package(namespace, rest, value))
-}
-
-fn parse_package(namespace: &str, rest: &str, original: &str) -> Result<AdapterSelector, Error> {
-    let (name, version) = rest.split_once('@').ok_or_else(|| {
-        bad_request!(
-            "adapter `{original}` is missing `@<version>` (expected \
-             `{namespace}:<name>@<version>`)"
-        )
-    })?;
-    if name.is_empty() {
-        return Err(bad_request!("adapter `{original}` is missing a name before `@`"));
-    }
-    let version = semver::Version::parse(version).map_err(|err| {
-        bad_request!("adapter `{original}` has an invalid version `{version}`: {err}")
-    })?;
-    Ok(AdapterSelector::Package {
-        namespace: namespace.to_string(),
-        name: name.to_string(),
-        version,
-    })
-}
-
-// `None` lets the component-path grammar handle the value.
-fn parse_shorthand(value: &str) -> Option<(&str, Option<semver::Version>)> {
-    if value.contains('/') || value.contains(':') {
-        return None;
-    }
-    match value.split_once('@') {
-        Some((name, reference)) if is_first_party(name) => {
-            let version = semver::Version::parse(reference).ok()?;
-            Some((name, Some(version)))
+    fn parse_package(namespace: &str, rest: &str, original: &str) -> Result<Self, Error> {
+        let (name, version) = rest.split_once('@').ok_or_else(|| {
+            bad_request!(
+                "adapter `{original}` is missing `@<version>` (expected \
+                 `{namespace}:<name>@<version>`)"
+            )
+        })?;
+        if name.is_empty() {
+            return Err(bad_request!("adapter `{original}` is missing a name before `@`"));
         }
-        None if is_first_party(value) => Some((value, None)),
-        Some(_) | None => None,
+        let version = semver::Version::parse(version).map_err(|err| {
+            bad_request!("adapter `{original}` has an invalid version `{version}`: {err}")
+        })?;
+        Ok(Self::Package {
+            namespace: namespace.to_string(),
+            name: name.to_string(),
+            version,
+        })
     }
 }
 

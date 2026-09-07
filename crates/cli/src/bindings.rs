@@ -54,7 +54,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
     let mut bindings = Vec::new();
     for value in adapters {
         bindings.push(SourceBinding {
-            key: AdapterSelector::parse(value)?.name()?,
+            key: value.parse::<AdapterSelector>()?.name()?,
             adapter: value.clone(),
             content: BindingContent::Workspace(".".to_string()),
             digest: None,
@@ -70,7 +70,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
                 )
             })?;
         bindings.push(SourceBinding {
-            key: AdapterSelector::parse(adapter)?.name()?,
+            key: adapter.parse::<AdapterSelector>()?.name()?,
             adapter: adapter.to_string(),
             content: BindingContent::Description(text.to_string()),
             digest: None,
@@ -129,7 +129,7 @@ struct SourceEntry {
 
 fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     let name = &entry.name;
-    let selector = AdapterSelector::parse(&entry.adapter)?;
+    let selector: AdapterSelector = entry.adapter.parse()?;
     let digest = entry
         .digest
         .as_deref()

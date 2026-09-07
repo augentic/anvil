@@ -65,7 +65,7 @@ impl SourceBinding {
     pub(crate) async fn load<P: Source + Plugins>(
         &self, loader: &Loader<'_, P>,
     ) -> Result<Loaded, Error> {
-        let selector = AdapterSelector::parse(&self.adapter)?;
+        let selector: AdapterSelector = self.adapter.parse()?;
         loader.load(&selector, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
@@ -96,7 +96,7 @@ impl SourceBinding {
     }
 
     fn validate(&self) -> Result<(), Error> {
-        let selector = AdapterSelector::parse(&self.adapter)?;
+        let selector: AdapterSelector = self.adapter.parse()?;
         selector.name()?;
         self.registry_allowed(&selector)?;
         self.digest_allowed(&selector)?;
