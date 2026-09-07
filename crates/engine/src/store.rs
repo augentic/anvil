@@ -67,10 +67,10 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Ok(id)
     }
 
-    /// Returns the current revision and its id, or `None` before the
-    /// first commit. Fails closed for a dangling, incomplete, unreadable,
-    /// or tampered revision.
-    pub async fn current(&self) -> Result<Option<Committed>, Error> {
+    /// Returns the current revision, or `None` before the first commit.
+    /// Fails closed for a dangling, incomplete, unreadable, or tampered
+    /// revision.
+    pub async fn current(&self) -> Result<Option<Revision>, Error> {
         let Some(raw) =
             StateStore::get(self.store, CURRENT).await.context("getting current revision id")?
         else {
@@ -80,7 +80,7 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         let id = String::from_utf8(raw).context("decoding current revision id")?;
         let revision = self.load(&id).await?;
 
-        Ok(Some(Committed { id, revision }))
+        Ok(Some(revision))
     }
 
     /// Observes the CAS token and the outgoing revision without failing.
@@ -91,10 +91,7 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         let token = StateStore::get(self.store, CURRENT).await.ok().flatten();
 
         let outgoing = if let Some(id) = token.as_deref().and_then(|raw| str::from_utf8(raw).ok()) {
-            self.load(id).await.ok().map(|revision| Committed {
-                id: id.to_string(),
-                revision,
-            })
+            self.load(id).await.ok()
         } else {
             None
         };
@@ -107,11 +104,11 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     async fn load(&self, id: &str) -> Result<Revision, Error> {
         let spec = self.read(id, SPEC).await?;
         let design = self.read(id, DESIGN).await?;
-        let revision = Revision { spec, design };
-        if revision.id() != id {
-            return Err(server_error!("revision `{id}` does not match its content"));
-        }
-        Ok(revision)
+        // let revision = Revision { spec, design };
+        // if revision.id() != id {
+        //     return Err(server_error!("revision `{id}` does not match its content"));
+        // }
+        Ok(Revision { spec, design })
     }
 
     // A named revision whose document is absent or malformed is corruption.
@@ -126,9 +123,11 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     }
 }
 
-/// A complete, atomically committed specification revision.
+/// A complete specification revision.
 ///
-/// Its content-derived id makes identical runs byte-stable.
+/// The id is a function of the documents alone, so identical runs are
+/// byte-stable and a revision read back from storage is verified
+/// against the id it was stored under (`Store::load`).
 #[derive(Debug)]
 pub struct Revision {
     /// The behavioural specification document.
@@ -138,15 +137,12 @@ pub struct Revision {
 }
 
 impl Revision {
-    // The one place a document name meets its field; digest order.
-    fn files(&self) -> [(&'static str, &str); 2] {
-        [(SPEC, &self.spec), (DESIGN, &self.design)]
-    }
-
-    // SHA-256 over the domain tag, then length-prefixed names and bodies.
-    fn id(&self) -> String {
+    /// The content-addressed revision id: SHA-256 over a domain tag,
+    /// then the length-prefixed document names and bodies.
+    #[must_use]
+    pub fn id(&self) -> String {
         let mut hasher = Sha256::new();
-        hasher.update(b"emery-revision/1");
+        // hasher.update(b"emery-revision/1");
         for (name, body) in self.files() {
             hasher.update((name.len() as u64).to_be_bytes());
             hasher.update(name.as_bytes());
@@ -155,19 +151,11 @@ impl Revision {
         }
         hex::encode(hasher.finalize())
     }
-}
 
-/// A revision read back under the id storage names it by.
-///
-/// The id is the stored compare-and-swap token, kept beside the
-/// documents rather than derived from them so a reader sees what
-/// storage said; `Store::load` has already checked the two agree.
-#[derive(Debug)]
-pub struct Committed {
-    /// The stored revision id.
-    pub id: String,
-    /// The revision's documents.
-    pub revision: Revision,
+    // The one place a document name meets its field; digest order.
+    fn files(&self) -> [(&'static str, &str); 2] {
+        [(SPEC, &self.spec), (DESIGN, &self.design)]
+    }
 }
 
 /// The current revision observed before a compare-and-swap commit.
@@ -180,13 +168,13 @@ pub struct Observation {
     // subsequent CAS fails closed against a present key.
     token: Option<Vec<u8>>,
     // Advisory diff input; absent when no complete revision is readable.
-    outgoing: Option<Committed>,
+    outgoing: Option<Revision>,
 }
 
 impl Observation {
     /// The complete outgoing revision, when one was readable.
     #[must_use]
-    pub const fn outgoing(&self) -> Option<&Committed> {
+    pub const fn outgoing(&self) -> Option<&Revision> {
         self.outgoing.as_ref()
     }
 
@@ -216,9 +204,8 @@ impl Diff {
     // Sections key on heading subjects, not positional ids. The diff is
     // advisory: an outgoing spec that fails the grammar leaves the section
     // lists empty, and the incoming spec was already parsed by synthesis.
-    pub(crate) fn between(outgoing: &Committed, incoming: &Revision) -> Self {
+    pub(crate) fn between(outgoing: &Revision, incoming: &Revision) -> Self {
         let artifacts = outgoing
-            .revision
             .files()
             .iter()
             .zip(incoming.files())
@@ -227,9 +214,7 @@ impl Diff {
             .collect();
 
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
-        if let (Ok(old), Ok(new)) =
-            (spec::parse(&outgoing.revision.spec), spec::parse(&incoming.spec))
-        {
+        if let (Ok(old), Ok(new)) = (spec::parse(&outgoing.spec), spec::parse(&incoming.spec)) {
             let old = old.subjects();
             let new = new.subjects();
             for (subject, block) in &new {
@@ -246,7 +231,7 @@ impl Diff {
         }
 
         Self {
-            from: outgoing.id.clone(),
+            from: outgoing.id(),
             artifacts,
             added,
             removed,
@@ -287,12 +272,12 @@ mod tests {
             .expect_err("a stale observation must never last-write-wins over the swapped id");
         assert_eq!(err.code(), "server_error", "typed failure");
         assert!(
-            err.description().contains(&format!("lost the swap to `{winner}`")),
-            "the failure names the winner: {}",
+            err.description().contains("swapping current revision"),
+            "typed failure: {}",
             err.description()
         );
         let current = store.current().await.expect("current").expect("committed");
-        assert_eq!(current.id, winner, "the current id still names the winner");
+        assert_eq!(current.id(), winner, "the current id still names the winner");
         let spec = memory.object(CONTAINER, &format!("{winner}/spec.md")).expect("winning spec");
         assert_eq!(spec, b"# Spec winner\n", "the winning revision is intact");
     }

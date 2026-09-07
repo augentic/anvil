@@ -5,7 +5,7 @@ use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::store::{Committed, Store};
+use crate::store::Store;
 
 /// Read one document of the current revision.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -42,13 +42,14 @@ async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
     let store = Store::new(context.provider);
-    let Some(Committed { id, revision }) = store.current().await? else {
+    let Some(revision) = store.current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
             description: "no specification revision has been committed".into(),
         });
     };
 
+    let id = revision.id();
     let body = match input.document {
         Document::Spec => revision.spec,
         Document::Design => revision.design,
