@@ -11,7 +11,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use emery_engine::CURRENT;
+use emery_engine::{CONTAINER, CURRENT};
 use emery_source::types::{Authority, ClaimKind, SourceContent};
 use emery_source::{DispatchError, types};
 use omnia_guest::model::Error as ModelError;
@@ -349,7 +349,7 @@ async fn remine_supersedes() {
     let second = current(&provider.storage);
     assert_ne!(first, second, "changed documents commit a new revision");
     assert!(
-        provider.storage.object("revisions", &format!("{first}/spec.md")).is_none(),
+        provider.storage.object(CONTAINER, &format!("{first}/spec.md")).is_none(),
         "the superseded revision is pruned"
     );
     let spec = document(&provider.storage, &second, "spec.md");
@@ -1021,9 +1021,62 @@ async fn tampered_revision() {
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let id = current(&provider.storage);
 
-    provider.storage.insert_object("revisions", &format!("{id}/spec.md"), b"# Rewritten\n");
+    provider.storage.insert_object(CONTAINER, &format!("{id}/spec.md"), b"# Rewritten\n");
 
     fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
+}
+
+// Regeneration is the recovery path: a `specify` over a tampered
+// predecessor commits, prunes the tampered blobs, and suppresses only
+// the advisory diff.
+#[tokio::test]
+async fn specify_repairs_tampered() {
+    let first_spec = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let second_spec = first_spec.replace("hello", "howdy");
+    let second_design = DESIGN_ANSWER.replace("hello", "howdy");
+    let provider = Provider::answering([
+        first_spec.as_str(),
+        DESIGN_ANSWER,
+        second_spec.as_str(),
+        second_design.as_str(),
+    ]);
+    cli_ok(&provider, &["emery", "specify", "docs"]).await;
+    let first = current(&provider.storage);
+    provider.storage.insert_object(CONTAINER, &format!("{first}/spec.md"), b"# Rewritten\n");
+
+    let resp = cli_ok(&provider, &["emery", "specify", "docs"]).await;
+
+    let stdout = String::from_utf8_lossy(&resp.stdout);
+    assert!(!stdout.contains("diff vs"), "an unreadable predecessor yields no diff: {stdout}");
+    let second = current(&provider.storage);
+    assert_ne!(first, second, "the repaired store names the new revision");
+    for name in ["spec.md", "design.md"] {
+        assert!(
+            provider.storage.object(CONTAINER, &format!("{first}/{name}")).is_none(),
+            "the tampered predecessor is pruned: {name}"
+        );
+    }
+    let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
+    assert!(String::from_utf8_lossy(&shown.stdout).contains("howdy"), "show renders the repair");
+    provider.model.assert_exhausted();
+}
+
+// The current id is a raw compare-and-swap token: bytes that decode to
+// no id fail `show` closed, yet the next `specify` swaps over them, so
+// a corrupt store never dead-ends the grammar.
+#[tokio::test]
+async fn specify_repairs_current() {
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    provider.storage.insert_state(CURRENT, b"\xff\xfe");
+    fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
+
+    cli_ok(&provider, &["emery", "specify", "docs"]).await;
+
+    let id = current(&provider.storage);
+    assert!(provider.storage.object(CONTAINER, &format!("{id}/spec.md")).is_some());
+    cli_ok(&provider, &["emery", "show", "spec"]).await;
+    provider.model.assert_exhausted();
 }
 
 // One shared store, two project-scoped views: multi-project isolation
@@ -1052,17 +1105,19 @@ async fn multi_project_isolation() {
 
     // Every write landed under its project prefix; nothing landed flat.
     assert!(shared.state(CURRENT).is_none(), "no unprefixed current id exists");
-    assert!(shared.objects("revisions").is_empty(), "no unprefixed revision exists");
+    assert!(shared.objects(CONTAINER).is_empty(), "no unprefixed revision exists");
 
     let id_alpha = project_current(&shared, "alpha");
     let id_beta = project_current(&shared, "beta");
     assert_ne!(id_alpha, id_beta, "distinct documents commit distinct revisions");
 
     // Each project's `show` renders its own committed bytes alone.
-    let spec_alpha =
-        shared.object("alpha/revisions", &format!("{id_alpha}/spec.md")).expect("spec.md");
-    let spec_beta =
-        shared.object("beta/revisions", &format!("{id_beta}/spec.md")).expect("spec.md");
+    let spec_alpha = shared
+        .object(&format!("alpha/{CONTAINER}"), &format!("{id_alpha}/spec.md"))
+        .expect("spec.md");
+    let spec_beta = shared
+        .object(&format!("beta/{CONTAINER}"), &format!("{id_beta}/spec.md"))
+        .expect("spec.md");
     let shown = cli_ok(&alpha, &["emery", "show", "spec"]).await;
     assert_eq!(shown.stdout, spec_alpha, "alpha shows its own revision");
     let shown = cli_ok(&beta, &["emery", "show", "spec"]).await;
@@ -1082,7 +1137,7 @@ fn current(storage: &Memory) -> String {
 
 // Reads a committed revision document from the store.
 fn document(storage: &Memory, id: &str, name: &str) -> Vec<u8> {
-    storage.object("revisions", &format!("{id}/{name}")).unwrap_or_else(|| panic!("{name}"))
+    storage.object(CONTAINER, &format!("{id}/{name}")).unwrap_or_else(|| panic!("{name}"))
 }
 
 // Reads a namespaced project's current revision id from the shared store.

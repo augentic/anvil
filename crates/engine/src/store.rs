@@ -5,7 +5,7 @@
 //! revision is identified by its content digest, never a sequence number.
 
 use anyhow::Context;
-use omnia_guest::{BlobStore, Error, StateStore, server_error};
+use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -14,8 +14,12 @@ use crate::spec;
 /// Keyvalue key holding the current revision id.
 pub const CURRENT: &str = "current-revision";
 
-const CONTAINER: &str = "revisions";
-const DOCS: [&str; 2] = ["spec.md", "design.md"];
+/// Blobstore container holding every revision's documents under `<id>/`.
+pub const CONTAINER: &str = "revisions";
+
+const SPEC: &str = "spec.md";
+const DESIGN: &str = "design.md";
+const DOMAIN: &[u8] = b"emery-revision/1";
 
 /// Revisions over a deployment's storage capabilities.
 #[derive(Clone, Copy, Debug)]
@@ -32,35 +36,34 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
 
     /// Commits `revision` by writing its documents, swapping the current
     /// id, and pruning its predecessor; returns the committed revision id.
-    /// Fails if the observation is stale.
+    ///
+    /// Fails if `observed` is stale or storage refuses the write. A lost
+    /// swap leaves the written documents as an inert, unreferenced orphan.
     pub async fn commit(
-        &self, revision: &Revision, observed: &Observation,
+        &self, revision: &Revision, observed: Observation,
     ) -> Result<String, Error> {
         if !BlobStore::container_exists(self.store, CONTAINER).await? {
             BlobStore::create_container(self.store, CONTAINER).await?;
         }
 
         let id = revision.id();
-
         for (name, body) in revision.files() {
             BlobStore::put(self.store, CONTAINER, &format!("{id}/{name}"), body.as_bytes())
                 .await
                 .context("writing revision document")?;
         }
 
-        let expected = observed.current.as_deref().map(str::as_bytes);
-        StateStore::cas(self.store, CURRENT, expected, id.as_bytes())
+        StateStore::cas(self.store, CURRENT, observed.token.as_deref(), id.as_bytes())
             .await
             .context("swapping current revision")?;
 
-        // delete the previous (superseded) revision
-        if let Some(previous) = &observed.current
-            && previous != &id
-        {
-            for name in DOCS {
-                BlobStore::delete(self.store, CONTAINER, &format!("{previous}/{name}"))
-                    .await
-                    .context("deleting previous revision")?;
+        // The swap has landed, so a prune failure never reports a durable
+        // commit as failed; the leftover is a content-addressed, inert orphan.
+        if let Some(previous) = observed.previous().filter(|previous| *previous != id) {
+            // The schema is fixed: the incoming names are the predecessor's.
+            for (name, _) in revision.files() {
+                let _ =
+                    BlobStore::delete(self.store, CONTAINER, &format!("{previous}/{name}")).await;
             }
         }
 
@@ -77,33 +80,36 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
             return Ok(None);
         };
 
-        let id = String::from_utf8(raw).context("parsing revision id to UTF-8")?;
+        let id = String::from_utf8(raw).context("decoding current revision id")?;
         let revision = self.load(&id).await?;
 
         Ok(Some(Committed { id, revision }))
     }
 
-    /// Observes CAS input and the outgoing revision without failing.
+    /// Observes the CAS token and the outgoing revision without failing.
     ///
     /// Corrupt or unreadable state suppresses only the advisory diff;
     /// the following CAS remains authoritative and fail-closed.
     pub async fn observe(&self) -> Observation {
-        let current = StateStore::get(self.store, CURRENT)
-            .await
-            .ok()
-            .flatten()
-            .and_then(|raw| String::from_utf8(raw).ok());
+        let token = StateStore::get(self.store, CURRENT).await.ok().flatten();
 
-        let outgoing = if let Some(id) = &current { self.load(id).await.ok() } else { None };
+        let outgoing = if let Some(id) = token.as_deref().and_then(|raw| str::from_utf8(raw).ok()) {
+            self.load(id).await.ok().map(|revision| Committed {
+                id: id.to_string(),
+                revision,
+            })
+        } else {
+            None
+        };
 
-        Observation { current, outgoing }
+        Observation { token, outgoing }
     }
 
     // The store is content-addressed: documents that no longer hash to
     // the id they sit under are corruption, not a revision.
     async fn load(&self, id: &str) -> Result<Revision, Error> {
-        let spec = self.read(id, DOCS[0]).await?;
-        let design = self.read(id, DOCS[1]).await?;
+        let spec = self.read(id, SPEC).await?;
+        let design = self.read(id, DESIGN).await?;
         let revision = Revision { spec, design };
         if revision.id() != id {
             return Err(server_error!("revision `{id}` does not match its content"));
@@ -117,16 +123,16 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
             .await
             .context("reading revision document")?
             .ok_or_else(|| server_error!("revision `{id}` does not contain `{name}`"))?;
-        String::from_utf8(bytes).map_err(|err| {
-            server_error!("revision `{id}` contains `{name}` but it is not UTF-8 ({err})")
-        })
+        let body = String::from_utf8(bytes)
+            .with_context(|| format!("revision `{id}` contains `{name}` but it is not UTF-8"))?;
+        Ok(body)
     }
 }
 
 /// A complete, atomically committed specification revision.
 ///
 /// Its content-derived id makes identical runs byte-stable.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Revision {
     /// The behavioural specification document.
     pub spec: String,
@@ -135,14 +141,15 @@ pub struct Revision {
 }
 
 impl Revision {
-    // Documents in digest order.
+    // The one place a document name meets its field; digest order.
     fn files(&self) -> [(&'static str, &str); 2] {
-        [(DOCS[0], &self.spec), (DOCS[1], &self.design)]
+        [(SPEC, &self.spec), (DESIGN, &self.design)]
     }
 
-    // SHA-256 over length-prefixed names and bodies.
+    // SHA-256 over the domain tag, then length-prefixed names and bodies.
     fn id(&self) -> String {
         let mut hasher = Sha256::new();
+        hasher.update(DOMAIN);
         for (name, body) in self.files() {
             hasher.update((name.len() as u64).to_be_bytes());
             hasher.update(name.as_bytes());
@@ -158,7 +165,7 @@ impl Revision {
 /// The id is the stored compare-and-swap token, kept beside the
 /// documents rather than derived from them so a reader sees what
 /// storage said; `Store::load` has already checked the two agree.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Committed {
     /// The stored revision id.
     pub id: String,
@@ -168,21 +175,27 @@ pub struct Committed {
 
 /// The current revision observed before a compare-and-swap commit.
 ///
-/// One observation drives both the CAS and advisory diff.
-#[derive(Clone, Debug)]
+/// One observation drives one CAS and its advisory diff.
+#[derive(Debug)]
 pub struct Observation {
-    // The current revision id, which `commit` expects and then prunes.
-    // Absent before the first commit; an unreadable or non-UTF-8 value
-    // also reads as absent so the subsequent CAS fails closed.
-    current: Option<String>,
+    // The raw CAS token exactly as storage holds it. Absent before the
+    // first commit; also absent when storage could not be read, so the
+    // subsequent CAS fails closed against a present key.
+    token: Option<Vec<u8>>,
     // Advisory diff input; absent when no complete revision is readable.
-    outgoing: Option<Revision>,
+    outgoing: Option<Committed>,
 }
 
 impl Observation {
     /// The complete outgoing revision, when one was readable.
-    pub fn into_outgoing(self) -> Option<Committed> {
-        self.current.zip(self.outgoing).map(|(id, revision)| Committed { id, revision })
+    #[must_use]
+    pub const fn outgoing(&self) -> Option<&Committed> {
+        self.outgoing.as_ref()
+    }
+
+    // The predecessor the token names; a non-UTF-8 token names no blobs.
+    fn previous(&self) -> Option<&str> {
+        self.token.as_deref().and_then(|raw| str::from_utf8(raw).ok())
     }
 }
 
@@ -203,10 +216,12 @@ pub struct Diff {
 }
 
 impl Diff {
-    // Sections key on heading subjects, not positional ids. Because the
-    // diff is advisory, an unparseable old spec leaves section lists empty.
-    pub(crate) fn between(from: String, outgoing: &Revision, incoming: &Revision) -> Self {
+    // Sections key on heading subjects, not positional ids. The diff is
+    // advisory: an outgoing spec that fails the grammar leaves the section
+    // lists empty, and the incoming spec was already parsed by synthesis.
+    pub(crate) fn between(outgoing: &Committed, incoming: &Revision) -> Self {
         let artifacts = outgoing
+            .revision
             .files()
             .iter()
             .zip(incoming.files())
@@ -215,7 +230,9 @@ impl Diff {
             .collect();
 
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
-        if let (Ok(old), Ok(new)) = (spec::parse(&outgoing.spec), spec::parse(&incoming.spec)) {
+        if let (Ok(old), Ok(new)) =
+            (spec::parse(&outgoing.revision.spec), spec::parse(&incoming.spec))
+        {
             let old = old.subjects();
             let new = new.subjects();
             for (subject, block) in &new {
@@ -232,7 +249,7 @@ impl Diff {
         }
 
         Self {
-            from,
+            from: outgoing.id.clone(),
             artifacts,
             added,
             removed,
@@ -240,13 +257,11 @@ impl Diff {
         }
     }
 
-    /// Returns whether no artifact or section differs.
+    /// Returns whether the revisions are byte-identical; identical bytes
+    /// cannot yield section differences.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.artifacts.is_empty()
-            && self.added.is_empty()
-            && self.removed.is_empty()
-            && self.changed.is_empty()
     }
 }
 
@@ -257,7 +272,7 @@ impl Diff {
 mod tests {
     use omnia_test::guest::Memory;
 
-    use super::{Revision, Store};
+    use super::{CONTAINER, Revision, Store};
 
     #[tokio::test]
     async fn concurrent_commit_conflicts() {
@@ -267,21 +282,21 @@ mod tests {
         // Both runs observe the empty store; the winner swaps first.
         let stale = store.observe().await;
         let observed = store.observe().await;
-        let winner = store.commit(&revision("# Spec winner\n"), &observed).await.expect("commit");
+        let winner = store.commit(&revision("# Spec winner\n"), observed).await.expect("commit");
 
         let err = store
-            .commit(&revision("# Spec loser\n"), &stale)
+            .commit(&revision("# Spec loser\n"), stale)
             .await
             .expect_err("a stale observation must never last-write-wins over the swapped id");
         assert_eq!(err.code(), "server_error", "typed failure");
         assert!(
-            err.description().contains("swapping current revision"),
-            "typed failure: {}",
+            err.description().contains(&format!("lost the swap to `{winner}`")),
+            "the failure names the winner: {}",
             err.description()
         );
         let current = store.current().await.expect("current").expect("committed");
         assert_eq!(current.id, winner, "the current id still names the winner");
-        let spec = memory.object("revisions", &format!("{winner}/spec.md")).expect("winning spec");
+        let spec = memory.object(CONTAINER, &format!("{winner}/spec.md")).expect("winning spec");
         assert_eq!(spec, b"# Spec winner\n", "the winning revision is intact");
     }
 

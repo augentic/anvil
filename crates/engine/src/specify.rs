@@ -31,7 +31,8 @@ pub struct SpecifyBody {
     pub requirements: usize,
     /// Number of extracted sources.
     pub sources: usize,
-    /// Diff from the predecessor; absent on the first run.
+    /// Diff from the predecessor; absent on the first run and when the
+    /// superseded revision was unreadable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
     /// Resolved digests of loader-loaded adapters; commit one as its
@@ -66,11 +67,11 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
         design: documents.design,
     };
     let store = Store::new(context.provider);
-    // One observation feeds both the CAS expected value and the
-    // re-mine diff, computed in memory and emitted only here.
+    // One observation feeds both the re-mine diff, computed in memory and
+    // emitted only here, and the CAS that consumes it.
     let observed = store.observe().await;
-    let id = store.commit(&revision, &observed).await?;
-    let diff = observed.into_outgoing().map(|og| Diff::between(og.id, &og.revision, &revision));
+    let diff = observed.outgoing().map(|outgoing| Diff::between(outgoing, &revision));
+    let id = store.commit(&revision, observed).await?;
 
     let digests = sets
         .iter()
