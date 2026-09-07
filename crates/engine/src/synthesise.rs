@@ -90,9 +90,8 @@ pub async fn synthesise<M: Model>(
     Ok(Revision { spec, design })
 }
 
-/// Provenance a `spec.md` requirement must preserve. The id is
-/// positional, the heading tag mirrors the status, the sources are the
-/// contributors in order, and a divergence's winner is the first.
+/// Provenance a `spec.md` requirement must preserve; the id is positional
+/// and the tag, sources, and divergence winner derive from these fields.
 #[derive(Debug, Clone)]
 pub struct Row {
     /// Claim-group subject or appended gap description.

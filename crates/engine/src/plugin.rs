@@ -8,8 +8,7 @@ use std::str::FromStr;
 use emery_source::Source;
 use omnia_guest::plugins::{Digest, Location, Plugin, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
-use serde::de::Error as _;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::{is_kebab, preopen_path};
 
@@ -98,8 +97,10 @@ impl From<Plugin> for Loaded {
     }
 }
 
-/// An operator-supplied adapter reference.
-#[derive(Debug, Clone)]
+/// An operator-supplied adapter reference; on the wire it is the operator
+/// string, parsed on the way in.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
 pub enum AdapterRef {
     /// Package reference (`emery:omnia@1.0.0`, `omnia@1.0.0`, etc.).
     Package {
@@ -236,11 +237,8 @@ impl AdapterRef {
             Self::Package { .. } => {
                 (self.to_string(), Location::Registry(registry.map(ToOwned::to_owned)))
             }
-            // The host loader reads the file fresh — nothing is mirrored, so
-            // a deleted file refuses on the next run — and would refuse a
-            // missing path itself. The engine keeps only the operator-typo
-            // gate so a mistyped path lands on `not_found`, the class docs
-            // and skills branch on, rather than the loader's `refused`.
+            // The loader reads the file fresh and refuses a missing path
+            // itself; this typo gate only lands it on `not_found` instead.
             Self::Component { name, path } => {
                 let relative = preopen_path(path)?;
                 if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
@@ -265,18 +263,16 @@ impl AdapterRef {
     }
 }
 
-// On the wire a selector is its operator string, parsed on the way in
-// so a binding never carries an unparsed reference.
-impl Serialize for AdapterRef {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.collect_str(self)
+impl TryFrom<String> for AdapterRef {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Error> {
+        value.parse()
     }
 }
 
-impl<'de> Deserialize<'de> for AdapterRef {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        String::deserialize(deserializer)?
-            .parse()
-            .map_err(|err: Error| D::Error::custom(err.description()))
+impl From<AdapterRef> for String {
+    fn from(selector: AdapterRef) -> Self {
+        selector.to_string()
     }
 }

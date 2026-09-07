@@ -81,9 +81,8 @@ impl SourceBinding {
         })
     }
 
-    // The endpoint override only steers registry acquisition and the pin
-    // binds exact component bytes, so each rides only the selector shapes
-    // the loader acquires that way; the root is the one `input` builds.
+    // `registry` steers only registry acquisition and `digest` pins only
+    // loader-acquired bytes; the root rule is the one `input` applies.
     fn validate(&self) -> Result<(), Error> {
         let key = &self.key;
         if self.registry.is_some() && !matches!(self.adapter, AdapterRef::Package { .. }) {

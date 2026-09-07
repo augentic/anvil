@@ -45,9 +45,8 @@ pub fn preopen_path(path: &Path) -> Result<PathBuf, Error> {
     Ok(if normalized.as_os_str().is_empty() { PathBuf::from(".") } else { normalized })
 }
 
-// The kebab-case grammar shared by adapter names, binding keys, and the
-// `Sources:` keys a spec cites: `[a-z][a-z0-9-]*`, no doubled or
-// trailing dash.
+// Kebab case for adapter names, binding keys, and cited `Sources:`
+// keys: `[a-z][a-z0-9-]*` with no doubled or trailing dash.
 pub(crate) fn is_kebab(value: &str) -> bool {
     value.starts_with(|c: char| c.is_ascii_lowercase())
         && value.split('-').all(|segment| {

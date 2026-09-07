@@ -33,12 +33,10 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Self { store }
     }
 
-    /// Commits `revision`: observes the current id once, diffs against
-    /// the readable predecessor, writes the documents, swaps the current
-    /// id, and prunes the predecessor.
+    /// Commits `revision` — diff against the readable predecessor, write,
+    /// swap the current id, prune — returning the id with the diff.
     ///
-    /// Fails if another run swapped the id since it was observed or
-    /// storage refuses the write.
+    /// Fails if another run swapped the id first or storage refuses the write.
     pub async fn commit(&self, revision: &Revision) -> Result<Committed, Error> {
         // One observation feeds both the advisory diff and the CAS.
         let observed = self.observe().await;
@@ -48,9 +46,8 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Ok(Committed { id, diff })
     }
 
-    // Writes the documents and swaps the current id against `observed`.
-    // A lost swap leaves the written documents as an inert, unreferenced
-    // orphan.
+    // Writes the documents and swaps the current id against `observed`;
+    // a lost swap leaves the documents as an inert, unreferenced orphan.
     async fn swap(&self, revision: &Revision, observed: Observation) -> Result<String, Error> {
         if !BlobStore::container_exists(self.store, CONTAINER).await? {
             BlobStore::create_container(self.store, CONTAINER).await?;
@@ -94,9 +91,8 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
         Ok(Some(revision))
     }
 
-    // Observes the CAS token and the outgoing revision without failing.
-    // Corrupt or unreadable state suppresses only the advisory diff; the
-    // following CAS remains authoritative and fail-closed.
+    // Observes the CAS token and outgoing revision without failing; bad
+    // state suppresses only the advisory diff, never the fail-closed CAS.
     async fn observe(&self) -> Observation {
         let token = StateStore::get(self.store, CURRENT).await.ok().flatten();
 
@@ -263,9 +259,8 @@ impl Diff {
 }
 
 // Keep (entry-point-unreachable): two runs racing one current id cannot
-// be arranged through the CLI, whose `commit` observes and swaps inside a
-// single `specify`. Everything else the store does is owned by the root
-// scenarios.
+// be arranged through the CLI, whose `commit` observes and swaps as one;
+// everything else the store does is owned by the root scenarios.
 #[cfg(test)]
 mod tests {
     use omnia_test::guest::Memory;
