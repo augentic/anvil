@@ -1,8 +1,12 @@
-//! Reference tools answered by the judgment's tool closure.
+//! Reference tools
 //!
-//! Judgments over a non-empty [`Doc`] corpus declare these function tools
-//! and answer the model's calls in-process, from the caller's own task —
-//! no HTTP shelf, no MCP callback.
+//! The `list_docs` and `read_doc` tools a judgment offers the model, so it
+//! can consult the adapter's embedded reference documents on demand instead
+//! of receiving the whole corpus in the prompt.
+//!
+//! Tool calls are answered in-process from the embedded [`Doc`] table. There
+//! is no server behind them, so an adapter needs no network access and no
+//! external endpoint to expose its references.
 
 use emery_prose::registry::{self, Doc};
 use omnia_guest::model::{Function, Tool, ToolCall};

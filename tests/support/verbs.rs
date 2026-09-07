@@ -1,4 +1,8 @@
-//! Live verb names from the public `emery --help` surface.
+//! Live verbs
+//!
+//! Reads the verb names out of `emery --help`, so a suite that needs to know
+//! which commands exist learns it from the shipped surface rather than from a
+//! list that would have to be kept in step by hand.
 
 /// Sorted live verb names from the `Commands:` section of `emery --help`.
 pub fn verbs(help: &str) -> Vec<String> {

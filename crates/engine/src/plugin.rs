@@ -1,5 +1,14 @@
-//! Source-adapter loading over the `omnia:plugins/loader` seam: the typed
-//! selector, the per-run load memo, and the adapter `emery-version` gate.
+//! Adapter references and loading
+//!
+//! How an operator names an adapter and how the engine brings it into the
+//! run. An [`AdapterRef`] is a package reference, a bare name, or a local
+//! component path; the [`Loader`] resolves each one for the duration of a
+//! run, verifying an optional digest pin and refusing adapters that require
+//! a newer Emery than the one running.
+//!
+//! Loads are remembered for the run so two bindings on the same adapter
+//! share one guest, and a conflicting pin on the second binding is caught
+//! here rather than surfacing as a confusing host error.
 
 use std::fmt;
 use std::path::{Path, PathBuf};

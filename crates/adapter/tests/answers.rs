@@ -1,4 +1,9 @@
-//! Evidence answer tests.
+//! Evidence answer contract
+//!
+//! What an adapter can rely on from the evidence answer path: the schema
+//! tracks the `Evidence` DTO, a well formed answer deserializes, unknown
+//! fields in open bodies are tolerated, and a failing answer surfaces as the
+//! repairable error the judgment loop retries on.
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::types::{Authority, Backing, ClaimKind, Error, Evidence};

@@ -1,7 +1,12 @@
-//! Export side of the `source-adapter` world.
+//! Component export
 //!
-//! [`crate::source!`] wires a [`crate::SourceAdapter`] into the bindings
-//! `emery-source` generates.
+//! Turns a [`crate::SourceAdapter`] implementation into the `source-adapter`
+//! wasm world the engine loads. An adapter crate invokes
+//! [`crate::source!`] once and gains a complete component export without
+//! touching the generated bindings.
+//!
+//! This is the only wasm-specific code an adapter carries, which keeps the
+//! rest of its logic portable and testable natively.
 
 pub use emery_source::wire::*;
 

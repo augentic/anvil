@@ -1,4 +1,10 @@
-//! Model call tests.
+//! Judgment contract
+//!
+//! What an adapter can rely on when it asks the model a question: the
+//! request carries the schema and prompt it gave, reference tools appear only
+//! when the adapter embeds documents and are answered from them, the
+//! workspace lend follows the context, and model failures map to the
+//! adapter error kinds the engine expects.
 
 use std::path::Path;
 

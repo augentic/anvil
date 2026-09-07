@@ -1,4 +1,9 @@
-//! Source adapter operation tests.
+//! `SourceAdapter` contract
+//!
+//! A minimal adapter implemented against the trait, driven natively over a
+//! scripted model. It shows the trait is complete enough to implement and
+//! exercise without a wasm build, which is the promise adapter authors' own
+//! test suites depend on.
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};

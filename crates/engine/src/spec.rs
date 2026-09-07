@@ -1,4 +1,17 @@
-//! Fail-closed `spec.md` AST.
+//! Parsed `spec.md` requirements
+//!
+//! Parses `spec.md` into requirement blocks, each of which must carry:
+//!
+//! - a `### Requirement:` heading whose `[tag]` mirrors its `Status:`
+//! - an `ID:` / `Sources:` / `Status:` header
+//! - a body
+//!
+//! Parsing collects every finding and rejects the whole document with one
+//! error, so a malformed spec is never committed or diffed.
+//!
+//! Models write `spec.md`, so the engine cannot entirely trust it. Synthesis parses
+//! the draft to check the model preserved the reconciliation rows, and the store
+//! parses both revisions to report the re-mine diff.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
@@ -7,33 +20,8 @@ use omnia_guest::{Error, bad_request};
 
 use crate::is_kebab;
 
-/// Markdown heading prefix opening a requirement block.
-pub const HEADING: &str = "### Requirement:";
-
-/// Closed requirement `Status:` vocabulary. Every status but `agreed`
-/// doubles as the `[tag]` its heading must carry.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
-#[strum(serialize_all = "kebab-case")]
-pub enum Status {
-    /// One source, or multiple sources that agree.
-    Agreed,
-    /// No contributing evidence.
-    Unknown,
-    /// Tied top-authority disagreement; operator must reconcile.
-    Conflict,
-    /// Authority-resolved disagreement; loser is commentary.
-    Divergence,
-}
-
-impl Status {
-    /// The heading tag this status must pair with; `None` for `agreed`.
-    pub const fn tag(self) -> Option<Self> {
-        match self {
-            Self::Agreed => None,
-            tagged => Some(tagged),
-        }
-    }
-}
+// Markdown heading prefix opening a requirement block.
+const HEADING: &str = "### Requirement:";
 
 /// A parsed spec: the requirement blocks in document order.
 #[derive(Debug, Clone)]
@@ -114,14 +102,39 @@ pub struct Requirement {
     pub sources: Vec<String>,
     /// The `Status:` value.
     pub status: Status,
-    /// Body text with blank edges trimmed.
-    pub body: String,
+    // Body text with blank edges trimmed.
+    body: String,
 }
 
 impl Requirement {
     // Whether reviewable content matches, ignoring positional ids.
     pub fn same_as(&self, other: &Self) -> bool {
         self.status == other.status && self.sources == other.sources && self.body == other.body
+    }
+}
+
+/// Closed requirement `Status:` vocabulary. Every status but `agreed`
+/// doubles as the `[tag]` its heading must carry.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "kebab-case")]
+pub enum Status {
+    /// One source, or multiple sources that agree.
+    Agreed,
+    /// No contributing evidence.
+    Unknown,
+    /// Tied top-authority disagreement; operator must reconcile.
+    Conflict,
+    /// Authority-resolved disagreement; loser is commentary.
+    Divergence,
+}
+
+impl Status {
+    /// The heading tag this status must pair with; `None` for `agreed`.
+    pub const fn tag(self) -> Option<Self> {
+        match self {
+            Self::Agreed => None,
+            tagged => Some(tagged),
+        }
     }
 }
 

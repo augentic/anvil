@@ -1,4 +1,9 @@
-//! Claim gate tests: id grammar and required per-kind extras.
+//! Claim rules contract
+//!
+//! The rules both the engine and every adapter enforce on a claim set: clean
+//! evidence passes, an id outside the dotted-kebab grammar is refused, and a
+//! claim missing an extra its kind requires is refused. Pinning these here
+//! keeps the two enforcement points from disagreeing.
 
 use emery_source::claims::{extras_findings, id_findings};
 use emery_source::types::{ClaimKind, Error, Evidence};

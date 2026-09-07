@@ -1,5 +1,14 @@
-//! Source extraction: load each binding's adapter, extract over the
-//! `Source` capability, and re-run the A8 claim gate fail-closed.
+//! Source extraction
+//!
+//! The first leg of a `specify` run: every bound source is handed to its
+//! adapter, and the adapter returns the claims it found. The result is one
+//! [`SourceSet`] per binding, carrying the claims, their authority class,
+//! and the digest of the adapter that produced them.
+//!
+//! Adapters are guests the engine did not write, so their claims are checked
+//! against the contract's claim rules before anything downstream trusts them.
+//! A source that returns invalid claims stops the run with a typed error
+//! rather than seeding a bad specification.
 
 use emery_source::types::{Authority, Claim};
 use emery_source::{Source, claims};

@@ -1,7 +1,13 @@
-//! The CLI wire contract over an idle provider: the route budget,
-//! grammar failures, exit codes, and the text/JSON channel shape.
-//! Capabilities are never dispatched — every case fails (or succeeds)
-//! before the engine reaches a model or a source.
+//! CLI wire contract
+//!
+//! What the `emery` command promises regardless of what the engine does:
+//! which verbs exist, how grammar mistakes are reported, which exit code each
+//! failure class maps to, and what lands on stdout versus stderr in text and
+//! JSON mode.
+//!
+//! Every scenario finishes before the engine touches a model or a source, so
+//! the provider here is idle. That keeps these cases about the command
+//! surface alone; the product behaviour behind it is `specify.rs`.
 
 #![cfg(not(target_arch = "wasm32"))]
 

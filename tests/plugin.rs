@@ -1,8 +1,11 @@
-//! Plugin-rule mentions against the shipped CLI surface.
+//! Cursor plugin drift
 //!
-//! The always-applied Cursor rule may only name live verbs, flags, and
-//! shipped skills — a cross-cutting product contract, not an
-//! engine-internal one.
+//! Checks that the Cursor plugin's rule text only names verbs, flags, and
+//! skills the shipped `emery` command actually has.
+//!
+//! The plugin is prose an agent follows, so nothing else would catch it
+//! describing a verb that has since been deleted or renamed. Tying it to the
+//! live `--help` surface turns that drift into a failing test.
 
 #![cfg(not(target_arch = "wasm32"))]
 

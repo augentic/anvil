@@ -1,4 +1,15 @@
-//! Deterministic reconciliation and fail-closed model synthesis.
+//! Reconciliation and synthesis
+//!
+//! Turns extracted claims into the two specification documents. Reconciling
+//! is deterministic: requirement claims about the same subject are grouped,
+//! agreement and disagreement are resolved by source authority, and
+//! requirements with no acceptance criterion are recorded as gaps. Synthesis
+//! then asks the model to write `spec.md` and `design.md` from those rows.
+//!
+//! Splitting the two keeps every judgement about *which* sources win out of
+//! the model's hands. The model only writes prose, and its `spec.md` is
+//! parsed and compared back against the rows so it cannot drop, reorder, or
+//! quietly rewrite a requirement.
 
 use std::fmt::{Display, Write as _};
 
@@ -94,12 +105,9 @@ pub async fn synthesise<M: Model>(
 /// and the tag, sources, and divergence winner derive from these fields.
 #[derive(Debug, Clone)]
 pub struct Row {
-    /// Claim-group subject or appended gap description.
-    pub subject: String,
-    /// The resolved status.
-    pub status: Status,
-    /// Every contributing requirement claim, highest authority first.
-    pub contributors: Vec<Contributor>,
+    subject: String,
+    status: Status,
+    contributors: Vec<Contributor>,
 }
 
 impl Row {
@@ -135,15 +143,12 @@ impl Row {
     }
 }
 
-/// One source's contribution to a requirement group.
+// One source's contribution to a requirement group.
 #[derive(Debug, Clone)]
-pub struct Contributor {
-    /// The contributing binding key.
-    pub source: String,
-    /// The source's authority class.
-    pub authority: Authority,
-    /// The claim's required `statement` extra.
-    pub statement: String,
+struct Contributor {
+    source: String,
+    authority: Authority,
+    statement: String,
 }
 
 impl Contributor {

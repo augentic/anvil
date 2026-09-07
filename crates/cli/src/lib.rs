@@ -1,6 +1,14 @@
-//! The emery command façade: clap grammar, binding carriers, handler
-//! dispatch, the command projector, and the exit contract — a
-//! transport over the `emery-engine` operations.
+//! The `emery` command line
+//!
+//! The operator-facing surface of Emery: the `specify`, `show`, and
+//! `completions` verbs, their help text, and the rules that turn a parsed
+//! command into an engine operation and an engine result into terminal
+//! output and an exit code.
+//!
+//! The engine knows nothing about arguments, text, or exit codes. Keeping
+//! that vocabulary here means the same operations can be driven by another
+//! transport, and the command grammar can change without touching the
+//! engine.
 
 mod bindings;
 mod output;

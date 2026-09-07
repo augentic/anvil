@@ -1,8 +1,12 @@
-//! SDK for Emery source adapter components.
+//! Source adapter SDK
 //!
-//! Adapters implement [`SourceAdapter`]. The `emery:adapter/source`
-//! contract itself (the WIT DTOs, the import-side [`Source`] capability)
-//! is `emery-source`, re-exported here so an adapter needs one crate.
+//! Everything an adapter author needs to build an Emery source adapter: the
+//! [`SourceAdapter`] trait to implement, the model judgment helpers, the
+//! evidence answer schema, and the export macro that turns an implementation
+//! into a wasm component.
+//!
+//! The contract itself lives in `emery-source` and is re-exported here, so an
+//! adapter depends on one crate and never sees the wire bindings directly.
 
 pub mod answers;
 mod call;

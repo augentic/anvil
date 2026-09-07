@@ -1,6 +1,14 @@
-//! Deterministic claim validation shared by the engine's extract gate
-//! and the SDK's answer tail: claim-id grammar and the required
-//! per-kind extras (A8).
+//! Claim rules
+//!
+//! What makes a claim well formed: the grammar its id must follow, which
+//! claim kinds must carry an id at all, and the extra fields each kind is
+//! required to include. [`Evidence::validate`] applies all of them to a whole
+//! document.
+//!
+//! The rules live in the contract crate because two parties enforce them.
+//! An adapter checks its own answer so a bad claim can be repaired before it
+//! leaves the guest; the engine checks again on receipt, because it cannot
+//! assume every adapter did.
 
 use crate::types::{Claim, ClaimKind, Error, Evidence};
 

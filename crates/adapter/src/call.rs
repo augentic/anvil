@@ -1,4 +1,15 @@
-//! Schema-gated judgment calls, with optional bounded repair.
+//! Model judgments
+//!
+//! The one way an adapter asks the model a question: a judgment sends a
+//! prompt, requires the answer to match a JSON schema, and deserializes the
+//! result. Adapters share this so every model call carries the same schema
+//! gate, workspace lend, and reference tools rather than each adapter
+//! assembling its own request.
+//!
+//! A judgment whose answer parses but fails a caller-supplied check can be
+//! retried with the findings attached, a bounded number of times. Models
+//! often fix a concrete finding on the next attempt, so this recovers runs
+//! that a single strict pass would lose.
 
 use omnia_guest::Model;
 use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat};

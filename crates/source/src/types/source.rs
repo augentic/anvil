@@ -1,4 +1,13 @@
-//! DTOs mirroring the WIT `source` records.
+//! Source records
+//!
+//! The types of the `source` interface itself: what an adapter is given
+//! ([`SourceInput`] over a workspace or an inline value), what it reports
+//! about itself ([`SourceMetadata`]), and what it returns — an [`Evidence`]
+//! document of typed [`Claim`]s with an [`Authority`] class.
+//!
+//! [`ClaimKind`] is the closed taxonomy the whole system agrees on, and each
+//! kind's required extras are declared next to it so the contract states in
+//! one place what a complete claim of that kind looks like.
 
 use std::fmt;
 

@@ -1,4 +1,12 @@
-//! Build-time embedding and link checks for prompt corpora.
+//! Build-time corpus embedding
+//!
+//! Walks a Markdown tree at build time and generates the document table the
+//! [`crate::registry!`] macro includes, so a crate's prose is compiled in and
+//! versioned with its code.
+//!
+//! Every relative link in the tree is checked while embedding. Prompts are
+//! meant to reference depth rather than inline it, and a dangling reference
+//! would otherwise only be discovered when a model asked for the document.
 
 use std::fmt::Write as _;
 use std::fs;

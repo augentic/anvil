@@ -1,6 +1,12 @@
-//! Text-mode rendering of the bodies the command surface emits; the
-//! JSON path is `Serialize`. Style follows the Developer Guide's CLI
-//! output shapes.
+//! Text output
+//!
+//! The human-readable rendering of each command result. JSON output falls
+//! out of the result types' `Serialize` derives; text output needs a hand
+//! written shape per result, and those shapes live here.
+//!
+//! Keeping text rendering apart from the engine's result types lets the
+//! terminal presentation follow the Developer Guide's output conventions
+//! without those conventions leaking into the engine.
 
 use std::fmt;
 

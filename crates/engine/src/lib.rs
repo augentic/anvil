@@ -1,4 +1,13 @@
-//! Emery's specification-generation engine.
+//! The specification engine
+//!
+//! Emery's core: the operations that generate a specification revision from
+//! bound sources ([`specify`]) and read one back for review ([`show`]),
+//! together with the source binding rules and adapter references those
+//! operations accept.
+//!
+//! The engine is transport-neutral. It speaks in typed operations and
+//! results over a [`Provider`] of capabilities, and leaves argument parsing,
+//! terminal text, and exit codes to whichever front end drives it.
 
 mod extract;
 mod plugin;

@@ -1,6 +1,13 @@
-//! Shared scenario plumbing for the root suites: one provider that
-//! scripts every capability (`Model`, `Source`, `Plugins`, storage) and
-//! the in-process CLI runners over the live command grammar.
+//! Scenario support
+//!
+//! The shared plumbing behind the root suites: a provider whose every
+//! capability — model, source, plugin loading, storage — is scripted, and
+//! runners that drive the command façade in-process and hand back its
+//! response.
+//!
+//! Scripting rather than mocking means each scenario states exactly the turns
+//! it will consume, and a scenario that consumes more or fewer fails, so the
+//! suites cannot silently stop exercising a path.
 
 use std::collections::BTreeMap;
 use std::future::Future;

@@ -1,7 +1,13 @@
-//! The `emery specify` → `emery show` product arc over scripted
-//! capabilities: how an operator binds sources, generates the spec
-//! set, reviews it, and regenerates it — and how every refusal on
-//! that path fails typed.
+//! The `specify` → `show` product arc
+//!
+//! The scenarios an operator lives through: binding sources, generating a
+//! specification, reviewing it, regenerating it, and hitting every refusal
+//! along the way — an invalid binding, an untrusted adapter, a model answer
+//! that breaks the spec grammar.
+//!
+//! Each scenario drives the real command façade over scripted capabilities,
+//! so it reads as usage documentation while still asserting the exact
+//! envelope, exit code, and stored revision the operator would see.
 
 #![cfg(not(target_arch = "wasm32"))]
 

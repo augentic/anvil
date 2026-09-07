@@ -1,8 +1,14 @@
-//! Content-addressed specification revisions
+//! The revision store
 //!
-//! The store manages a deployment's specification revisions: committing a
-//! new revision, reading the current one, and pruning its predecessor. A
-//! revision is identified by its content digest, never a sequence number.
+//! Where committed specifications live. A revision is the `spec.md` and
+//! `design.md` pair one `specify` run produced; the store commits a new
+//! revision, reads the current one, and reports how it differs from the one
+//! it replaced.
+//!
+//! A revision is identified by the digest of its content, never a sequence
+//! number, so the same documents always have the same id and a document that
+//! no longer matches its id is recognised as corruption. Only the current
+//! revision is kept, which keeps the store small and its meaning simple.
 
 use anyhow::Context;
 use omnia_guest::{BlobStore, Error, StateStore, server_error};

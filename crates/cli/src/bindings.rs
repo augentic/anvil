@@ -1,6 +1,14 @@
-//! The binding carriers: argv positionals plus `--description`, the
-//! operator-owned `emery.toml` named by `--config`, and project-root
-//! discovery for a run naming no bindings at all.
+//! Source bindings from the command line
+//!
+//! Builds the list of source bindings a `specify` run works from. An
+//! operator can name adapters and inline descriptions directly on the
+//! command line, point at an `emery.toml` with `--config`, or name nothing
+//! and let the project-root `emery.toml` be picked up.
+//!
+//! The binding list is an input to each run, never something Emery stores,
+//! so this module is the only place that knows where bindings come from.
+//! Mixing a config file with command-line bindings is refused rather than
+//! merged, so a run has exactly one source of truth.
 
 use std::path::{Path, PathBuf};
 

@@ -1,4 +1,12 @@
-//! Export-side source adapter contract.
+//! The adapter contract
+//!
+//! [`SourceAdapter`] is what an adapter implements: its identity, its
+//! resolve-time metadata, the reference documents it embeds, and the
+//! `extract` operation that reads a source and returns evidence.
+//!
+//! Keeping the trait separate from the wasm export lets an adapter be
+//! exercised natively against a scripted model, with the component wiring
+//! added only at the guest boundary.
 
 use std::future::Future;
 

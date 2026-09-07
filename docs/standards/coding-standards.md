@@ -41,7 +41,7 @@ Comments answer "why does this look like this *today?*" — non-obvious intent, 
 
 Density caps are **review only** — clippy and rustfmt cannot express them. They apply to Rust sources and to WIT contracts (`wit/`, `crates/*/wit/`):
 
-- **Module `//!` docs** answer "what is this module today?" in **1–3 prose lines**. No deployment tours, no AGENTS.md restatements, no RFC archaeology — the crate graph and the workflow contract already own that prose; a module doc that repeats it goes stale and buries the one line the reader needed.
+- **Module `//!` docs** answer "what is this module, and why does it exist?" for a reader who has not opened the file: a short title line, then **one or two paragraphs** in plain language. Say what the module is for and what it guarantees; never how it works — that is the code's job, and prose about mechanics goes stale first. No deployment tours, no AGENTS.md restatements, no RFC archaeology, and no house shorthand (`fail-closed`, `typed`, kernel names) the reader would have to look up.
 - **Item `///` docs** keep the overview under **~8 lines** before any `#` section. `# Errors` / `# Panics` sections may list discriminants; keep each bullet one line.
 - **`//` comments** run **≤ 3 consecutive lines**. A tip lives next to the surprising branch it explains, never inside a preamble essay.
 - **Historical phrases** are banned in comments and docs: `Phase `, `formerly`, `previously lived`, `old contract`, `former tests`, `to avoid the`. Git history is the record.

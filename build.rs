@@ -1,4 +1,12 @@
-//! Builds and embeds the wasm32 engine component.
+//! Engine component build script
+//!
+//! Compiles the engine guest to a wasm32 component and hands the result to
+//! the shipped runtime, so one `cargo build` yields a self-contained `emery`
+//! binary with the engine embedded rather than a binary that hunts for a
+//! component on disk at run time.
+//!
+//! Release builds also precompile the component ahead of time, so the shipped
+//! binary starts without paying a JIT cost on every invocation.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

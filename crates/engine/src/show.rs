@@ -1,5 +1,12 @@
-//! The review operation: read one document of the current
-//! specification revision.
+//! The `show` operation
+//!
+//! Reads one document — `spec.md` or `design.md` — from the current
+//! specification revision so an operator, or a skill acting for one, can
+//! review what the last `specify` committed.
+//!
+//! Review goes through this operation rather than the filesystem so the
+//! revision store stays the engine's own: callers see a document paired with
+//! the revision id it belongs to, and never the storage layout beneath it.
 
 use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};

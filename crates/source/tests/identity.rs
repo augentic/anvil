@@ -1,4 +1,8 @@
-//! Adapter identity tests.
+//! Adapter identity contract
+//!
+//! The `name@version` form an adapter identity must take: a well formed pair
+//! splits into its two parts, and anything else — a missing side, a second
+//! `@` — is refused rather than guessed at.
 
 use std::str::FromStr;
 

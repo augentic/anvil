@@ -1,6 +1,13 @@
-//! Per-run source bindings: the transport-neutral binding DTO and the
-//! rules every binding obeys before anything loads. The list is an
-//! input, never engine state.
+//! Source bindings
+//!
+//! A [`SourceBinding`] names one source a `specify` run should extract from:
+//! the adapter to use, the key the specification will cite it by, and either
+//! a workspace to read or an inline value. [`validate`] checks a run's whole
+//! list before any adapter is loaded.
+//!
+//! The list is per-run input, never stored, so the same shape serves the
+//! command line, a config file, and any other transport. Checking it up
+//! front means a malformed binding is refused before a single adapter runs.
 
 use std::collections::BTreeSet;
 use std::path::Path;

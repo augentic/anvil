@@ -1,5 +1,13 @@
-//! The specification-generation operation: extract every bound source,
-//! reconcile, synthesise, and commit one revision.
+//! The `specify` operation
+//!
+//! Emery's central operation: given a list of source bindings, extract each
+//! source's claims, reconcile them under authority precedence, synthesise
+//! `spec.md` and `design.md`, and commit the pair as one new revision.
+//!
+//! The result reports what was committed — the revision id, the counts, the
+//! resolved adapter digests an operator can pin, and the diff against the
+//! superseded revision — so a caller can see what changed without reading
+//! the documents.
 
 use emery_source::Source;
 use omnia_guest::api::Context;

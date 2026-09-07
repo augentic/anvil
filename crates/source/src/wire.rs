@@ -1,6 +1,13 @@
-//! `source-adapter` WIT bindings: the one generation carrying both the
-//! export side (`emery-adapter`'s `source!` wires an implementor into
-//! it) and the engine guest's caller side ([`import`]).
+//! WIT bindings
+//!
+//! The generated Rust bindings for the `source-adapter` WIT world, plus the
+//! conversions between the generated wire records and the contract types the
+//! rest of the workspace uses.
+//!
+//! Both directions come from one generation: adapters export through it via
+//! the SDK's `source!` macro, and the engine guest calls into it through
+//! [`import`]. A single generation guarantees the two sides agree on the wire
+//! shape by construction.
 
 mod generated {
     #![allow(

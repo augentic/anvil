@@ -1,6 +1,14 @@
-//! Evidence answer parsing and validation.
+//! Evidence answers
+//!
+//! The schema an `extract` judgment asks the model to answer against, and the
+//! check that turns the model's answer into a valid [`Evidence`] document.
+//!
+//! The schema constrains the answer's shape but cannot express every rule a
+//! claim must satisfy, so the answer is validated again in code. Running that
+//! check inside the adapter, where a failed answer can be sent back for
+//! repair, means the engine rarely sees evidence it has to reject.
 
-pub use emery_source::claims::{DOTTED_KEBAB_PATTERN, extras_findings, findings, id_findings};
+use emery_source::claims::DOTTED_KEBAB_PATTERN;
 use schemars::generate::SchemaSettings;
 use serde_json::{Value, json};
 

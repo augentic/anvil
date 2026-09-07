@@ -1,5 +1,12 @@
-//! The command output contract: format-aware body encoding and the
-//! buffered channel pair a run reports.
+//! Command output
+//!
+//! How a command's result reaches the operator: the output [`Format`] the
+//! `--format` flag selects, and the [`Response`] carrying the bytes for
+//! stdout and stderr together with the process exit status.
+//!
+//! Output is buffered rather than written as it is produced, so a run can be
+//! driven in-process by tests and by the wasm guest alike, and the caller
+//! decides when and where the channels are flushed.
 
 use serde::Serialize;
 
