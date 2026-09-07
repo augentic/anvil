@@ -1040,6 +1040,7 @@ async fn specify_repairs_tampered() {
         second_spec.as_str(),
         second_design.as_str(),
     ]);
+
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let first = current(&provider.storage);
     provider.storage.insert_object(CONTAINER, &format!("{first}/spec.md"), b"# Rewritten\n");
@@ -1048,16 +1049,20 @@ async fn specify_repairs_tampered() {
 
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(!stdout.contains("diff vs"), "an unreadable predecessor yields no diff: {stdout}");
+    
     let second = current(&provider.storage);
     assert_ne!(first, second, "the repaired store names the new revision");
+
     for name in ["spec.md", "design.md"] {
         assert!(
             provider.storage.object(CONTAINER, &format!("{first}/{name}")).is_none(),
             "the tampered predecessor is pruned: {name}"
         );
     }
+
     let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
     assert!(String::from_utf8_lossy(&shown.stdout).contains("howdy"), "show renders the repair");
+
     provider.model.assert_exhausted();
 }
 

@@ -104,11 +104,13 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     async fn load(&self, id: &str) -> Result<Revision, Error> {
         let spec = self.read(id, SPEC).await?;
         let design = self.read(id, DESIGN).await?;
-        // let revision = Revision { spec, design };
-        // if revision.id() != id {
-        //     return Err(server_error!("revision `{id}` does not match its content"));
-        // }
-        Ok(Revision { spec, design })
+        let revision = Revision { spec, design };
+
+        if revision.id() != id {
+            return Err(server_error!("revision `{id}` does not match its content"));
+        }
+
+        Ok(revision)
     }
 
     // A named revision whose document is absent or malformed is corruption.
