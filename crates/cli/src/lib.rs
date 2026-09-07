@@ -20,8 +20,8 @@ use std::fmt;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use emery_engine::Provider;
-use emery_engine::show::{Document, Show};
-use emery_engine::specify::Specify;
+use emery_engine::show::{Document, Show, show};
+use emery_engine::specify::{Specify, specify};
 use omnia_guest::Error;
 use omnia_guest::api::{Client, Metadata};
 use output::Format;
@@ -215,7 +215,8 @@ where
 }
 
 // The call-and-encode leg: each verb decodes into its engine input, runs
-// through the client, and projects. `completions` never reaches a handler.
+// its handler fn through the client, and projects. `completions` never
+// reaches a handler.
 async fn dispatch<P: Provider>(app: App, client: &Client<P>) -> Response {
     // A wasm32 guest has no clock or entropy to mint a request id from.
     let metadata = Metadata::default();
@@ -226,10 +227,12 @@ async fn dispatch<P: Provider>(app: App, client: &Client<P>) -> Response {
             Response::success(out)
         }
         Verb::Specify(grammar) => match grammar.decode() {
-            Ok(input) => project(app.format, client.call(input, &metadata).await),
+            Ok(input) => project(app.format, client.call(specify, input, &metadata).await),
             Err(error) => refuse(app.format, &error),
         },
-        Verb::Show(grammar) => project(app.format, client.call(grammar.decode(), &metadata).await),
+        Verb::Show(grammar) => {
+            project(app.format, client.call(show, grammar.decode(), &metadata).await)
+        }
     }
 }
 

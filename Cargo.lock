@@ -2539,7 +2539,6 @@ dependencies = [
  "futures",
  "http",
  "http-body",
- "omnia-guest-macros",
  "omnia-wasi-blobstore",
  "omnia-wasi-config",
  "omnia-wasi-docstore",

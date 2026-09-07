@@ -59,17 +59,23 @@ pub struct SourceDigest {
     pub digest: Digest,
 }
 
-#[omnia_guest::handler]
-async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
-    input: Specify, context: Context<'_, P>,
+/// Run one `specify` over the context's provider.
+///
+/// # Errors
+///
+/// Returns `BadRequest` for a binding the rules refuse or a claim the gate
+/// rejects, and passes through the extract, synthesis, and store failures.
+pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
+    input: Specify, context: Context<P>,
 ) -> Result<SpecifyBody, Error> {
     let Specify { bindings } = input;
     validate(&bindings)?;
 
-    let sets = extract(context.provider, &bindings).await?;
+    let provider = context.provider();
+    let sets = extract(provider, &bindings).await?;
     let rows = reconcile(&sets);
-    let revision = synthesise(context.provider, &sets, &rows).await?;
-    let committed = Store::new(context.provider).commit(&revision).await?;
+    let revision = synthesise(provider, &sets, &rows).await?;
+    let committed = Store::new(provider).commit(&revision).await?;
 
     let digests = sets
         .iter()

@@ -54,13 +54,18 @@ pub struct ShowBody {
     pub body: String,
 }
 
-#[omnia_guest::handler]
-async fn show<P: StateStore + BlobStore>(
-    input: Show, context: Context<'_, P>,
+/// Read one document of the current revision over the context's provider.
+///
+/// # Errors
+///
+/// Returns `NotFound` (`spec-not-generated`) when no revision has been
+/// committed, and passes through the store's failures.
+pub async fn show<P: StateStore + BlobStore>(
+    input: Show, context: Context<P>,
 ) -> Result<ShowBody, Error> {
     let Show { document } = input;
 
-    let Some(revision) = Store::new(context.provider).current().await? else {
+    let Some(revision) = Store::new(context.provider()).current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
             description: "no specification revision has been committed".into(),
