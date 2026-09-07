@@ -97,7 +97,6 @@ impl SourceBinding {
 
     fn validate(&self) -> Result<(), Error> {
         let selector: AdapterRef = self.adapter.parse()?;
-        selector.name()?;
         self.registry_allowed(&selector)?;
         self.digest_allowed(&selector)?;
         if let BindingContent::Workspace(relative) = &self.content {
