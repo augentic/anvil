@@ -30,7 +30,7 @@ impl SourceAdapter for Adapter {
     const IDENTITY: &str = concat!("source@", env!("CARGO_PKG_VERSION"));
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { emery_floor: None }
+        SourceMetadata { emery_version: None }
     }
 
     fn docs() -> &'static [Doc] {

@@ -33,7 +33,7 @@ Handlers live beside their domain kernels.
 
 ## The deployed layout (C5)
 
-Handlers anchor at the `.` preopen inside `handle`: paths are constants relative to the project-root mount (the invocation directory natively; `emery_engine::preopen::preopen_path` normalizes operator paths inside it and speaks paths, never flag names), and engine storage is named by fixed key/container formulas over the provider's storage capabilities. There is no project record and no project floor — a run's inputs arrive on the invocation, and there is nothing to be "inside". Handlers never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
+Handlers anchor at the `.` preopen inside `handle`: paths are constants relative to the project-root mount (the invocation directory natively; `emery_engine::preopen_path` normalizes operator paths inside it and speaks paths, never flag names), and engine storage is named by fixed key/container formulas over the provider's storage capabilities. There is no project record and no project-level version requirement — a run's inputs arrive on the invocation, and there is nothing to be "inside". Handlers never derive paths any other way — no environment reads, no ancestor walks, no CWD dependence; native tests script the storage capabilities in memory instead of chdir-ing into a tempdir.
 
 ## Output: `Serialize`-only bodies
 
@@ -81,6 +81,6 @@ Target discipline per verb arm:
 
 Never put domain logic in `cli`. Binding rules that every transport must enforce (uniqueness, selector shape, pin gating, preopen roots, the empty-list refusal) live in `emery_engine::sources::validate`; only the carriers' own grammar (the `<adapter>=<text>` split, the TOML schema and its reserved keys, the exclusivity rule) lives in the façade. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
-## Gotcha — the only version floor is per adapter
+## Gotcha — the only version requirement is per adapter
 
-There is no project-level `emery` version floor: the adapter compatibility floor (`requires-emery` from `metadata`, enforced during resolve as `adapter-cli-too-old`) is a `BadRequest`. Don't reintroduce a floor check at a route or handler site.
+There is no project-level `emery` version requirement: the adapter's minimum `emery-version` (from `metadata`, enforced during resolve as `adapter-cli-too-old`) is a `BadRequest`. Don't reintroduce a version check at a route or handler site.

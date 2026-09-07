@@ -1,5 +1,5 @@
 //! Source-adapter resolution: loader-backed local components and
-//! registry packages, plus the adapter compatibility-floor gate.
+//! registry packages, plus the adapter `emery-version` gate.
 
 mod selector;
 
@@ -10,7 +10,7 @@ use omnia_guest::plugins::{Digest, Location, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 pub use selector::AdapterSelector;
 
-use crate::preopen::preopen_path;
+use crate::preopen_path;
 
 /// One run's adapter resolution over a provider: loads memoize by
 /// identity for the run, so a second binding on the same adapter
@@ -31,12 +31,12 @@ impl<'a, P: Source + Plugins> Resolver<'a, P> {
     }
 
     /// Resolves a selector to its routed dispatch id, loading a local
-    /// component or registry package and enforcing the adapter's `emery`
-    /// compatibility floor.
+    /// component or registry package and enforcing the adapter's minimum
+    /// `emery-version`.
     ///
     /// # Errors
     ///
-    /// Returns selector, load, or floor failures.
+    /// Returns selector, load, or version failures.
     pub async fn resolve(
         &self, selector: &AdapterSelector, pin: Option<&Digest>, registry: Option<&str>,
     ) -> Result<Resolved, Error> {
@@ -73,8 +73,8 @@ impl<'a, P: Source + Plugins> Resolver<'a, P> {
         };
 
         let metadata = Source::metadata(self.provider, &resolved.id);
-        let floor = parse_floor(metadata.emery_floor.as_deref(), &name, &resolved.id)?;
-        check_floor(floor.as_ref(), env!("CARGO_PKG_VERSION"), &name, &resolved.id)?;
+        let minimum = parse_minimum(metadata.emery_version.as_deref(), &name, &resolved.id)?;
+        check_minimum(minimum.as_ref(), env!("CARGO_PKG_VERSION"), &name, &resolved.id)?;
 
         Ok(resolved)
     }
@@ -101,9 +101,9 @@ async fn load<L: Plugins>(
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
         let path = path.display();
         let relative = relative.display();
+
         return Err(not_found!(
-            "adapter `{path}` did not resolve to a `.wasm` component file at {relative} (an \
-             adapter is a single WebAssembly component)"
+            "adapter `{path}` did not resolve to a `.wasm` component at {relative}"
         ));
     }
 
@@ -117,40 +117,42 @@ async fn load<L: Plugins>(
     Ok(plugin.digest().clone())
 }
 
-// A missing floor admits; a malformed floor refuses typed.
-fn parse_floor(
-    floor: Option<&str>, name: &str, id: &str,
+// A missing minimum admits; a malformed minimum refuses typed.
+fn parse_minimum(
+    minimum: Option<&str>, name: &str, id: &str,
 ) -> Result<Option<semver::Version>, Error> {
-    let Some(floor) = floor else {
+    let Some(minimum) = minimum else {
         return Ok(None);
     };
-    semver::Version::parse(floor).map(Some).map_err(|err| {
+
+    semver::Version::parse(minimum).map(Some).map_err(|err| {
         bad_request!(
-            "an adapter's metadata answer declares a semver `emery-floor`: adapter `{name}` \
-             ({id}) declares `emery-floor: {floor}`, which is not an exact semver: {err}"
+            "adapter `{name}` ({id}) has an invalid `emery-version` (`{minimum}`): \
+            expected an exact version such as `1.2.3`, but got `{err}`"
         )
     })
 }
 
 // An unparseable running version is permissive to preserve recovery.
-fn check_floor(
-    floor: Option<&semver::Version>, current: &str, name: &str, id: &str,
+fn check_minimum(
+    minimum: Option<&semver::Version>, current: &str, name: &str, id: &str,
 ) -> Result<(), Error> {
-    let Some(floor) = floor else {
+    let Some(minimum) = minimum else {
         return Ok(());
     };
-    let Ok(current_version) = semver::Version::parse(current) else {
+    let Ok(version) = semver::Version::parse(current) else {
         return Ok(());
     };
-    if current_version < *floor {
+
+    if version < *minimum {
         return Err(Error::BadRequest {
-            code: "adapter-cli-too-old".into(),
+            code: "unsupported-version".into(),
             description: format!(
-                "emery version {current} is older than the floor {floor} required by adapter \
-                 {name} ({id}); a newer emery is required"
+                "unsupported adapter. Update emery to {minimum} to use adapter {name} ({id})"
             ),
         });
     }
+
     Ok(())
 }
 
@@ -159,13 +161,13 @@ fn check_floor(
 // no operator input can reach the permissive unparseable-version arm.
 #[cfg(test)]
 mod tests {
-    use super::check_floor;
+    use super::check_minimum;
 
     #[test]
     fn unparseable_permissive() {
-        let floor = semver::Version::new(2, 0, 0);
+        let minimum = semver::Version::new(2, 0, 0);
 
-        check_floor(Some(&floor), "not-a-version", "demo-source", "source:demo-source")
+        check_minimum(Some(&minimum), "not-a-version", "demo-source", "source:demo-source")
             .expect("an unparseable running version must not brick resolution");
     }
 }

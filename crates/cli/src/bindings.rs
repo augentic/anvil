@@ -4,9 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
-use emery_engine::AdapterSelector;
-use emery_engine::preopen::preopen_path;
 use emery_engine::sources::{BindingContent, SourceBinding};
+use emery_engine::{AdapterSelector, preopen_path};
 use omnia_guest::{Error, bad_request, server_error};
 
 /// The project-root config discovered by a bindingless run.

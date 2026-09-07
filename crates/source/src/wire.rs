@@ -26,7 +26,7 @@ pub use generated::*;
 impl From<crate::types::SourceMetadata> for AdapterMetadata {
     fn from(metadata: crate::types::SourceMetadata) -> Self {
         Self {
-            emery_floor: metadata.emery_floor,
+            emery_version: metadata.emery_version,
         }
     }
 }
@@ -172,7 +172,7 @@ pub mod import {
     pub fn metadata(id: &str) -> types::SourceMetadata {
         let record = wire::metadata(id);
         types::SourceMetadata {
-            emery_floor: record.emery_floor,
+            emery_version: record.emery_version,
         }
     }
 

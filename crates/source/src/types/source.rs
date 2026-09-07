@@ -9,7 +9,7 @@ use serde::Deserialize;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceMetadata {
     /// Exact minimum Emery version, if any.
-    pub emery_floor: Option<String>,
+    pub emery_version: Option<String>,
 }
 
 /// Read-only source workspace.

@@ -30,7 +30,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 - `specify-source-required` — `emery specify` without a source binding and with no project-root `emery.toml` to discover.
 - `spec-not-generated` — `emery show` before any revision is committed.
-- `adapter-cli-too-old` — an adapter's declared `emery` compatibility floor is newer than the running binary.
+- `adapter-cli-too-old` — an adapter's declared minimum `emery-version` is newer than the running binary.
 - `refused` — the loader rejected the request: a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or a location kind this deployment does not serve; the message names which.
 - `unavailable` — the deployment's acquirer could not produce a registry package (network, endpoint, or a missing exact version); check connectivity and the binding's `registry` override.
 

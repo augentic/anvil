@@ -21,15 +21,15 @@ const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 /// Dispatched `(routed id, input)` pairs, in call order.
 type Recorded = Vec<(String, SourceInput)>;
 
-/// Scripted `Source`: per-key evidence, per-adapter floors, and a
-/// record of every dispatch. An unscripted key answers the greeting
-/// requirement as documentation evidence.
+/// Scripted `Source`: per-key evidence, per-adapter minimum `emery`
+/// versions, and a record of every dispatch. An unscripted key answers
+/// the greeting requirement as documentation evidence.
 #[derive(Clone, Debug, Default)]
 pub struct SourceScript {
     /// Extract outcomes keyed by binding key.
     pub evidence: BTreeMap<String, Result<Evidence, DispatchError>>,
-    /// `emery` floors keyed by adapter name.
-    pub floors: BTreeMap<String, String>,
+    /// Minimum `emery` versions keyed by adapter name.
+    pub versions: BTreeMap<String, String>,
     /// Every extract dispatch, recorded for call assertions.
     pub calls: Arc<Mutex<Recorded>>,
 }
@@ -109,11 +109,11 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
 
     fn metadata(&self, id: &str) -> SourceMetadata {
         // Routed ids are `source:<name>` or a package reference
-        // (`<namespace>:<name>@<version>`); floors key on the name.
+        // (`<namespace>:<name>@<version>`); versions key on the name.
         let name = id.split_once('@').map_or(id, |(stem, _)| stem);
         let name = name.rsplit_once(':').map_or(name, |(_, stem)| stem);
         SourceMetadata {
-            emery_floor: self.source.floors.get(name).cloned(),
+            emery_version: self.source.versions.get(name).cloned(),
         }
     }
 }

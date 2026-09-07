@@ -448,12 +448,12 @@ async fn extract_fails() {
     assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
 }
 
-// An adapter declaring a newer `emery` floor than the binary refuses
-// with the dedicated version exit code.
+// An adapter declaring a newer minimum `emery-version` than the binary
+// refuses with the dedicated version exit code.
 #[tokio::test]
-async fn floor_too_new() {
+async fn version_too_new() {
     let mut provider = Provider::idle();
-    provider.source.floors.insert("docs".to_string(), "99.0.0".to_string());
+    provider.source.versions.insert("docs".to_string(), "99.0.0".to_string());
 
     fail(&provider, &["emery", "specify", "docs"], 1, "adapter-cli-too-old").await;
 }
@@ -1049,7 +1049,7 @@ async fn specify_repairs_tampered() {
 
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(!stdout.contains("diff vs"), "an unreadable predecessor yields no diff: {stdout}");
-    
+
     let second = current(&provider.storage);
     assert_ne!(first, second, "the repaired store names the new revision");
 

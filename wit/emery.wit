@@ -134,12 +134,12 @@ interface source {
 
   /// The adapter's deterministic metadata: identity lives in the
   /// wasm-pkg package reference and axis in the exported world, so only
-  /// the compatibility floor remains on the record.
+  /// the host version requirement remains on the record.
   record adapter-metadata {
-    /// Optional host-CLI compatibility floor: the exact minimum `emery`
-    /// version this adapter needs. The host aborts at resolve time when
-    /// the running binary is older. Absent means no floor.
-    emery-floor: option<string>,
+    /// Optional minimum `emery` version this adapter needs, as an exact
+    /// semver (like Cargo's `rust-version`). The host aborts at resolve
+    /// time when the running binary is older. Absent means no minimum.
+    emery-version: option<string>,
   }
 
   /// Read at resolve time and cached against the artifact digest.

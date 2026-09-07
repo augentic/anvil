@@ -17,7 +17,7 @@ impl SourceAdapter for Probe {
     const IDENTITY: &str = "probe@0.0.0";
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { emery_floor: None }
+        SourceMetadata { emery_version: None }
     }
 
     fn docs() -> &'static [Doc] {
@@ -60,7 +60,7 @@ async fn source_dispatch() {
     assert_eq!(evidence.claims[0].id.as_deref(), Some("one.claim"));
 
     assert_eq!(<Probe as SourceAdapter>::IDENTITY, "probe@0.0.0");
-    assert_eq!(<Probe as SourceAdapter>::metadata(), SourceMetadata { emery_floor: None });
+    assert_eq!(<Probe as SourceAdapter>::metadata(), SourceMetadata { emery_version: None });
     assert_eq!(<Probe as SourceAdapter>::docs()[0].path, "prompts/extract.md");
 }
 
@@ -68,6 +68,6 @@ async fn source_dispatch() {
 fn fn_pointer_coercion() {
     let metadata: fn() -> SourceMetadata = <Probe as SourceAdapter>::metadata;
     let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
-    assert_eq!(metadata(), SourceMetadata { emery_floor: None });
+    assert_eq!(metadata(), SourceMetadata { emery_version: None });
     assert_eq!(docs().len(), 1);
 }
