@@ -151,7 +151,8 @@ emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-source = { path = "crates/source" }
 
-omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
+# `plugin` is required: the shipped `runtime!` declares `locations:`.
+omnia = { version = "0.36.0", default-features = false, features = ["jit", "plugin"] }
 omnia-core = "0.36.0"
 omnia-guest = "0.36.0"
 omnia-guest-macros = "0.36.0"

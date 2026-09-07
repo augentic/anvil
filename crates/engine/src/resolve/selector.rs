@@ -87,10 +87,10 @@ impl AdapterSelector {
 
 // The kebab-case adapter name of a component filename.
 fn name_from_component(path: &Path) -> Result<String, Error> {
-    let stem = path
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .ok_or_else(|| bad_request!("cannot derive adapter name from {path}"))?;
+    let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
+        let path = path.display();
+        bad_request!("cannot derive adapter name from {path}")
+    })?;
     let stem = stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
     Ok(stem.replace('_', "-"))
 }

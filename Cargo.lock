@@ -2437,6 +2437,7 @@ dependencies = [
  "omnia-cli",
  "omnia-core",
  "omnia-host-macros",
+ "omnia-plugin",
  "serde",
  "tokio",
  "toml",

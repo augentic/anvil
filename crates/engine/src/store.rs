@@ -36,13 +36,16 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     pub async fn commit(
         &self, revision: &Revision, observed: &Observation,
     ) -> Result<String, Error> {
-        self.ensure_container().await?;
+        if !BlobStore::container_exists(self.store, CONTAINER).await? {
+            BlobStore::create_container(self.store, CONTAINER).await?;
+        }
+
         let id = revision.id();
 
         for (name, body) in revision.files() {
             BlobStore::put(self.store, CONTAINER, &format!("{id}/{name}"), body.as_bytes())
                 .await
-                .context("writing a revision document")?;
+                .context("writing revision document")?;
         }
 
         let expected = observed.current.as_deref().map(str::as_bytes);
@@ -57,7 +60,7 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
             for name in DOCS {
                 BlobStore::delete(self.store, CONTAINER, &format!("{previous}/{name}"))
                     .await
-                    .context("deleting the previous revision")?;
+                    .context("deleting previous revision")?;
             }
         }
 
@@ -90,31 +93,10 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
             .ok()
             .flatten()
             .and_then(|raw| String::from_utf8(raw).ok());
-        let mut outgoing = None;
 
-        if let Some(id) = &current {
-            match self.load(id).await {
-                Ok(revision) => outgoing = Some(revision),
-                Err(err) => tracing::warn!(revision = %id, %err, "diff suppressed"),
-            }
-        }
+        let outgoing = if let Some(id) = &current { self.load(id).await.ok() } else { None };
 
         Observation { current, outgoing }
-    }
-
-    // `wasi:blobstore` writes need an existing container; only some
-    // backends create one on `get-container`.
-    async fn ensure_container(&self) -> Result<(), Error> {
-        if !BlobStore::container_exists(self.store, CONTAINER)
-            .await
-            .context("checking the revision container")?
-        {
-            BlobStore::create_container(self.store, CONTAINER)
-                .await
-                .context("creating the revision container")?;
-        }
-
-        Ok(())
     }
 
     // The store is content-addressed: documents that no longer hash to
@@ -122,14 +104,18 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     async fn load(&self, id: &str) -> Result<Revision, Error> {
         let spec = self.read(id, DOCS[0]).await?;
         let design = self.read(id, DOCS[1]).await?;
-        Ok(Revision { spec, design })
+        let revision = Revision { spec, design };
+        if revision.id() != id {
+            return Err(server_error!("revision `{id}` does not match its content"));
+        }
+        Ok(revision)
     }
 
     // A named revision whose document is absent or malformed is corruption.
     async fn read(&self, id: &str, name: &str) -> Result<String, Error> {
         let bytes = BlobStore::get(self.store, CONTAINER, &format!("{id}/{name}"))
             .await
-            .context("reading a revision document")?
+            .context("reading revision document")?
             .ok_or_else(|| server_error!("revision `{id}` does not contain `{name}`"))?;
         String::from_utf8(bytes).map_err(|err| {
             server_error!("revision `{id}` contains `{name}` but it is not UTF-8 ({err})")
@@ -289,7 +275,7 @@ mod tests {
             .expect_err("a stale observation must never last-write-wins over the swapped id");
         assert_eq!(err.code(), "server_error", "typed failure");
         assert!(
-            err.description().contains("swapping the current revision id"),
+            err.description().contains("swapping current revision"),
             "typed failure: {}",
             err.description()
         );

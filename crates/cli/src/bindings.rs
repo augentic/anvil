@@ -84,8 +84,14 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
 
 // The operator-owned file: parsed fail-closed, never written by the engine.
 fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
-    let raw = std::fs::read_to_string(path).map_err(|source| server_error!("{path} ({source})"))?;
-    let file: ConfigFile = toml::from_str(&raw).map_err(|err| bad_request!("{path}: {err}"))?;
+    let raw = std::fs::read_to_string(path).map_err(|source| {
+        let path = path.display();
+        server_error!("{path} ({source})")
+    })?;
+    let file: ConfigFile = toml::from_str(&raw).map_err(|err| {
+        let path = path.display();
+        bad_request!("{path}: {err}")
+    })?;
 
     let base = path
         .parent()

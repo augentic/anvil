@@ -30,5 +30,6 @@ pub fn preopen_path(path: &Path) -> Result<PathBuf, Error> {
 }
 
 fn outside_project(path: &Path) -> Error {
+    let path = path.display();
     bad_request!("path `{path}` must be relative to the project root `.` and must not escape it")
 }

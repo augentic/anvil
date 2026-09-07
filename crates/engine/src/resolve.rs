@@ -99,6 +99,8 @@ async fn load<L: Plugins>(
 ) -> Result<Digest, Error> {
     let relative = preopen_path(path)?;
     if !relative.is_file() || relative.extension().is_none_or(|ext| ext != "wasm") {
+        let path = path.display();
+        let relative = relative.display();
         return Err(not_found!(
             "adapter `{path}` did not resolve to a `.wasm` component file at {relative} (an \
              adapter is a single WebAssembly component)"

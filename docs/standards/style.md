@@ -22,6 +22,7 @@ enum Error {
     ReadRegistry { path: PathBuf, source: io::Error },
 }
 // GOOD — Omnia class via the crate-root macro.
+let path = path.display();
 omnia_guest::server_error!("{path} ({source})")
 ```
 
