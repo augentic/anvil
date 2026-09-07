@@ -49,12 +49,12 @@ Density caps are **review only** — clippy and rustfmt cannot express them. The
 ```rust
 // BAD
 //! Per the workspace split 2.9 ("Specify wires components, not adapters"),
-//! `specify` commits only the generation documents — `spec.md` plus
+//! `specify` commits only the revision documents — `spec.md` plus
 //! `design.md`. The pre-Phase-3.7 filename was `charter.md`;
 //! Historical rename detail belongs in git history, not module docs.
 
 // GOOD
-//! Commits `spec.md` and `design.md` as one generation. Other state
+//! Commits `spec.md` and `design.md` as one revision. Other state
 //! is minted by its owning verbs, not by `specify`.
 ```
 

@@ -23,7 +23,7 @@ Every requirement **must** include ≥1 `#### Scenario:` heading — including `
 
 Invariants the engine's parser re-checks fail-closed:
 
-- **Heading name:** exactly the row's subject. Re-runs diff generations by this name, so a rewritten heading is refused as a renamed requirement.
+- **Heading name:** exactly the row's subject. Re-runs diff revisions by this name, so a rewritten heading is refused as a renamed requirement.
 - **`ID:`** matches `^REQ-[0-9]{3}$`, unique across the document, exactly the row's minted id.
 - **`Sources:`** kebab-case keys in the row's order. `[]` only with `Status: unknown`.
 - **`Status:`** the closed enum `agreed | unknown | conflict | divergence`, exactly the row's value.

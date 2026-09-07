@@ -19,7 +19,7 @@ pub trait Text {
 
 impl Text for SpecifyBody {
     fn text(&self, out: &mut dyn fmt::Write) -> fmt::Result {
-        writeln!(out, "committed generation {}", self.generation)?;
+        writeln!(out, "committed revision {}", self.revision)?;
         writeln!(out, "  requirements: {}", self.requirements)?;
         writeln!(out, "  sources: {}", self.sources)?;
         for entry in &self.digests {
@@ -47,7 +47,7 @@ impl Text for SpecifyBody {
 
 // Text mode is the document alone — a deliberate exception to the
 // result-line convention so `emery show spec` pipes cleanly; the
-// generation id rides the JSON envelope.
+// revision id rides the JSON envelope.
 impl Text for ShowBody {
     fn text(&self, out: &mut dyn fmt::Write) -> fmt::Result {
         out.write_str(&self.body)

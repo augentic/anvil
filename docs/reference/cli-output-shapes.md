@@ -17,14 +17,14 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 Every body's `Text` impl (the façade's rendering trait in `crates/cli/src/text.rs`) follows one convention so operators can scan any command's output the same way:
 
-- **Result line first, lowercase, verb-first**: `committed generation 9f8e7d6c…`.
+- **Result line first, lowercase, verb-first**: `committed revision 9f8e7d6c…`.
 - **Detail lines are indented `label: value` pairs** with kebab-case labels: `  sources: 3`.
 - **Names in backticks**, paths bare.
 - **No trailing periods** on result or detail lines.
 - **`hint:` is recovery guidance** (what to fix); **`resume:` is the literal next command** (what to run). A line is one or the other, never both.
 - **Every empty state prints a lowercase line** — silence is never the empty rendering.
 
-One documented exception: `emery show` renders the document body alone in text mode — no result line — so its stdout pipes and redirects as the document itself. Its generation id rides the JSON envelope.
+One documented exception: `emery show` renders the document body alone in text mode — no result line — so its stdout pipes and redirects as the document itself. Its revision id rides the JSON envelope.
 
 ## Shapes
 
@@ -32,11 +32,11 @@ The examples below are hand-curated illustrations of the happy path; the accept/
 
 ### `emery specify`
 
-The success body names the committed generation and its reviewable set:
+The success body names the committed revision and its reviewable set:
 
 ```json
 {
-  "generation": "9f8e7d6c…",
+  "revision": "9f8e7d6c…",
   "requirements": 3,
   "sources": 3,
   "diff": {
@@ -52,7 +52,7 @@ The success body names the committed generation and its reviewable set:
 }
 ```
 
-`diff` is the re-mine diff against the superseded generation: the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
+`diff` is the re-mine diff against the superseded revision: the changed artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
 
 `digests` reports the resolved sha256 content digest of every loader-loaded adapter — a local component or a registry package — pinned or not; it is absent when no binding loaded one. On an unpinned first run this is the trust-on-first-use report — commit the digest as the binding's `digest` pin in `emery.toml` to make the load reproducible. A pin that no longer matches the resolved bytes fails with `error: "refused"` (exit 1).
 
@@ -60,17 +60,17 @@ The success body names the committed generation and its reviewable set:
 
 ### `emery show <spec|design>`
 
-The success body wraps the document with its generation id; text mode is the document body alone (see the exception above).
+The success body wraps the document with its revision id; text mode is the document body alone (see the exception above).
 
 ```json
 {
-  "generation": "9f8e7d6c…",
+  "revision": "9f8e7d6c…",
   "document": "spec",
   "body": "# Specification\n…"
 }
 ```
 
-Before any generation is committed the verb fails with `error: "spec-not-generated"` (exit 2); a pointer naming missing documents fails with `error: "server_error"` (exit 3).
+Before any revision is committed the verb fails with `error: "spec-not-generated"` (exit 2); a current revision id naming missing documents fails with `error: "server_error"` (exit 3).
 
 ### `emery completions <shell>`
 

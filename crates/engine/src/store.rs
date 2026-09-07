@@ -1,146 +1,140 @@
-//! Content-addressed specifications
+//! Content-addressed specification revisions
 //!
-//! The store manages the content-addressed specifications of a deployment.
-//! It is responsible for committing new specifications, reading the current
-//! specification, and pruning old specifications.
+//! The store manages a deployment's specification revisions: committing a
+//! new revision, reading the current one, and pruning its predecessor. A
+//! revision is identified by its content digest, never a sequence number.
 
-use std::fmt::Display;
-
-use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
+use anyhow::Context;
+use omnia_guest::{BlobStore, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 use crate::spec;
 
-const CONTAINER: &str = "spec";
-const CURRENT: &str = "spec/current";
-const SPECS: [&str; 2] = ["spec.md", "design.md"];
+// Blob container holding `<id>/<doc>` objects.
+const CONTAINER: &str = "revisions";
+pub const CURRENT: &str = "revisions/current";
+const DOCS: [&str; 2] = ["spec.md", "design.md"];
 
-/// Spec generations over a deployment's storage capabilities.
+/// Revisions over a deployment's storage capabilities.
 #[derive(Clone, Copy, Debug)]
-pub struct Store<'p, S> {
-    store: &'p S,
+pub struct Store<'a, S> {
+    store: &'a S,
 }
 
-impl<'p, S: StateStore + BlobStore> Store<'p, S> {
-    /// Creates a generation store over `store`.
+impl<'a, S: StateStore + BlobStore> Store<'a, S> {
+    /// Creates a revision store over `store`.
     #[must_use]
-    pub const fn new(store: &'p S) -> Self {
+    pub const fn new(store: &'a S) -> Self {
         Self { store }
     }
 
-    /// Commits `set` by writing its generation, swapping the pointer, and
-    /// pruning its predecessor; returns the committed generation id.
-    ///
-    /// # Errors
-    ///
+    /// Commits `revision` by writing its documents, swapping the current
+    /// id, and pruning its predecessor; returns the committed revision id.
     /// Fails if the observation is stale.
-    /// Propagates write, swap, and prune failures.
-    pub async fn commit(&self, set: &SpecSet, observed: &Observation) -> Result<String, Error> {
-        let id = set.id();
+    pub async fn commit(
+        &self, revision: &Revision, observed: &Observation,
+    ) -> Result<String, Error> {
         self.ensure_container().await?;
-        for (name, body) in set.files() {
-            BlobStore::put(self.store, CONTAINER, &object(&id, name), body.as_bytes())
+        let id = revision.id();
+
+        for (name, body) in revision.files() {
+            BlobStore::put(self.store, CONTAINER, &format!("{id}/{name}"), body.as_bytes())
                 .await
-                .map_err(|err| failed("committing a generation document", &err))?;
+                .context("committing a revision document")?;
         }
 
-        let value = format!("{id}\n");
-        match StateStore::cas(self.store, CURRENT, observed.pointer.as_deref(), value.as_bytes())
+        let expected = observed.current.as_deref().map(str::as_bytes);
+        StateStore::cas(self.store, CURRENT, expected, id.as_bytes())
             .await
-        {
-            Ok(()) => {}
-            Err(CasError::Conflict(_)) => {
-                return Err(server_error!(
-                    "a concurrent `emery specify` committed first and swapped the generation \
-                     pointer; re-run `emery specify` to commit against the new current generation"
-                ));
-            }
-            Err(CasError::Store(message)) => {
-                return Err(failed("swapping the generation pointer", &message));
-            }
-        }
+            .context("swapping the current revision id")?;
+
         self.prune(observed, &id).await?;
 
         Ok(id)
     }
 
-    /// Returns the current generation id and its complete document set,
-    /// or `None` before the first commit.
-    ///
-    /// # Errors
-    ///
-    /// Fails closed for a dangling, incomplete, or unreadable
-    /// generation. Propagates read failures.
-    pub async fn current(&self) -> Result<Option<(String, SpecSet)>, Error> {
+    /// Returns the current revision id and its complete document set, or
+    /// `None` before the first commit. Fails closed for a dangling,
+    /// incomplete, or unreadable revision.
+    pub async fn current(&self) -> Result<Option<(String, Revision)>, Error> {
         let raw = StateStore::get(self.store, CURRENT)
             .await
-            .map_err(|err| failed("reading the generation pointer", &err))?;
-        let Some(id) = raw.as_deref().map(pointer_id) else {
+            .context("reading the current revision id")?;
+        let Some(raw) = raw else {
             return Ok(None);
         };
-        let set = self.load(&id).await?;
-        Ok(Some((id, set)))
+        let id = String::from_utf8(raw).map_err(|err| {
+            server_error!(
+                "the current revision id is not UTF-8 ({}); re-run `emery specify` to commit a \
+                 fresh revision",
+                err
+            )
+        })?;
+        let revision = self.load(&id).await?;
+        Ok(Some((id, revision)))
     }
 
-    /// Observes CAS input and the outgoing set without failing.
+    /// Observes CAS input and the outgoing revision without failing.
     ///
     /// Corrupt or unreadable state suppresses only the advisory diff;
     /// the following CAS remains authoritative and fail-closed.
     pub async fn observe(&self) -> Observation {
-        let pointer = StateStore::get(self.store, CURRENT).await.ok().flatten();
-        let superseded = pointer.as_deref().map(pointer_id);
+        let current = StateStore::get(self.store, CURRENT)
+            .await
+            .ok()
+            .flatten()
+            .and_then(|raw| String::from_utf8(raw).ok());
         let mut outgoing = None;
-        if let Some(id) = &superseded {
+
+        if let Some(id) = &current {
             match self.load(id).await {
-                Ok(set) => outgoing = Some(set),
-                Err(err) => tracing::warn!(generation = %id, %err, "diff suppressed"),
+                Ok(revision) => outgoing = Some(revision),
+                Err(err) => tracing::warn!(revision = %id, %err, "diff suppressed"),
             }
         }
-        Observation {
-            pointer,
-            superseded,
-            outgoing,
-        }
+
+        Observation { current, outgoing }
     }
 
     // `wasi:blobstore` writes need an existing container; only some
     // backends create one on `get-container`.
     async fn ensure_container(&self) -> Result<(), Error> {
-        let exists = BlobStore::container_exists(self.store, CONTAINER)
+        if !BlobStore::container_exists(self.store, CONTAINER)
             .await
-            .map_err(|err| failed("checking the generation container", &err))?;
-        if !exists {
+            .context("checking the revision container")?
+        {
             BlobStore::create_container(self.store, CONTAINER)
                 .await
-                .map_err(|err| failed("creating the generation container", &err))?;
+                .context("creating the revision container")?;
         }
+
         Ok(())
     }
 
-    async fn load(&self, id: &str) -> Result<SpecSet, Error> {
-        let spec = self.read(id, SPECS[0]).await?;
-        let design = self.read(id, SPECS[1]).await?;
-        Ok(SpecSet { spec, design })
+    async fn load(&self, id: &str) -> Result<Revision, Error> {
+        let spec = self.read(id, DOCS[0]).await?;
+        let design = self.read(id, DOCS[1]).await?;
+        Ok(Revision { spec, design })
     }
 
-    // A named generation whose document is absent or malformed is corruption.
+    // A named revision whose document is absent or malformed is corruption.
     async fn read(&self, id: &str, name: &str) -> Result<String, Error> {
-        let bytes = BlobStore::get(self.store, CONTAINER, &object(id, name))
+        let bytes = BlobStore::get(self.store, CONTAINER, &format!("{id}/{name}"))
             .await
-            .map_err(|err| failed("reading a generation document", &err))?;
-        let Some(bytes) = bytes else {
-            return Err(server_error!(
-                "the generation pointer names `{}` but `{}` is missing; re-run `emery specify` \
-                 to commit a fresh generation",
-                id,
-                name
-            ));
-        };
+            .context("reading a revision document")?
+            .ok_or_else(|| {
+                server_error!(
+                    "the current revision id names `{}` but `{}` is missing; re-run `emery \
+                     specify` to commit a fresh revision",
+                    id,
+                    name
+                )
+            })?;
         String::from_utf8(bytes).map_err(|err| {
             server_error!(
-                "the generation pointer names `{}` but `{}` is not UTF-8 ({}); re-run `emery \
-                 specify` to commit a fresh generation",
+                "the current revision id names `{}` but `{}` is not UTF-8 ({}); re-run `emery \
+                 specify` to commit a fresh revision",
                 id,
                 name,
                 err
@@ -150,42 +144,40 @@ impl<'p, S: StateStore + BlobStore> Store<'p, S> {
 
     // Only the observed predecessor is pruned; other orphaned objects are inert.
     async fn prune(&self, observed: &Observation, keep: &str) -> Result<(), Error> {
-        let Some(superseded) = &observed.superseded else {
+        let Some(superseded) = &observed.current else {
             return Ok(());
         };
-        if superseded == keep || superseded.is_empty() {
+        if superseded == keep {
             return Ok(());
         }
-        for name in SPECS {
-            BlobStore::delete(self.store, CONTAINER, &object(superseded, name))
+        for name in DOCS {
+            BlobStore::delete(self.store, CONTAINER, &format!("{superseded}/{name}"))
                 .await
-                .map_err(|err| failed("pruning the superseded generation", &err))?;
+                .context("pruning the superseded revision")?;
         }
         Ok(())
     }
 }
 
-/// A complete, atomically committed spec set.
+/// A complete, atomically committed specification revision.
 ///
 /// Its content-derived id makes identical runs byte-stable.
 #[derive(Clone, Debug)]
-pub struct SpecSet {
+pub struct Revision {
     /// The behavioural specification document.
     pub spec: String,
     /// The rebuild design document.
     pub design: String,
 }
 
-impl SpecSet {
-    /// Returns documents in generation-digest order.
-    #[must_use]
-    pub fn files(&self) -> [(&'static str, &str); 2] {
-        [(SPECS[0], &self.spec), (SPECS[1], &self.design)]
+impl Revision {
+    // Documents in digest order.
+    fn files(&self) -> [(&'static str, &str); 2] {
+        [(DOCS[0], &self.spec), (DOCS[1], &self.design)]
     }
 
-    /// Returns the SHA-256 generation id over length-prefixed names and bodies.
-    #[must_use]
-    pub fn id(&self) -> String {
+    // SHA-256 over length-prefixed names and bodies.
+    fn id(&self) -> String {
         let mut hasher = Sha256::new();
         for (name, body) in self.files() {
             hasher.update((name.len() as u64).to_be_bytes());
@@ -197,35 +189,32 @@ impl SpecSet {
     }
 }
 
-/// Pointer state observed before a compare-and-swap commit.
+/// The current revision observed before a compare-and-swap commit.
 ///
 /// One observation drives both the CAS and advisory diff.
 #[derive(Clone, Debug)]
 pub struct Observation {
-    // The CAS expectation, byte-exact; an unreadable pointer appears
-    // absent so the subsequent CAS fails closed.
-    pointer: Option<Vec<u8>>,
-    // The generation the pointer names, which `commit` prunes.
-    superseded: Option<String>,
-    // Advisory diff input; absent when no complete set is readable.
-    outgoing: Option<SpecSet>,
+    // The current revision id, which `commit` expects and then prunes.
+    // Absent before the first commit; an unreadable or non-UTF-8 value
+    // also reads as absent so the subsequent CAS fails closed.
+    current: Option<String>,
+    // Advisory diff input; absent when no complete revision is readable.
+    outgoing: Option<Revision>,
 }
 
 impl Observation {
-    /// Returns the outgoing generation id and documents when readable.
-    #[must_use]
-    pub fn into_outgoing(self) -> Option<(String, SpecSet)> {
-        self.superseded.zip(self.outgoing)
+    pub fn into_outgoing(self) -> Option<(String, Revision)> {
+        self.current.zip(self.outgoing)
     }
 }
 
-/// An ephemeral re-mine diff against the superseded generation.
+/// An ephemeral re-mine diff against the superseded revision.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Diff {
-    /// The outgoing generation id this run superseded.
+    /// The outgoing revision id this run superseded.
     pub from: String,
-    /// Changed file names in generation-digest order.
+    /// Changed file names in digest order.
     pub artifacts: Vec<String>,
     /// Requirement subjects present only in the incoming `spec.md`.
     pub added: Vec<String>,
@@ -236,12 +225,9 @@ pub struct Diff {
 }
 
 impl Diff {
-    /// Diffs `incoming` against `outgoing`, identified by `from`.
-    ///
-    /// Sections use heading subjects, not positional ids. Because the
-    /// diff is advisory, an unparseable old spec leaves section lists empty.
-    #[must_use]
-    pub fn between(from: String, outgoing: &SpecSet, incoming: &SpecSet) -> Self {
+    // Sections key on heading subjects, not positional ids. Because the
+    // diff is advisory, an unparseable old spec leaves section lists empty.
+    pub(crate) fn between(from: String, outgoing: &Revision, incoming: &Revision) -> Self {
         let artifacts = outgoing
             .files()
             .iter()
@@ -286,15 +272,46 @@ impl Diff {
     }
 }
 
-// `{:#}` prints an `anyhow` chain in full; plain messages are unaffected.
-fn failed(action: &str, err: &impl Display) -> Error {
-    server_error!("storage-failed: {}: {:#}", action, err)
-}
+// Keep (entry-point-unreachable): two runs racing one current id cannot
+// be arranged through the CLI, which observes and commits inside a single
+// `specify`. Everything else the store does is owned by the root scenarios.
+#[cfg(test)]
+mod tests {
+    use omnia_test::guest::Memory;
 
-fn object(id: &str, name: &str) -> String {
-    format!("generations/{id}/{name}")
-}
+    use super::{Revision, Store};
 
-fn pointer_id(raw: &[u8]) -> String {
-    String::from_utf8_lossy(raw).trim().to_string()
+    #[tokio::test]
+    async fn concurrent_commit_conflicts() {
+        let memory = Memory::default();
+        let store = Store::new(&memory);
+
+        // Both runs observe the empty store; the winner swaps first.
+        let stale = store.observe().await;
+        let observed = store.observe().await;
+        let winner = store.commit(&revision("# Spec winner\n"), &observed).await.expect("commit");
+
+        let err = store
+            .commit(&revision("# Spec loser\n"), &stale)
+            .await
+            .expect_err("a stale observation must never last-write-wins over the swapped id");
+        assert_eq!(err.code(), "server_error", "typed failure");
+        assert!(
+            err.description().contains("swapping the current revision id"),
+            "typed failure: {}",
+            err.description()
+        );
+        let (current, _) = store.current().await.expect("current").expect("committed");
+        assert_eq!(current, winner, "the current id still names the winner");
+        let spec =
+            memory.object("revisions", &format!("{winner}/spec.md")).expect("winning spec");
+        assert_eq!(spec, b"# Spec winner\n", "the winning revision is intact");
+    }
+
+    fn revision(spec: &str) -> Revision {
+        Revision {
+            spec: spec.to_string(),
+            design: "# Design\n".to_string(),
+        }
+    }
 }

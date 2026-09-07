@@ -1,5 +1,5 @@
 //! The specification-generation operation: extract every bound source,
-//! reconcile, synthesise, and commit one generation.
+//! reconcile, synthesise, and commit one revision.
 
 use emery_source::Source;
 use omnia_guest::api::Context;
@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract::extract;
 use crate::sources::{SourceBinding, validate};
-use crate::store::{Diff, SpecSet, Store};
+pub use crate::store::Diff;
+use crate::store::{Revision, Store};
 use crate::synthesise::{reconcile, synthesise};
 
-/// Generate a specification generation from source bindings.
+/// Generate a specification revision from source bindings.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Specify {
@@ -24,8 +25,8 @@ pub struct Specify {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SpecifyBody {
-    /// Committed generation id.
-    pub generation: String,
+    /// Committed revision id.
+    pub revision: String,
     /// Number of committed requirements.
     pub requirements: usize,
     /// Number of extracted sources.
@@ -60,7 +61,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     let rows = reconcile(&sets);
     let documents = synthesise(context.provider, &sets, &rows).await?;
 
-    let set = SpecSet {
+    let revision = Revision {
         spec: documents.spec,
         design: documents.design,
     };
@@ -68,9 +69,10 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     // One observation feeds both the CAS expected value and the
     // re-mine diff, computed in memory and emitted only here.
     let observed = store.observe().await;
-    let id = store.commit(&set, &observed).await?;
-    let diff =
-        observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &set));
+    let id = store.commit(&revision, &observed).await?;
+    let diff = observed
+        .into_outgoing()
+        .map(|(from, previous)| Diff::between(from, &previous, &revision));
 
     let digests = sets
         .iter()
@@ -83,7 +85,7 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
         .collect();
 
     Ok(SpecifyBody {
-        generation:id,
+        revision: id,
         requirements: rows.len(),
         sources: sets.len(),
         diff,

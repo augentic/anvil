@@ -67,4 +67,4 @@ The pattern for a command operation:
 
 ## Public Rust API
 
-The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::store::Store` or `emery_cli::run`.
+The root `emery` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `emery_engine::specify::Specify` or `emery_cli::run`.

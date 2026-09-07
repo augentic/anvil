@@ -58,7 +58,7 @@ async fn gen_spec() {
     let resp = cli_ok(&provider, &["emery", "specify", &component]).await;
 
     // --------------------------------------------------
-    // Observe: the load, the pointer, and the generation.
+    // Observe: the load, the current id, and the revision.
     // --------------------------------------------------
     let request = provider.plugins.loads().first().cloned().expect("one load request");
     assert_eq!(request.package, "source:source", "the routed id is the loaded package identity");
@@ -76,10 +76,10 @@ async fn gen_spec() {
         "nothing mirrors into engine storage; the loader reads the file fresh"
     );
     assert!(provider.storage.state("project.yaml").is_none(), "no project record exists");
-    let id = pointer(&provider.storage);
-    let spec = generation(&provider.storage, &id, "spec.md");
+    let id = current(&provider.storage);
+    let spec = document(&provider.storage, &id, "spec.md");
     assert!(String::from_utf8_lossy(&spec).contains("[unknown]"));
-    let design = generation(&provider.storage, &id, "design.md");
+    let design = document(&provider.storage, &id, "design.md");
     assert!(!design.is_empty());
 
     // Review is `show`: text stdout is the stored document, byte for byte.
@@ -121,8 +121,8 @@ async fn from_file() {
         "the file-relative selector resolves against the config directory: {path}"
     );
 
-    let id = pointer(&provider.storage);
-    let spec = generation(&provider.storage, &id, "spec.md");
+    let id = current(&provider.storage);
+    let spec = document(&provider.storage, &id, "spec.md");
     assert!(
         String::from_utf8_lossy(&spec).contains("Sources: [greeting]"),
         "the entry name is the binding key"
@@ -200,8 +200,8 @@ async fn discovery() {
 
     cli_ok(&provider, &["emery", "specify"]).await;
 
-    let id = pointer(&provider.storage);
-    let spec = generation(&provider.storage, &id, "spec.md");
+    let id = current(&provider.storage);
+    let spec = document(&provider.storage, &id, "spec.md");
     assert!(String::from_utf8_lossy(&spec).contains("Sources: [docs]"));
     provider.model.assert_exhausted();
 }
@@ -223,8 +223,8 @@ async fn description_binding() {
     assert_eq!(input.content, SourceContent::Value("Ship it.".to_string()));
     drop(calls);
 
-    let id = pointer(&provider.storage);
-    let spec = generation(&provider.storage, &id, "spec.md");
+    let id = current(&provider.storage);
+    let spec = document(&provider.storage, &id, "spec.md");
     assert!(String::from_utf8_lossy(&spec).contains("Sources: [intent]"));
     provider.model.assert_exhausted();
 }
@@ -298,8 +298,8 @@ async fn authority_precedence() {
     assert!(stdout.contains("requirements: 3"), "{stdout}");
     assert!(stdout.contains("sources: 4"), "{stdout}");
 
-    let id = pointer(&provider.storage);
-    let spec = String::from_utf8(generation(&provider.storage, &id, "spec.md")).expect("utf-8");
+    let id = current(&provider.storage);
+    let spec = String::from_utf8(document(&provider.storage, &id, "spec.md")).expect("utf-8");
     assert!(spec.contains("login.flow [conflict]"), "tied docs peers conflict: {spec}");
     assert!(spec.contains("session.timeout [divergence]"), "intent outranks docs: {spec}");
     assert!(spec.contains("Sources: [intent, docs, code]"), "the intent directive wins: {spec}");
@@ -307,8 +307,8 @@ async fn authority_precedence() {
     provider.model.assert_exhausted();
 }
 
-// A re-run over changed evidence supersedes the generation: the old
-// blobs are pruned, the pointer swaps, and the success envelope
+// A re-run over changed evidence supersedes the revision: the old
+// blobs are pruned, the current id swaps, and the success envelope
 // reports the re-mine diff by heading subject — added, removed, and
 // changed sections alike.
 #[tokio::test]
@@ -322,7 +322,7 @@ async fn remine_supersedes() {
         Ok(docs_evidence("hello", "legacy.export", "Exports ship nightly.")),
     );
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
-    let first = pointer(&provider.storage);
+    let first = current(&provider.storage);
 
     // --------------------------------------------------
     // Second run: the greeting changed, the export is gone, and an
@@ -345,13 +345,13 @@ async fn remine_supersedes() {
     assert!(stdout.contains("- legacy.export"), "{stdout}");
     assert!(stdout.contains("~ greeting.behaviour"), "{stdout}");
 
-    let second = pointer(&provider.storage);
-    assert_ne!(first, second, "changed documents commit a new generation");
+    let second = current(&provider.storage);
+    assert_ne!(first, second, "changed documents commit a new revision");
     assert!(
-        provider.storage.object("spec", &format!("generations/{first}/spec.md")).is_none(),
-        "the superseded generation is pruned"
+        provider.storage.object("revisions", &format!("{first}/spec.md")).is_none(),
+        "the superseded revision is pruned"
     );
-    let spec = generation(&provider.storage, &second, "spec.md");
+    let spec = document(&provider.storage, &second, "spec.md");
     assert!(String::from_utf8_lossy(&spec).contains("howdy"));
     provider.model.assert_exhausted();
 }
@@ -431,7 +431,7 @@ async fn extras_missing() {
         .insert("docs".to_string(), Ok(evidence(Authority::Documentation, vec![bare])));
 
     fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-    assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+    assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
 }
 
 // An adapter call failure surfaces as one typed error.
@@ -444,7 +444,7 @@ async fn extract_fails() {
     );
 
     fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
-    assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+    assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
 }
 
 // An adapter declaring a newer `emery` floor than the binary refuses
@@ -473,7 +473,7 @@ async fn unparseable_answer() {
     for answer in answers {
         let provider = Provider::answering([answer]);
         fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+        assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
     }
 }
 
@@ -499,7 +499,7 @@ async fn dishonest_answer() {
     for answer in answers {
         let provider = Provider::answering([answer.as_str()]);
         fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+        assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
     }
 }
 
@@ -519,7 +519,7 @@ async fn empty_design() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
     let provider = Provider::answering([spec_answer.as_str(), "   "]);
     fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-    assert!(provider.storage.state("spec/current").is_none(), "a refused run commits nothing");
+    assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
 }
 
 // A model transport failure surfaces as one typed synthesis error.
@@ -1001,12 +1001,12 @@ async fn package_ref_refused() {
     }
 }
 
-// A pointer naming a missing generation is corruption, never an empty
+// A current id naming a missing revision is corruption, never an empty
 // result.
 #[tokio::test]
-async fn corrupt_pointer() {
+async fn corrupt_current() {
     let provider = Provider::idle();
-    provider.storage.insert_state("spec/current", b"0123456789abcdef\n");
+    provider.storage.insert_state("revisions/current", b"0123456789abcdef");
     fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
 }
 
@@ -1035,22 +1035,20 @@ async fn multi_project_isolation() {
     cli_ok(&beta, &["emery", "specify", &component]).await;
 
     // Every write landed under its project prefix; nothing landed flat.
-    assert!(shared.state("spec/current").is_none(), "no unprefixed pointer exists");
-    assert!(shared.objects("spec").is_empty(), "no unprefixed generation exists");
+    assert!(shared.state("revisions/current").is_none(), "no unprefixed current id exists");
+    assert!(shared.objects("revisions").is_empty(), "no unprefixed revision exists");
 
-    let id_alpha = project_pointer(&shared, "alpha");
-    let id_beta = project_pointer(&shared, "beta");
-    assert_ne!(id_alpha, id_beta, "distinct documents commit distinct generations");
+    let id_alpha = project_current(&shared, "alpha");
+    let id_beta = project_current(&shared, "beta");
+    assert_ne!(id_alpha, id_beta, "distinct documents commit distinct revisions");
 
     // Each project's `show` renders its own committed bytes alone.
-    let spec_alpha =
-        shared.object("alpha/spec", &format!("generations/{id_alpha}/spec.md")).expect("spec.md");
-    let spec_beta =
-        shared.object("beta/spec", &format!("generations/{id_beta}/spec.md")).expect("spec.md");
+    let spec_alpha = shared.object("alpha/revisions", &format!("{id_alpha}/spec.md")).expect("spec.md");
+    let spec_beta = shared.object("beta/revisions", &format!("{id_beta}/spec.md")).expect("spec.md");
     let shown = cli_ok(&alpha, &["emery", "show", "spec"]).await;
-    assert_eq!(shown.stdout, spec_alpha, "alpha shows its own generation");
+    assert_eq!(shown.stdout, spec_alpha, "alpha shows its own revision");
     let shown = cli_ok(&beta, &["emery", "show", "spec"]).await;
-    assert_eq!(shown.stdout, spec_beta, "beta shows its own generation");
+    assert_eq!(shown.stdout, spec_beta, "beta shows its own revision");
     assert!(String::from_utf8_lossy(&spec_beta).contains("howdy"));
     assert!(!String::from_utf8_lossy(&spec_alpha).contains("howdy"));
 
@@ -1058,19 +1056,19 @@ async fn multi_project_isolation() {
     beta.model.assert_exhausted();
 }
 
-// Reads the current-generation id from a project's store.
-fn pointer(storage: &Memory) -> String {
-    let pointer = storage.state("spec/current").expect("current");
-    String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string()
+// Reads the current revision id from a project's store.
+fn current(storage: &Memory) -> String {
+    let raw = storage.state("revisions/current").expect("current");
+    String::from_utf8(raw).expect("utf-8 revision id")
 }
 
-// Reads a committed generation document from the store.
-fn generation(storage: &Memory, id: &str, name: &str) -> Vec<u8> {
-    storage.object("spec", &format!("generations/{id}/{name}")).unwrap_or_else(|| panic!("{name}"))
+// Reads a committed revision document from the store.
+fn document(storage: &Memory, id: &str, name: &str) -> Vec<u8> {
+    storage.object("revisions", &format!("{id}/{name}")).unwrap_or_else(|| panic!("{name}"))
 }
 
-// Reads a namespaced project's current-generation id from the shared store.
-fn project_pointer(shared: &Memory, project: &str) -> String {
-    let pointer = shared.state(&format!("{project}/spec/current")).expect("current");
-    String::from_utf8(pointer).expect("utf-8 pointer").trim().to_string()
+// Reads a namespaced project's current revision id from the shared store.
+fn project_current(shared: &Memory, project: &str) -> String {
+    let raw = shared.state(&format!("{project}/revisions/current")).expect("current");
+    String::from_utf8(raw).expect("utf-8 revision id")
 }

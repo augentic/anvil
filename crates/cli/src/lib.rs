@@ -28,10 +28,10 @@ const SPECIFY_DESC: &str = "Generate spec.md and design.md from source adapters.
     for `emery.toml` in the project root. Config and command-line bindings cannot be \
     combined.\n\n\
     Adapter paths are project-relative. Each run reloads adapters, verifies optional \
-    digest pins, reconciles their claims, and atomically commits a new generation.";
-const SHOW_DESC: &str = "Print a document from the current generation.\n\n\
+    digest pins, reconciles their claims, and atomically commits a new revision.";
+const SHOW_DESC: &str = "Print a document from the current revision.\n\n\
     Text output contains only the document body. `--format json` also includes the \
-    generation id.";
+    revision id.";
 const COMPLETIONS_DESC: &str = "Generate shell completions.\n\n\
     Pipe into your shell's completion directory. Example: \
     `emery completions zsh > ~/.zsh/_emery`";
@@ -82,7 +82,7 @@ enum Verb {
     /// Generate spec.md and design.md from the named sources
     #[command(long_about = SPECIFY_DESC)]
     Specify(SpecifyArgs),
-    /// Print a reviewable document of the current generation to stdout
+    /// Print a reviewable document of the current revision to stdout
     #[command(long_about = SHOW_DESC)]
     Show(ShowArgs),
     /// Print a shell-completion script for `<shell>` to stdout
@@ -123,7 +123,7 @@ impl SpecifyArgs {
 // The `show` grammar; field docs are its `--help` text.
 #[derive(Debug, clap::Args)]
 struct ShowArgs {
-    /// Reviewable document of the current generation.
+    /// Reviewable document of the current revision.
     #[arg(value_enum)]
     document: DocumentArg,
 }
@@ -258,7 +258,7 @@ fn hint(code: &str) -> Option<&'static str> {
             "`emery specify <adapter>...` generates the spec over the sources named on the invocation; a bindingless run reads the project-root `emery.toml` when present — there is no other persisted binding list",
         ),
         "spec-not-generated" => {
-            Some("run `emery specify <adapter>...` to commit a generation, then re-run show")
+            Some("run `emery specify <adapter>...` to commit a revision, then re-run show")
         }
         "refused" => Some(
             "the loader refused the request: a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or a location kind this deployment does not serve; the message names which",

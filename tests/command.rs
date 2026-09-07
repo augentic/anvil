@@ -193,9 +193,9 @@ async fn specify_old_flags_deleted() {
     }
 }
 
-// The read verb fails typed before any generation is committed.
+// The read verb fails typed before any revision is committed.
 #[tokio::test]
-async fn show_without_generation() {
+async fn show_without_revision() {
     let provider = Provider::idle();
 
     let response = cli(&provider, &["emery", "show", "spec"]).await;
@@ -248,7 +248,7 @@ async fn argv_zero_replaced() {
 #[tokio::test]
 async fn response_contract() {
     for case in cases() {
-        // A fresh store keeps `specify` sourceless and `show` without a generation.
+        // A fresh store keeps `specify` sourceless and `show` without a revision.
         let response = cli(&Provider::idle(), case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");

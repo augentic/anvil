@@ -12,7 +12,7 @@ Emery reconciles intent, documentation, existing code, and captured behaviour in
 
 ```bash
 emery specify <adapter>...  # extract, reconcile, synthesise spec.md + design.md
-emery show spec             # print a reviewable document of the current generation
+emery show spec             # print a reviewable document of the current revision
 emery completions <sh>      # shell completions
 ```
 

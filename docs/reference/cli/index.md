@@ -21,6 +21,6 @@ brew install emery
 
 | Verb | Purpose |
 |------|---------|
-| [emery specify](specify.md) | Generate `spec.md` / `design.md` from the sources named on the invocation and commit them behind the generation pointer |
-| [emery show](show.md) | Print a reviewable document of the current generation to stdout |
+| [emery specify](specify.md) | Generate `spec.md` / `design.md` from the sources named on the invocation and commit them as the current revision |
+| [emery show](show.md) | Print a reviewable document of the current revision to stdout |
 | `emery completions <shell>` | Print a shell-completion script; auto-derived from the live clap surface |

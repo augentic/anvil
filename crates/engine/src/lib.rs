@@ -7,7 +7,7 @@ pub mod show;
 pub mod sources;
 mod spec;
 pub mod specify;
-pub mod store;
+mod store;
 mod synthesise;
 
 use emery_source::Source;

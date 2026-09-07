@@ -1,5 +1,5 @@
 //! The review operation: a verifiable, non-authoritative projection of
-//! one document from the current generation.
+//! one document from the current revision.
 
 use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::store::Store;
 
-/// Read one document of the current generation.
+/// Read one document of the current revision.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Show {
@@ -15,7 +15,7 @@ pub struct Show {
     pub document: Document,
 }
 
-/// The reviewable documents of one generation.
+/// The reviewable documents of one revision.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Document {
@@ -29,8 +29,8 @@ pub enum Document {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ShowBody {
-    /// Current generation id.
-    pub generation: String,
+    /// Current revision id.
+    pub revision: String,
     /// Which document `body` carries.
     pub document: Document,
     /// The document bytes.
@@ -42,19 +42,19 @@ async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
     let store = Store::new(context.provider);
-    let Some((id, set)) = store.current().await? else {
+    let Some((id, revision)) = store.current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
-            description: "no specification generation has been committed".into(),
+            description: "no specification revision has been committed".into(),
         });
     };
     let body = match input.document {
-        Document::Spec => set.spec,
-        Document::Design => set.design,
+        Document::Spec => revision.spec,
+        Document::Design => revision.design,
     };
 
     Ok(ShowBody {
-        generation: id,
+        revision: id,
         document: input.document,
         body,
     })

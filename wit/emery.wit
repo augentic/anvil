@@ -33,7 +33,7 @@ interface types {
 interface source {
   use types.{ adapter-id, error };
 
-  /// Read-only view for a location-backed source. No generation-store grant
+  /// Read-only view for a location-backed source. No revision-store grant
   /// and no writable stage.
   record workspace {
     /// Opaque identity of the preparation.
@@ -43,7 +43,7 @@ interface source {
   }
 
   /// Either a read-only source view or an inline value. Never a
-  /// generation-store path or lifecycle artifact root.
+  /// revision-store path or lifecycle artifact root.
   variant content {
     workspace(workspace),
     value(string),
@@ -51,7 +51,7 @@ interface source {
 
   /// Typed source-operation input: the source binding key plus
   /// workspace-or-value. Sources are value-in — they never read the
-  /// generation store or lifecycle authority.
+  /// revision store or lifecycle authority.
   record input {
     /// Source-binding key.
     key: string,
