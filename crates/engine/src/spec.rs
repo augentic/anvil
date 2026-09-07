@@ -132,19 +132,22 @@ impl Requirement {
 
         // header lines run until the first non-blank line that is not one;
         // everything from there on is body
-        let mut fields = BTreeMap::new();
+        let mut lines = BTreeMap::new();
         let mut body = rest;
+
         while let [line, tail @ ..] = body {
             let text = line.text.trim();
             if !text.is_empty() {
                 let Some((key @ (ID | SOURCES | STATUS), value)) = text.split_once(':') else {
                     break;
                 };
-                let field = Line {
+
+                let line = Line {
                     no: line.no,
                     text: value.trim(),
                 };
-                if fields.insert(key, field).is_some() {
+
+                if lines.insert(key, line).is_some() {
                     let no = line.no;
                     issues.push(format!("line {no}: duplicate `{key}:` line"));
                 }
@@ -153,12 +156,13 @@ impl Requirement {
         }
         let body: Vec<&str> = body.iter().map(|line| line.text).collect();
 
+        // dedup lines by key
         let mut take = |key: &str| {
-            let field = fields.remove(key);
-            if field.is_none() {
+            let line = lines.remove(key);
+            if line.is_none() {
                 issues.push(format!("line {line_no}: no `{key}:` line"));
             }
-            field
+            line
         };
         let (id, sources, status) = (take(ID), take(SOURCES), take(STATUS));
 
