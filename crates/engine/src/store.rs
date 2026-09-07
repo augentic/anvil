@@ -5,7 +5,7 @@
 //! revision is identified by its content digest, never a sequence number.
 
 use anyhow::Context;
-use omnia_guest::{BlobStore, CasError, Error, StateStore, server_error};
+use omnia_guest::{BlobStore, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -19,7 +19,6 @@ pub const CONTAINER: &str = "revisions";
 
 const SPEC: &str = "spec.md";
 const DESIGN: &str = "design.md";
-const DOMAIN: &[u8] = b"emery-revision/1";
 
 /// Revisions over a deployment's storage capabilities.
 #[derive(Clone, Copy, Debug)]
@@ -57,10 +56,8 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
             .await
             .context("swapping current revision")?;
 
-        // The swap has landed, so a prune failure never reports a durable
-        // commit as failed; the leftover is a content-addressed, inert orphan.
+        // the swap landed, prune the previous revision
         if let Some(previous) = observed.previous().filter(|previous| *previous != id) {
-            // The schema is fixed: the incoming names are the predecessor's.
             for (name, _) in revision.files() {
                 let _ =
                     BlobStore::delete(self.store, CONTAINER, &format!("{previous}/{name}")).await;
@@ -149,7 +146,7 @@ impl Revision {
     // SHA-256 over the domain tag, then length-prefixed names and bodies.
     fn id(&self) -> String {
         let mut hasher = Sha256::new();
-        hasher.update(DOMAIN);
+        hasher.update(b"emery-revision/1");
         for (name, body) in self.files() {
             hasher.update((name.len() as u64).to_be_bytes());
             hasher.update(name.as_bytes());
