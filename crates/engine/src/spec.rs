@@ -34,25 +34,33 @@ impl FromStr for Spec {
     fn from_str(text: &str) -> Result<Self, Error> {
         let lines: Vec<Line<'_>> =
             text.lines().enumerate().map(|(i, line)| (i + 1, line.trim_end())).collect();
+
+        let mut findings = Vec::new();
+
+        // extract requirement block headings
         let headings: Vec<(usize, &str)> = lines
             .iter()
             .enumerate()
             .filter_map(|(i, (_, line))| line.strip_prefix(HEADING).map(|h| (i, h.trim())))
             .collect();
 
-        // Text before the first heading is preamble.
-        let mut findings = Vec::new();
-        let mut requirements = Vec::new();
-        for (k, &(start, heading)) in headings.iter().enumerate() {
-            let end = headings.get(k + 1).map_or(lines.len(), |&(i, _)| i);
-            match Requirement::parse(lines[start].0, heading, &lines[start + 1..end]) {
-                Ok(requirement) => requirements.push(requirement),
-                Err(block) => findings.extend(block),
-            }
-        }
-
+        // check for at least one requirement block
         if headings.is_empty() {
             findings.push(format!("the document carries no `{HEADING}` block"));
+        }
+
+        // iterate over each heading and extract its requirement block
+        let mut requirements = Vec::new();
+
+        for (k, &(start, heading)) in headings.iter().enumerate() {
+            // calculate the end of the current block
+            let end = headings.get(k + 1).map_or(lines.len(), |&(i, _)| i);
+
+            // extract the requirement block
+            match Requirement::parse(lines[start].0, heading, &lines[start + 1..end]) {
+                Ok(block) => requirements.push(block),
+                Err(issues) => findings.extend(issues),
+            }
         }
 
         // check that the document carries no duplicate requirement ids
@@ -211,9 +219,11 @@ fn split_header<'a>(
 ) -> (BTreeMap<&'a str, Line<'a>>, &'a [Line<'a>]) {
     let mut header = BTreeMap::new();
     let mut rest = lines;
+
     while let [(n, line), tail @ ..] = rest {
         let line = line.trim();
         if !line.is_empty() {
+            // check that the line is a valid header key
             match line.split_once(':') {
                 Some((key @ ("ID" | "Sources" | "Status"), value)) => {
                     if header.insert(key, (*n, value.trim())).is_some() {
@@ -225,6 +235,7 @@ fn split_header<'a>(
         }
         rest = tail;
     }
+
     (header, rest)
 }
 
