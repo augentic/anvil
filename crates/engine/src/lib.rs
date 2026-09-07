@@ -1,7 +1,7 @@
 //! Emery's specification-generation engine.
 
 mod extract;
-mod load;
+mod plugin;
 pub mod show;
 pub mod sources;
 mod spec;
@@ -12,8 +12,8 @@ mod synthesise;
 use std::path::{Component, Path, PathBuf};
 
 use emery_source::Source;
-pub use load::AdapterSelector;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
+pub use plugin::AdapterSelector;
 pub use store::{CONTAINER, CURRENT};
 
 /// Normalizes an operator path inside the `.` project preopen.

@@ -1,6 +1,6 @@
-//! Source-adapter loading: selector parsing, local components and
-//! registry packages over the `Plugins` capability, plus the adapter
-//! `emery-version` gate.
+//! Plugin loading
+//!
+//! Loads plugins from the registry or local filesystem.
 
 use std::path::{Path, PathBuf};
 
@@ -62,7 +62,7 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
             }
             AdapterSelector::Component { path } => {
                 let id = format!("source:{name}");
-                let digest = load_component(&self.cache, &id, path, pin).await?;
+                let digest = load_file(&self.cache, &id, path, pin).await?;
 
                 Loaded {
                     id,
@@ -76,9 +76,7 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
         };
 
         // check the adapter's minimum `emery-version`
-        let metadata = Source::metadata(self.provider, &loaded.id);
-        let minimum = parse_minimum(metadata.emery_version.as_deref(), &name, &loaded.id)?;
-        check_minimum(minimum.as_ref(), env!("CARGO_PKG_VERSION"), &name, &loaded.id)?;
+        check_version(self.provider, &name, &loaded.id)?;
 
         Ok(loaded)
     }
@@ -98,7 +96,7 @@ pub struct Loaded {
 // The loader reads the file fresh — nothing is mirrored, so a deleted
 // file refuses on the next run. The engine keeps only the operator-typo
 // gate: a missing or non-component path refuses typed before any load.
-async fn load_component<L: Plugins>(
+async fn load_file<L: Plugins>(
     cache: &L, id: &str, path: &Path, pin: Option<&Digest>,
 ) -> Result<Digest, Error> {
     let relative = preopen_path(path)?;
@@ -121,34 +119,28 @@ async fn load_component<L: Plugins>(
     Ok(plugin.digest().clone())
 }
 
-// Get the adapter's minimum `emery-version` from its metadata.
-fn parse_minimum(
-    minimum: Option<&str>, name: &str, id: &str,
-) -> Result<Option<semver::Version>, Error> {
-    let Some(minimum) = minimum else {
-        return Ok(None);
-    };
-
-    semver::Version::parse(minimum).map(Some).map_err(|err| {
-        bad_request!("adapter `{name}` ({id}) has an invalid `emery-version` `{minimum}`: {err}")
-    })
-}
-
 // Check the adapter's minimum `emery-version` against the running version.
-fn check_minimum(
-    minimum: Option<&semver::Version>, current: &str, name: &str, id: &str,
-) -> Result<(), Error> {
-    let Some(minimum) = minimum else {
+fn check_version<S: Source>(source: &S, name: &str, id: &str) -> Result<(), Error> {
+    // get the adapter's minimum `emery-version` from its metadata
+    let metadata = Source::metadata(source, id);
+    let Some(adapter_version) = metadata.emery_version.as_deref() else {
         return Ok(());
     };
-    let Ok(version) = semver::Version::parse(current) else {
-        return Ok(());
-    };
+    let adapter_semver = semver::Version::parse(adapter_version).map_err(|err| {
+        bad_request!(
+            "adapter `{name}` ({id}) has an invalid `emery-version` `{adapter_version}`: {err}"
+        )
+    })?;
 
-    if version < *minimum {
+    // the running emery version is the crate's own, always valid semver
+    let emery_semver = semver::Version::parse(env!("CARGO_PKG_VERSION"))
+        .expect("CARGO_PKG_VERSION is valid semver");
+
+    // refuse when the running version is older than the adapter's minimum
+    if emery_semver < adapter_semver {
         return Err(Error::BadRequest {
             code: "unsupported-version".into(),
-            description: format!("adapter {name} ({id}) requires emery {minimum} or newer"),
+            description: format!("adapter {name} ({id}) requires emery {adapter_semver} or newer"),
         });
     }
 
@@ -227,13 +219,13 @@ impl AdapterSelector {
     pub fn name(&self) -> Result<String, Error> {
         match self {
             Self::Bare { name } | Self::Package { name, .. } => Ok(name.clone()),
-            Self::Component { path } => name_from_component(path),
+            Self::Component { path } => component_name(path),
         }
     }
 }
 
 // The kebab-case adapter name of a component filename.
-fn name_from_component(path: &Path) -> Result<String, Error> {
+fn component_name(path: &Path) -> Result<String, Error> {
     let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
         let path = path.display();
         bad_request!("cannot derive adapter name from {path}")
@@ -246,15 +238,13 @@ fn name_from_component(path: &Path) -> Result<String, Error> {
 fn recognize_package(value: &str) -> Option<Result<AdapterSelector, Error>> {
     let (namespace, rest) = value.split_once(':')?;
     // URL authorities and Windows drive paths are not package references.
-    if rest.starts_with('/') || !is_first_party_name(namespace) {
+    if rest.starts_with('/') || !is_first_party(namespace) {
         return None;
     }
-    Some(parse_validated_package(namespace, rest, value))
+    Some(parse_package(namespace, rest, value))
 }
 
-fn parse_validated_package(
-    namespace: &str, rest: &str, original: &str,
-) -> Result<AdapterSelector, Error> {
+fn parse_package(namespace: &str, rest: &str, original: &str) -> Result<AdapterSelector, Error> {
     let (name, version) = rest.split_once('@').ok_or_else(|| {
         bad_request!(
             "adapter `{original}` is missing `@<version>` (expected \
@@ -280,37 +270,21 @@ fn parse_shorthand(value: &str) -> Option<(&str, Option<semver::Version>)> {
         return None;
     }
     match value.split_once('@') {
-        Some((name, reference)) if is_first_party_name(name) => {
+        Some((name, reference)) if is_first_party(name) => {
             let version = semver::Version::parse(reference).ok()?;
             Some((name, Some(version)))
         }
-        None if is_first_party_name(value) => Some((value, None)),
+        None if is_first_party(value) => Some((value, None)),
         Some(_) | None => None,
     }
 }
 
 // Equivalent to `^[a-z][a-z0-9-]*$`.
-fn is_first_party_name(name: &str) -> bool {
+fn is_first_party(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
         return false;
     };
     first.is_ascii_lowercase()
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-}
-
-// Keep (entry-point-unreachable defensive branch): production `current`
-// is the binary's own always-parseable `env!("CARGO_PKG_VERSION")`, so
-// no operator input can reach the permissive unparseable-version arm.
-#[cfg(test)]
-mod tests {
-    use super::check_minimum;
-
-    #[test]
-    fn unparseable_permissive() {
-        let minimum = semver::Version::new(2, 0, 0);
-
-        check_minimum(Some(&minimum), "not-a-version", "demo-source", "source:demo-source")
-            .expect("an unparseable running version must not brick loading");
-    }
 }

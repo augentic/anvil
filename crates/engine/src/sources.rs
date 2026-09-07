@@ -10,7 +10,7 @@ use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_request};
 use serde::{Deserialize, Serialize};
 
-use crate::load::{AdapterSelector, Loaded, Loader};
+use crate::plugin::{AdapterSelector, Loaded, Loader};
 use crate::preopen_path;
 
 /// Checks a run's binding list before anything loads.

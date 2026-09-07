@@ -44,7 +44,7 @@ async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
     let store = Store::new(context.provider);
-    
+
     let Some(revision) = store.current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),
