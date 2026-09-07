@@ -37,12 +37,12 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
     ///
     /// Returns selector, load, or version failures.
     pub async fn load(
-        &self, selector: &AdapterSelector, pin: Option<&Digest>, registry: Option<&str>,
+        &self, selector: &AdapterRef, pin: Option<&Digest>, registry: Option<&str>,
     ) -> Result<Loaded, Error> {
         let name = selector.name()?;
 
         let loaded = match selector {
-            AdapterSelector::Package {
+            AdapterRef::Package {
                 namespace, version, ..
             } => {
                 let request = PluginRef::builder()
@@ -57,7 +57,7 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
                     digest: Some(plugin.digest().clone()),
                 }
             }
-            AdapterSelector::Component { path } => {
+            AdapterRef::Component(path) => {
                 let id = format!("source:{name}");
                 let digest = self.load_file(&id, path, pin).await?;
 
@@ -66,7 +66,7 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
                     digest: Some(digest),
                 }
             }
-            AdapterSelector::Bare { .. } => Loaded {
+            AdapterRef::Bare(_) => Loaded {
                 id: format!("source:{name}"),
                 digest: None,
             },
@@ -143,14 +143,8 @@ pub struct Loaded {
 
 /// An operator-supplied adapter reference.
 #[derive(Debug, Clone)]
-pub enum AdapterSelector {
-    /// Bare unpinned shorthand (`omnia`).
-    Bare {
-        /// Kebab-case adapter name.
-        name: String,
-    },
-    /// Exact package reference (`emery:omnia@1.0.0`; `omnia@1.0.0`
-    /// is sugar for the `emery` namespace).
+pub enum AdapterRef {
+    /// Package reference (`emery:omnia@1.0.0`, `omnia@1.0.0`, etc.).
     Package {
         /// Kebab-case package namespace (`emery` for the shorthand).
         namespace: String,
@@ -159,24 +153,28 @@ pub enum AdapterSelector {
         /// Mandatory exact SemVer pin.
         version: semver::Version,
     },
-    /// Local component file path.
-    Component {
-        /// Supplied path, anchored at the project directory when relative.
-        path: PathBuf,
-    },
+    /// Bare adapter name (`omnia`): the kebab-case adapter name.
+    Bare(String),
+    /// Local component file path (`./intent.wasm`).
+    Component(PathBuf),
 }
 
-impl FromStr for AdapterSelector {
+impl FromStr for AdapterRef {
     type Err = Error;
 
-    /// Parses an adapter argument without filesystem access.
+    /// Parses an adapter from a string. Valid strings are:
+    ///   - `emery:intent@1.0.0`
+    ///   - `intent@1.0.0`
+    ///   - `intent`
+    ///   - `./intent.wasm`
     ///
     /// # Errors
     ///
     /// Returns typed errors for malformed values, GitHub URLs, or invalid pins.
     fn from_str(value: &str) -> Result<Self, Error> {
-        if value.trim().is_empty() || value != value.trim() {
-            return Err(bad_request!("adapter reference is empty or has surrounding whitespace"));
+        let value = value.trim();
+        if value.is_empty() {
+            return Err(bad_request!("adapter reference is empty"));
         }
         if value.starts_with("https://github.com/") {
             return Err(bad_request!("adapter `{value}`: GitHub URLs are not supported"));
@@ -184,14 +182,15 @@ impl FromStr for AdapterSelector {
 
         if let Some((namespace, rest)) = value.split_once(':') {
             // URL authorities and Windows drive paths are not package references.
-            if !rest.starts_with('/') && is_first_party(namespace) {
-                return Self::parse_package(namespace, rest, value);
+            if !rest.starts_with('/') && is_kebab(namespace) {
+                return Self::new(namespace, rest, value);
             }
         }
+
         match value.split_once('@') {
             // `<name>@<version>` is sugar for the `emery` namespace; a
             // non-SemVer suffix falls through to the path grammar.
-            Some((name, version)) if is_first_party(name) => {
+            Some((name, version)) if is_kebab(name) => {
                 if let Ok(version) = semver::Version::parse(version) {
                     return Ok(Self::Package {
                         namespace: "emery".to_string(),
@@ -200,22 +199,37 @@ impl FromStr for AdapterSelector {
                     });
                 }
             }
-            None if is_first_party(value) => {
-                return Ok(Self::Bare {
-                    name: value.to_string(),
-                });
+            None if is_kebab(value) => {
+                return Ok(Self::Bare(value.to_string()));
             }
             Some(_) | None => {}
         }
 
         let path = value.strip_prefix("file://").unwrap_or(value);
-        Ok(Self::Component {
-            path: PathBuf::from(path),
-        })
+        Ok(Self::Component(PathBuf::from(path)))
     }
 }
 
-impl AdapterSelector {
+impl AdapterRef {
+    fn new(namespace: &str, rest: &str, original: &str) -> Result<Self, Error> {
+        let (name, version) = rest
+            .split_once('@')
+            .ok_or_else(|| bad_request!("adapter `{original}` is missing `@<version>`"))?;
+        if name.is_empty() {
+            return Err(bad_request!("adapter `{original}` is missing a name before `@`"));
+        }
+
+        let version = semver::Version::parse(version).map_err(|err| {
+            bad_request!("adapter `{original}` has an invalid version `{version}`: {err}")
+        })?;
+
+        Ok(Self::Package {
+            namespace: namespace.to_string(),
+            name: name.to_string(),
+            version,
+        })
+    }
+
     /// Returns the kebab-case adapter name.
     ///
     /// # Errors
@@ -223,8 +237,8 @@ impl AdapterSelector {
     /// Returns a `BadRequest` for an unusable component stem.
     pub fn name(&self) -> Result<String, Error> {
         match self {
-            Self::Bare { name } | Self::Package { name, .. } => Ok(name.clone()),
-            Self::Component { path } => {
+            Self::Bare(name) | Self::Package { name, .. } => Ok(name.clone()),
+            Self::Component(path) => {
                 let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
                     let path = path.display();
                     bad_request!("cannot derive adapter name from {path}")
@@ -237,30 +251,10 @@ impl AdapterSelector {
             }
         }
     }
-
-    fn parse_package(namespace: &str, rest: &str, original: &str) -> Result<Self, Error> {
-        let (name, version) = rest.split_once('@').ok_or_else(|| {
-            bad_request!(
-                "adapter `{original}` is missing `@<version>` (expected \
-                 `{namespace}:<name>@<version>`)"
-            )
-        })?;
-        if name.is_empty() {
-            return Err(bad_request!("adapter `{original}` is missing a name before `@`"));
-        }
-        let version = semver::Version::parse(version).map_err(|err| {
-            bad_request!("adapter `{original}` has an invalid version `{version}`: {err}")
-        })?;
-        Ok(Self::Package {
-            namespace: namespace.to_string(),
-            name: name.to_string(),
-            version,
-        })
-    }
 }
 
 // Equivalent to `^[a-z][a-z0-9-]*$`.
-fn is_first_party(name: &str) -> bool {
+fn is_kebab(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
         return false;

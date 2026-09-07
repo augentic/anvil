@@ -10,7 +10,7 @@ use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_request};
 use serde::{Deserialize, Serialize};
 
-use crate::plugin::{AdapterSelector, Loaded, Loader};
+use crate::plugin::{AdapterRef, Loaded, Loader};
 use crate::preopen_path;
 
 /// Checks a run's binding list before anything loads.
@@ -65,7 +65,7 @@ impl SourceBinding {
     pub(crate) async fn load<P: Source + Plugins>(
         &self, loader: &Loader<'_, P>,
     ) -> Result<Loaded, Error> {
-        let selector: AdapterSelector = self.adapter.parse()?;
+        let selector: AdapterRef = self.adapter.parse()?;
         loader.load(&selector, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
@@ -96,7 +96,7 @@ impl SourceBinding {
     }
 
     fn validate(&self) -> Result<(), Error> {
-        let selector: AdapterSelector = self.adapter.parse()?;
+        let selector: AdapterRef = self.adapter.parse()?;
         selector.name()?;
         self.registry_allowed(&selector)?;
         self.digest_allowed(&selector)?;
@@ -108,8 +108,8 @@ impl SourceBinding {
 
     // The endpoint override only steers registry acquisition, so it rides
     // only a package-shaped selector.
-    fn registry_allowed(&self, selector: &AdapterSelector) -> Result<(), Error> {
-        if self.registry.is_some() && !matches!(selector, AdapterSelector::Package { .. }) {
+    fn registry_allowed(&self, selector: &AdapterRef) -> Result<(), Error> {
+        if self.registry.is_some() && !matches!(selector, AdapterRef::Package { .. }) {
             let key = &self.key;
             return Err(bad_request!(
                 "source `{key}`: `registry` requires a package adapter \
@@ -121,8 +121,8 @@ impl SourceBinding {
 
     // The pin binds exact component bytes, so it rides only a selector
     // the loader acquires — a local component path or a registry package.
-    fn digest_allowed(&self, selector: &AdapterSelector) -> Result<(), Error> {
-        if self.digest.is_some() && matches!(selector, AdapterSelector::Bare { .. }) {
+    fn digest_allowed(&self, selector: &AdapterRef) -> Result<(), Error> {
+        if self.digest.is_some() && matches!(selector, AdapterRef::Bare(_)) {
             let key = &self.key;
             return Err(bad_request!(
                 "source `{key}`: `digest` requires a `.wasm` path or package adapter, not a bare \

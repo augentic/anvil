@@ -13,7 +13,7 @@ use std::path::{Component, Path, PathBuf};
 
 use emery_source::Source;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
-pub use plugin::AdapterSelector;
+pub use plugin::AdapterRef;
 pub use store::{CONTAINER, CURRENT};
 
 /// Normalizes an operator path inside the `.` project preopen.

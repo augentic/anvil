@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use emery_engine::sources::{BindingContent, SourceBinding};
-use emery_engine::{AdapterSelector, preopen_path};
+use emery_engine::{AdapterRef, preopen_path};
 use omnia_guest::{Error, bad_request, server_error};
 
 /// The project-root config discovered by a bindingless run.
@@ -54,7 +54,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
     let mut bindings = Vec::new();
     for value in adapters {
         bindings.push(SourceBinding {
-            key: value.parse::<AdapterSelector>()?.name()?,
+            key: value.parse::<AdapterRef>()?.name()?,
             adapter: value.clone(),
             content: BindingContent::Workspace(".".to_string()),
             digest: None,
@@ -70,7 +70,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
                 )
             })?;
         bindings.push(SourceBinding {
-            key: adapter.parse::<AdapterSelector>()?.name()?,
+            key: adapter.parse::<AdapterRef>()?.name()?,
             adapter: adapter.to_string(),
             content: BindingContent::Description(text.to_string()),
             digest: None,
@@ -129,7 +129,7 @@ struct SourceEntry {
 
 fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     let name = &entry.name;
-    let selector: AdapterSelector = entry.adapter.parse()?;
+    let selector: AdapterRef = entry.adapter.parse()?;
     let digest = entry
         .digest
         .as_deref()
@@ -169,7 +169,7 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
     // A local component path resolves relative to the file, like Cargo
     // `path` dependencies; other selector kinds pass through unchanged.
     let adapter = match &selector {
-        AdapterSelector::Component { path } => resolved(base, path)?.display().to_string(),
+        AdapterRef::Component(path) => resolved(base, path)?.display().to_string(),
         _ => entry.adapter.clone(),
     };
 
