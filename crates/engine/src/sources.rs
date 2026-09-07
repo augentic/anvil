@@ -10,8 +10,8 @@ use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_request};
 use serde::{Deserialize, Serialize};
 
+use crate::load::{AdapterSelector, Loaded, Loader};
 use crate::preopen_path;
-use crate::resolve::{AdapterSelector, Resolved, Resolver};
 
 /// Checks a run's binding list before anything loads.
 ///
@@ -61,12 +61,12 @@ pub struct SourceBinding {
 }
 
 impl SourceBinding {
-    // Resolves this binding's adapter under its pin and registry override.
-    pub(crate) async fn resolve<P: Source + Plugins>(
-        &self, resolver: &Resolver<'_, P>,
-    ) -> Result<Resolved, Error> {
+    // Loads this binding's adapter under its pin and registry override.
+    pub(crate) async fn load<P: Source + Plugins>(
+        &self, loader: &Loader<'_, P>,
+    ) -> Result<Loaded, Error> {
         let selector = AdapterSelector::parse(&self.adapter)?;
-        resolver.resolve(&selector, self.digest.as_ref(), self.registry.as_deref()).await
+        loader.load(&selector, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
     // Maps this binding to the adapter `extract` input.

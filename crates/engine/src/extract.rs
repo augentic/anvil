@@ -1,24 +1,24 @@
-//! Source extraction: resolve each binding, extract over the `Source`
-//! capability, and re-run the A8 claim gate fail-closed.
+//! Source extraction: load each binding's adapter, extract over the
+//! `Source` capability, and re-run the A8 claim gate fail-closed.
 
 use emery_source::types::{Authority, Claim};
 use emery_source::{Source, claims};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use crate::resolve::Resolver;
+use crate::load::Loader;
 use crate::sources::SourceBinding;
 
-/// Resolves, extracts, and validates every source binding.
+/// Loads, extracts, and validates every source binding.
 pub async fn extract<P: Source + Plugins>(
     provider: &P, bindings: &[SourceBinding],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
-    let resolver = Resolver::new(provider);
+    let loader = Loader::new(provider);
 
     for binding in bindings {
         let input = binding.input()?;
-        let adapter = binding.resolve(&resolver).await?;
+        let adapter = binding.load(&loader).await?;
 
         tracing::debug!(source = %binding.key, "extracting");
         let id = &adapter.id;

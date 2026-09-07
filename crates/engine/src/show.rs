@@ -1,5 +1,7 @@
-//! The review operation: a verifiable, non-authoritative projection of
-//! one document from the current revision.
+//! # Show operation
+//!
+//! The `Show` operation reads a document from the current specification
+//! revision.
 
 use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
@@ -42,6 +44,7 @@ async fn show<P: StateStore + BlobStore>(
     input: Show, context: Context<'_, P>,
 ) -> Result<ShowBody, Error> {
     let store = Store::new(context.provider);
+    
     let Some(revision) = store.current().await? else {
         return Err(Error::NotFound {
             code: "spec-not-generated".into(),

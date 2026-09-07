@@ -7,8 +7,8 @@ Cross-cutting code-quality rules every Rust change in this workspace honours, co
 The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module>/<file>.rs`, and that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
 
 ```rust
-// crates/engine/src/resolve/resolver.rs
-// BAD: AdapterResolverComponent GOOD: Component
+// crates/engine/src/load.rs
+// BAD: SourceAdapterLoader GOOD: Loader
 ```
 
 ## Engine failures are Omnia errors
