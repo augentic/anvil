@@ -12,9 +12,8 @@ use omnia_guest::{Error, Plugins, bad_request, not_found};
 use crate::preopen_path;
 
 // The running emery, parsed once for the minimum-version gate.
-static EMERY: LazyLock<semver::Version> = LazyLock::new(|| {
-    env!("CARGO_PKG_VERSION").parse().expect("CARGO_PKG_VERSION is valid semver")
-});
+static EMERY: LazyLock<semver::Version> =
+    LazyLock::new(|| env!("CARGO_PKG_VERSION").parse().expect("CARGO_PKG_VERSION is valid semver"));
 
 /// One run's adapter loads over a provider: loads memoize by identity
 /// for the run, so a second binding on the same adapter reuses the held
@@ -169,14 +168,6 @@ impl FromStr for AdapterRef {
 }
 
 impl AdapterRef {
-    /// Returns the kebab-case adapter name.
-    #[must_use]
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Bare(name) | Self::Package { name, .. } | Self::Component { name, .. } => name,
-        }
-    }
-
     fn package(namespace: &str, rest: &str, original: &str) -> Result<Self, Error> {
         let (name, version) = rest
             .split_once('@')
@@ -196,6 +187,14 @@ impl AdapterRef {
         })
     }
 
+    /// Returns the kebab-case adapter name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Bare(name) | Self::Package { name, .. } | Self::Component { name, .. } => name,
+        }
+    }
+
     // The adapter name is the file stem, minus an `emery` crate prefix,
     // in kebab case.
     fn component(path: &str) -> Result<Self, Error> {
@@ -203,10 +202,8 @@ impl AdapterRef {
             .file_stem()
             .and_then(|stem| stem.to_str())
             .ok_or_else(|| bad_request!("cannot derive adapter name from {path}"))?;
-        let stem = stem
-            .strip_prefix("emery_")
-            .or_else(|| stem.strip_prefix("emery-"))
-            .unwrap_or(stem);
+        let stem =
+            stem.strip_prefix("emery_").or_else(|| stem.strip_prefix("emery-")).unwrap_or(stem);
 
         Ok(Self::Component {
             name: stem.replace('_', "-"),
