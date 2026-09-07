@@ -32,32 +32,30 @@ impl FromStr for Spec {
     type Err = Error;
 
     fn from_str(text: &str) -> Result<Self, Error> {
+        let mut findings = Vec::new();
         let lines: Vec<Line<'_>> =
             text.lines().enumerate().map(|(i, line)| (i + 1, line.trim_end())).collect();
 
-        let mut findings = Vec::new();
-
-        // extract requirement block headings
-        let headings: Vec<(usize, &str)> = lines
-            .iter()
-            .enumerate()
-            .filter_map(|(i, (_, line))| line.strip_prefix(HEADING).map(|h| (i, h.trim())))
+        // split the document into requirement blocks: each starts at a heading
+        // and runs to the line before the next one; any preamble is skipped
+        let blocks: Vec<(usize, &str, &[Line<'_>])> = lines
+            .chunk_by(|_, (_, next)| !next.starts_with(HEADING))
+            .filter_map(|block| {
+                let &(line_no, first) = block.first()?;
+                let heading = first.strip_prefix(HEADING)?;
+                Some((line_no, heading.trim(), &block[1..]))
+            })
             .collect();
 
         // check for at least one requirement block
-        if headings.is_empty() {
+        if blocks.is_empty() {
             findings.push(format!("the document carries no `{HEADING}` block"));
         }
 
-        // iterate over each heading and extract its requirement block
+        // parse each requirement block
         let mut requirements = Vec::new();
-
-        for (k, &(start, heading)) in headings.iter().enumerate() {
-            // calculate the end of the current block
-            let end = headings.get(k + 1).map_or(lines.len(), |&(i, _)| i);
-
-            // extract the requirement block
-            match Requirement::parse(lines[start].0, heading, &lines[start + 1..end]) {
+        for (line_no, heading, rest) in blocks {
+            match Requirement::parse(line_no, heading, rest) {
                 Ok(block) => requirements.push(block),
                 Err(issues) => findings.extend(issues),
             }
