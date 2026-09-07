@@ -1059,6 +1059,7 @@ dependencies = [
  "cfg-if",
  "emery-adapter",
  "emery-cli",
+ "emery-engine",
  "emery-prose",
  "emery-source",
  "omnia",

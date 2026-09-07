@@ -11,9 +11,10 @@ use sha2::{Digest, Sha256};
 
 use crate::spec;
 
-// Blob container holding `<id>/<doc>` objects.
-const CONTAINER: &str = "revisions";
+/// Keyvalue key holding the current revision id.
 pub const CURRENT: &str = "current-revision";
+
+const CONTAINER: &str = "revisions";
 const DOCS: [&str; 2] = ["spec.md", "design.md"];
 
 /// Revisions over a deployment's storage capabilities.

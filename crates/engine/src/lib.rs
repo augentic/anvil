@@ -13,6 +13,7 @@ mod synthesise;
 use emery_source::Source;
 use omnia_guest::{BlobStore, Model, Plugins, StateStore};
 pub use resolve::AdapterSelector;
+pub use store::CURRENT;
 
 /// The capability set every operation can be dispatched over, as one
 /// bound for the transports that bind a provider.

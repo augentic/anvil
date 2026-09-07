@@ -8,7 +8,7 @@ Engine state — the revision store and its current revision id — is reachable
 
 | Surface             | Kind                            | Name                |
 | ------------------- | ------------------------------- | ------------------- |
-| Current revision id | keyvalue key                    | `revisions/current` |
+| Current revision id | keyvalue key                    | `current-revision`  |
 | Revision documents  | blobstore container `revisions` | `<id>/<doc>.md`     |
 
 The host side of the boundary is a backend type implementing `omnia::Backend` (connection options compiled into the `hosts:` row, or loaded from the environment when the row carries none) plus the host context traits `WasiKeyValueCtx` and `WasiBlobstoreCtx`. Bucket and container identifiers cross the boundary exactly once — on `open_bucket` and the container methods — which is where a profile may rewrite them.

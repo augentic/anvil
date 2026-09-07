@@ -11,6 +11,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use emery_engine::CURRENT;
 use emery_source::types::{Authority, ClaimKind, SourceContent};
 use emery_source::{DispatchError, types};
 use omnia_guest::model::Error as ModelError;
@@ -431,7 +432,7 @@ async fn extras_missing() {
         .insert("docs".to_string(), Ok(evidence(Authority::Documentation, vec![bare])));
 
     fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-    assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
+    assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
 }
 
 // An adapter call failure surfaces as one typed error.
@@ -444,7 +445,7 @@ async fn extract_fails() {
     );
 
     fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
-    assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
+    assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
 }
 
 // An adapter declaring a newer `emery` floor than the binary refuses
@@ -473,10 +474,7 @@ async fn unparseable_answer() {
     for answer in answers {
         let provider = Provider::answering([answer]);
         fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(
-            provider.storage.state("revisions/current").is_none(),
-            "a refused run commits nothing"
-        );
+        assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
     }
 }
 
@@ -502,10 +500,7 @@ async fn dishonest_answer() {
     for answer in answers {
         let provider = Provider::answering([answer.as_str()]);
         fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(
-            provider.storage.state("revisions/current").is_none(),
-            "a refused run commits nothing"
-        );
+        assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
     }
 }
 
@@ -525,7 +520,7 @@ async fn empty_design() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
     let provider = Provider::answering([spec_answer.as_str(), "   "]);
     fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-    assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
+    assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
 }
 
 // A model transport failure surfaces as one typed synthesis error.
@@ -1012,7 +1007,7 @@ async fn package_ref_refused() {
 #[tokio::test]
 async fn corrupt_current() {
     let provider = Provider::idle();
-    provider.storage.insert_state("revisions/current", b"0123456789abcdef");
+    provider.storage.insert_state(CURRENT, b"0123456789abcdef");
     fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
 }
 
@@ -1041,7 +1036,7 @@ async fn multi_project_isolation() {
     cli_ok(&beta, &["emery", "specify", &component]).await;
 
     // Every write landed under its project prefix; nothing landed flat.
-    assert!(shared.state("revisions/current").is_none(), "no unprefixed current id exists");
+    assert!(shared.state(CURRENT).is_none(), "no unprefixed current id exists");
     assert!(shared.objects("revisions").is_empty(), "no unprefixed revision exists");
 
     let id_alpha = project_current(&shared, "alpha");
@@ -1066,7 +1061,7 @@ async fn multi_project_isolation() {
 
 // Reads the current revision id from a project's store.
 fn current(storage: &Memory) -> String {
-    let raw = storage.state("revisions/current").expect("current");
+    let raw = storage.state(CURRENT).expect("current");
     String::from_utf8(raw).expect("utf-8 revision id")
 }
 
@@ -1077,6 +1072,6 @@ fn document(storage: &Memory, id: &str, name: &str) -> Vec<u8> {
 
 // Reads a namespaced project's current revision id from the shared store.
 fn project_current(shared: &Memory, project: &str) -> String {
-    let raw = shared.state(&format!("{project}/revisions/current")).expect("current");
+    let raw = shared.state(&format!("{project}/{CURRENT}")).expect("current");
     String::from_utf8(raw).expect("utf-8 revision id")
 }
