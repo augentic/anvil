@@ -70,9 +70,8 @@ async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     // re-mine diff, computed in memory and emitted only here.
     let observed = store.observe().await;
     let id = store.commit(&revision, &observed).await?;
-    let diff = observed
-        .into_outgoing()
-        .map(|(from, previous)| Diff::between(from, &previous, &revision));
+    let diff =
+        observed.into_outgoing().map(|(from, previous)| Diff::between(from, &previous, &revision));
 
     let digests = sets
         .iter()

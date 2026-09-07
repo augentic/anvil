@@ -473,7 +473,10 @@ async fn unparseable_answer() {
     for answer in answers {
         let provider = Provider::answering([answer]);
         fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
+        assert!(
+            provider.storage.state("revisions/current").is_none(),
+            "a refused run commits nothing"
+        );
     }
 }
 
@@ -499,7 +502,10 @@ async fn dishonest_answer() {
     for answer in answers {
         let provider = Provider::answering([answer.as_str()]);
         fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(provider.storage.state("revisions/current").is_none(), "a refused run commits nothing");
+        assert!(
+            provider.storage.state("revisions/current").is_none(),
+            "a refused run commits nothing"
+        );
     }
 }
 
@@ -1043,8 +1049,10 @@ async fn multi_project_isolation() {
     assert_ne!(id_alpha, id_beta, "distinct documents commit distinct revisions");
 
     // Each project's `show` renders its own committed bytes alone.
-    let spec_alpha = shared.object("alpha/revisions", &format!("{id_alpha}/spec.md")).expect("spec.md");
-    let spec_beta = shared.object("beta/revisions", &format!("{id_beta}/spec.md")).expect("spec.md");
+    let spec_alpha =
+        shared.object("alpha/revisions", &format!("{id_alpha}/spec.md")).expect("spec.md");
+    let spec_beta =
+        shared.object("beta/revisions", &format!("{id_beta}/spec.md")).expect("spec.md");
     let shown = cli_ok(&alpha, &["emery", "show", "spec"]).await;
     assert_eq!(shown.stdout, spec_alpha, "alpha shows its own revision");
     let shown = cli_ok(&beta, &["emery", "show", "spec"]).await;

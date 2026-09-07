@@ -13,7 +13,7 @@ use crate::spec;
 
 // Blob container holding `<id>/<doc>` objects.
 const CONTAINER: &str = "revisions";
-pub const CURRENT: &str = "revisions/current";
+pub const CURRENT: &str = "current-revision";
 const DOCS: [&str; 2] = ["spec.md", "design.md"];
 
 /// Revisions over a deployment's storage capabilities.
@@ -303,8 +303,7 @@ mod tests {
         );
         let (current, _) = store.current().await.expect("current").expect("committed");
         assert_eq!(current, winner, "the current id still names the winner");
-        let spec =
-            memory.object("revisions", &format!("{winner}/spec.md")).expect("winning spec");
+        let spec = memory.object("revisions", &format!("{winner}/spec.md")).expect("winning spec");
         assert_eq!(spec, b"# Spec winner\n", "the winning revision is intact");
     }
 
