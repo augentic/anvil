@@ -35,21 +35,18 @@ pub struct Question<T> {
 }
 
 impl<T: DeserializeOwned + JsonSchema> Question<T> {
-    /// Builds the question `name` from the synthesis prose at `paths`.
+    /// Builds the question `name`, asking for a `T` under the synthesis
+    /// prose at `paths`.
     ///
     /// # Panics
     ///
-    /// Panics only if `schemars` produces a non-object schema for `T`.
+    /// Panics only if `T`'s generated schema does not serialise.
     pub fn new(name: &'static str, paths: &[&str]) -> Self {
         let generated = SchemaSettings::draft2020_12().into_generator().into_root_schema_for::<T>();
         let schema = serde_json::to_string(&generated).expect("generated answer schema serialises");
 
         Self {
-            system: paths
-                .iter()
-                .map(|path| crate::prose::body(path))
-                .collect::<Vec<_>>()
-                .join("\n\n---\n\n"),
+            system: system(paths),
             name,
             schema,
             answer: PhantomData,
@@ -111,4 +108,9 @@ impl<T: DeserializeOwned + JsonSchema> Question<T> {
         let reply = Model::complete(model, request).await.map_err(|err| bad_gateway!(err))?;
         Ok(reply.answer)
     }
+}
+
+// Joins the synthesis prose at `paths` into one system prompt.
+fn system(paths: &[&str]) -> String {
+    paths.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n")
 }

@@ -37,6 +37,7 @@ pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Prove
     if sets.len() < 2 {
         return Ok(floor(sets));
     }
+
     let claims = Claims::collect(sets);
     tracing::info!("grouping requirement claims");
     let question = Question::<Grouping>::new("grouping", PROSE);
