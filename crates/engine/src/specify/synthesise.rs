@@ -36,18 +36,6 @@ const SPEC_PROSE: &[&str] = &[
 ];
 const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-format.md"];
 
-/// Plans `design.md`: which sections the claims require, allow, or forbid.
-#[must_use]
-pub fn plan(sets: &[SourceSet]) -> Plan {
-    let mut kinds: Vec<ClaimKind> = Vec::new();
-    for claim in sets.iter().flat_map(|set| &set.claims) {
-        if !kinds.contains(&claim.kind) {
-            kinds.push(claim.kind);
-        }
-    }
-    Plan { kinds }
-}
-
 /// Drafts, validates, and renders both documents.
 ///
 /// # Errors
@@ -57,6 +45,7 @@ pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
+
     let question = Question::<SpecDraft>::new("spec-draft", SPEC_PROSE);
     let drafted =
         question.ask(model, &spec_prompt(sets, rows), |drafted| drafted.check(rows)).await?;
@@ -71,6 +60,19 @@ pub async fn synthesise<M: Model>(
     let design = render::design(sets, &drafted);
 
     Ok(Revision { spec, design })
+}
+
+/// Plans `design.md`: which sections the claims require, allow, or forbid.
+#[must_use]
+pub fn plan(sets: &[SourceSet]) -> Plan {
+    let mut kinds: Vec<ClaimKind> = Vec::new();
+    for claim in sets.iter().flat_map(|set| &set.claims) {
+        if !kinds.contains(&claim.kind) {
+            kinds.push(claim.kind);
+        }
+    }
+
+    Plan { kinds }
 }
 
 /// The `design.md` section plan: the claim kinds the run extracted, which
@@ -148,12 +150,14 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Provenance]) -> String {
             subject = row.subject(),
             status = row.status(),
         );
+
         for (position, class) in row.classes().iter().enumerate() {
             let role = match (row.status(), position) {
                 (Status::Divergence, 0) => "winner",
                 (Status::Divergence, _) => "loser",
                 _ => "contributor",
             };
+
             for member in class {
                 let _ = writeln!(
                     prompt,
@@ -166,6 +170,7 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Provenance]) -> String {
             }
         }
     }
+
     prompt
 }
 
@@ -204,6 +209,7 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
 
 fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
     prompt.push_str("## Claims\n");
+    
     for set in sets {
         let _ = write!(
             prompt,
@@ -211,6 +217,7 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
             key = set.key,
             authority = set.authority
         );
+
         for claim in &set.claims {
             let id = claim.id.as_deref().unwrap_or("-");
             let synopsis = claim.synopsis.as_deref().unwrap_or("");

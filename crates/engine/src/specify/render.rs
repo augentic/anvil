@@ -74,6 +74,7 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
         let Some(section) = draft.sections.iter().find(|section| section.kind == kind) else {
             continue;
         };
+
         blocks.push(format!("## {kind}"));
         for block in &section.blocks {
             match block {
@@ -87,6 +88,7 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
             }
         }
     }
+
     document(&blocks)
 }
 
@@ -94,6 +96,7 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
 // conflict, then the reconciliation line), then the acceptance gap.
 fn notes(row: &Provenance) -> Option<String> {
     let mut lines = Vec::new();
+
     match row.status() {
         Status::Divergence => lines.extend(row.classes().iter().skip(1).map(|class| note(class))),
         Status::Conflict => {
@@ -102,9 +105,11 @@ fn notes(row: &Provenance) -> Option<String> {
         }
         Status::Agreed | Status::Unknown => {}
     }
+
     if !row.covered() {
         lines.push("Note: acceptance criteria not evidenced.".to_string());
     }
+
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
@@ -112,6 +117,7 @@ fn notes(row: &Provenance) -> Option<String> {
 fn note(class: &[Contributor]) -> String {
     let sources = class.iter().map(|member| member.source.as_str()).collect::<Vec<_>>().join(", ");
     let lead = &class[0];
+    
     format!(
         "Note: {sources} ({authority}, {id}): {statement}",
         authority = lead.authority,
