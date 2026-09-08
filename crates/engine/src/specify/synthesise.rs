@@ -34,7 +34,6 @@ const SPEC_PROSE: &[&str] = &[
     "synthesis/spec-format.md",
     "synthesis/tags.md",
 ];
-
 const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-format.md"];
 
 /// Reconciles requirements by authority and appends uncovered acceptance gaps.
@@ -43,6 +42,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
     // Groups keep first-seen order, which is the row order.
     let mut groups: Vec<(&str, Vec<Contributor>)> = Vec::new();
     let mut criteria: Vec<&str> = Vec::new();
+
     for set in sets {
         for claim in &set.claims {
             let Some(id) = claim.id.as_deref() else { continue };
@@ -66,6 +66,7 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
 
     let mut rows = Vec::with_capacity(groups.len());
     let mut gaps = Vec::new();
+
     for (subject, mut contributors) in groups {
         // Highest authority first; the sort is stable, so binding
         // order is conserved within a class.

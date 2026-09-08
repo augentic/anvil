@@ -10,7 +10,7 @@
 
 #![cfg(target_arch = "wasm32")]
 
-use emery_cli::Response;
+use omnia_guest::api::command::Response;
 use wasip3::cli::environment;
 
 omnia_guest::provider! {

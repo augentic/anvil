@@ -128,7 +128,6 @@ unused_result_ok = "warn"
 anyhow = "1.0.104"
 cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
-clap_complete = "4.6"
 hex = "0.4.3"
 schemars = "1.2.2"
 semver = { version = "1.0.28", features = ["serde"] }
@@ -153,7 +152,9 @@ emery-source = { path = "crates/source" }
 # `plugin` is required: the shipped `runtime!` declares `locations:`.
 omnia = { version = "0.36.0", default-features = false, features = ["jit", "plugin"] }
 omnia-core = "0.36.0"
-omnia-guest = "0.36.0"
+# `command` is the clap-backed command façade the CLI runs on; the guest
+# routes no HTTP and uses no ORM, so the defaults are off.
+omnia-guest = { version = "0.36.0", default-features = false, features = ["command"] }
 omnia-guest-macros = "0.36.0"
 omnia-host-macros = "0.36.0"
 omnia-plugin = "0.36.0"

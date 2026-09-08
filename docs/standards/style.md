@@ -28,7 +28,7 @@ omnia_guest::server_error!("{path} ({source})")
 
 ## One body per command, no wrapper newtype
 
-Don't introduce a wrapper newtype to hang a rendering off a body. Implement the façade's `Text` trait (`crates/cli/src/text.rs`) on the engine body itself — the orphan rule permits a local trait on a foreign type — and keep `std::fmt::Display` off engine bodies altogether: their terminal shape is the CLI's contract, not the engine's. If the same rendering appears in three command files, it's one body — promote it.
+Don't introduce a wrapper newtype to hang a rendering off a body. Write the body's render fn in the CLI (`crates/cli/src/text.rs`, `fn(&Body, &mut dyn fmt::Write) -> fmt::Result`, handed to omnia's `Command::call`) and keep `std::fmt::Display` off engine bodies altogether: their terminal shape is the CLI's contract, not the engine's. If the same rendering appears in three command files, it's one body — promote it.
 
 ```rust
 // BAD — wrapper newtype existing only to carry a rendering.

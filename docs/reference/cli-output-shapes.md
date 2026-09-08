@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 ## Text-mode style
 
-Every body's `Text` impl (the façade's rendering trait in `crates/cli/src/text.rs`) follows one convention so operators can scan any command's output the same way:
+Every body's render fn (its text mode, in `crates/cli/src/text.rs`) follows one convention so operators can scan any command's output the same way:
 
 - **Result line first, lowercase, verb-first**: `committed revision 9f8e7d6c…`.
 - **Detail lines are indented `label: value` pairs** with kebab-case labels: `  sources: 3`.

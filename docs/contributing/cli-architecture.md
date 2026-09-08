@@ -27,7 +27,7 @@ src/main.rs   →  emery::main()  →  omnia::runtime! in src/lib.rs (command mo
 
 The deployment projects nothing out of argv: no pre-boot fact depends on the parsed grammar — the invocation directory is the project root, and everything else, displays and rejections included, renders in the guest.
 
-The operator grammar is assembled in `crates/cli/src/lib.rs` on façade-side `SpecifyArgs` / `ShowArgs` types (`clap::Args`), each decoding into its engine input (`emery_engine::specify::Specify`, `emery_engine::show::Show` — serde DTOs handled by the engine's `specify` / `show` fns, `omnia_guest::api::Handler<P, I>` through omnia's blanket impl) by exhaustive struct literal, so grammar/input drift is a compile error. `emery_cli` owns clap behavior, the binding carriers (argv, `--config`, root discovery), completions, `Client` dispatch, and the buffered `Response`; `emery_cli::run(provider, argv)` is the whole entry. The WASI shim (`omnia_guest::command!(dispatch)` in `src/lib.rs`) constructs the provider, runs that grammar, and returns the `Response`; it implements `omnia_guest::api::command::IntoExit`, which writes both channels and hands the exit status to `omnia_guest::api::command::execute_wasi` (telemetry init/flush and exact exit). The handler contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The operator grammar is assembled in `crates/cli/src/lib.rs` on façade-side `SpecifyArgs` / `ShowArgs` types (`clap::Args`), each decoding into its engine input (`emery_engine::specify::Specify`, `emery_engine::show::Show` — serde DTOs handled by the engine's `specify` / `show` fns, `omnia_guest::api::Handler<P, I>` through omnia's blanket impl) by exhaustive struct literal, so grammar/input drift is a compile error. `emery_cli` owns clap behavior, the binding carriers (argv, `--config`, root discovery), the per-body text render fns, and the hint table; `emery_cli::run(provider, argv)` is the whole entry, and it runs on omnia's command façade (`omnia_guest::api::command`): `parse::<App>` classifies argv, `Command::new(&client, &metadata, format).hints(hint).call(handler, decode, render)` projects each verb, `completions::<App>` answers the completions verb, and the buffered `Response` comes back. The WASI shim (`omnia_guest::command!(dispatch)` in `src/lib.rs`) constructs the provider, runs that grammar, and returns the `Response`; omnia's `Response` implements `IntoExit`, which writes both channels and hands the exit status to `execute_wasi` (telemetry init/flush and exact exit). The handler contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
 ## JSON envelope contract
 
@@ -37,23 +37,24 @@ All JSON output follows the shared envelope contract:
 - **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure is the flat `{error, message, exit-code}` envelope (optional `hint`). There is no top-level envelope-version stamp.
 - **Error discriminants** — the three kebab recovery codes (`specify-source-required`, `unsupported-version`, `spec-not-generated`), the loader's kebab refusals (`refused`, `already-active`, `unavailable`, `internal`), plus the four snake_case Omnia defaults (`bad_request`, `not_found`, `server_error`, `bad_gateway`); skills and tests grep on the `error` field, so renaming one is a breaking change.
 
-The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent.
+The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the environment equivalent. Invocation metadata rides the environment too: `EMERY_REQUEST_ID`, `EMERY_CORRELATION_ID`, and `EMERY_CAUSATION_ID` (`Metadata::from_env("EMERY")`); a missing request id is minted from `wasi:random`, and `Client::call` runs the handler in a `handler` tracing span carrying the request and correlation ids.
 
 Progress is `tracing`, never stdout: the engine emits a handful of INFO events at its slow seams (each source extraction, each synthesis pass) and DEBUG detail (claim counts), rendered by the guest subscriber `execute_wasi` installs and filtered by the guest's `RUST_LOG`. The semantic result stays the buffered `Response`; no engine code writes a process stream.
 
 ## Exit codes
 
-The exit-code contract is part of the public interface for operators and skill wrappers; `exit_code` in `crates/cli/src/lib.rs` maps `omnia_guest::Error` variants and is the single source of truth:
+The exit-code contract is part of the public interface for operators and skill wrappers; `omnia_guest::Error::exit_code` maps the variants and is the single source of truth, applied by omnia's `Command` projector:
 
 | Code | Variant        | Meaning                                                                                                                                                                               |
 | ---- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `0`  | `EXIT_SUCCESS` | Operation completed successfully                                                                                                                                                      |
 | `1`  | `BadRequest`   | Operator or input refusal. The `error` field is `specify-source-required`, `unsupported-version`, a loader refusal (`refused`, `already-active`), or the Omnia default `bad_request`. |
-| `2`  | `NotFound`     | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`. Clap usage and unknown-verb also exit 2 (framework).                                    |
+| `2`  | `NotFound`     | Missing resource. The `error` field is `spec-not-generated` or the Omnia default `not_found`.                                                                                          |
 | `3`  | `ServerError`  | Unclassified default: I/O, storage, leftover conversions. The `error` field is the Omnia default `server_error` or the loader's `internal`.                                           |
 | `4`  | `BadGateway`   | Upstream, model, or component-acquisition failure. The `error` field is the Omnia default `bad_gateway` or the loader's `unavailable`.                                                |
+| `64` | `USAGE_EXIT`   | Clap usage error (unknown verb or flag, missing argument): clap's own text on stderr, no envelope. `EX_USAGE`, so exit 2 always means a `NotFound` envelope.                            |
 
-Guest commands inherit the same contract: `emery_cli` projects parser, decoder, and handler outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
+Guest commands inherit the same contract: omnia's command façade projects parser, decoder, and handler outcomes into a buffered command response; the WASI run export forwards its exit and the binary passes it through verbatim.
 
 ## Error handling
 
@@ -62,8 +63,8 @@ Commands return `omnia_guest::Error`. Construct the Omnia class that matches: `B
 The pattern for a command operation:
 
 1. Call into a library crate function that returns `Result<T, omnia_guest::Error>`
-2. Return a typed `Serialize` body; the façade's `Text` impl renders its text mode
-3. Let the command projector render success or apply the shared error contract
+2. Return a typed `Serialize` body; its render fn in `crates/cli/src/text.rs` is its text mode
+3. Let omnia's command projector render success or apply the shared error contract
 
 ## Public Rust API
 

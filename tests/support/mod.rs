@@ -13,11 +13,11 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use emery_cli::Response;
 use emery_source::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
 use emery_source::{DispatchError, Source};
+use omnia_guest::api::command::Response;
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, StateStore};
 use omnia_test::guest::{Memory, Scripted, ScriptedLoader};

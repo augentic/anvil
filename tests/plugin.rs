@@ -83,7 +83,7 @@ const GLOBAL_FLAGS: &[&str] = &["--debug", "--quiet", "--format", "--help", "--v
 const SKILL_VERBS: &[(&str, &str)] = &[("specify", "specify")];
 
 /// Runs `argv` through the live grammar over the inert provider.
-async fn grammar(argv: &[&str]) -> emery_cli::Response {
+async fn grammar(argv: &[&str]) -> omnia_guest::api::command::Response {
     emery_cli::run(Inert::default(), argv.iter().copied()).await
 }
 

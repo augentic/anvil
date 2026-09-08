@@ -2,7 +2,7 @@
 
 The deterministic surface skills depend on. The surviving skill in this repository (`/emery:specify`) shells out to the `emery` binary; it is an ultrathin wrapper over one verb. The v1 workflow verbs and their skills are archived at git tag `v1`.
 
-The CLI itself is built in the in-tree Cargo workspace at the repo root: the `emery-cli` crate (`crates/cli`) owns the grammar, the envelope, and the exit contract as a façade over the transport-neutral `emery-engine` operations. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
+The CLI itself is built in the in-tree Cargo workspace at the repo root: the `emery-cli` crate (`crates/cli`) owns the grammar over the transport-neutral `emery-engine` operations, and omnia's command façade (`omnia_guest::api::command`) owns the envelope and the exit contract. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
 ## Rule: all deterministic operations live in the CLI
 
@@ -42,9 +42,10 @@ The CLI uses the Omnia 1:1 exit map. The authoritative definition lives in [`AGE
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
 | `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `unsupported-version`, the loader's kebab-case refusals — `refused` and `already-active` — or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `unsupported-version`, tell the operator to update the installed binary through its install channel. |
-| `2` | `NotFound` | Missing resource (`spec-not-generated`, or the Omnia default `not_found`). Clap usage and unknown-verb also exit 2 (framework). |
+| `2` | `NotFound` | Missing resource (`spec-not-generated`, or the Omnia default `not_found`). |
 | `3` | `ServerError` | Unclassified default: I/O, storage (`server_error`, or the loader's `internal`). |
 | `4` | `BadGateway` | Upstream, model, or component-acquisition failure (`bad_gateway`, the loader's `unavailable`). |
+| `64` | `USAGE_EXIT` | Clap usage error (unknown verb or flag, missing argument). Clap's own usage text on stderr, no JSON envelope — a skill that sees 64 has built a bad argv. |
 
 Skills should branch on the exit code first (success vs failure class) and on the three kebab recovery discriminants second (`specify-source-required`, `unsupported-version`, `spec-not-generated`). Other failures share the Omnia snake_case default for that class (`bad_request`, `not_found`, `server_error`, `bad_gateway`). New exit codes are not invented by skills or the CLI.
 

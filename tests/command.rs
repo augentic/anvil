@@ -15,6 +15,7 @@ mod support;
 #[path = "support/verbs.rs"]
 mod verbs;
 
+use omnia_guest::api::command::USAGE_EXIT;
 use serde_json::Value;
 use support::{Provider, cli, cli_ok, fail};
 use verbs::verbs;
@@ -73,7 +74,8 @@ const fn cases() -> [Case; 5] {
     ]
 }
 
-// Deleted verbs are deleted from the grammar, not hidden.
+// Deleted verbs are deleted from the grammar, not hidden. A usage error
+// exits `USAGE_EXIT` (64), so exit 2 always means a `NotFound` envelope.
 #[tokio::test]
 async fn route_budget() {
     let provider = Provider::idle();
@@ -101,7 +103,7 @@ async fn route_budget() {
         &["emery", "journal", "show"][..],
         &["emery", "debt"][..],
     ] {
-        assert_eq!(cli(&provider, removed).await.exit, 2, "{removed:?}");
+        assert_eq!(cli(&provider, removed).await.exit, USAGE_EXIT, "{removed:?}");
     }
 
     let help = cli(&provider, &["emery", "--help"]).await;
@@ -195,7 +197,7 @@ async fn specify_old_flags_deleted() {
         &["emery", "specify", "--sources", "emery.toml"][..],
         &["emery", "specify", "--value", "intent=text"][..],
     ] {
-        assert_eq!(cli(&provider, argv).await.exit, 2, "{argv:?}");
+        assert_eq!(cli(&provider, argv).await.exit, USAGE_EXIT, "{argv:?}");
     }
 }
 
@@ -242,7 +244,7 @@ async fn argv_zero_replaced() {
     let expected = cli(&provider, &["emery", "specify", "--no-such-flag"]).await;
     let forwarded = cli(&provider, &["emery:engine@0.1.0", "specify", "--no-such-flag"]).await;
 
-    assert_eq!(expected.exit, 2);
+    assert_eq!(expected.exit, USAGE_EXIT);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
