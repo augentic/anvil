@@ -7,13 +7,13 @@ Cross-cutting code-quality rules every Rust change in this workspace honours, co
 The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module>/<file>.rs`, and that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
 
 ```rust
-// crates/engine/src/resolve/resolver.rs
-// BAD: AdapterResolverComponent GOOD: Component
+// crates/engine/src/plugin.rs
+// BAD: SourceAdapterLoader GOOD: Loader
 ```
 
 ## Engine failures are Omnia errors
 
-Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `adapter-cli-too-old`, and `spec-not-generated`. The adapter WIT seam (`emery_source::types::Error`) is a different contract — do not replace it with Omnia errors.
+Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `unsupported-version`, and `spec-not-generated`. The adapter WIT seam (`emery_source::types::Error`) is a different contract — do not replace it with Omnia errors.
 
 ```rust
 // BAD — a house error type, even if it later maps to Omnia.
@@ -22,12 +22,13 @@ enum Error {
     ReadRegistry { path: PathBuf, source: io::Error },
 }
 // GOOD — Omnia class via the crate-root macro.
-omnia_guest::server_error!("{} ({source})", path.display())
+let path = path.display();
+omnia_guest::server_error!("{path} ({source})")
 ```
 
 ## One body per command, no wrapper newtype
 
-Don't introduce a wrapper newtype to hang a rendering off a body. Implement the façade's `Text` trait (`crates/cli/src/text.rs`) on the engine body itself — the orphan rule permits a local trait on a foreign type — and keep `std::fmt::Display` off engine bodies altogether: their terminal shape is the CLI's contract, not the engine's. If the same rendering appears in three command files, it's one body — promote it.
+Don't introduce a wrapper newtype to hang a rendering off a body. Write the body's render fn in the CLI (`crates/cli/src/text.rs`, `fn(&Body, &mut dyn fmt::Write) -> fmt::Result`, handed to omnia's `Command::call`) and keep `std::fmt::Display` off engine bodies altogether: their terminal shape is the CLI's contract, not the engine's. If the same rendering appears in three command files, it's one body — promote it.
 
 ```rust
 // BAD — wrapper newtype existing only to carry a rendering.
@@ -64,7 +65,7 @@ enum Kind { /* ... */ }
 
 ## No archaeology in code
 
-Comments — doc comments and `//` line comments alike — describe what the code *does today*, in ≤ 3 lines. Historical framing — "Phase 1 …", "old contract renamed …", "previously lived in …", "former tests collapse here", "to avoid the X → Y cycle" — is deleted, not relocated; git history is the record. The density caps (module `//!` 1–3 prose lines, `///` overview under ~8, `//` runs ≤ 3) are review-only — see [coding-standards.md § Comments](./coding-standards.md#comments).
+Comments — doc comments and `//` line comments alike — describe what the code *does today*. Historical framing — "Phase 1 …", "old contract renamed …", "previously lived in …", "former tests collapse here", "to avoid the X → Y cycle" — is deleted, not relocated; git history is the record. The density caps (module `//!` a title plus one or two plain-language paragraphs on what and why, `///` overview under ~8, `//` runs ≤ 3) are review-only — see [coding-standards.md § Comments](./coding-standards.md#comments).
 
 ```rust
 // BAD

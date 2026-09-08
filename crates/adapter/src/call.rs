@@ -1,4 +1,15 @@
-//! Schema-gated judgment calls, with optional bounded repair.
+//! Model judgments
+//!
+//! The one way an adapter asks the model a question: a judgment sends a
+//! prompt, requires the answer to match a JSON schema, and deserializes the
+//! result. Adapters share this so every model call carries the same schema
+//! gate, workspace lend, and reference tools rather than each adapter
+//! assembling its own request.
+//!
+//! A judgment whose answer parses but fails a caller-supplied check can be
+//! retried with the findings attached, a bounded number of times. Models
+//! often fix a concrete finding on the next attempt, so this recovers runs
+//! that a single strict pass would lose.
 
 use omnia_guest::Model;
 use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat};
@@ -48,7 +59,12 @@ where
             Ok(value) => return Ok(value),
             Err(err @ Error::Internal(_)) if attempt < MAX_REPAIRS => {
                 attempt += 1;
-                prompt = repair_prompt(&user, &reply.answer, &err);
+                prompt = format!(
+                    "{user}\n\n## Previous answer (failed validation)\n\n{}\n\n\
+                     ## Findings\n\n{err}\n\n\
+                     Produce a corrected, complete answer that resolves every finding.",
+                    reply.answer
+                );
             }
             Err(err) => return Err(err),
         }
@@ -71,19 +87,11 @@ async fn complete<P: Model>(
         Some(lend) => builder.workspace(lend).build(),
         None => builder.build(),
     };
+
     if docs.is_empty() {
-        return model.complete(request).await.map_err(Error::from);
+        return Model::complete(model, request).await.map_err(Error::from);
     }
-    model
-        .complete_with(request, |call| async move { references::answer(docs, &call) })
+    Model::complete_with(model, request, |call| async move { references::answer(docs, &call) })
         .await
         .map_err(Error::from)
-}
-
-fn repair_prompt(user: &str, failed_answer: &str, err: &Error) -> String {
-    format!(
-        "{user}\n\n## Previous answer (failed validation)\n\n{failed_answer}\n\n\
-         ## Findings\n\n{err}\n\n\
-         Produce a corrected, complete answer that resolves every finding."
-    )
 }

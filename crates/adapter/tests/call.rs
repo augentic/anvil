@@ -1,4 +1,10 @@
-//! Model call tests.
+//! Judgment contract
+//!
+//! What an adapter can rely on when it asks the model a question: the
+//! request carries the schema and prompt it gave, reference tools appear only
+//! when the adapter embeds documents and are answered from them, the
+//! workspace lend follows the context, and model failures map to the
+//! adapter error kinds the engine expects.
 
 use std::path::Path;
 
@@ -25,23 +31,6 @@ const DOCS: &[Doc] = &[
         body: "DEPTH",
     },
 ];
-
-fn ctx<'a>(docs: &'static [Doc], root: &'a Path) -> Context<'a> {
-    Context {
-        adapter_id: "target:contracts",
-        project_root: root,
-        docs,
-        lend: Some(".".to_string()),
-    }
-}
-
-fn call(name: &str, arguments: &serde_json::Value) -> ToolCall {
-    ToolCall {
-        id: format!("call-{name}"),
-        name: name.to_string(),
-        arguments: arguments.to_string(),
-    }
-}
 
 #[tokio::test]
 async fn assembles_and_parses() {
@@ -316,4 +305,21 @@ async fn value_omits_workspace() {
         .expect("value leg succeeds");
 
     assert_eq!(model.requests()[0].workspace, None);
+}
+
+fn ctx<'a>(docs: &'static [Doc], root: &'a Path) -> Context<'a> {
+    Context {
+        adapter_id: "target:contracts",
+        project_root: root,
+        docs,
+        lend: Some(".".to_string()),
+    }
+}
+
+fn call(name: &str, arguments: &serde_json::Value) -> ToolCall {
+    ToolCall {
+        id: format!("call-{name}"),
+        name: name.to_string(),
+        arguments: arguments.to_string(),
+    }
 }

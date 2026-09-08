@@ -1,4 +1,9 @@
-//! Source adapter operation tests.
+//! `SourceAdapter` contract
+//!
+//! A minimal adapter implemented against the trait, driven natively over a
+//! scripted model. It shows the trait is complete enough to implement and
+//! exercise without a wasm build, which is the promise adapter authors' own
+//! test suites depend on.
 
 use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
@@ -17,7 +22,7 @@ impl SourceAdapter for Probe {
     const IDENTITY: &str = "probe@0.0.0";
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { emery_floor: None }
+        SourceMetadata { emery_version: None }
     }
 
     fn docs() -> &'static [Doc] {
@@ -44,7 +49,7 @@ impl SourceAdapter for Probe {
 #[tokio::test]
 async fn source_dispatch() {
     let model = Scripted::answering([
-        r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim"}]}"#,
+        r#"{"authority":"documentation","claims":[{"kind":"requirement","id":"one.claim","statement":"One."}]}"#,
     ]);
     let ctx = Context {
         adapter_id: "source:probe",
@@ -60,7 +65,7 @@ async fn source_dispatch() {
     assert_eq!(evidence.claims[0].id.as_deref(), Some("one.claim"));
 
     assert_eq!(<Probe as SourceAdapter>::IDENTITY, "probe@0.0.0");
-    assert_eq!(<Probe as SourceAdapter>::metadata(), SourceMetadata { emery_floor: None });
+    assert_eq!(<Probe as SourceAdapter>::metadata(), SourceMetadata { emery_version: None });
     assert_eq!(<Probe as SourceAdapter>::docs()[0].path, "prompts/extract.md");
 }
 
@@ -68,6 +73,6 @@ async fn source_dispatch() {
 fn fn_pointer_coercion() {
     let metadata: fn() -> SourceMetadata = <Probe as SourceAdapter>::metadata;
     let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
-    assert_eq!(metadata(), SourceMetadata { emery_floor: None });
+    assert_eq!(metadata(), SourceMetadata { emery_version: None });
     assert_eq!(docs().len(), 1);
 }

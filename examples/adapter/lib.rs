@@ -1,4 +1,12 @@
-//! Mock greeting source adapter.
+//! Mock source adapter
+//!
+//! The smallest complete source adapter: it reads a greeting fixture and
+//! asks the model to describe it as claims. It exists so the engine can be
+//! exercised end to end — the component rung, the live journey — without
+//! depending on a first-party adapter from the adapters repository.
+//!
+//! It is also the reference shape for adapter authors: one `SourceAdapter`
+//! implementation, an embedded prose tree, and a single `source!` export.
 
 #[cfg(target_arch = "wasm32")]
 mod guest {
@@ -30,7 +38,7 @@ impl SourceAdapter for Adapter {
     const IDENTITY: &str = concat!("source@", env!("CARGO_PKG_VERSION"));
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { emery_floor: None }
+        SourceMetadata { emery_version: None }
     }
 
     fn docs() -> &'static [Doc] {

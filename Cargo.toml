@@ -50,6 +50,7 @@ tempfile.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 emery-cli.workspace = true
+emery-engine.workspace = true
 omnia-guest.workspace = true
 omnia-test = { workspace = true, features = ["guest"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
@@ -127,13 +128,12 @@ unused_result_ok = "warn"
 anyhow = "1.0.104"
 cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
-clap_complete = "4.6"
+hex = "0.4.3"
 schemars = "1.2.2"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 sha2 = "0.11"
-strum = { version = "0.28", features = ["derive"] }
 tempfile = "3.27.0"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
@@ -149,9 +149,12 @@ emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-source = { path = "crates/source" }
 
-omnia = { version = "0.36.0", default-features = false, features = ["jit"] }
+# `plugin` is required: the shipped `runtime!` declares `locations:`.
+omnia = { version = "0.36.0", default-features = false, features = ["jit", "plugin"] }
 omnia-core = "0.36.0"
-omnia-guest = "0.36.0"
+# `command` is the clap-backed command façade the CLI runs on; the guest
+# routes no HTTP and uses no ORM, so the defaults are off.
+omnia-guest = { version = "0.36.0", default-features = false, features = ["command"] }
 omnia-guest-macros = "0.36.0"
 omnia-host-macros = "0.36.0"
 omnia-plugin = "0.36.0"
@@ -165,8 +168,6 @@ omnia-cursor = "0.29.0"
 omnia-filesystem = "0.29.0"
 
 [patch.crates-io]
-# Pinned to omnia `main` until omnia-test's first publish (3.7); every omnia
-# crate rides one git source so the workspace sees one revision.
 omnia = { git = "https://github.com/augentic/omnia" }
 omnia-core = { git = "https://github.com/augentic/omnia" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }

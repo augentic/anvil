@@ -1,7 +1,12 @@
-//! Embedded prose lookup.
+//! Document registry
 //!
-//! [`crate::registry!`] includes the sorted `DOCS` table `emit` writes
-//! at build time.
+//! The runtime view of an embedded corpus: a [`Doc`] is one document with
+//! its tree-relative path and body, and the lookup functions find a document
+//! by that path. [`crate::registry!`] gives a crate its own `docs`, `doc`,
+//! and `body` accessors over the table the build step generated.
+//!
+//! Paths are the stable names prompts and reference tools use to address
+//! documents, so a lookup by path is the only interface the registry needs.
 
 /// An embedded reference document.
 #[derive(Clone, Copy, Debug)]

@@ -1,4 +1,8 @@
-//! Adapter WIT type tests.
+//! Contract error mapping
+//!
+//! How a model failure becomes an adapter error: a malformed request stays a
+//! request error, and everything else becomes an internal failure. The engine
+//! branches on this distinction, so it is pinned at the contract.
 
 use emery_source::types::Error;
 use omnia_guest::model::Error as ModelError;

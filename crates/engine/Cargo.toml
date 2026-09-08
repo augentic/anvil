@@ -14,12 +14,13 @@ readme = "../../README.md"
 anyhow.workspace = true
 emery-prose.workspace = true
 emery-source.workspace = true
+hex.workspace = true
 omnia-guest.workspace = true
+schemars.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-strum.workspace = true
 tracing.workspace = true
 
 [build-dependencies]

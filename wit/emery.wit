@@ -33,7 +33,7 @@ interface types {
 interface source {
   use types.{ adapter-id, error };
 
-  /// Read-only view for a location-backed source. No output-home grant
+  /// Read-only view for a location-backed source. No revision-store grant
   /// and no writable stage.
   record workspace {
     /// Opaque identity of the preparation.
@@ -42,8 +42,8 @@ interface source {
     root: string,
   }
 
-  /// Either a read-only source view or an inline value. Never an
-  /// output-home path or lifecycle artifact root.
+  /// Either a read-only source view or an inline value. Never a
+  /// revision-store path or lifecycle artifact root.
   variant content {
     workspace(workspace),
     value(string),
@@ -51,7 +51,7 @@ interface source {
 
   /// Typed source-operation input: the source binding key plus
   /// workspace-or-value. Sources are value-in — they never read the
-  /// output home or lifecycle authority.
+  /// revision store or lifecycle authority.
   record input {
     /// Source-binding key.
     key: string,
@@ -134,12 +134,12 @@ interface source {
 
   /// The adapter's deterministic metadata: identity lives in the
   /// wasm-pkg package reference and axis in the exported world, so only
-  /// the compatibility floor remains on the record.
+  /// the host version requirement remains on the record.
   record adapter-metadata {
-    /// Optional host-CLI compatibility floor: the exact minimum `emery`
-    /// version this adapter needs. The host aborts at resolve time when
-    /// the running binary is older. Absent means no floor.
-    emery-floor: option<string>,
+    /// Optional minimum `emery` version this adapter needs, as an exact
+    /// semver (like Cargo's `rust-version`). The host aborts at resolve
+    /// time when the running binary is older. Absent means no minimum.
+    emery-version: option<string>,
   }
 
   /// Read at resolve time and cached against the artifact digest.

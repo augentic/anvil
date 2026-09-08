@@ -1,16 +1,23 @@
-//! Shared scenario plumbing for the root suites: one provider that
-//! scripts every capability (`Model`, `Source`, `Plugins`, storage) and
-//! the in-process CLI runners over the live command grammar.
+//! Scenario support
+//!
+//! The shared plumbing behind the root suites: a provider whose every
+//! capability — model, source, plugin loading, storage — is scripted, and
+//! runners that drive the command façade in-process and hand back its
+//! response.
+//!
+//! Scripting rather than mocking means each scenario states exactly the turns
+//! it will consume, and a scenario that consumes more or fewer fails, so the
+//! suites cannot silently stop exercising a path.
 
 use std::collections::BTreeMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use emery_cli::Response;
 use emery_source::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
 use emery_source::{DispatchError, Source};
+use omnia_guest::api::command::Response;
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, StateStore};
 use omnia_test::guest::{Memory, Scripted, ScriptedLoader};
@@ -21,46 +28,17 @@ const GREETING: &str = "GET /greeting returns the static string 'hello'.";
 /// Dispatched `(routed id, input)` pairs, in call order.
 type Recorded = Vec<(String, SourceInput)>;
 
-/// A full-length `sha256:` digest from one repeated hex pair.
-pub fn digest(pair: &str) -> Digest {
-    format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
-}
-
-/// Scripted `Source`: per-key evidence, per-adapter floors, and a
-/// record of every dispatch. An unscripted key answers the greeting
-/// requirement as documentation evidence.
+/// Scripted `Source`: per-key evidence, per-adapter minimum `emery`
+/// versions, and a record of every dispatch. An unscripted key answers
+/// the greeting requirement as documentation evidence.
 #[derive(Clone, Debug, Default)]
 pub struct SourceScript {
     /// Extract outcomes keyed by binding key.
     pub evidence: BTreeMap<String, Result<Evidence, DispatchError>>,
-    /// `emery` floors keyed by adapter name.
-    pub floors: BTreeMap<String, String>,
+    /// Minimum `emery` versions keyed by adapter name.
+    pub versions: BTreeMap<String, String>,
     /// Every extract dispatch, recorded for call assertions.
     pub calls: Arc<Mutex<Recorded>>,
-}
-
-/// A claim of `kind` carrying one required extra.
-pub fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
-    let mut extras = serde_json::Map::new();
-    extras.insert(extra.0.to_string(), Value::String(extra.1.to_string()));
-    Claim {
-        kind,
-        id: Some(id.to_string()),
-        path: None,
-        synopsis: None,
-        backing: Some(Backing::Payload(extra.1.to_string())),
-        extras,
-    }
-}
-
-/// A requirement claim carrying its required `statement` extra.
-pub fn requirement(id: &str, statement: &str) -> Claim {
-    claim(ClaimKind::Requirement, id, ("statement", statement))
-}
-
-/// An evidence document over `claims`.
-pub const fn evidence(authority: Authority, claims: Vec<Claim>) -> Evidence {
-    Evidence { authority, claims }
 }
 
 /// The scripted provider behind every root scenario.
@@ -138,11 +116,11 @@ impl<S: Send + Sync + 'static> Source for Provider<S> {
 
     fn metadata(&self, id: &str) -> SourceMetadata {
         // Routed ids are `source:<name>` or a package reference
-        // (`<namespace>:<name>@<version>`); floors key on the name.
+        // (`<namespace>:<name>@<version>`); versions key on the name.
         let name = id.split_once('@').map_or(id, |(stem, _)| stem);
         let name = name.rsplit_once(':').map_or(name, |(_, stem)| stem);
         SourceMetadata {
-            emery_floor: self.source.floors.get(name).cloned(),
+            emery_version: self.source.versions.get(name).cloned(),
         }
     }
 }
@@ -178,4 +156,33 @@ where
     assert_eq!(envelope["error"], code, "{envelope}");
     assert_eq!(envelope["exit-code"], exit, "{envelope}");
     envelope
+}
+
+/// A full-length `sha256:` digest from one repeated hex pair.
+pub fn digest(pair: &str) -> Digest {
+    format!("sha256:{}", pair.repeat(32)).parse().expect("a valid digest")
+}
+
+/// A claim of `kind` carrying one required extra.
+pub fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
+    let mut extras = serde_json::Map::new();
+    extras.insert(extra.0.to_string(), Value::String(extra.1.to_string()));
+    Claim {
+        kind,
+        id: Some(id.to_string()),
+        path: None,
+        synopsis: None,
+        backing: Some(Backing::Payload(extra.1.to_string())),
+        extras,
+    }
+}
+
+/// A requirement claim carrying its required `statement` extra.
+pub fn requirement(id: &str, statement: &str) -> Claim {
+    claim(ClaimKind::Requirement, id, ("statement", statement))
+}
+
+/// An evidence document over `claims`.
+pub const fn evidence(authority: Authority, claims: Vec<Claim>) -> Evidence {
+    Evidence { authority, claims }
 }

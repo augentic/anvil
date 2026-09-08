@@ -1,26 +1,29 @@
-//! The emery command façade: clap grammar, binding carriers, handler
-//! dispatch through `omnia_guest::api::Client`, the command projector,
-//! and the exit contract — a transport over the `emery-engine`
-//! operations.
+//! The `emery` command line
+//!
+//! The operator-facing surface of Emery: the `specify`, `show`, and
+//! `completions` verbs, their help text, the rules that turn a parsed
+//! command into an engine operation, and the text shape of each result.
+//!
+//! The engine knows nothing about arguments, text, or exit codes. Keeping
+//! that vocabulary here means the same operations can be driven by another
+//! transport, and the command grammar can change without touching the
+//! engine. The projection itself — decode → `Client::call` → encode, the
+//! failure envelope, and the exit map — is omnia's command façade
+//! (`omnia_guest::api::command`), so this crate owns only what is Emery's.
 
 mod bindings;
-mod output;
 mod text;
 
+use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fmt;
 
-use clap::{CommandFactory, Parser, Subcommand};
-use clap_complete::Shell;
+use clap::{Parser, Subcommand};
 use emery_engine::Provider;
-use emery_engine::show::{Document, Show};
-use emery_engine::specify::Specify;
+use emery_engine::show::{Document, Show, show};
+use emery_engine::specify::{Specify, specify};
 use omnia_guest::Error;
-use omnia_guest::api::{Client, Metadata};
-use output::Format;
-pub use output::Response;
-use serde::Serialize;
-use text::Text;
+use omnia_guest::api::command::{Command, Parsed, Response, Shell, completions, parse};
+use omnia_guest::api::{Client, Format, Metadata};
 
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 const SPECIFY_DESC: &str = "Generate spec.md and design.md from source adapters.\n\n\
@@ -29,10 +32,10 @@ const SPECIFY_DESC: &str = "Generate spec.md and design.md from source adapters.
     for `emery.toml` in the project root. Config and command-line bindings cannot be \
     combined.\n\n\
     Adapter paths are project-relative. Each run reloads adapters, verifies optional \
-    digest pins, reconciles their claims, and atomically commits a new generation.";
-const SHOW_DESC: &str = "Print a document from the current generation.\n\n\
+    digest pins, reconciles their claims, and atomically commits a new revision.";
+const SHOW_DESC: &str = "Print a document from the current revision.\n\n\
     Text output contains only the document body. `--format json` also includes the \
-    generation id.";
+    revision id.";
 const COMPLETIONS_DESC: &str = "Generate shell completions.\n\n\
     Pipe into your shell's completion directory. Example: \
     `emery completions zsh > ~/.zsh/_emery`";
@@ -41,58 +44,37 @@ const COMPLETIONS_DESC: &str = "Generate shell completions.\n\n\
 // `Client` owner are one spelling.
 const NAME: &str = "emery";
 
-// Clap's usage-error status; help and version print to stdout and exit 0.
-const EXIT_USAGE: u8 = 2;
+// The environment prefix carrying invocation metadata
+// (`EMERY_REQUEST_ID`, `EMERY_CORRELATION_ID`, `EMERY_CAUSATION_ID`).
+const ENV_PREFIX: &str = "EMERY";
 
 /// Parse and execute one argument vector over `provider`, buffering both channels.
+///
+/// Clap's own outcomes — help and version on stdout at exit 0, a usage
+/// error on stderr at `USAGE_EXIT` — are complete responses before any
+/// verb runs. Each verb decodes into its engine input, runs its handler fn
+/// through the client, and is projected by the façade: the success body
+/// rides stdout in the selected format, the failure envelope rides stderr
+/// with the exit status from the one exit map. `completions` never
+/// reaches a handler.
 pub async fn run<P, I, T>(provider: P, argv: I) -> Response
 where
     P: Provider,
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    match decode(argv) {
-        Ok(app) => dispatch(app, &Client::new(NAME, provider)).await,
-        Err(response) => response,
-    }
-}
-
-// The decode leg: clap parses argv, and its own outcomes — usage errors,
-// help, version — are already complete responses.
-fn decode<I, T>(argv: I) -> Result<App, Response>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    App::try_parse_from(argv).map_err(|err| {
-        let rendered = err.render().to_string();
-        if err.use_stderr() {
-            Response::failure(rendered, EXIT_USAGE)
-        } else {
-            Response::success(rendered)
-        }
-    })
-}
-
-// The call-and-encode leg: each verb decodes into its engine input,
-// runs through the client, and projects. `completions` is synthetic
-// grammar behaviour and never reaches a handler.
-//
-// The metadata stays default: a wasm32 guest has no clock or entropy
-// capability to mint a request id from without a new dependency.
-async fn dispatch<P: Provider>(app: App, client: &Client<P>) -> Response {
-    let metadata = Metadata::default();
+    let app = match parse::<App>(argv) {
+        Parsed::App(app) => app,
+        Parsed::Display(text) => return Response::success(text),
+        Parsed::Usage(error) => return Response::usage(&error),
+    };
+    let client = Client::new(NAME, provider);
+    let metadata = Metadata::from_env(ENV_PREFIX);
+    let command = Command::new(&client, &metadata, app.format).hints(|error| hint(&error.code()));
     match app.verb {
-        Verb::Completions { shell } => {
-            let mut out = Vec::new();
-            clap_complete::generate(shell, &mut App::command(), NAME, &mut out);
-            Response::success(out)
-        }
-        Verb::Specify(grammar) => match grammar.decode() {
-            Ok(input) => project(app.format, client.call(input, &metadata).await),
-            Err(error) => refuse(app.format, &error),
-        },
-        Verb::Show(grammar) => project(app.format, client.call(grammar.decode(), &metadata).await),
+        Verb::Completions { shell } => completions::<App>(shell, NAME),
+        Verb::Specify(grammar) => command.call(specify, || grammar.decode(), text::specify).await,
+        Verb::Show(grammar) => command.call(show, || Ok(grammar.decode()), text::show).await,
     }
 }
 
@@ -122,7 +104,7 @@ enum Verb {
     /// Generate spec.md and design.md from the named sources
     #[command(long_about = SPECIFY_DESC)]
     Specify(SpecifyArgs),
-    /// Print a reviewable document of the current generation to stdout
+    /// Print a reviewable document of the current revision to stdout
     #[command(long_about = SHOW_DESC)]
     Show(ShowArgs),
     /// Print a shell-completion script for `<shell>` to stdout
@@ -163,7 +145,7 @@ impl SpecifyArgs {
 // The `show` grammar; field docs are its `--help` text.
 #[derive(Debug, clap::Args)]
 struct ShowArgs {
-    /// Reviewable document of the current generation.
+    /// Reviewable document of the current revision.
     #[arg(value_enum)]
     document: DocumentArg,
 }
@@ -196,80 +178,27 @@ impl From<DocumentArg> for Document {
     }
 }
 
-// The command projector: the success body rides stdout, the failure
-// envelope rides stderr with its exit status.
-fn project<T: Serialize + Text>(format: Format, outcome: Result<T, Error>) -> Response {
-    match outcome {
-        Ok(body) => Response::success(format.encode(&body)),
-        Err(error) => refuse(format, &error),
-    }
-}
-
-fn refuse(format: Format, error: &Error) -> Response {
-    let exit = exit_code(error);
-    Response::failure(format.encode(&Failure::new(error, exit)), exit)
-}
-
-/// The failure envelope.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "kebab-case")]
-struct Failure {
-    error: String,
-    message: String,
-    exit_code: u8,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    hint: Option<&'static str>,
-}
-
-impl Failure {
-    fn new(err: &Error, exit_code: u8) -> Self {
-        let error = err.code();
-        Self {
-            hint: hint(&error),
-            error,
-            message: err.description(),
-            exit_code,
+// The remedy hints the failure envelope carries, keyed by the `error`
+// discriminant: flag and verb vocabulary lives here, never in engine
+// descriptions.
+fn hint(code: &str) -> Option<Cow<'static, str>> {
+    let hint = match code {
+        "unsupported-version" => {
+            "update emery: `brew upgrade emery`, or `cargo install --git https://github.com/augentic/emery --locked`"
         }
-    }
-}
-
-impl Text for Failure {
-    fn text(&self, out: &mut dyn fmt::Write) -> fmt::Result {
-        writeln!(out, "error[{}]: {}", self.error, self.message)?;
-        if let Some(hint) = self.hint {
-            writeln!(out, "hint: {hint}")?;
+        "specify-source-required" => {
+            "pass one or more adapters to `emery specify`, or add an `emery.toml` at the project root"
         }
-        Ok(())
-    }
-}
-
-/// The failure-code authority: the Omnia 1:1 exit map.
-const fn exit_code(error: &Error) -> u8 {
-    match error {
-        Error::BadRequest { .. } => 1,
-        Error::NotFound { .. } => 2,
-        Error::ServerError { .. } => 3,
-        Error::BadGateway { .. } => 4,
-    }
-}
-
-fn hint(code: &str) -> Option<&'static str> {
-    match code {
-        "adapter-cli-too-old" => Some(
-            "update the installed binary through its install channel: `brew upgrade emery`, or `cargo install --git https://github.com/augentic/emery --locked`",
-        ),
-        "specify-source-required" => Some(
-            "`emery specify <adapter>...` generates the spec over the sources named on the invocation; a bindingless run reads the project-root `emery.toml` when present — there is no other persisted binding list",
-        ),
         "spec-not-generated" => {
-            Some("run `emery specify <adapter>...` to commit a generation, then re-run show")
+            "run `emery specify <adapter>...` to commit a revision, then re-run show"
         }
-        "refused" => Some(
-            "the loader refused the request: a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or a location kind this deployment does not serve; the message names which",
-        ),
-        "unavailable" => Some(
-            "the deployment's acquirer could not produce the package: check the network, that the exact version exists at the registry, and the binding's `registry` override (the default endpoint is compiled into the binary)",
-        ),
-        _ => None,
-    }
+        "refused" => {
+            "the loader refused the component; the message above names why (digest, export, or location)"
+        }
+        "unavailable" => {
+            "the registry could not supply the package: check the network, the exact version, and any `registry` override"
+        }
+        _ => return None,
+    };
+    Some(Cow::Borrowed(hint))
 }

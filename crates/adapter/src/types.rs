@@ -1,5 +1,13 @@
-//! The contract DTOs (from `emery-source`) plus the call-scoped
-//! [`Context`] a judgment runs in.
+//! Adapter types
+//!
+//! The data types an adapter works with: the contract DTOs re-exported from
+//! `emery-source`, and the [`Context`] describing the environment one
+//! `extract` call runs in — which adapter was addressed, where the project
+//! is mounted, which reference documents are available, and whether the
+//! model may read the workspace.
+//!
+//! Gathering these in one module gives adapter code a single import path
+//! regardless of which crate defines each type.
 
 use std::path::Path;
 

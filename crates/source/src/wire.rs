@@ -1,6 +1,13 @@
-//! `source-adapter` WIT bindings: the one generation carrying both the
-//! export side (`emery-adapter`'s `source!` wires an implementor into
-//! it) and the engine guest's caller side ([`import`]).
+//! WIT bindings
+//!
+//! The generated Rust bindings for the `source-adapter` WIT world, plus the
+//! conversions between the generated wire records and the contract types the
+//! rest of the workspace uses.
+//!
+//! Both directions come from one generation: adapters export through it via
+//! the SDK's `source!` macro, and the engine guest calls into it through
+//! [`import`]. A single generation guarantees the two sides agree on the wire
+//! shape by construction.
 
 mod generated {
     #![allow(
@@ -26,7 +33,7 @@ pub use generated::*;
 impl From<crate::types::SourceMetadata> for AdapterMetadata {
     fn from(metadata: crate::types::SourceMetadata) -> Self {
         Self {
-            emery_floor: metadata.emery_floor,
+            emery_version: metadata.emery_version,
         }
     }
 }
@@ -172,7 +179,7 @@ pub mod import {
     pub fn metadata(id: &str) -> types::SourceMetadata {
         let record = wire::metadata(id);
         types::SourceMetadata {
-            emery_floor: record.emery_floor,
+            emery_version: record.emery_version,
         }
     }
 

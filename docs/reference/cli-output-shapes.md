@@ -6,7 +6,7 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 - `--format json` responses are a **flat body**: every successful body is a single JSON object carrying the command-specific fields **at the top level** — there is no `ok` discriminant, no `data` wrapper, and no top-level envelope-version stamp.
 - Failures keep the same flat shape with three extra top-level keys:
-  - `error` — a discriminant string: kebab-case for the three recovery codes (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`), snake_case for the Omnia defaults (`bad_request`, `not_found`, `server_error`, `bad_gateway`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the exit-code table.
+  - `error` — a discriminant string: kebab-case for the three recovery codes (`specify-source-required`, `unsupported-version`, `spec-not-generated`), snake_case for the Omnia defaults (`bad_request`, `not_found`, `server_error`, `bad_gateway`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the exit-code table.
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise.
@@ -15,16 +15,16 @@ Canonical JSON envelope shapes for the `emery *` commands that skills shell out 
 
 ## Text-mode style
 
-Every body's `Text` impl (the façade's rendering trait in `crates/cli/src/text.rs`) follows one convention so operators can scan any command's output the same way:
+Every body's render fn (its text mode, in `crates/cli/src/text.rs`) follows one convention so operators can scan any command's output the same way:
 
-- **Result line first, lowercase, verb-first**: `committed generation 9f8e7d6c…`.
+- **Result line first, lowercase, verb-first**: `committed revision 9f8e7d6c…`.
 - **Detail lines are indented `label: value` pairs** with kebab-case labels: `  sources: 3`.
 - **Names in backticks**, paths bare.
 - **No trailing periods** on result or detail lines.
 - **`hint:` is recovery guidance** (what to fix); **`resume:` is the literal next command** (what to run). A line is one or the other, never both.
 - **Every empty state prints a lowercase line** — silence is never the empty rendering.
 
-One documented exception: `emery show` renders the document body alone in text mode — no result line — so its stdout pipes and redirects as the document itself. Its generation id rides the JSON envelope.
+One documented exception: `emery show` renders the document body alone in text mode — no result line — so its stdout pipes and redirects as the document itself. Its revision id rides the JSON envelope.
 
 ## Shapes
 
@@ -32,19 +32,18 @@ The examples below are hand-curated illustrations of the happy path; the accept/
 
 ### `emery specify`
 
-The success body names the committed generation and its reviewable set:
+The success body names the committed revision and its reviewable set:
 
 ```json
 {
-  "generation": "9f8e7d6c…",
+  "revision": "9f8e7d6c…",
   "requirements": 3,
   "sources": 3,
   "diff": {
     "from": "1a2b3c4d…",
-    "artifacts": ["spec.md"],
-    "added": [],
-    "removed": [],
-    "changed": ["session.timeout"]
+    "artifacts": ["spec.md", "design.md"],
+    "spec": { "added": [], "removed": [], "changed": ["session.timeout"] },
+    "design": { "added": [], "removed": [], "changed": ["Domain model"] }
   },
   "digests": [
     { "source": "custom", "digest": "sha256:9f2c44…" }
@@ -52,25 +51,27 @@ The success body names the committed generation and its reviewable set:
 }
 ```
 
-`diff` is the re-mine diff against the superseded generation: the changed spec-set artifacts plus the requirement subjects added, removed, or changed in `spec.md`. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it.
+`diff` is the re-mine diff against the superseded revision: the changed artifacts, then one `{ added, removed, changed }` object per document — `spec` lists requirement subjects (heading names, so a block that only moved is not a change), `design` lists `## ` section titles. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it. Text mode prints one line per changed section prefixed by its document: `    spec.md ~ session.timeout`, `    design.md ~ Domain model`.
 
 `digests` reports the resolved sha256 content digest of every loader-loaded adapter — a local component or a registry package — pinned or not; it is absent when no binding loaded one. On an unpinned first run this is the trust-on-first-use report — commit the digest as the binding's `digest` pin in `emery.toml` to make the load reproducible. A pin that no longer matches the resolved bytes fails with `error: "refused"` (exit 1).
 
-`emery specify` with no source — and no project-root `emery.toml` to discover — fails with `error: "specify-source-required"` (exit 1); mixing `--config` with positional adapters or `--description`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--config` without a value explicitly selects the project-relative `emery.toml`. A GitHub URL binding fails with `error: "bad_request"`. Validation refusals from the extract or synthesis gates exit 1 with `error: "bad_request"`.
+`requirements` counts the requirement rows of the committed `spec.md` — one per grouped requirement; an acceptance gap is a `Note:` on its row, not a row of its own.
+
+`emery specify` with no source — and no project-root `emery.toml` to discover — fails with `error: "specify-source-required"` (exit 1); mixing `--config` with positional adapters or `--description`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--config` without a value explicitly selects the project-relative `emery.toml`. A GitHub URL binding fails with `error: "bad_request"`. Validation refusals from the extract gate, or a model draft (grouping, spec, or design) that still fails its check after every repair, exit 1 with `error: "bad_request"` naming the findings; a model failure exits 4 with `error: "bad_gateway"`.
 
 ### `emery show <spec|design>`
 
-The success body wraps the document with its generation id; text mode is the document body alone (see the exception above).
+The success body wraps the document with its revision id; text mode is the document body alone (see the exception above).
 
 ```json
 {
-  "generation": "9f8e7d6c…",
+  "revision": "9f8e7d6c…",
   "document": "spec",
   "body": "# Specification\n…"
 }
 ```
 
-Before any generation is committed the verb fails with `error: "spec-not-generated"` (exit 2); a pointer naming missing documents fails with `error: "server_error"` (exit 3).
+Before any revision is committed the verb fails with `error: "spec-not-generated"` (exit 2); a current revision id naming missing documents fails with `error: "server_error"` (exit 3).
 
 ### `emery completions <shell>`
 
@@ -83,10 +84,10 @@ Every failing verb emits the same flat envelope on stderr:
 ```json
 {
   "error": "specify-source-required",
-  "message": "a specification run requires at least one source binding",
+  "message": "no source bindings",
   "exit-code": 1,
-  "hint": "`emery specify <adapter>...` generates the spec over the sources named on the invocation; …"
+  "hint": "pass one or more adapters to `emery specify`, or add an `emery.toml` at the project root"
 }
 ```
 
-An optional `hint` key carries a static recovery hint when the error defines one; the `message` is transport-neutral (it names the rule, path, or adapter), and flag-vocabulary recovery text lives in the hint. Text mode prints the same envelope as `error[specify-source-required]: a specification run requires at least one source binding` followed by a `hint:` line when one is defined; the discriminant is grep-stable in both formats, so a `message` never repeats it.
+An optional `hint` key carries a static recovery hint when the error defines one; the `message` is transport-neutral (it names the rule, path, or adapter), and flag-vocabulary recovery text lives in the hint. Text mode prints the same envelope as `error[specify-source-required]: no source bindings` followed by a `hint:` line when one is defined; the discriminant is grep-stable in both formats, so a `message` never repeats it.

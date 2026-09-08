@@ -1,6 +1,13 @@
-//! Source-capability dispatch, shaped like [`omnia_guest::Model`].
+//! The `Source` capability
 //!
-//! Wasm defaults call WIT imports; native signatures support scripted tests.
+//! [`Source`] is how the engine reaches an adapter: it addresses a loaded
+//! adapter by id and asks it to extract evidence or report its metadata.
+//! It follows the shape of omnia's other capability traits so a provider
+//! carries it alongside `Model`, storage, and plugin loading.
+//!
+//! In a wasm guest the trait dispatches over the WIT import automatically. In
+//! a native build the methods are left for the caller to implement, so a test
+//! can script exactly what an adapter would have returned.
 
 use std::future::Future;
 

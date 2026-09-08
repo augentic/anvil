@@ -1,6 +1,14 @@
-//! Evidence answer parsing and validation.
+//! Evidence answers
+//!
+//! The schema an `extract` judgment asks the model to answer against, and the
+//! check that turns the model's answer into a valid [`Evidence`] document.
+//!
+//! The schema constrains the answer's shape but cannot express every rule a
+//! claim must satisfy, so the answer is validated again in code. Running that
+//! check inside the adapter, where a failed answer can be sent back for
+//! repair, means the engine rarely sees evidence it has to reject.
 
-pub use emery_source::claims::{DOTTED_KEBAB_PATTERN, claim_id_findings, validate_evidence};
+use emery_source::claims::DOTTED_KEBAB_PATTERN;
 use schemars::generate::SchemaSettings;
 use serde_json::{Value, json};
 
@@ -57,23 +65,14 @@ pub fn evidence_schema() -> String {
     serde_json::to_string(&value).expect("generated answer schema serialises")
 }
 
-/// Parses an evidence answer.
-///
-/// # Errors
-///
-/// Returns a JSON error if the answer is not [`Evidence`].
-pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
-    serde_json::from_str(answer)
-}
-
 /// Parses and validates an evidence answer for [`crate::repaired`].
 ///
 /// # Errors
 ///
 /// Returns [`Error::Internal`] on parse or validation failure.
 pub fn evidence_tail(answer: &str) -> Result<Evidence, Error> {
-    let evidence = parse_evidence(answer)
+    let evidence: Evidence = serde_json::from_str(answer)
         .map_err(|err| Error::Internal(format!("evidence answer did not deserialize: {err}")))?;
-    validate_evidence(&evidence)?;
+    evidence.validate()?;
     Ok(evidence)
 }

@@ -1,6 +1,12 @@
-//! DTOs mirroring the `emery:adapter` WIT records.
+//! Contract types
 //!
-//! Only answer-deserialized types carry serde derives.
+//! The Rust forms of the records in the `emery:adapter` WIT package — the
+//! input an adapter receives, the [`Evidence`] it returns, and the [`Error`]
+//! an operation can fail with. These are the types engine and adapter code
+//! work with; the generated wire bindings stay behind them.
+//!
+//! Only the types a model answer is parsed into carry serde derives, since
+//! nothing else in the contract crosses a JSON boundary.
 
 mod source;
 

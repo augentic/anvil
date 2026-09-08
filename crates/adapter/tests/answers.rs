@@ -1,7 +1,12 @@
-//! Evidence answer tests.
+//! Evidence answer contract
+//!
+//! What an adapter can rely on from the evidence answer path: the schema
+//! tracks the `Evidence` DTO, a well formed answer deserializes, unknown
+//! fields in open bodies are tolerated, and a failing answer surfaces as the
+//! repairable error the judgment loop retries on.
 
-use emery_adapter::answers::{evidence_schema, evidence_tail, parse_evidence};
-use emery_adapter::types::{Authority, Backing, ClaimKind, Error};
+use emery_adapter::answers::{evidence_schema, evidence_tail};
+use emery_adapter::types::{Authority, Backing, ClaimKind, Error, Evidence};
 
 #[test]
 fn schema_tracks_dto() {
@@ -33,7 +38,7 @@ fn schema_tracks_dto() {
 
 #[test]
 fn evidence_deserializes() {
-    let evidence = parse_evidence(
+    let evidence: Evidence = serde_json::from_str(
         r#"{
             "authority": "behaviour",
             "claims": [
@@ -84,7 +89,7 @@ fn evidence_deserializes() {
 // Unpinned `synopsis` and `backing` shapes become absent, not fatal.
 #[test]
 fn open_body_fields_lenient() {
-    let evidence = parse_evidence(
+    let evidence: Evidence = serde_json::from_str(
         r#"{
             "authority": "documentation",
             "claims": [
@@ -103,11 +108,13 @@ fn open_body_fields_lenient() {
     assert_eq!(clean.backing, Some(Backing::Payload("ADR-7".to_string())));
 }
 
-// Parse failures and gate findings both surface as repairable `Internal`.
+// Parse failures and gate findings — id grammar and required extras
+// alike — surface as repairable `Internal`, so the adapter repairs a
+// claim the engine would otherwise refuse.
 #[test]
 fn tail_is_repairable() {
     let clean = r#"{"authority":"documentation","claims":[
-        {"kind":"requirement","id":"password-reset.request"},
+        {"kind":"requirement","id":"password-reset.request","statement":"Users reset by email."},
         {"kind":"decision"}
     ]}"#;
     assert_eq!(evidence_tail(clean).expect("clean evidence passes the tail").claims.len(), 2);
@@ -122,4 +129,5 @@ fn tail_is_repairable() {
         panic!("malformed evidence must fail the tail");
     };
     assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
+    assert!(detail.contains("missing extra `statement`"), "and the extra: {detail}");
 }

@@ -1,7 +1,12 @@
-//! Export side of the `source-adapter` world.
+//! Component export
 //!
-//! [`crate::source!`] wires a [`crate::SourceAdapter`] into the bindings
-//! `emery-source` generates.
+//! Turns a [`crate::SourceAdapter`] implementation into the `source-adapter`
+//! wasm world the engine loads. An adapter crate invokes
+//! [`crate::source!`] once and gains a complete component export without
+//! touching the generated bindings.
+//!
+//! This is the only wasm-specific code an adapter carries, which keeps the
+//! rest of its logic portable and testable natively.
 
 pub use emery_source::wire::*;
 
@@ -20,18 +25,13 @@ pub async fn dispatch_extract<A: crate::SourceAdapter>(
     id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {
     let input = crate::types::SourceInput::from(input);
-    let ctx = source_ctx::<A>(&id, &input);
-    A::extract(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
-}
-
-fn source_ctx<'a, A: crate::SourceAdapter>(
-    id: &'a str, input: &'a crate::types::SourceInput,
-) -> crate::types::Context<'a> {
-    let ctx = crate::types::Context::guest(id).with_docs(A::docs());
-    match &input.content {
+    let ctx = crate::types::Context::guest(&id).with_docs(A::docs());
+    let ctx = match &input.content {
         crate::types::SourceContent::Workspace(view) => ctx.lending(view.root.clone()),
         crate::types::SourceContent::Value(_) => ctx.without_lend(),
-    }
+    };
+
+    A::extract(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
 }
 
 /// Wires a [`crate::SourceAdapter`] into component exports.

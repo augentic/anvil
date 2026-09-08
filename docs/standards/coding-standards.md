@@ -41,7 +41,7 @@ Comments answer "why does this look like this *today?*" — non-obvious intent, 
 
 Density caps are **review only** — clippy and rustfmt cannot express them. They apply to Rust sources and to WIT contracts (`wit/`, `crates/*/wit/`):
 
-- **Module `//!` docs** answer "what is this module today?" in **1–3 prose lines**. No deployment tours, no AGENTS.md restatements, no RFC archaeology — the crate graph and the workflow contract already own that prose; a module doc that repeats it goes stale and buries the one line the reader needed.
+- **Module `//!` docs** answer "what is this module, and why does it exist?" for a reader who has not opened the file: a short title line, then **one or two paragraphs** in plain language. Say what the module is for and what it guarantees; never how it works — that is the code's job, and prose about mechanics goes stale first. No deployment tours, no AGENTS.md restatements, no RFC archaeology, and no house shorthand (`fail-closed`, `typed`, kernel names) the reader would have to look up.
 - **Item `///` docs** keep the overview under **~8 lines** before any `#` section. `# Errors` / `# Panics` sections may list discriminants; keep each bullet one line.
 - **`//` comments** run **≤ 3 consecutive lines**. A tip lives next to the surprising branch it explains, never inside a preamble essay.
 - **Historical phrases** are banned in comments and docs: `Phase `, `formerly`, `previously lived`, `old contract`, `former tests`, `to avoid the`. Git history is the record.
@@ -49,23 +49,37 @@ Density caps are **review only** — clippy and rustfmt cannot express them. The
 ```rust
 // BAD
 //! Per the workspace split 2.9 ("Specify wires components, not adapters"),
-//! `specify` commits only the generation documents — `spec.md` plus
+//! `specify` commits only the revision documents — `spec.md` plus
 //! `design.md`. The pre-Phase-3.7 filename was `charter.md`;
 //! Historical rename detail belongs in git history, not module docs.
 
 // GOOD
-//! Commits `spec.md` and `design.md` as one generation. Other state
-//! is minted by its owning verbs, not by `specify`.
+//! The `specify` operation
+//!
+//! Emery's central operation: given a list of source bindings, extract each
+//! source's claims, derive the requirement rows under authority precedence,
+//! synthesise `spec.md` and `design.md`, and commit the pair as one new
+//! revision.
+//!
+//! The result reports what was committed — the revision id, the counts, and
+//! the diff against the superseded revision — so a caller can see what
+//! changed without reading the documents.
 ```
 
-The composition-root failure mode is the essay that restates architecture and hides the tip. Collapse the essay; keep the tip at the site that needs it:
+The composition-root failure mode is the essay that restates architecture and hides the tip. The module doc says what the deployment is and why it is fixed; the operational tip stays at the site that needs it:
 
 ```rust
 // BAD — 22-line //! deployment tour restating AGENTS.md, with the one
 // operational fact (the read-only project mount) buried in the middle.
 
 // GOOD
-//! The shipped `emery` executable: one `omnia::runtime!` invocation.
+//! The `emery` executable
+//!
+//! The shipped runtime: one omnia deployment that embeds the engine guest
+//! and declares everything it is allowed to touch.
+//!
+//! The deployment is fixed at compile time so a given `emery` binary always
+//! runs with the same policy; there is no runtime configuration to audit.
 
 // …inside the macro body:
 // The invocation directory mounts read-only — nothing writes the tree.
@@ -108,9 +122,67 @@ The codebase optimises for short reading over short writing. Concretely:
 
 Reviewers catch the density caps (see [Comments](#comments)) and the 25-character identifier cap (see [Naming](#naming)). Clippy's `module_name_repetitions` catches the in-module restatement cases.
 
+## Module shape
+
+A module reads top-down: what it does, what it yields, how. **Review only.**
+
+- **Order**: module doc, `use`, constants, the public entry function(s), the public types those entries take or return (each `struct`/`enum` immediately followed by its `impl` blocks), then private helpers in call order, then `#[cfg(test)]`. A private state machine or DTO the entry uses goes *below* the entry, not above it.
+- **Phases, not statements**: one blank line separates the phases of a function body (acquire → transform → validate → return) and precedes a trailing `Ok(...)` when the body has more than a few statements. Do not blank-line every statement.
+- **Comment by visibility**: exported items carry `///`. Private and `pub(crate)` items carry a `//` line only when it answers "why" — a comment that restates the name is deleted. Clippy's `missing_errors_doc` / `missing_panics_doc` only check exported items, so a `# Errors` section on a non-exported fn is noise, not a requirement; reducing visibility is the lever that lets you drop it.
+- **Inline single-use wrappers**: a private fn with one caller whose body is one expression, and whose name adds nothing the expression does not say, is inlined at the call site. Keep the fn when it has two or more callers, names a concept the call site should not spell out (`store::failed`), or is a multi-step body.
+- **Name the capability at the dispatch site**: when the receiver is a generic bounded by more than one capability trait (`P: Source + Plugins`, `S: StateStore + BlobStore`), call `Source::extract(provider, …)` / `BlobStore::put(store, …)` rather than `provider.extract(…)`, so the seam being crossed is visible without resolving the bound.
+- **Keep an `impl` with its type**: no `impl ForeignType` in a consumer module. A consumer that needs behaviour over a type it does not own writes a free fn taking `&Type`.
+
+```rust
+// BAD — entry buried under a private helper, wrapper with one caller
+async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Result<Evidence, Error> {
+    provider.extract(id, input).await.map_err(|err| bad_gateway!("source `{id}`: {err}"))
+}
+
+/// Resolves, extracts, and validates every source binding.
+pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+    for binding in bindings {
+        let resolved = /* … */;
+        let evidence = dispatch(provider, &resolved.id, &binding.input()?).await?;
+        let set = SourceSet { /* … */ };
+        set.validate()?;
+        sets.push(set);
+    }
+    Ok(sets)
+}
+
+// GOOD — entry first, capability named, phases separated, wrapper inlined
+/// Resolves, extracts, and validates every source binding.
+pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+    for binding in bindings {
+        let input = binding.input()?;
+        let resolved = /* … */;
+
+        let id = &resolved.id;
+        let evidence = Source::extract(provider, id, &input)
+            .await
+            .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
+
+        let set = SourceSet { /* … */ };
+        set.validate()?;
+        sets.push(set);
+    }
+
+    Ok(sets)
+}
+
+/// A validated claim set extracted from one source.
+pub struct SourceSet { /* … */ }
+
+impl SourceSet {
+    // Validates claim grammar and required extras fail-closed (A8).
+    fn validate(&self) -> Result<(), Error> { /* … */ }
+}
+```
+
 ## Format dispatch
 
-Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector in `crates/cli/src/lib.rs` owns format dispatch through the façade's `Format::encode`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; omnia's command projector (`omnia_guest::api::command::Command::call`, driven from `crates/cli/src/lib.rs`) owns format dispatch through `omnia_guest::api::Format::encode`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -123,11 +195,11 @@ match format {
 Ok(SomeBody::from(&result))
 ```
 
-Text mode renders through the façade's `Text` impl for the body (`crates/cli/src/text.rs`); the JSON path goes through `serde::Serialize` automatically. Engine bodies carry no `Display` — a body's terminal shape is a CLI concern, and an engine `Display` would quietly become part of every other transport's contract. New code must not introduce `match … format`.
+Text mode renders through the body's render fn in `crates/cli/src/text.rs` (`fn(&Body, &mut dyn fmt::Write) -> fmt::Result`, passed to `Command::call` as the verb's text form); the JSON path goes through `serde::Serialize` automatically. Engine bodies carry no `Display` — a body's terminal shape is a CLI concern, and an engine `Display` would quietly become part of every other transport's contract. New code must not introduce `match … format`.
 
 ## One emit path
 
-Success bodies and failures leave operations as typed values. The command projector in `emery_cli` renders those values at the command boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, construct an Omnia `Error` (macros for defaults; explicit variants only for the three recovery codes); do not hand-roll a `*ErrBody` DTO. `Format::encode` and the `Text` trait stay inside `emery_cli`.
+Success bodies and failures leave operations as typed values. Omnia's command projector renders those values at the command boundary — the success body in the selected format on stdout, the `Failure` envelope on stderr; no handler writes stdout or stderr. If you need a bespoke failure shape, construct an Omnia `Error` (macros for defaults; explicit variants only for the three recovery codes); do not hand-roll a `*ErrBody` DTO or a second envelope. `emery_cli` contributes only the render fns and the hint table; it never encodes.
 
 ## DTOs
 
@@ -141,13 +213,13 @@ Response DTOs (`*Body`, `*Row`) are **top-level** structs under `mod`. Declaring
 
 **Field-type allowlist.** DTO fields use the strictest type the wire shape supports:
 
-| Domain | Type | Notes |
-|---|---|---|
-| Filesystem path | `PathBuf` | never `String`; serde's default carries the path losslessly |
-| Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]` | drop `.to_string()` at construction |
-| Stable kebab discriminant | `&'static str` | lives in the binary |
-| Timestamp written into JSON | `jiff::Timestamp` with the engine crate's `serde_time::rfc3339` adapter (or `rfc3339_opt` on `Option<Timestamp>`) | serde owns the format |
-| Count | `usize` | JSON has neither `u32` nor `u64` |
+| Domain                                   | Type                                                                                                              | Notes                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Filesystem path                          | `PathBuf`                                                                                                         | never `String`; serde's default carries the path losslessly |
+| Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]`                                                       | drop `.to_string()` at construction                         |
+| Stable kebab discriminant                | `&'static str`                                                                                                    | lives in the binary                                         |
+| Timestamp written into JSON              | `jiff::Timestamp` with the engine crate's `serde_time::rfc3339` adapter (or `rfc3339_opt` on `Option<Timestamp>`) | serde owns the format                                       |
+| Count                                    | `usize`                                                                                                           | JSON has neither `u32` nor `u64`                            |
 
 **Single-variant enums are dead overhead.** Drop either the variant or the enum; the type's name already says "this DTO represents kind X". The `BriefAction::Init` pattern is the canonical example of what not to add.
 
@@ -182,21 +254,19 @@ impl From<&Outcome> for HandleBody {
     fn from(outcome: &Outcome) -> Self { /* ... */ }
 }
 
-// … and its text mode lives in the façade (crates/cli/src/text.rs)
-impl Text for HandleBody {
-    fn text(&self, out: &mut dyn fmt::Write) -> fmt::Result {
-        writeln!(out, "{}", self.name)
-    }
+// … and its text mode is a render fn in the CLI (crates/cli/src/text.rs)
+pub fn handle(body: &HandleBody, out: &mut dyn fmt::Write) -> fmt::Result {
+    writeln!(out, "{}", body.name)
 }
 ```
 
 ## Errors
 
-Engine operations return `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct Omnia defaults with the crate-root macros (`bad_request!`, `not_found!`, `server_error!`, `bad_gateway!`); those emit snake_case codes (`bad_request`, …). Keep explicit variant construction only for the three recovery discriminants (`specify-source-required`, `adapter-cli-too-old`, `spec-not-generated`). Do not introduce a house error type or constructor wrappers.
+Engine operations return `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct Omnia defaults with the crate-root macros (`bad_request!`, `not_found!`, `server_error!`, `bad_gateway!`); those emit snake_case codes (`bad_request`, …). Keep explicit variant construction only for the three recovery discriminants (`specify-source-required`, `unsupported-version`, `spec-not-generated`). Do not introduce a house error type or constructor wrappers.
 
 **Class on a direct match.** Pick the Omnia variant that matches the failure: operator or input refusals are `BadRequest` (exit 1), missing resources are `NotFound` (exit 2), upstream or model failures are `BadGateway` (exit 4). Anything else — I/O, storage, leftover conversions — is `ServerError` (exit 3). Do not invent new codes or new exit slots. See [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes).
 
-**Hint lookup.** Long-form recovery hints live in `crates/cli/src/lib.rs` (`hint` on `adapter-cli-too-old` / `specify-source-required` / `spec-not-generated` and the loader discriminants). Adding a new hint extends that lookup, not the error type. Engine descriptions stay transport-neutral — they name the path, adapter, or rule, never a flag, a verb, or "the CLI"; flag-vocabulary recovery text belongs in the hint table.
+**Hint lookup.** Long-form recovery hints live in `crates/cli/src/lib.rs` (`hint` on `unsupported-version` / `specify-source-required` / `spec-not-generated` and the loader discriminants, attached through `Command::hints`). Adding a new hint extends that lookup, not the error type. Engine descriptions stay transport-neutral — they name the path, adapter, or rule, never a flag, a verb, or "the CLI"; flag-vocabulary recovery text belongs in the hint table.
 
 `unwrap()` and `expect()` are reserved for invariants the type system can't express (e.g. "this enum variant covers `Status::value_variants()`"). Always include a justification string in `expect`. User-facing errors must surface as an Omnia `Error`, not panics.
 

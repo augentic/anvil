@@ -1,0 +1,15 @@
+{
+  "preamble": [
+    "Rebuild design for the greeting surface reconciled in `spec.md`."
+  ],
+  "sections": [
+    {
+      "kind": "overview",
+      "blocks": [
+        {
+          "text": "One static `GET /greeting` endpoint returning `'hello'` (`REQ-001`); no state or configuration is involved. Its acceptance criteria are an open gap and must be authored before implementation."
+        }
+      ]
+    }
+  ]
+}

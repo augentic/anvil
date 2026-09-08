@@ -1,7 +1,13 @@
-//! The CLI wire contract over an idle provider: the route budget,
-//! grammar failures, exit codes, and the text/JSON channel shape.
-//! Capabilities are never dispatched — every case fails (or succeeds)
-//! before the engine reaches a model or a source.
+//! CLI wire contract
+//!
+//! What the `emery` command promises regardless of what the engine does:
+//! which verbs exist, how grammar mistakes are reported, which exit code each
+//! failure class maps to, and what lands on stdout versus stderr in text and
+//! JSON mode.
+//!
+//! Every scenario finishes before the engine touches a model or a source, so
+//! the provider here is idle. That keeps these cases about the command
+//! surface alone; the product behaviour behind it is `specify.rs`.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -9,11 +15,67 @@ mod support;
 #[path = "support/verbs.rs"]
 mod verbs;
 
+use omnia_guest::api::command::USAGE_EXIT;
 use serde_json::Value;
 use support::{Provider, cli, cli_ok, fail};
 use verbs::verbs;
 
-// Deleted verbs are deleted from the grammar, not hidden.
+struct Case {
+    name: &'static str,
+    argv: &'static [&'static str],
+    exit: u8,
+    stdout: &'static str,
+    stderr: &'static str,
+    json_channels: bool,
+}
+
+const fn cases() -> [Case; 5] {
+    [
+        Case {
+            name: "help",
+            argv: &["emery", "--help"],
+            exit: 0,
+            stdout: "Usage: emery [OPTIONS] <COMMAND>",
+            stderr: "",
+            json_channels: false,
+        },
+        Case {
+            name: "version",
+            argv: &["emery", "--version"],
+            exit: 0,
+            stdout: concat!("emery ", env!("CARGO_PKG_VERSION")),
+            stderr: "",
+            json_channels: false,
+        },
+        Case {
+            name: "completions",
+            argv: &["emery", "completions", "zsh"],
+            exit: 0,
+            stdout: "_emery",
+            stderr: "",
+            json_channels: false,
+        },
+        Case {
+            name: "specify source required",
+            argv: &["emery", "specify"],
+            exit: 1,
+            stdout: "",
+            stderr: "specify-source-required",
+            json_channels: false,
+        },
+        Case {
+            name: "show not generated",
+            argv: &["emery", "--format", "json", "show", "spec"],
+            exit: 2,
+            stdout: "",
+            stderr: "spec-not-generated",
+            json_channels: true,
+        },
+    ]
+}
+
+// Deleted verbs are deleted from the grammar, not hidden. A usage error
+// exits `USAGE_EXIT` (64), so exit 2 always means a `NotFound` envelope.
 #[tokio::test]
 async fn route_budget() {
     let provider = Provider::idle();
@@ -41,7 +103,7 @@ async fn route_budget() {
         &["emery", "journal", "show"][..],
         &["emery", "debt"][..],
     ] {
-        assert_eq!(cli(&provider, removed).await.exit, 2, "{removed:?}");
+        assert_eq!(cli(&provider, removed).await.exit, USAGE_EXIT, "{removed:?}");
     }
 
     let help = cli(&provider, &["emery", "--help"]).await;
@@ -68,7 +130,7 @@ async fn specify_without_sources() {
     let response = cli(&provider, &["emery", "specify"]).await;
     assert_eq!(response.exit, 1);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("at least one source"), "{stderr}");
+    assert!(stderr.contains("no source bindings"), "{stderr}");
 
     fail(&provider, &["emery", "specify"], 1, "specify-source-required").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
@@ -135,13 +197,13 @@ async fn specify_old_flags_deleted() {
         &["emery", "specify", "--sources", "emery.toml"][..],
         &["emery", "specify", "--value", "intent=text"][..],
     ] {
-        assert_eq!(cli(&provider, argv).await.exit, 2, "{argv:?}");
+        assert_eq!(cli(&provider, argv).await.exit, USAGE_EXIT, "{argv:?}");
     }
 }
 
-// The read verb fails typed before any generation is committed.
+// The read verb fails typed before any revision is committed.
 #[tokio::test]
-async fn show_without_generation() {
+async fn show_without_revision() {
     let provider = Provider::idle();
 
     let response = cli(&provider, &["emery", "show", "spec"]).await;
@@ -182,7 +244,7 @@ async fn argv_zero_replaced() {
     let expected = cli(&provider, &["emery", "specify", "--no-such-flag"]).await;
     let forwarded = cli(&provider, &["emery:engine@0.1.0", "specify", "--no-such-flag"]).await;
 
-    assert_eq!(expected.exit, 2);
+    assert_eq!(expected.exit, USAGE_EXIT);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
@@ -190,65 +252,11 @@ async fn argv_zero_replaced() {
     assert!(!stderr.contains("emery:engine@0.1.0"));
 }
 
-struct Case {
-    name: &'static str,
-    argv: &'static [&'static str],
-    exit: u8,
-    stdout: &'static str,
-    stderr: &'static str,
-    json_channels: bool,
-}
-
-const fn cases() -> [Case; 5] {
-    [
-        Case {
-            name: "help",
-            argv: &["emery", "--help"],
-            exit: 0,
-            stdout: "Usage: emery [OPTIONS] <COMMAND>",
-            stderr: "",
-            json_channels: false,
-        },
-        Case {
-            name: "version",
-            argv: &["emery", "--version"],
-            exit: 0,
-            stdout: concat!("emery ", env!("CARGO_PKG_VERSION")),
-            stderr: "",
-            json_channels: false,
-        },
-        Case {
-            name: "completions",
-            argv: &["emery", "completions", "zsh"],
-            exit: 0,
-            stdout: "_emery",
-            stderr: "",
-            json_channels: false,
-        },
-        Case {
-            name: "specify source required",
-            argv: &["emery", "specify"],
-            exit: 1,
-            stdout: "",
-            stderr: "specify-source-required",
-            json_channels: false,
-        },
-        Case {
-            name: "show not generated",
-            argv: &["emery", "--format", "json", "show", "spec"],
-            exit: 2,
-            stdout: "",
-            stderr: "spec-not-generated",
-            json_channels: true,
-        },
-    ]
-}
-
 // The stdout/stderr channel contract, table-driven across the surface.
 #[tokio::test]
 async fn response_contract() {
     for case in cases() {
-        // A fresh store keeps `specify` sourceless and `show` without a generation.
+        // A fresh store keeps `specify` sourceless and `show` without a revision.
         let response = cli(&Provider::idle(), case.argv).await;
         let stdout = String::from_utf8(response.stdout).expect("stdout is UTF-8");
         let stderr = String::from_utf8(response.stderr).expect("stderr is UTF-8");

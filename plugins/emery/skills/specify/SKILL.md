@@ -6,11 +6,11 @@ argument-hint: <adapter>
 
 # Specify Skill
 
-`emery specify` is the one generate verb: it resolves the named source adapters (a local component loads through the deployment loader, read fresh each run; an exact package reference fetches from its registry; either load's optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extracts, reconciles, synthesises, and commits one generation behind the `current` pointer. Nothing about the binding list persists between runs — repeat the sources on every invocation, or keep them in an operator-owned `emery.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
+`emery specify` is the one generate verb: it resolves the named source adapters (a local component loads through the deployment loader, read fresh each run; an exact package reference fetches from its registry; either load's optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extracts, derives the requirement rows, synthesises, and commits one revision, swapping the current revision id. Nothing about the binding list persists between runs — repeat the sources on every invocation, or keep them in an operator-owned `emery.toml`. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 
-1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling. Install the latest prebuilt release via Homebrew, or from source; an adapter whose declared floor outruns the installed binary fails typed later (`adapter-cli-too-old`, exit 1) with the same reinstall command as its hint:
+1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling. Install the latest prebuilt release via Homebrew, or from source; an adapter whose declared minimum `emery-version` outruns the installed binary fails typed later (`unsupported-version`, exit 1) with the same reinstall command as its hint:
 
 ```bash
 brew tap augentic/tap
@@ -32,6 +32,6 @@ Specify dispatches model judgment and can take a while on large workspaces; it r
 
 ## Relay
 
-- Surface the CLI output verbatim — the success envelope names the committed generation, the re-mine diff against the superseded one, and the resolved digest of every loader-loaded adapter (offer the digest to the operator as the binding's `digest` pin for reproducible loads).
+- Surface the CLI output verbatim — the success envelope names the committed revision, the re-mine diff against the superseded one, and the resolved digest of every loader-loaded adapter (offer the digest to the operator as the binding's `digest` pin for reproducible loads).
 - Review is `emery show spec` / `emery show design` — never read or edit `.emery/` state by hand.
 - On non-zero exit, surface the structured error and stop — never hand-roll spec documents. A `refused` failure means the loader rejected the request (a pin that no longer matches, a malformed pin, an invalid artifact, or an unserved location); relay the hint and let the operator decide.

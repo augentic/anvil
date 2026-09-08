@@ -1,4 +1,9 @@
-//! Embedded document registry tests.
+//! Registry contract
+//!
+//! What callers can rely on from an embedded corpus: a document is found by
+//! its tree-relative path, its body comes back intact, and asking for a path
+//! the build did not embed is a programming error that panics rather than a
+//! silent miss.
 
 use emery_prose::registry::{Doc, body, find};
 

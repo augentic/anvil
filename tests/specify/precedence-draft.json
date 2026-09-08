@@ -1,0 +1,31 @@
+{
+  "preamble": [
+    "Four bound sources disagree; authority resolves what it can, tied peers surface as [conflict] for the operator, and the uncovered acceptance gap is preserved, never guessed."
+  ],
+  "requirements": [
+    {
+      "subject": "session.timeout",
+      "body": [
+        "Sessions must expire after 30 minutes of inactivity."
+      ],
+      "scenarios": [
+        {
+          "name": "Session expires",
+          "when": "a session is inactive for 30 minutes",
+          "then": "the session expires"
+        }
+      ]
+    },
+    {
+      "subject": "login.flow",
+      "body": [],
+      "scenarios": [
+        {
+          "name": "Login selected",
+          "when": "a login method must be selected",
+          "then": "operator reconciliation is required"
+        }
+      ]
+    }
+  ]
+}

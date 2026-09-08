@@ -14,7 +14,7 @@ Three surfaces version independently — never force them to share a number:
 
 The engine guest imports `emery:adapter/source`; it has no separate WIT package. The wasm-pkg identity `emery:engine@<version>` below is the compiled component, versioned with the binary.
 
-Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
+Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-version` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
 The host embeds no adapter-version recommendation: exact package pins arrive as run input, fetched through the compiled-in `locations:` policy (the `omnia.host` default registry endpoint, overridable per binding), and local components load by path (the journey host in [`examples/runtime.rs`](../examples/runtime.rs) loads its built mock source that way); the shipped runtime embeds the engine only. Statically declared adapter guests remain possible in a custom runtime invocation.
 
@@ -36,7 +36,7 @@ Every release chooses exactly one shape; the order prevents adapters shipping ag
 | Shape | Trigger | Order |
 | ----- | ------- | ----- |
 | **WIT-breaking** | `package emery:adapter@…` moves | 1) engine release branch + publish WIT 2) engine publish 3) adapters bump pin + train release 4) announce hard-cut / re-init when product policy requires it |
-| **Host-only** | CLI / lifecycle / engine guest; `emery:adapter` WIT unchanged | engine cut → publish; adapters unchanged unless the floor must rise |
+| **Host-only** | CLI / lifecycle / engine guest; `emery:adapter` WIT unchanged | engine cut → publish; adapters unchanged unless their minimum `emery-version` must rise |
 | **Adapter-only** | prompts, rules, target behavior; WIT unchanged | adapters cut → publish; engine unchanged |
 
 Never release adapters against an unpublished WIT or an unreleased engine commit that changed the contract.
@@ -44,7 +44,7 @@ Never release adapters against an unpublished WIT or an unreleased engine commit
 Each release's notes entry in `RELEASES.md` includes a short compatibility row:
 
 ```text
-engine 0.28.x  ↔  adapters 0.5.x  (WIT emery:adapter@0.1.0, floor ≥ 0.28.0)
+engine 0.28.x  ↔  adapters 0.5.x  (WIT emery:adapter@0.1.0, emery-version ≥ 0.28.0)
 ```
 
 Keep the table short — it is a statement of what was tested together, not a version solver.
@@ -85,7 +85,7 @@ wkg publish target/wasm32-wasip2/release/emery.wasm \
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-floor` must name the minimum host that can run the train. There is no pull-on-miss. A host that wants those components as static guests builds them and declares them in the runtime invocation, the same way the journey host declares its mock source.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/emery-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and ship as Wasm OCI artifacts to GHCR (`ghcr.io/augentic/emery-adapters/<name>:<version>`) from that repo's **Publish Release** workflow (same `make publish <name>` path as a local breakout). Before an adapter train publishes, its tree must build against a **published** `emery:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `emery-version` must name the minimum host that can run the train. There is no pull-on-miss. A host that wants those components as static guests builds them and declares them in the runtime invocation, the same way the journey host declares its mock source.
 
 ## Installing a release
 

@@ -1,4 +1,13 @@
-//! DTOs mirroring the WIT `source` records.
+//! Source records
+//!
+//! The types of the `source` interface itself: what an adapter is given
+//! ([`SourceInput`] over a workspace or an inline value), what it reports
+//! about itself ([`SourceMetadata`]), and what it returns — an [`Evidence`]
+//! document of typed [`Claim`]s with an [`Authority`] class.
+//!
+//! [`ClaimKind`] is the closed taxonomy the whole system agrees on, and each
+//! kind's required extras are declared next to it so the contract states in
+//! one place what a complete claim of that kind looks like.
 
 use std::fmt;
 
@@ -9,7 +18,7 @@ use serde::Deserialize;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceMetadata {
     /// Exact minimum Emery version, if any.
-    pub emery_floor: Option<String>,
+    pub emery_version: Option<String>,
 }
 
 /// Read-only source workspace.
@@ -60,6 +69,18 @@ pub enum Authority {
     Documentation,
     /// Observed behaviour.
     Behaviour,
+}
+
+impl Authority {
+    /// Lower ranks outrank higher ranks (`intent` = 0).
+    #[must_use]
+    pub const fn rank(self) -> u8 {
+        match self {
+            Self::Intent => 0,
+            Self::Documentation => 1,
+            Self::Behaviour => 2,
+        }
+    }
 }
 
 impl fmt::Display for Authority {
@@ -163,16 +184,6 @@ pub struct Claim {
     pub extras: serde_json::Map<String, serde_json::Value>,
 }
 
-// Treat a malformed open field as absent.
-fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: serde::de::DeserializeOwned,
-{
-    let value = serde_json::Value::deserialize(deserializer)?;
-    Ok(T::deserialize(value).ok())
-}
-
 /// Extracted claims and their document-level authority.
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -181,4 +192,14 @@ pub struct Evidence {
     pub authority: Authority,
     /// Extracted claims.
     pub claims: Vec<Claim>,
+}
+
+// Treat a malformed open field as absent.
+fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(T::deserialize(value).ok())
 }

@@ -1,19 +1,65 @@
-//! Emery's specification-generation engine.
+//! The specification engine
+//!
+//! Emery's core: the operations that generate a specification revision from
+//! bound sources ([`specify`]) and read one back for review ([`show`]),
+//! together with the source binding rules and adapter references those
+//! operations accept.
+//!
+//! The engine is transport-neutral. It speaks in typed operations and
+//! results over a [`Provider`] of capabilities, and leaves argument parsing,
+//! terminal text, and exit codes to whichever front end drives it.
 
-mod extract;
-pub mod home;
-pub mod preopen;
-mod resolve;
+mod artifact;
+mod plugin;
 pub mod show;
-pub mod sources;
-mod spec;
 pub mod specify;
-mod storage;
-mod synthesise;
+mod store;
+
+use std::path::{Component, Path, PathBuf};
 
 use emery_source::Source;
-use omnia_guest::{BlobStore, Model, Plugins, StateStore};
-pub use resolve::AdapterSelector;
+use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
+pub use plugin::AdapterRef;
+pub use store::{CONTAINER, CURRENT};
+
+/// Normalizes an operator path inside the `.` project preopen.
+///
+/// # Errors
+///
+/// Returns a `BadRequest` for an absolute path or a relative path that
+/// escapes above the project root.
+pub fn preopen_path(path: &Path) -> Result<PathBuf, Error> {
+    if path.is_absolute() {
+        return Err(bad_request!("path `{}` must be relative to the project root", path.display()));
+    }
+
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::Normal(part) => normalized.push(part),
+            Component::ParentDir if normalized.pop() => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(bad_request!(
+                    "path `{}` must be relative to the project root",
+                    path.display()
+                ));
+            }
+        }
+    }
+
+    Ok(if normalized.as_os_str().is_empty() { PathBuf::from(".") } else { normalized })
+}
+
+// Kebab case for adapter names, binding keys, and cited `Sources:`
+// keys: `[a-z][a-z0-9-]*` with no doubled or trailing dash.
+pub(crate) fn is_kebab(value: &str) -> bool {
+    value.starts_with(|c: char| c.is_ascii_lowercase())
+        && value.split('-').all(|segment| {
+            !segment.is_empty()
+                && segment.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        })
+}
 
 /// The capability set every operation can be dispatched over, as one
 /// bound for the transports that bind a provider.

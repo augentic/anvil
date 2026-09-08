@@ -1,4 +1,9 @@
-//! Parsed adapter identity (`name@version`).
+//! Adapter identity
+//!
+//! An adapter is known by a `name@version` pair — the name it is addressed
+//! by and the exact version it was published as. [`AdapterIdentity`] is the
+//! parsed form, so code that needs the name or the version alone never has to
+//! split the string itself.
 
 use std::str::FromStr;
 

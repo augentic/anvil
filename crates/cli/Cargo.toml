@@ -1,6 +1,6 @@
 [package]
 name = "emery-cli"
-description = "The emery command façade: clap grammar, binding carriers, the command projector, and the exit contract over emery-engine"
+description = "The emery command grammar: clap verbs, binding carriers, text renderers, and the hint table over emery-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,11 +12,9 @@ readme = "../../README.md"
 
 [dependencies]
 clap.workspace = true
-clap_complete.workspace = true
 emery-engine.workspace = true
 omnia-guest.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 toml.workspace = true
 
 [lints]

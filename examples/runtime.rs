@@ -1,4 +1,11 @@
-//! Cursor-backed journey host. Bindings: `specify --config examples/emery.toml`.
+//! Journey runtime
+//!
+//! A development build of the shipped runtime for walking the live
+//! `specify` → `show` journey against the mock adapter built by `make source`.
+//! It mirrors the shipped deployment except that adapters load only from
+//! local paths, so the journey never reaches out to a registry.
+//!
+//! Run it with `specify --config examples/emery.toml`.
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
