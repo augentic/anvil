@@ -1,20 +1,17 @@
 //! # Parse `spec.md`
 //!
-//! Models generate `spec.md`, so its shape is verified rather than trusted.
 //! A spec is a preamble followed by `### Requirement:` blocks — a heading,
-//! three provenance lines, and a body with at least one scenario — and every
-//! violation in the document is reported in one refusal, so a malformed spec
-//! is never committed or diffed.
-//!
-//! Synthesis parses the draft to check the model preserved the reconciliation
-//! rows; the store parses both revisions to report the re-mine diff.
+//! three provenance lines, and a body with at least one scenario. The
+//! provenance is what synthesis compares back against the reconciliation
+//! rows, and the heading subject is what the re-mine diff keys on.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
-use omnia_guest::{Error, bad_request};
+use omnia_guest::Error;
 
+use super::{Document, Finding, Findings, Line, Lines, Malformed};
 use crate::is_kebab;
 
 /// The requirement heading marker.
@@ -29,29 +26,10 @@ pub struct Spec {
     pub requirements: Vec<Requirement>,
 }
 
-impl FromStr for Spec {
-    type Err = Error;
-
-    fn from_str(text: &str) -> Result<Self, Error> {
-        let document = Document::from(text);
-        let blocks = document.blocks();
-
-        let mut findings = Findings::default();
-        if blocks.is_empty() {
-            findings.push(format!("the document carries no `{HEADING}` block"));
-        }
-        let requirements = blocks
-            .iter()
-            .filter_map(|block| findings.record(Requirement::try_from(block)))
-            .collect();
-        let spec = Self { requirements };
-        findings.extend(spec.duplicates());
-
-        findings.finish(spec).map_err(|findings| bad_request!("`spec.md` is malformed: {findings}"))
-    }
-}
-
 impl Spec {
+    /// The artifact's file name.
+    pub const NAME: &str = "spec.md";
+
     /// Requirement blocks keyed by their stable reconciliation subject.
     #[must_use]
     pub fn by_subject(&self) -> BTreeMap<&str, &Requirement> {
@@ -75,6 +53,28 @@ impl Spec {
             }
         }
         findings
+    }
+}
+
+impl FromStr for Spec {
+    type Err = Error;
+
+    fn from_str(text: &str) -> Result<Self, Error> {
+        let document = Document::from(text);
+        let blocks: Vec<Block<'_>> = document.blocks(HEADING).map(Block::new).collect();
+
+        let mut findings = Findings::default();
+        if blocks.is_empty() {
+            findings.push(format!("the document carries no `{HEADING}` block"));
+        }
+        let requirements = blocks
+            .iter()
+            .filter_map(|block| findings.record(Requirement::try_from(block)))
+            .collect();
+        let spec = Self { requirements };
+        findings.extend(spec.duplicates());
+
+        findings.accept(Self::NAME, spec)
     }
 }
 
@@ -303,37 +303,6 @@ impl Display for Tag {
     }
 }
 
-/// A value that does not fit its grammar, quoted as written.
-#[derive(Debug)]
-pub struct Malformed(String);
-
-// `spec.md` as numbered lines.
-#[derive(Debug)]
-struct Document<'a> {
-    lines: Vec<Line<'a>>,
-}
-
-impl<'a> From<&'a str> for Document<'a> {
-    fn from(text: &'a str) -> Self {
-        let lines = text
-            .lines()
-            .enumerate()
-            .map(|(index, raw)| Line {
-                no: index + 1,
-                text: raw.trim_end(),
-            })
-            .collect();
-        Self { lines }
-    }
-}
-
-impl<'a> Document<'a> {
-    // Every run of lines led by a heading; the preamble is skipped.
-    fn blocks(&'a self) -> Vec<Block<'a>> {
-        self.lines.chunk_by(|_, next| next.heading().is_none()).filter_map(Block::new).collect()
-    }
-}
-
 // One `### Requirement:` block: the heading line less its marker, the
 // provenance lines beneath it, then the body.
 #[derive(Debug)]
@@ -344,28 +313,24 @@ struct Block<'a> {
 }
 
 impl<'a> Block<'a> {
-    // `None` for the preamble, the one run of lines not led by a heading.
-    fn new(run: &'a [Line<'a>]) -> Option<Self> {
-        let [heading, rest @ ..] = run else { return None };
-        let heading = heading.heading()?;
-
-        // Provenance ends at the first non-blank line that is not a field.
+    // Provenance ends at the first non-blank line that is not a field.
+    fn new((heading, rest): (Line<'a>, Lines<'a>)) -> Self {
         let split =
-            rest.iter().take_while(|line| line.is_blank() || line.field().is_some()).count();
-        let (header, body) = rest.split_at(split);
-        Some(Self {
+            rest.iter().take_while(|line| line.is_blank() || field(**line).is_some()).count();
+        let (header, body) = rest.0.split_at(split);
+        Self {
             heading,
             provenance: Provenance {
                 heading,
-                fields: Lines(header).fields(),
+                fields: header.iter().copied().filter_map(field).collect(),
             },
             body: Lines(body),
-        })
+        }
     }
 
     // Every requirement carries at least one scenario.
     fn scenario(&self) -> Result<(), Finding> {
-        if self.body.has_scenario() {
+        if self.body.iter().any(|line| line.text.starts_with(SCENARIO)) {
             return Ok(());
         }
         Err(self.heading.fault(format!("no `{SCENARIO}` heading")))
@@ -481,6 +446,16 @@ struct Field<'a> {
     line: Line<'a>,
 }
 
+// `<Key>: <value>` for one of the provenance keys.
+fn field(line: Line<'_>) -> Option<Field<'_>> {
+    let (key, value) = line.text.trim().split_once(':')?;
+    Some(Field {
+        key: key.parse().ok()?,
+        value: value.trim(),
+        line,
+    })
+}
+
 // The provenance keys, matched exactly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Key {
@@ -511,118 +486,6 @@ impl Display for Key {
         })
     }
 }
-
-// A run of lines.
-#[derive(Debug, Clone, Copy)]
-struct Lines<'a>(&'a [Line<'a>]);
-
-impl<'a> Lines<'a> {
-    // Joined text with blank edges trimmed.
-    fn text(self) -> String {
-        let text: Vec<&str> = self.0.iter().map(|line| line.text).collect();
-        text.join("\n").trim_matches('\n').to_string()
-    }
-
-    fn has_scenario(self) -> bool {
-        self.0.iter().any(|line| line.is_scenario())
-    }
-
-    fn fields(self) -> Vec<Field<'a>> {
-        self.0.iter().copied().filter_map(Line::field).collect()
-    }
-}
-
-// One numbered line, right-trimmed.
-#[derive(Debug, Clone, Copy)]
-struct Line<'a> {
-    no: usize,
-    text: &'a str,
-}
-
-impl<'a> Line<'a> {
-    const fn is_blank(self) -> bool {
-        self.text.is_empty()
-    }
-
-    // The heading text after `### Requirement:`; `None` for any other line.
-    fn heading(self) -> Option<Self> {
-        let text = self.text.strip_prefix(HEADING)?.trim();
-        Some(Self { text, ..self })
-    }
-
-    fn is_scenario(self) -> bool {
-        self.text.starts_with(SCENARIO)
-    }
-
-    // `<Key>: <value>` for one of the provenance keys.
-    fn field(self) -> Option<Field<'a>> {
-        let (key, value) = self.text.trim().split_once(':')?;
-        Some(Field {
-            key: key.parse().ok()?,
-            value: value.trim(),
-            line: self,
-        })
-    }
-
-    fn fault(self, detail: impl Display) -> Finding {
-        Finding(format!("line {}: {detail}", self.no))
-    }
-}
-
-// Every violation in one document, refused together.
-#[derive(Debug, Default)]
-struct Findings(Vec<Finding>);
-
-impl Findings {
-    // A violation with no line of its own.
-    fn push(&mut self, detail: impl Display) {
-        self.0.push(Finding(detail.to_string()));
-    }
-
-    fn extend(&mut self, other: Self) {
-        self.0.extend(other.0);
-    }
-
-    // Keeps the parsed part and files its fault, so parsing continues to
-    // the end of the document.
-    fn record<T>(&mut self, result: Result<T, impl Into<Self>>) -> Option<T> {
-        match result {
-            Ok(value) => Some(value),
-            Err(fault) => {
-                self.extend(fault.into());
-                None
-            }
-        }
-    }
-
-    // The parsed value, unless anything was found.
-    fn finish<T>(self, value: T) -> Result<T, Self> {
-        if self.0.is_empty() { Ok(value) } else { Err(self) }
-    }
-}
-
-impl From<Finding> for Findings {
-    fn from(finding: Finding) -> Self {
-        Self(vec![finding])
-    }
-}
-
-impl FromIterator<Finding> for Findings {
-    fn from_iter<I: IntoIterator<Item = Finding>>(iter: I) -> Self {
-        Self(iter.into_iter().collect())
-    }
-}
-
-impl Display for Findings {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let details: Vec<&str> = self.0.iter().map(|Finding(detail)| detail.as_str()).collect();
-        f.write_str(&details.join(";\n"))
-    }
-}
-
-// One grammar violation, as the operator reads it.
-#[derive(Debug)]
-struct Finding(String);
 
 // `tests/specify.rs` owns what the operator observes — the typed refusal
 // that commits nothing, and the re-mine diff — over representative breaches.

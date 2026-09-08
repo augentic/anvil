@@ -22,8 +22,7 @@ use omnia_guest::{Error, Model, bad_gateway, bad_request};
 use serde_json::Value;
 
 use super::extract::SourceSet;
-use crate::design::{Design, SectionKind};
-use crate::spec::{ReqId, Spec, Status};
+use crate::artifact::{Design, ReqId, SectionKind, Spec, Status};
 use crate::store::Revision;
 
 // Prompt order is significant.

@@ -18,17 +18,13 @@ use omnia_guest::{BlobStore, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::design::Design;
-use crate::spec::Spec;
+use crate::artifact::{Design, Spec};
 
 /// Keyvalue key holding the current revision id.
 pub const CURRENT: &str = "current-revision";
 
 /// Blobstore container holding every revision's documents under `<id>/`.
 pub const CONTAINER: &str = "revisions";
-
-const SPEC: &str = "spec.md";
-const DESIGN: &str = "design.md";
 
 /// Revisions over a deployment's storage capabilities.
 #[derive(Clone, Copy, Debug)]
@@ -118,8 +114,8 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     // The store is content-addressed: documents that no longer hash to
     // the id they sit under are corruption, not a revision.
     async fn load(&self, id: &str) -> Result<Revision, Error> {
-        let spec = self.read(id, SPEC).await?;
-        let design = self.read(id, DESIGN).await?;
+        let spec = self.read(id, Spec::NAME).await?;
+        let design = self.read(id, Design::NAME).await?;
         let revision = Revision { spec, design };
 
         if revision.id() != id {
@@ -172,7 +168,7 @@ impl Revision {
 
     // The one place a document name meets its field; digest order.
     fn files(&self) -> [(&'static str, &str); 2] {
-        [(SPEC, &self.spec), (DESIGN, &self.design)]
+        [(Spec::NAME, &self.spec), (Design::NAME, &self.design)]
     }
 }
 

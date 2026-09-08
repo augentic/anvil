@@ -9,10 +9,9 @@
 //! results over a [`Provider`] of capabilities, and leaves argument parsing,
 //! terminal text, and exit codes to whichever front end drives it.
 
-mod design;
+mod artifact;
 mod plugin;
 pub mod show;
-mod spec;
 pub mod specify;
 mod store;
 
