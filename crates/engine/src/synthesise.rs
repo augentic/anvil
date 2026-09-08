@@ -18,7 +18,7 @@ use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
 use crate::extract::SourceSet;
-use crate::spec::{Spec, Status};
+use crate::spec::{ReqId, Spec, Status};
 use crate::store::Revision;
 
 // Prompt order is significant.
@@ -164,11 +164,6 @@ fn all_equal<'a>(mut contributors: impl Iterator<Item = &'a Contributor>) -> boo
     contributors.all(|contributor| contributor.normalised() == first)
 }
 
-// Requirement ids are positional: the first row is `REQ-001`.
-fn req_id(index: usize) -> String {
-    format!("REQ-{:03}", index + 1)
-}
-
 async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<String, Error> {
     let system =
         prose.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n");
@@ -194,7 +189,7 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
         let _ = writeln!(
             prompt,
             "- {id} — heading `### Requirement: {subject}{tag}` — Status: {status} — Sources: [{sources}]",
-            id = req_id(index),
+            id = ReqId::nth(index),
             subject = row.subject,
             status = row.status,
         );
@@ -248,15 +243,15 @@ fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
     }
 
     for (index, (requirement, row)) in spec.requirements.iter().zip(rows).enumerate() {
-        let id = req_id(index);
+        let id = ReqId::nth(index);
         if requirement.id != id {
             let found = &requirement.id;
             return Err(mismatch(format!("expected `{id}`, found `{found}`")));
         }
         // Headings are the reconciliation and re-mine-diff identity.
-        if requirement.name != row.subject {
+        if requirement.subject != row.subject {
             let subject = &row.subject;
-            let found = &requirement.name;
+            let found = &requirement.subject;
             return Err(mismatch(format!(
                 "`{id}` must head its subject `{subject}`, found `{found}`"
             )));
@@ -267,7 +262,7 @@ fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
                 "`{id}` must carry `Status: {status}` and its mirroring tag"
             )));
         }
-        if !requirement.sources.iter().map(String::as_str).eq(row.sources()) {
+        if !requirement.sources.keys().eq(row.sources()) {
             let sources = row.sources().collect::<Vec<_>>().join(", ");
             return Err(mismatch(format!("`{id}` must cite `Sources: [{sources}]`")));
         }

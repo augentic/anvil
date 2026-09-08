@@ -317,29 +317,39 @@ async fn authority_precedence() {
 // A re-run over changed evidence supersedes the revision: the old
 // blobs are pruned, the current id swaps, and the success envelope
 // reports the re-mine diff by heading subject — added, removed, and
-// changed sections alike.
+// changed sections alike — while a block that only moved, taking a new
+// positional id, is not a change.
 #[tokio::test]
 async fn remine_supersedes() {
     // --------------------------------------------------
-    // First run: the docs describe a greeting and a legacy export.
+    // First run: the docs describe a greeting, a legacy export, and a
+    // session timeout.
     // --------------------------------------------------
     let mut provider = Provider::answering([REMINE_FIRST, DESIGN_ANSWER]);
     provider.source.evidence.insert(
         "docs".to_string(),
-        Ok(docs_evidence("hello", "legacy.export", "Exports ship nightly.")),
+        Ok(docs_evidence(&[
+            ("greeting.behaviour", "GET /greeting returns the static string 'hello'."),
+            ("legacy.export", "Exports ship nightly."),
+            ("session.timeout", "Sessions time out after an hour."),
+        ])),
     );
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let first = current(&provider.storage);
 
     // --------------------------------------------------
-    // Second run: the greeting changed, the export is gone, and an
-    // audit requirement appeared.
+    // Second run: the timeout now leads, the greeting changed, the
+    // export is gone, and an audit requirement appeared.
     // --------------------------------------------------
     let mut provider =
         Provider::over(Arc::clone(&provider.storage), [REMINE_SECOND, DESIGN_ANSWER]);
     provider.source.evidence.insert(
         "docs".to_string(),
-        Ok(docs_evidence("howdy", "access.audit", "Access is audited.")),
+        Ok(docs_evidence(&[
+            ("session.timeout", "Sessions time out after an hour."),
+            ("greeting.behaviour", "GET /greeting returns the static string 'howdy'."),
+            ("access.audit", "Access is audited."),
+        ])),
     );
     let resp = cli_ok(&provider, &["emery", "specify", "docs"]).await;
 
@@ -351,6 +361,7 @@ async fn remine_supersedes() {
     assert!(stdout.contains("+ access.audit"), "{stdout}");
     assert!(stdout.contains("- legacy.export"), "{stdout}");
     assert!(stdout.contains("~ greeting.behaviour"), "{stdout}");
+    assert!(!stdout.contains("session.timeout"), "a renumbered block is not a change: {stdout}");
 
     let second = current(&provider.storage);
     assert_ne!(first, second, "changed documents commit a new revision");
@@ -363,28 +374,23 @@ async fn remine_supersedes() {
     provider.model.assert_exhausted();
 }
 
-// Two-requirement docs evidence with criteria covering both subjects.
-fn docs_evidence(greeting: &str, subject: &str, statement: &str) -> types::Evidence {
-    evidence(
-        Authority::Documentation,
-        vec![
-            requirement(
-                "greeting.behaviour",
-                &format!("GET /greeting returns the static string '{greeting}'."),
-            ),
-            requirement(subject, statement),
-            claim(
-                ClaimKind::Criterion,
-                "greeting.behaviour.check",
-                ("criterion", "The greeting body matches exactly."),
-            ),
-            claim(
-                ClaimKind::Criterion,
-                &format!("{subject}.check"),
-                ("criterion", "The behaviour is observable."),
-            ),
-        ],
-    )
+// Docs evidence over `(subject, statement)` requirements in row order,
+// each covered by its own criterion.
+fn docs_evidence(requirements: &[(&str, &str)]) -> types::Evidence {
+    let claims = requirements
+        .iter()
+        .flat_map(|(subject, statement)| {
+            [
+                requirement(subject, statement),
+                claim(
+                    ClaimKind::Criterion,
+                    &format!("{subject}.check"),
+                    ("criterion", "The behaviour is observable."),
+                ),
+            ]
+        })
+        .collect();
+    evidence(Authority::Documentation, claims)
 }
 
 const REMINE_FIRST: &str = "# Specification
@@ -397,6 +403,11 @@ Status: agreed
 
 GET /greeting returns the static string 'hello'.
 
+#### Scenario: Greeting
+
+- **WHEN** the greeting is requested
+- **THEN** the response is hello
+
 ### Requirement: legacy.export
 
 ID: REQ-002
@@ -404,25 +415,66 @@ Sources: [docs]
 Status: agreed
 
 Exports ship nightly.
+
+#### Scenario: Export
+
+- **WHEN** exports are produced
+- **THEN** they ship nightly
+
+### Requirement: session.timeout
+
+ID: REQ-003
+Sources: [docs]
+Status: agreed
+
+Sessions time out after an hour.
+
+#### Scenario: Timeout
+
+- **WHEN** a session is idle for an hour
+- **THEN** it times out
 ";
 
 const REMINE_SECOND: &str = "# Specification
 
-### Requirement: greeting.behaviour
+### Requirement: session.timeout
 
 ID: REQ-001
 Sources: [docs]
 Status: agreed
 
-GET /greeting returns the static string 'howdy'.
+Sessions time out after an hour.
 
-### Requirement: access.audit
+#### Scenario: Timeout
+
+- **WHEN** a session is idle for an hour
+- **THEN** it times out
+
+### Requirement: greeting.behaviour
 
 ID: REQ-002
 Sources: [docs]
 Status: agreed
 
+GET /greeting returns the static string 'howdy'.
+
+#### Scenario: Greeting
+
+- **WHEN** the greeting is requested
+- **THEN** the response is howdy
+
+### Requirement: access.audit
+
+ID: REQ-003
+Sources: [docs]
+Status: agreed
+
 Access is audited.
+
+#### Scenario: Audit
+
+- **WHEN** access occurs
+- **THEN** it is audited
 ";
 
 // A requirement claim missing its `statement` extra fails the whole
@@ -474,8 +526,10 @@ async fn unparseable_answer() {
         "# S\n\n### Requirement: greeting [wat]\n\nID: REQ-1\nSources: [Docs!]\nStatus: maybe\n\nBody.\n",
         "# S\n\n### Requirement: greeting\n\nBody without any metadata.\n",
         "# S\n\n### Requirement: [unknown]\n\nID: REQ-001\nSources: []\nStatus: unknown\n\nNo name.\n",
-        "# S\n\n### Requirement: a\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\nA.\n\n\
-         ### Requirement: b\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\nB.\n",
+        "# S\n\n### Requirement: a\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\n\
+         A.\n\n#### Scenario: A\n\n- **WHEN** a\n- **THEN** a\n\n\
+         ### Requirement: b\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\n\
+         B.\n\n#### Scenario: B\n\n- **WHEN** b\n- **THEN** b\n",
     ];
     for answer in answers {
         let provider = Provider::answering([answer]);
@@ -493,7 +547,10 @@ async fn dishonest_answer() {
     // `[docs]`, then the `REQ-002` acceptance gap.
     let answers = [
         // The gap row is hidden.
-        "# S\n\n### Requirement: greeting.behaviour\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\nHello.\n".to_string(),
+        "# S\n\n### Requirement: greeting.behaviour\n\nID: REQ-001\nSources: [docs]\n\
+         Status: agreed\n\nHello.\n\n#### Scenario: Greeting\n\n\
+         - **WHEN** greeted\n- **THEN** hello\n"
+            .to_string(),
         // The subject heading is renamed.
         two_blocks("greeting.renamed", "REQ-001", "[docs]", "agreed"),
         // The status is retagged.
@@ -515,8 +572,10 @@ fn two_blocks(heading: &str, id: &str, sources: &str, status: &str) -> String {
     format!(
         "# Specification\n\n### Requirement: {heading}\n\nID: {id}\nSources: {sources}\n\
          Status: {status}\n\nGET /greeting returns the static string 'hello'.\n\n\
+         #### Scenario: Greeting\n\n- **WHEN** greeted\n- **THEN** hello\n\n\
          ### Requirement: greeting.behaviour acceptance criteria [unknown]\n\n\
-         ID: REQ-002\nSources: []\nStatus: unknown\n\nNo source contributed a criterion.\n"
+         ID: REQ-002\nSources: []\nStatus: unknown\n\nNo source contributed a criterion.\n\n\
+         #### Scenario: Acceptance gap\n\n- **WHEN** checked\n- **THEN** behaviour is unknown\n"
     )
 }
 

@@ -232,12 +232,12 @@ impl Diff {
 
         let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
         if let (Ok(old), Ok(new)) = (outgoing.spec.parse::<Spec>(), incoming.spec.parse::<Spec>()) {
-            let old = old.subjects();
-            let new = new.subjects();
+            let old = old.by_subject();
+            let new = new.by_subject();
             for (subject, block) in &new {
                 let bucket = match old.get(subject) {
                     None => &mut added,
-                    Some(previous) if !previous.same_as(block) => &mut changed,
+                    Some(previous) if previous != block => &mut changed,
                     Some(_) => continue,
                 };
                 bucket.push((*subject).to_string());
