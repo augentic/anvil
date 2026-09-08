@@ -15,10 +15,10 @@
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Write as _};
 
-use emery_source::types::ClaimKind;
+use emery_source::types::{Claim, ClaimKind};
 use omnia_guest::{Error, Model};
 
-use super::draft::{self, DesignDraft, SpecDraft, type_key, types};
+use super::draft::{DesignDraft, SpecDraft};
 use super::extract::SourceSet;
 use super::judgment::{self, Question};
 use super::provenance::Provenance;
@@ -71,12 +71,12 @@ pub async fn synthesise<M: Model>(
     let question = Question {
         system: judgment::system(SPEC_PROSE),
         name: "spec-draft",
-        schema: draft::spec_schema(),
+        schema: SpecDraft::schema(),
     };
     let drafted: SpecDraft = question
         .ask(model, &spec_prompt(sets, rows), |answer| {
-            let drafted = judgment::parse(answer)?;
-            draft::check_spec(&drafted, rows)?;
+            let drafted: SpecDraft = judgment::parse(answer)?;
+            drafted.check(rows)?;
             Ok(drafted)
         })
         .await?;
@@ -87,12 +87,12 @@ pub async fn synthesise<M: Model>(
     let question = Question {
         system: judgment::system(DESIGN_PROSE),
         name: "design-draft",
-        schema: draft::design_schema(),
+        schema: DesignDraft::schema(),
     };
     let drafted: DesignDraft = question
         .ask(model, &design_prompt(sets, &spec, &plan), |answer| {
-            let drafted = judgment::parse(answer)?;
-            draft::check_design(&drafted, &plan, sets)?;
+            let drafted: DesignDraft = judgment::parse(answer)?;
+            drafted.check(&plan, sets)?;
             Ok(drafted)
         })
         .await?;
@@ -197,7 +197,8 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
         let _ = writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.key());
     }
 
-    let keys: Vec<&str> = types(sets).filter_map(type_key).collect();
+    let keys: Vec<&str> =
+        sets.iter().flat_map(SourceSet::types).filter_map(Claim::type_key).collect();
     if !keys.is_empty() {
         prompt.push_str(
             "\n## Type blocks\n\nReference each `type` claim exactly once under `domain-model` \

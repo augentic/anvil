@@ -12,7 +12,9 @@
 
 use std::fmt::Write as _;
 
-use super::draft::{Block, DesignDraft, SpecDraft, signature, type_key, types};
+use emery_source::types::Claim;
+
+use super::draft::{Block, DesignDraft, SpecDraft};
 use super::extract::SourceSet;
 use super::provenance::{Contributor, Provenance, normalise};
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
@@ -71,11 +73,13 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
         blocks.push(format!("## {kind}"));
         for block in &section.blocks {
             match block {
-                Block::Text { text } => blocks.push(text.trim().to_string()),
-                Block::Type { r#type: key } => {
-                    let signature = types(sets)
-                        .find(|claim| type_key(claim) == Some(key))
-                        .and_then(signature)
+                Block::Text(text) => blocks.push(text.trim().to_string()),
+                Block::Type(key) => {
+                    let signature = sets
+                        .iter()
+                        .flat_map(SourceSet::types)
+                        .find(|claim| claim.type_key() == Some(key))
+                        .and_then(Claim::signature)
                         .expect("the validated draft references type claims alone");
                     blocks.push(format!("```\n{}\n```", signature.trim_end()));
                 }
@@ -133,7 +137,7 @@ mod tests {
     use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
     use serde_json::json;
 
-    use super::super::draft::{self, DesignDraft, SpecDraft};
+    use super::super::draft::{DesignDraft, SpecDraft};
     use super::super::extract::SourceSet;
     use super::super::provenance::floor;
     use super::super::synthesise::plan;
@@ -193,7 +197,7 @@ mod tests {
             ]
         }))
         .expect("draft shape");
-        draft::check_spec(&spec_draft, &rows).expect("draft fits the rows");
+        spec_draft.check(&rows).expect("draft fits the rows");
         let spec = super::spec(&rows, &spec_draft);
         let read: Spec = spec.parse().expect("the rendering is canonical");
         let subjects: Vec<&str> = read.requirements.iter().map(|r| r.subject.as_str()).collect();
@@ -215,7 +219,7 @@ mod tests {
             ]
         }))
         .expect("draft shape");
-        draft::check_design(&design_draft, &plan(&sets), &sets).expect("draft fits the plan");
+        design_draft.check(&plan(&sets), &sets).expect("draft fits the plan");
         let design = super::design(&sets, &design_draft);
         let read: Design = design.parse().expect("the rendering is canonical");
         let kinds: Vec<SectionKind> = read.sections.iter().map(|s| s.kind).collect();

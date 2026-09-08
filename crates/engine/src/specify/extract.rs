@@ -10,7 +10,7 @@
 //! A source that returns invalid claims stops the run with a typed error
 //! rather than seeding a bad specification.
 
-use emery_source::types::{Authority, Claim};
+use emery_source::types::{Authority, Claim, ClaimKind};
 use emery_source::{Source, claims};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
@@ -62,6 +62,11 @@ pub struct SourceSet {
 }
 
 impl SourceSet {
+    /// Every `type` claim.
+    pub fn types(&self) -> impl Iterator<Item = &Claim> {
+        self.claims.iter().filter(|claim| claim.kind == ClaimKind::Type)
+    }
+
     // Validates claim grammar and required extras fail-closed (A8).
     fn validate(&self) -> Result<(), Error> {
         let findings = claims::findings(&self.claims);

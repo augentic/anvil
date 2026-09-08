@@ -109,6 +109,21 @@ impl Claim {
             None => String::new(),
         }
     }
+
+    /// The claim's id, or its path when it has no id.
+    #[must_use]
+    pub fn type_key(&self) -> Option<&str> {
+        self.id.as_deref().or(self.path.as_deref())
+    }
+
+    /// The `signature` extra, when it is a string.
+    #[must_use]
+    pub fn signature(&self) -> Option<&str> {
+        match self.extras.get("signature") {
+            Some(serde_json::Value::String(signature)) => Some(signature),
+            _ => None,
+        }
+    }
 }
 
 fn is_dotted_kebab(value: &str) -> bool {
