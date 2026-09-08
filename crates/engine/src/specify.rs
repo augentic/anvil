@@ -60,10 +60,10 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
 
     let digests = sets
         .iter()
-        .filter_map(|source| {
-            source.digest.clone().map(|digest| SourceDigest {
-                source: source.key.clone(),
-                digest,
+        .filter_map(|set| {
+            Some(SourceDigest {
+                source: set.key.clone(),
+                digest: set.digest.clone()?,
             })
         })
         .collect();
@@ -78,7 +78,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
 }
 
 /// Generate a specification revision from source bindings.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Specify {
     /// The run's source bindings, in extraction order.
@@ -120,7 +120,8 @@ impl SourceBinding {
     }
 
     // `registry` steers only registry acquisition and `digest` pins only
-    // loader-acquired bytes; the root rule is the one `input` applies.
+    // loader-acquired bytes; the root rule is the one `input` applies, so
+    // the whole list is refused before any adapter loads.
     fn validate(&self) -> Result<(), Error> {
         let key = &self.key;
         if self.registry.is_some() && !matches!(self.adapter, AdapterRef::Package { .. }) {
@@ -135,9 +136,8 @@ impl SourceBinding {
                  name"
             ));
         }
-        self.input()?;
 
-        Ok(())
+        self.input().map(drop)
     }
 }
 

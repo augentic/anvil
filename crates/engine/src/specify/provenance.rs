@@ -1,13 +1,14 @@
 //! Requirement provenance
 //!
 //! Turns every source's requirement claims into the provenance of each
-//! requirement — the rows `spec.md` is built on. Which claims across sources describe one requirement, and which of
-//! them agree, is a judgement: the model answers it as one partition — claims
-//! into requirements, each requirement's claims into agreeing classes — over
-//! a deterministic floor that pre-merges byte-equal ids. The engine validates
-//! the partition, then derives everything else from it and the closed
-//! authority ranking: the subject, the status, the winner and losers, and
-//! whether any acceptance criterion covers the requirement.
+//! requirement — the rows `spec.md` is built on. Which claims across sources
+//! describe one requirement, and which of them agree, is a judgement: the
+//! model answers it as one partition — claims into requirements, each
+//! requirement's claims into agreeing classes — over a deterministic floor
+//! that pre-merges byte-equal ids. The engine validates the partition, then
+//! derives everything else from it and the closed authority ranking: the
+//! subject, the status, the winner and losers, and whether any acceptance
+//! criterion covers the requirement.
 //!
 //! Authority is withheld from the request, so the answer cannot be steered
 //! toward a winner; a run over one source never asks at all.
@@ -21,7 +22,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::extract::SourceSet;
-use super::judgment::{self, Findings, Question};
+use super::judgment::{Findings, Question};
 use crate::artifact::Status;
 
 const PROSE: &[&str] = &["synthesis/grouping.md"];
@@ -38,19 +39,10 @@ pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Prove
     }
     let claims = Claims::collect(sets);
     tracing::info!("grouping requirement claims");
-    let question = Question {
-        system: judgment::system(PROSE),
-        name: "grouping",
-        schema: judgment::schema::<Grouping>("Emery grouping answer", |_| {}),
-    };
-    let grouping: Grouping = question
-        .ask(model, &claims.prompt(), |answer| {
-            let grouping: Grouping = judgment::parse(answer)?;
-            claims.check(&grouping)?;
-            Ok(grouping)
-        })
-        .await?;
-    Ok(claims.derive(&grouping))
+    let question = Question::<Grouping>::new("grouping", PROSE);
+    let grouping = question.ask(model, &claims.prompt(), |grouping| claims.check(grouping)).await?;
+
+    Ok(claims.rows(&grouping))
 }
 
 /// The provenance the floor alone derives: byte-equal ids are one
@@ -59,20 +51,21 @@ pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Prove
 #[must_use]
 pub fn floor(sets: &[SourceSet]) -> Vec<Provenance> {
     let claims = Claims::collect(sets);
-    claims.derive(&claims.floor())
+    claims.rows(&claims.floor())
 }
 
 /// A partition of every requirement claim into requirements, each carrying a
 /// partition of its claims into agreeing classes.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(title = "Emery grouping answer")]
 pub struct Grouping {
     /// One entry per requirement.
     pub groups: Vec<Group>,
 }
 
 /// The claims of one requirement and how they agree.
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Group {
     /// Indices of every claim describing this requirement.
@@ -98,19 +91,15 @@ impl Provenance {
     // Highest authority first, binding order within a class; one class
     // agrees, a unique top authority wins divergence, top-authority peers
     // in different classes conflict; an uncovered agreed row is unknown.
-    fn derive(mut classes: Vec<Vec<Contributor>>, criteria: &[&str]) -> Self {
+    fn of(mut classes: Vec<Vec<Contributor>>, criteria: &[&str]) -> Self {
         for class in &mut classes {
             class.sort_by_key(|member| (member.authority.rank(), member.index));
         }
         classes.sort_by_key(|class| (class[0].authority.rank(), class[0].index));
 
         let top = classes[0][0].authority.rank();
-        let covered = classes.iter().flatten().any(|member| {
-            criteria.iter().any(|id| {
-                id.strip_prefix(member.id.as_str())
-                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
-            })
-        });
+        let covered =
+            classes.iter().flatten().any(|member| criteria.iter().any(|id| covers(id, &member.id)));
         let status = match classes.len() {
             1 if covered => Status::Agreed,
             1 => Status::Unknown,
@@ -263,13 +252,7 @@ impl<'a> Claims<'a> {
         let mut groups: Vec<(&str, Group)> = Vec::new();
         for (index, claim) in self.requirements.iter().enumerate() {
             let position = groups.iter().position(|(id, _)| *id == claim.id).unwrap_or_else(|| {
-                groups.push((
-                    claim.id,
-                    Group {
-                        claims: Vec::new(),
-                        classes: Vec::new(),
-                    },
-                ));
+                groups.push((claim.id, Group::default()));
                 groups.len() - 1
             });
             let group = &mut groups[position].1;
@@ -349,7 +332,7 @@ impl<'a> Claims<'a> {
     }
 
     // Rows in first-seen order of each group's earliest claim.
-    fn derive(&self, grouping: &Grouping) -> Vec<Provenance> {
+    fn rows(&self, grouping: &Grouping) -> Vec<Provenance> {
         let mut groups: Vec<(usize, Vec<Vec<Contributor>>)> = grouping
             .groups
             .iter()
@@ -364,7 +347,7 @@ impl<'a> Claims<'a> {
             })
             .collect();
         groups.sort_by_key(|(first, _)| *first);
-        groups.into_iter().map(|(_, classes)| Provenance::derive(classes, &self.criteria)).collect()
+        groups.into_iter().map(|(_, classes)| Provenance::of(classes, &self.criteria)).collect()
     }
 
     fn contributor(&self, index: usize) -> Contributor {
@@ -377,6 +360,12 @@ impl<'a> Claims<'a> {
             index,
         }
     }
+}
+
+// A criterion covers a requirement when it is that claim id or a dotted
+// child of it: `session.timeout.idle` covers `session.timeout`.
+fn covers(criterion: &str, requirement: &str) -> bool {
+    criterion.strip_prefix(requirement).is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
 }
 
 // Whitespace-collapsed text, so a reflowed statement still matches.

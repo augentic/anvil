@@ -1,20 +1,22 @@
 //! Model judgments
 //!
 //! The one way the engine asks the model a question: a judgment sends a
-//! prompt, requires the answer to match a JSON schema, and hands the answer
-//! to a caller-supplied check. An answer that parses but fails the check is
-//! sent back with the findings attached, a bounded number of times, because
-//! models usually fix a concrete finding on the next attempt.
+//! prompt, requires the answer to match the JSON schema of the type it is
+//! asked for, and hands the parsed answer to a caller-supplied check. An
+//! answer that parses but fails the check is sent back with the findings
+//! attached, a bounded number of times, because models usually fix a
+//! concrete finding on the next attempt.
 //!
 //! This is the shape the adapter SDK's `repaired` loop has; the engine
 //! carries its own copy because no production crate may depend on the SDK.
+
+use std::marker::PhantomData;
 
 use omnia_guest::model::{Format, Message, Request, Role, SchemaFormat};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
 use serde::de::DeserializeOwned;
-use serde_json::Value;
 
 /// Maximum repairs after the initial answer.
 pub const MAX_REPAIRS: usize = 2;
@@ -22,20 +24,40 @@ pub const MAX_REPAIRS: usize = 2;
 /// Everything a check rejects in one answer, one line each.
 pub type Findings = Vec<String>;
 
-/// A schema-gated question: the system prose, the answer's schema name, and
-/// the schema itself.
+/// A question whose answer is one `T`: the system prose, the schema name
+/// passed to the provider, and `T`'s schema.
 #[derive(Debug)]
-pub struct Question {
-    /// The system prompt.
-    pub system: String,
-    /// The schema name passed to the provider.
-    pub name: &'static str,
-    /// The JSON Schema the answer must conform to.
-    pub schema: String,
+pub struct Question<T> {
+    system: String,
+    name: &'static str,
+    schema: String,
+    answer: PhantomData<fn() -> T>,
 }
 
-impl Question {
-    /// Runs the judgment over `user` with bounded `tail` repair.
+impl<T: DeserializeOwned + JsonSchema> Question<T> {
+    /// Builds the question `name` from the synthesis prose at `paths`.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if `schemars` produces a non-object schema for `T`.
+    pub fn new(name: &'static str, paths: &[&str]) -> Self {
+        let generated = SchemaSettings::draft2020_12().into_generator().into_root_schema_for::<T>();
+        let schema = serde_json::to_string(&generated).expect("generated answer schema serialises");
+
+        Self {
+            system: paths
+                .iter()
+                .map(|path| crate::prose::body(path))
+                .collect::<Vec<_>>()
+                .join("\n\n---\n\n"),
+            name,
+            schema,
+            answer: PhantomData,
+        }
+    }
+
+    /// Runs the judgment over `user`, retrying while `check` reports
+    /// findings, up to [`MAX_REPAIRS`] times.
     ///
     /// Only findings are retried; a model failure returns at once.
     ///
@@ -43,16 +65,21 @@ impl Question {
     ///
     /// Returns `BadGateway` for a model failure and `BadRequest` naming the
     /// final findings once the repairs are exhausted.
-    pub async fn ask<M, T, F>(&self, model: &M, user: &str, mut tail: F) -> Result<T, Error>
+    pub async fn ask<M, F>(&self, model: &M, user: &str, mut check: F) -> Result<T, Error>
     where
         M: Model,
-        F: FnMut(&str) -> Result<T, Findings>,
+        F: FnMut(&T) -> Result<(), Findings>,
     {
         let mut prompt = user.to_string();
         let mut attempt = 0;
         loop {
             let answer = self.complete(model, prompt).await?;
-            let findings = match tail(&answer) {
+            // A parse failure is one finding, so a malformed answer is
+            // repaired like any other miss.
+            let judged = serde_json::from_str::<T>(&answer)
+                .map_err(|err| vec![format!("answer did not deserialize: {err}")])
+                .and_then(|value| check(&value).map(|()| value));
+            let findings = match judged {
                 Ok(value) => return Ok(value),
                 Err(findings) => findings.join("\n"),
             };
@@ -84,29 +111,4 @@ impl Question {
         let reply = Model::complete(model, request).await.map_err(|err| bad_gateway!(err))?;
         Ok(reply.answer)
     }
-}
-
-/// The draft-2020-12 schema of `T`, after `patch` has adjusted the generated
-/// document (closed objects, string patterns) where the derive cannot.
-///
-/// # Panics
-///
-/// Panics only if `schemars` produces a non-object schema.
-pub fn schema<T: JsonSchema>(title: &str, patch: impl FnOnce(&mut Value)) -> String {
-    let generated = SchemaSettings::draft2020_12().into_generator().into_root_schema_for::<T>();
-    let mut value = generated.to_value();
-    let root = value.as_object_mut().expect("generated answer schema is an object");
-    root.insert("title".to_string(), Value::String(title.to_string()));
-    patch(&mut value);
-    serde_json::to_string(&value).expect("generated answer schema serialises")
-}
-
-/// Deserialises `answer`, reporting a parse failure as one finding.
-pub fn parse<T: DeserializeOwned>(answer: &str) -> Result<T, Findings> {
-    serde_json::from_str(answer).map_err(|err| vec![format!("answer did not deserialize: {err}")])
-}
-
-/// Joins the synthesis prose at `paths` into one system prompt.
-pub fn system(paths: &[&str]) -> String {
-    paths.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n")
 }

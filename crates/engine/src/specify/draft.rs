@@ -12,12 +12,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use emery_source::claims::DOTTED_KEBAB_PATTERN;
+use emery_source::types::Claim;
 use schemars::JsonSchema;
 use serde::Deserialize;
-use serde_json::{Value, json};
 
 use super::extract::SourceSet;
-use super::judgment::{self, Findings};
+use super::judgment::Findings;
 use super::provenance::Provenance;
 use super::synthesise::{Plan, Presence};
 use crate::artifact::{SectionKind, Status, citations};
@@ -28,6 +28,7 @@ const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 /// The `spec.md` draft: preamble paragraphs and one entry per row.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(title = "Emery spec draft")]
 pub struct SpecDraft {
     /// Markdown paragraphs before the first requirement.
     pub preamble: Vec<String>,
@@ -36,18 +37,6 @@ pub struct SpecDraft {
 }
 
 impl SpecDraft {
-    /// The answer schema.
-    #[must_use]
-    pub fn schema() -> String {
-        judgment::schema::<Self>("Emery spec draft", |value| {
-            let subject = value
-                .pointer_mut("/$defs/Requirement/properties/subject")
-                .and_then(Value::as_object_mut)
-                .expect("spec draft schema carries Requirement.subject");
-            subject.insert("pattern".to_string(), json!(DOTTED_KEBAB_PATTERN));
-        })
-    }
-
     /// Holds the draft to `rows`: the subject set equals the row set, a
     /// scenario per requirement, body discipline per status, and no reserved
     /// marker.
@@ -62,7 +51,6 @@ impl SpecDraft {
         let by_subject: BTreeMap<&str, &Provenance> =
             rows.iter().map(|row| (row.subject(), row)).collect();
         let mut seen = BTreeSet::new();
-        
         for requirement in &self.requirements {
             let subject = requirement.subject.as_str();
             if !seen.insert(subject) {
@@ -77,13 +65,13 @@ impl SpecDraft {
 
             let label = format!("`{subject}`");
             paragraphs(&requirement.body, &label, &mut findings);
-            match (row.status(), requirement.body.is_empty()) {
-                (Status::Conflict, false) => {
-                    findings.push(format!("- {label} is a conflict row and carries a body"));
-                }
-                (Status::Conflict, true) => {}
-                (_, true) => findings.push(format!("- {label} has no body paragraph")),
-                _ => {}
+            // A conflict row's statements are the renderer's notes, so its
+            // body would assert what the operator has yet to reconcile.
+            let conflict = row.status() == Status::Conflict;
+            if conflict && !requirement.body.is_empty() {
+                findings.push(format!("- {label} is a conflict row and carries a body"));
+            } else if !conflict && requirement.body.is_empty() {
+                findings.push(format!("- {label} has no body paragraph"));
             }
 
             if requirement.scenarios.is_empty() {
@@ -115,6 +103,7 @@ impl SpecDraft {
 #[serde(deny_unknown_fields)]
 pub struct Requirement {
     /// The row's subject, exactly as listed.
+    #[schemars(regex(pattern = DOTTED_KEBAB_PATTERN))]
     pub subject: String,
     /// Markdown paragraphs; empty for a conflict row.
     pub body: Vec<String>,
@@ -140,6 +129,7 @@ pub struct Scenario {
 /// The `design.md` draft: preamble paragraphs and one entry per section.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(title = "Emery design draft")]
 pub struct DesignDraft {
     /// Markdown paragraphs before the first section.
     pub preamble: Vec<String>,
@@ -148,12 +138,6 @@ pub struct DesignDraft {
 }
 
 impl DesignDraft {
-    /// The answer schema.
-    #[must_use]
-    pub fn schema() -> String {
-        judgment::schema::<Self>("Emery design draft", |_| {})
-    }
-
     /// Holds the draft to `plan` and `sets`: the section set, one reference
     /// per type claim under `domain-model`, bound citations, and no reserved
     /// marker.
@@ -165,42 +149,38 @@ impl DesignDraft {
         let mut findings = Vec::new();
         paragraphs(&self.preamble, "preamble", &mut findings);
 
+        let bound: BTreeSet<&str> = sets.iter().map(|set| set.key.as_str()).collect();
         let mut seen = BTreeSet::new();
-        for section in &self.sections {
-            let kind = section.kind;
-            if !seen.insert(kind) {
-                findings.push(format!("- `## {kind}` is drafted more than once"));
-            }
-            if plan.presence(kind) == Presence::Forbidden {
-                findings.push(format!("- `## {kind}` is present but no claim informs it"));
-            }
-            if section.blocks.is_empty() {
-                findings.push(format!("- `## {kind}` has no block"));
-            }
-        }
-
-        for kind in plan.required().filter(|kind| !seen.contains(kind)) {
-            findings.push(format!("- `## {kind}` is required but absent"));
-        }
-
         let mut references: BTreeMap<&str, usize> = BTreeMap::new();
         for section in &self.sections {
             let kind = section.kind;
+            let label = format!("`## {kind}`");
+            if !seen.insert(kind) {
+                findings.push(format!("- {label} is drafted more than once"));
+            }
+            if plan.presence(kind) == Presence::Forbidden {
+                findings.push(format!("- {label} is present but no claim informs it"));
+            }
+            if section.blocks.is_empty() {
+                findings.push(format!("- {label} has no block"));
+            }
+
             for block in &section.blocks {
                 match block {
                     Block::Text(text) => {
-                        line_rule(text, &format!("`## {kind}`"), &mut findings);
-                        for key in
-                            citations(text).filter(|key| !sets.iter().any(|set| set.key == *key))
-                        {
+                        paragraph(text, &label, &mut findings);
+                        for key in citations(text).filter(|key| !bound.contains(key)) {
                             findings.push(format!(
-                                "- `## {kind}` cites source `{key}`, which is not bound"
+                                "- {label} cites source `{key}`, which is not bound"
                             ));
                         }
                     }
                     Block::Type(key) => {
                         if kind != SectionKind::DomainModel {
-                            findings.push(format!("- `## {kind}` references type `{key}`; type blocks belong under `## Domain model`"));
+                            findings.push(format!(
+                                "- {label} references type `{key}`; type blocks belong under \
+                                 `## Domain model`"
+                            ));
                         }
                         *references.entry(key.as_str()).or_default() += 1;
                     }
@@ -208,10 +188,13 @@ impl DesignDraft {
             }
         }
 
-        let mut keys = BTreeSet::new();
-        for claim in sets.iter().flat_map(SourceSet::types) {
-            let Some(key) = claim.type_key() else { continue };
-            keys.insert(key);
+        for kind in plan.required().filter(|kind| !seen.contains(kind)) {
+            findings.push(format!("- `## {kind}` is required but absent"));
+        }
+
+        let keys: BTreeSet<&str> =
+            sets.iter().flat_map(SourceSet::types).filter_map(Claim::type_key).collect();
+        for key in &keys {
             match references.get(key).copied().unwrap_or_default() {
                 1 => {}
                 0 => findings.push(format!("- type `{key}` is never referenced")),
@@ -248,14 +231,14 @@ pub enum Block {
     Type(String),
 }
 
-// Every paragraph is non-blank and opens no line with a reserved marker.
-fn paragraphs(paragraphs: &[String], label: &str, findings: &mut Findings) {
-    for paragraph in paragraphs {
-        line_rule(paragraph, label, findings);
+fn paragraphs(texts: &[String], label: &str, findings: &mut Findings) {
+    for text in texts {
+        paragraph(text, label, findings);
     }
 }
 
-fn line_rule(paragraph: &str, label: &str, findings: &mut Findings) {
+// A paragraph is non-blank and opens no line with a reserved marker.
+fn paragraph(paragraph: &str, label: &str, findings: &mut Findings) {
     if paragraph.trim().is_empty() {
         findings.push(format!("- {label} has a blank paragraph"));
         return;

@@ -12,7 +12,6 @@
 //! so it cannot drop, reorder, or quietly rewrite a requirement, invent or
 //! omit a section, cite an unbound source, or paraphrase a signature.
 
-use std::collections::BTreeMap;
 use std::fmt::{self, Display, Write as _};
 
 use emery_source::types::{Claim, ClaimKind};
@@ -20,7 +19,7 @@ use omnia_guest::{Error, Model};
 
 use super::draft::{DesignDraft, SpecDraft};
 use super::extract::SourceSet;
-use super::judgment::{self, Question};
+use super::judgment::Question;
 use super::provenance::Provenance;
 use super::render;
 use crate::artifact::{ReqId, SectionKind, Status};
@@ -40,23 +39,13 @@ const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-for
 /// Plans `design.md`: which sections the claims require, allow, or forbid.
 #[must_use]
 pub fn plan(sets: &[SourceSet]) -> Plan {
-    let present = |kinds: &[ClaimKind]| {
-        sets.iter().flat_map(|set| &set.claims).any(|claim| kinds.contains(&claim.kind))
-    };
-    let sections = SectionKind::ALL
-        .into_iter()
-        .map(|kind| {
-            let presence = match kind {
-                SectionKind::Overview => Presence::Required,
-                SectionKind::Observability => Presence::Permitted,
-                _ if present(informants(kind)) => Presence::Required,
-                SectionKind::TechnicalLogic => Presence::Permitted,
-                _ => Presence::Forbidden,
-            };
-            (kind, presence)
-        })
-        .collect();
-    Plan(sections)
+    let mut kinds: Vec<ClaimKind> = Vec::new();
+    for claim in sets.iter().flat_map(|set| &set.claims) {
+        if !kinds.contains(&claim.kind) {
+            kinds.push(claim.kind);
+        }
+    }
+    Plan { kinds }
 }
 
 /// Drafts, validates, and renders both documents.
@@ -68,57 +57,46 @@ pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
-    let question = Question {
-        system: judgment::system(SPEC_PROSE),
-        name: "spec-draft",
-        schema: SpecDraft::schema(),
-    };
-    let drafted: SpecDraft = question
-        .ask(model, &spec_prompt(sets, rows), |answer| {
-            let drafted: SpecDraft = judgment::parse(answer)?;
-            drafted.check(rows)?;
-            Ok(drafted)
-        })
-        .await?;
+    let question = Question::<SpecDraft>::new("spec-draft", SPEC_PROSE);
+    let drafted =
+        question.ask(model, &spec_prompt(sets, rows), |drafted| drafted.check(rows)).await?;
     let spec = render::spec(rows, &drafted);
 
     tracing::info!("drafting design.md");
     let plan = plan(sets);
-    let question = Question {
-        system: judgment::system(DESIGN_PROSE),
-        name: "design-draft",
-        schema: DesignDraft::schema(),
-    };
-    let drafted: DesignDraft = question
-        .ask(model, &design_prompt(sets, &spec, &plan), |answer| {
-            let drafted: DesignDraft = judgment::parse(answer)?;
-            drafted.check(&plan, sets)?;
-            Ok(drafted)
-        })
+    let question = Question::<DesignDraft>::new("design-draft", DESIGN_PROSE);
+    let drafted = question
+        .ask(model, &design_prompt(sets, &spec, &plan), |drafted| drafted.check(&plan, sets))
         .await?;
     let design = render::design(sets, &drafted);
 
     Ok(Revision { spec, design })
 }
 
-/// The `design.md` section plan: one presence per section of the closed
-/// vocabulary, a function of the claim kinds alone.
+/// The `design.md` section plan: the claim kinds the run extracted, which
+/// decide each section of the closed vocabulary.
 #[derive(Debug)]
-pub struct Plan(BTreeMap<SectionKind, Presence>);
+pub struct Plan {
+    kinds: Vec<ClaimKind>,
+}
 
 impl Plan {
     /// The plan's verdict on `kind`.
     #[must_use]
     pub fn presence(&self, kind: SectionKind) -> Presence {
-        self.0.get(&kind).copied().unwrap_or(Presence::Forbidden)
+        let informed = informants(kind).iter().any(|claim| self.kinds.contains(claim));
+        match kind {
+            SectionKind::Overview => Presence::Required,
+            SectionKind::Observability => Presence::Permitted,
+            _ if informed => Presence::Required,
+            SectionKind::TechnicalLogic => Presence::Permitted,
+            _ => Presence::Forbidden,
+        }
     }
 
-    /// Every section the plan requires.
+    /// Every section the plan requires, in vocabulary order.
     pub fn required(&self) -> impl Iterator<Item = SectionKind> + '_ {
-        self.0
-            .iter()
-            .filter(|(_, presence)| **presence == Presence::Required)
-            .map(|(kind, _)| *kind)
+        SectionKind::ALL.into_iter().filter(|kind| self.presence(*kind) == Presence::Required)
     }
 }
 
@@ -131,6 +109,16 @@ pub enum Presence {
     Permitted,
     /// The section may not be drafted.
     Forbidden,
+}
+
+impl Display for Presence {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Required => "required",
+            Self::Permitted => "permitted",
+            Self::Forbidden => "omit",
+        })
+    }
 }
 
 // The claim kinds whose presence requires a section; `Overview` and
@@ -186,8 +174,9 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
     render_claims(&mut prompt, sets);
 
     prompt.push_str("\n## Sections\n\n");
-    for (kind, presence) in &plan.0 {
-        let kinds = informants(*kind).iter().map(|kind| format!("`{kind}`")).collect::<Vec<_>>();
+    for kind in SectionKind::ALL {
+        let presence = plan.presence(kind);
+        let kinds = informants(kind).iter().map(|kind| format!("`{kind}`")).collect::<Vec<_>>();
         let reason = match (presence, kinds.is_empty()) {
             (Presence::Required, false) => format!(": {} claims are present", kinds.join(" / ")),
             (Presence::Forbidden, false) => format!(": no {} claim", kinds.join(" / ")),
@@ -211,16 +200,6 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
 
     let _ = write!(prompt, "\n## The rendered `spec.md`\n\n{spec}");
     prompt
-}
-
-impl Display for Presence {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Required => "required",
-            Self::Permitted => "permitted",
-            Self::Forbidden => "omit",
-        })
-    }
 }
 
 fn render_claims(prompt: &mut String, sets: &[SourceSet]) {

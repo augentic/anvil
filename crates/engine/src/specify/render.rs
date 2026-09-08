@@ -10,11 +10,10 @@
 //! The output is part of the artifact contract — a changed byte re-ids every
 //! revision — and is frozen by the root scenario fixtures.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use emery_source::types::Claim;
-
-use super::draft::{Block, DesignDraft, SpecDraft};
+use super::draft::{Block, DesignDraft, Requirement, SpecDraft};
 use super::extract::SourceSet;
 use super::provenance::{Contributor, Provenance, normalise};
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
@@ -22,15 +21,14 @@ use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
 /// Renders `spec.md` from `rows` and their drafted content.
 #[must_use]
 pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
+    let entries: BTreeMap<&str, &Requirement> =
+        draft.requirements.iter().map(|entry| (entry.subject.as_str(), entry)).collect();
+
     let mut blocks: Vec<String> = vec!["# Specification".to_string()];
     blocks.extend(draft.preamble.iter().map(|paragraph| paragraph.trim().to_string()));
 
     for (index, row) in rows.iter().enumerate() {
-        let drafted = draft
-            .requirements
-            .iter()
-            .find(|requirement| requirement.subject == row.subject())
-            .expect("the validated draft carries every row");
+        let drafted = entries.get(row.subject()).expect("the validated draft carries every row");
         let tag = row.status().tag().map(|tag| format!(" [{tag}]")).unwrap_or_default();
         blocks.push(format!("{HEADING} {}{tag}", row.subject()));
         blocks.push(format!(
@@ -63,6 +61,12 @@ pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
 /// `sets`, sections in vocabulary order.
 #[must_use]
 pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
+    let signatures: BTreeMap<&str, &str> = sets
+        .iter()
+        .flat_map(SourceSet::types)
+        .filter_map(|claim| Some((claim.type_key()?, claim.signature()?)))
+        .collect();
+
     let mut blocks: Vec<String> = vec!["# Design".to_string()];
     blocks.extend(draft.preamble.iter().map(|paragraph| paragraph.trim().to_string()));
 
@@ -75,11 +79,8 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
             match block {
                 Block::Text(text) => blocks.push(text.trim().to_string()),
                 Block::Type(key) => {
-                    let signature = sets
-                        .iter()
-                        .flat_map(SourceSet::types)
-                        .find(|claim| claim.type_key() == Some(key))
-                        .and_then(Claim::signature)
+                    let signature = signatures
+                        .get(key.as_str())
                         .expect("the validated draft references type claims alone");
                     blocks.push(format!("```\n{}\n```", signature.trim_end()));
                 }
