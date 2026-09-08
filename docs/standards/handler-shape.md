@@ -7,7 +7,7 @@ The contract every operation obeys: how an operation becomes an `omnia_guest::ap
 Every operation is one `pub async fn <verb>(input: I, context: Context<P>) -> Result<Body, omnia_guest::Error>`, a `Handler<P, I>` through omnia's blanket impl over every fn of that shape (there is no proc-macro; a mis-shaped fn is reported by rustc at the route or `Client::call` site). The fn is bound at the call site — `client.call(specify, input, &metadata)`, `http::post(specify)` — never named by a type parameter:
 
 - **`I`** is a flat, transport-neutral serde DTO (`Serialize`/`Deserialize`, `#[serde(rename_all = "kebab-case")]`): `Specify { bindings: Vec<SourceBinding> }`, `Show { document: Document }`. It carries no clap derives, no flag names, and no carrier knowledge — the same type deserializes from an HTTP body (`omnia_guest::api::http::post(specify)`) as is built by the CLI façade.
-- **The fn body** validates its input against the rules every transport must get (`emery_engine::specify::sources::validate`: a non-empty list, kebab-case unique keys, `digest`/`registry` gating, preopen-relative roots; the `adapter` field is the typed `AdapterRef`, so a malformed selector refuses at the DTO boundary), anchors at the deployed layout, delegates to the deterministic kernel over `context.provider()`, and returns the typed body.
+- **The fn body** validates its input against the rules every transport must get (the private `validate` in `emery_engine::specify`: a non-empty list, kebab-case unique keys, `digest`/`registry` gating, preopen-relative roots; the `adapter` field is the typed `AdapterRef`, so a malformed selector refuses at the DTO boundary), anchors at the deployed layout, delegates to the deterministic kernel over `context.provider()`, and returns the typed body.
 - **`Result<_, omnia_guest::Error>`** — handlers return Omnia's protocol error; do not introduce a house error type.
 
 `Context<P>` is owned by the call: `owner()` and `provider()` are accessors, `metadata` is the public transport-neutral field, and `Context::new(owner, provider, metadata)` builds one without a `Client` when a handler is exercised directly.
@@ -76,7 +76,7 @@ Target discipline per verb arm:
 2. Invoke the verb's handler fn over that input (`Client::call(specify, input, &metadata)`, `Client::call(show, input, &metadata)`).
 3. Project success or failure through the command projector; completions remain synthetic grammar behaviour and never reach a handler.
 
-Never put domain logic in `cli`. Binding rules that every transport must enforce (key grammar and uniqueness, pin gating, preopen roots, the empty-list refusal) live in `emery_engine::specify::sources::validate`; only the carriers' own grammar (the `<adapter>=<text>` split, the TOML schema and its reserved keys, the exclusivity rule) lives in the façade. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `cli`. Binding rules that every transport must enforce (key grammar and uniqueness, pin gating, preopen roots, the empty-list refusal) live in `emery_engine::specify` (its private `validate`, run by the `specify` fn); only the carriers' own grammar (the `<adapter>=<text>` split, the TOML schema and its reserved keys, the exclusivity rule) lives in the façade. For the layering this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Gotcha — the only version requirement is per adapter
 

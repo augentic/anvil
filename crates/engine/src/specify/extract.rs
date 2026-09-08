@@ -15,7 +15,7 @@ use emery_source::{Source, claims};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use super::sources::SourceBinding;
+use super::SourceBinding;
 use crate::plugin::Loader;
 
 /// Loads, extracts, and validates every source binding.
