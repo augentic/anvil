@@ -200,6 +200,7 @@ impl<'a> Claims<'a> {
                 }
             }
         }
+
         Self {
             requirements,
             criteria,
@@ -213,6 +214,7 @@ impl<'a> Claims<'a> {
             "Group the requirement claims.\n\n\
              ## Requirement claims (index, source, id, statement, synopsis)\n\n",
         );
+
         for (index, claim) in self.requirements.iter().enumerate() {
             let synopsis = claim.synopsis.unwrap_or("-");
             let _ = writeln!(
@@ -223,6 +225,7 @@ impl<'a> Claims<'a> {
                 statement = claim.statement,
             );
         }
+
         prompt.push_str("\n## Floor\n\n");
         let floor = self.floor();
         let merged: Vec<&Group> =
@@ -230,6 +233,7 @@ impl<'a> Claims<'a> {
         if merged.is_empty() {
             prompt.push_str("No two claims share an id; every grouping is your judgement.\n");
         }
+
         for group in merged {
             let id = self.requirements[group.claims[0]].id;
             let indices =
@@ -240,10 +244,12 @@ impl<'a> Claims<'a> {
                  them across groups is refused."
             );
         }
+
         prompt.push_str(
             "\nAnswer with every index in exactly one group, and every group's claims in exactly \
              one agreeing class.\n",
         );
+
         prompt
     }
 
@@ -263,11 +269,13 @@ impl<'a> Claims<'a> {
                 .classes
                 .iter_mut()
                 .find(|class| normalise(&self.requirements[class[0]].statement) == statement);
+
             match class {
                 Some(class) => class.push(index),
                 None => group.classes.push(vec![index]),
             }
         }
+
         Grouping {
             groups: groups.into_iter().map(|(_, group)| group).collect(),
         }
@@ -283,6 +291,7 @@ impl<'a> Claims<'a> {
             if group.claims.is_empty() {
                 findings.push(format!("- group {position} has no claims"));
             }
+
             for &index in &group.claims {
                 if index >= count {
                     findings.push(format!("- group {position}: claim {index} does not exist"));
@@ -290,12 +299,14 @@ impl<'a> Claims<'a> {
                     findings.push(format!("- claim {index} appears in more than one group"));
                 }
             }
+
             let members: BTreeSet<usize> = group.claims.iter().copied().collect();
             let mut classed = BTreeSet::new();
             for class in &group.classes {
                 if class.is_empty() {
                     findings.push(format!("- group {position} has an empty class"));
                 }
+
                 for &index in class {
                     if !members.contains(&index) {
                         findings.push(format!(
@@ -308,10 +319,12 @@ impl<'a> Claims<'a> {
                     }
                 }
             }
+
             for index in members.difference(&classed) {
                 findings.push(format!("- group {position}: claim {index} is in no class"));
             }
         }
+
         for index in (0..count).filter(|index| !placed.contains_key(index)) {
             findings.push(format!("- claim {index} is in no group"));
         }
@@ -323,6 +336,7 @@ impl<'a> Claims<'a> {
                 by_id.entry(claim.id).or_default().insert(*position);
             }
         }
+
         for (id, positions) in by_id {
             if positions.len() > 1 {
                 findings.push(format!("- claims sharing the id `{id}` are split across groups"));
@@ -353,6 +367,7 @@ impl<'a> Claims<'a> {
 
     fn contributor(&self, index: usize) -> Contributor {
         let claim = &self.requirements[index];
+        
         Contributor {
             source: claim.source.to_string(),
             authority: claim.authority,
@@ -370,6 +385,6 @@ fn covers(criterion: &str, requirement: &str) -> bool {
 }
 
 // Whitespace-collapsed text, so a reflowed statement still matches.
-pub(super) fn normalise(text: &str) -> String {
+pub fn normalise(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }

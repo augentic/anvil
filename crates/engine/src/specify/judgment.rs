@@ -80,12 +80,14 @@ impl<T: DeserializeOwned + JsonSchema> Question<T> {
                 Ok(value) => return Ok(value),
                 Err(findings) => findings.join("\n"),
             };
+
             if attempt == MAX_REPAIRS {
                 let name = self.name;
                 return Err(bad_request!(
                     "model `{name}` answer failed validation after {MAX_REPAIRS} repairs:\n{findings}"
                 ));
             }
+            
             attempt += 1;
             prompt = format!(
                 "{user}\n\n## Previous answer (failed validation)\n\n{answer}\n\n\
@@ -106,6 +108,7 @@ impl<T: DeserializeOwned + JsonSchema> Question<T> {
             .format(Format::Schema(format))
             .build();
         let reply = Model::complete(model, request).await.map_err(|err| bad_gateway!(err))?;
+
         Ok(reply.answer)
     }
 }

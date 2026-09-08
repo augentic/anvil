@@ -65,6 +65,7 @@ impl SpecDraft {
 
             let label = format!("`{subject}`");
             paragraphs(&requirement.body, &label, &mut findings);
+
             // A conflict row's statements are the renderer's notes, so its
             // body would assert what the operator has yet to reconcile.
             let conflict = row.status() == Status::Conflict;
@@ -243,6 +244,7 @@ fn paragraph(paragraph: &str, label: &str, findings: &mut Findings) {
         findings.push(format!("- {label} has a blank paragraph"));
         return;
     }
+    
     for text in paragraph.lines() {
         let text = text.trim_start();
         if let Some(marker) = RESERVED.iter().find(|marker| text.starts_with(**marker)) {
