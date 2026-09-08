@@ -112,29 +112,24 @@ fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
 
 // The operator-authored schema: ordered `[[source]]` entries whose
 // `name` is the binding key, with exactly one optional content key.
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Default, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
+#[serde(default)]
 struct ConfigFile {
-    #[serde(default)]
     source: Vec<SourceEntry>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Default, serde::Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[serde(default)]
 struct SourceEntry {
     name: String,
     adapter: String,
-    #[serde(default)]
     path: Option<String>,
-    #[serde(default)]
     git: Option<String>,
-    #[serde(default)]
     url: Option<String>,
-    #[serde(default)]
     description: Option<String>,
-    #[serde(default)]
     registry: Option<String>,
-    #[serde(default)]
     digest: Option<String>,
 }
 

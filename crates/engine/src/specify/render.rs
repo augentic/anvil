@@ -13,14 +13,14 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use super::draft::{Block, DesignDraft, Requirement, SpecDraft};
+use super::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
 use super::extract::SourceSet;
 use super::provenance::{Contributor, Provenance, normalise};
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
 
 /// Renders `spec.md` from `rows` and their drafted content.
 #[must_use]
-pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
+pub fn spec(rows: &[Provenance], draft: &SpecAnswer) -> String {
     let entries: BTreeMap<&str, &Requirement> =
         draft.requirements.iter().map(|entry| (entry.subject.as_str(), entry)).collect();
 
@@ -37,12 +37,14 @@ pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
             sources = row.sources().collect::<Vec<_>>().join(", "),
             status = row.status(),
         ));
+
         if row.status() != Status::Conflict {
             blocks.extend(drafted.body.iter().map(|paragraph| paragraph.trim().to_string()));
         }
         if let Some(notes) = notes(row) {
             blocks.push(notes);
         }
+
         for scenario in &drafted.scenarios {
             blocks.push(format!("{SCENARIO} {}", scenario.name.trim()));
             let mut bullets = String::new();
@@ -54,13 +56,14 @@ pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
             blocks.push(bullets);
         }
     }
+
     document(&blocks)
 }
 
 /// Renders `design.md` from the drafted sections and the type claims of
 /// `sets`, sections in vocabulary order.
 #[must_use]
-pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
+pub fn design(sets: &[SourceSet], draft: &DesignAnswer) -> String {
     let signatures: BTreeMap<&str, &str> = sets
         .iter()
         .flat_map(SourceSet::types)
@@ -144,7 +147,7 @@ mod tests {
     use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
     use serde_json::json;
 
-    use super::super::draft::{DesignDraft, SpecDraft};
+    use super::super::answer::{DesignAnswer, SpecAnswer};
     use super::super::extract::SourceSet;
     use super::super::provenance::floor;
     use super::super::synthesise::plan;
@@ -194,7 +197,7 @@ mod tests {
         assert_eq!(rows[0].status(), Status::Conflict, "two docs statements tie");
         assert_eq!(rows[1].status(), Status::Agreed, "covered by its criterion");
 
-        let spec_draft: SpecDraft = serde_json::from_value(json!({
+        let spec_draft: SpecAnswer = serde_json::from_value(json!({
             "preamble": ["Two requirements."],
             "requirements": [
                 {"subject": "session.timeout", "body": ["Sessions expire."],
@@ -218,7 +221,7 @@ mod tests {
             "{spec}"
         );
 
-        let design_draft: DesignDraft = serde_json::from_value(json!({
+        let design_draft: DesignAnswer = serde_json::from_value(json!({
             "preamble": [],
             "sections": [
                 {"kind": "domain-model", "blocks": [{"type": "session.type"}]},

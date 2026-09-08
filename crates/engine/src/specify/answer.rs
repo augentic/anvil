@@ -1,13 +1,13 @@
-//! Content drafts
+//! Content answers
 //!
-//! The two typed answers the model writes the documents' content as, and the
-//! checks that hold each to the rows and the section plan. A draft carries
-//! only what needs synthesis — paragraphs, scenarios, and type references —
-//! keyed by the engine's subjects; every heading, provenance line, note, and
-//! signature is the renderer's. What the schema cannot express — that the
-//! subject set equals the row set, that a conflict row has no body, that
-//! every type claim is referenced once — is checked here, and a miss is fed
-//! back for repair.
+//! Typed answers from the model when requested to synthesise extracted claims.
+//!
+//! An answer carries only what needs synthesis — paragraphs, scenarios, and
+//! type references — keyed by the engine's subjects; every heading,
+//! provenance line, note, and signature is the renderer's. The schema fixes
+//! the shape; what it cannot express — that the subject set equals the row
+//! set, that a conflict row has no body, that every type claim is referenced
+//! once — is checked here, and a miss is fed back for repair.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -29,14 +29,14 @@ const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[schemars(title = "Emery spec draft")]
-pub struct SpecDraft {
+pub struct SpecAnswer {
     /// Markdown paragraphs before the first requirement.
     pub preamble: Vec<String>,
     /// One entry per requirement row, keyed by subject; any order.
     pub requirements: Vec<Requirement>,
 }
 
-impl SpecDraft {
+impl SpecAnswer {
     /// Holds the draft to `rows`: the subject set equals the row set, a
     /// scenario per requirement, body discipline per status, and no reserved
     /// marker.
@@ -131,14 +131,14 @@ pub struct Scenario {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[schemars(title = "Emery design draft")]
-pub struct DesignDraft {
+pub struct DesignAnswer {
     /// Markdown paragraphs before the first section.
     pub preamble: Vec<String>,
     /// One entry per rendered section; any order.
     pub sections: Vec<Section>,
 }
 
-impl DesignDraft {
+impl DesignAnswer {
     /// Holds the draft to `plan` and `sets`: the section set, one reference
     /// per type claim under `domain-model`, bound citations, and no reserved
     /// marker.

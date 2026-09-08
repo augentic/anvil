@@ -17,7 +17,7 @@ use std::fmt::{self, Display, Write as _};
 use emery_source::types::{Claim, ClaimKind};
 use omnia_guest::{Error, Model};
 
-use super::draft::{DesignDraft, SpecDraft};
+use super::answer::{DesignAnswer, SpecAnswer};
 use super::extract::SourceSet;
 use super::judgment::Question;
 use super::provenance::Provenance;
@@ -46,14 +46,14 @@ pub async fn synthesise<M: Model>(
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
 
-    let question = Question::<SpecDraft>::new("spec-draft", SPEC_PROSE);
+    let question = Question::<SpecAnswer>::new("spec-draft", SPEC_PROSE);
     let drafted =
         question.ask(model, &spec_prompt(sets, rows), |drafted| drafted.check(rows)).await?;
     let spec = render::spec(rows, &drafted);
 
     tracing::info!("drafting design.md");
     let plan = plan(sets);
-    let question = Question::<DesignDraft>::new("design-draft", DESIGN_PROSE);
+    let question = Question::<DesignAnswer>::new("design-draft", DESIGN_PROSE);
     let drafted = question
         .ask(model, &design_prompt(sets, &spec, &plan), |drafted| drafted.check(&plan, sets))
         .await?;
