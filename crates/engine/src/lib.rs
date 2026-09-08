@@ -11,7 +11,6 @@
 
 mod plugin;
 pub mod show;
-pub mod sources;
 mod spec;
 pub mod specify;
 mod store;

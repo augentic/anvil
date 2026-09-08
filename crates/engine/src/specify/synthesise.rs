@@ -17,7 +17,7 @@ use emery_source::types::{Authority, ClaimKind};
 use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
 
-use crate::extract::SourceSet;
+use super::extract::SourceSet;
 use crate::spec::{ReqId, Spec, Status};
 use crate::store::Revision;
 

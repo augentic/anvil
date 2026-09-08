@@ -10,6 +10,7 @@
 //! the documents.
 
 mod extract;
+pub mod sources;
 mod synthesise;
 
 use emery_source::Source;
@@ -19,8 +20,8 @@ use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
 
 use self::extract::extract;
+use self::sources::{SourceBinding, validate};
 use self::synthesise::{reconcile, synthesise};
-use crate::sources::{SourceBinding, validate};
 pub use crate::store::Diff;
 use crate::store::Store;
 

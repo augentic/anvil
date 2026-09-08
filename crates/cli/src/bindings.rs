@@ -12,7 +12,7 @@
 
 use std::path::{Path, PathBuf};
 
-use emery_engine::sources::{BindingContent, SourceBinding};
+use emery_engine::specify::sources::{BindingContent, SourceBinding};
 use emery_engine::{AdapterRef, preopen_path};
 use omnia_guest::{Error, bad_request, server_error};
 
