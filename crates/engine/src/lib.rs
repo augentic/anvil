@@ -9,14 +9,12 @@
 //! results over a [`Provider`] of capabilities, and leaves argument parsing,
 //! terminal text, and exit codes to whichever front end drives it.
 
-mod extract;
 mod plugin;
 pub mod show;
 pub mod sources;
 mod spec;
 pub mod specify;
 mod store;
-mod synthesise;
 
 use std::path::{Component, Path, PathBuf};
 

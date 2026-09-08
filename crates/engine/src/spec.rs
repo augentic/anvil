@@ -21,7 +21,7 @@ const HEADING: &str = "### Requirement:";
 const SCENARIO: &str = "#### Scenario:";
 
 /// A parsed `spec.md`.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Spec {
     /// Requirement blocks in document order.
     pub requirements: Vec<Requirement>,
@@ -51,6 +51,7 @@ impl FromStr for Spec {
 
 impl Spec {
     /// Requirement blocks keyed by their stable reconciliation subject.
+    #[must_use]
     pub fn by_subject(&self) -> BTreeMap<&str, &Requirement> {
         self.requirements
             .iter()
@@ -77,7 +78,7 @@ impl Spec {
 
 /// One requirement block. The heading tag mirrors `status`, so only the
 /// status is kept.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Requirement {
     /// The positional id.
     pub id: ReqId,
@@ -137,10 +138,12 @@ impl PartialEq for Requirement {
 pub struct ReqId(String);
 
 impl ReqId {
+    const PREFIX: &str = "REQ-";
+
     /// The id minted for the row at zero-based `index`.
     #[must_use]
     pub fn nth(index: usize) -> Self {
-        Self(format!("REQ-{:03}", index + 1))
+        Self(format!("{}{:03}", Self::PREFIX, index + 1))
     }
 }
 
@@ -148,7 +151,7 @@ impl FromStr for ReqId {
     type Err = Malformed;
 
     fn from_str(text: &str) -> Result<Self, Malformed> {
-        let digits = text.strip_prefix("REQ-").unwrap_or_default();
+        let digits = text.strip_prefix(Self::PREFIX).unwrap_or_default();
         if digits.len() == 3 && digits.bytes().all(|byte| byte.is_ascii_digit()) {
             Ok(Self(text.to_string()))
         } else {
@@ -181,27 +184,34 @@ impl Sources {
 }
 
 impl FromStr for Sources {
-    type Err = Vec<Malformed>;
+    type Err = MalformedSources;
 
-    // `[a, b]`; the brackets are optional so a bare list still reads. Fails
-    // with every key that is not kebab-case.
-    fn from_str(text: &str) -> Result<Self, Vec<Malformed>> {
-        let inner = text.strip_prefix('[').unwrap_or(text);
-        let inner = inner.strip_suffix(']').unwrap_or(inner);
-        let keys: Vec<&str> =
-            inner.split(',').map(str::trim).filter(|key| !key.is_empty()).collect();
-
-        let malformed: Vec<Malformed> = keys
-            .iter()
-            .copied()
-            .filter(|key| !is_kebab(key))
-            .map(|key| Malformed(key.to_string()))
-            .collect();
+    // `[a, b]`: bracketed, every key kebab-case.
+    fn from_str(text: &str) -> Result<Self, MalformedSources> {
+        let inner = text
+            .strip_prefix('[')
+            .and_then(|rest| rest.strip_suffix(']'))
+            .ok_or_else(|| MalformedSources::List(Malformed(text.to_string())))?;
+        let (keys, malformed): (Vec<&str>, Vec<&str>) = inner
+            .split(',')
+            .map(str::trim)
+            .filter(|key| !key.is_empty())
+            .partition(|key| is_kebab(key));
         if !malformed.is_empty() {
-            return Err(malformed);
+            let keys = malformed.into_iter().map(|key| Malformed(key.to_string())).collect();
+            return Err(MalformedSources::Keys(keys));
         }
         Ok(Self(keys.into_iter().map(str::to_string).collect()))
     }
+}
+
+/// A `Sources:` value that does not fit its grammar.
+#[derive(Debug)]
+pub enum MalformedSources {
+    /// Not a bracketed list, quoted as written.
+    List(Malformed),
+    /// Every key that is not kebab-case.
+    Keys(Vec<Malformed>),
 }
 
 /// The closed `Status:` vocabulary.
@@ -226,6 +236,16 @@ impl Status {
             Self::Unknown => Some(Tag::Unknown),
             Self::Conflict => Some(Tag::Conflict),
             Self::Divergence => Some(Tag::Divergence),
+        }
+    }
+}
+
+impl From<Tag> for Status {
+    fn from(tag: Tag) -> Self {
+        match tag {
+            Tag::Unknown => Self::Unknown,
+            Tag::Conflict => Self::Conflict,
+            Tag::Divergence => Self::Divergence,
         }
     }
 }
@@ -266,26 +286,18 @@ pub enum Tag {
     Divergence,
 }
 
+// A tag is spelled as the status it mirrors.
 impl FromStr for Tag {
     type Err = Malformed;
 
     fn from_str(text: &str) -> Result<Self, Malformed> {
-        match text {
-            "unknown" => Ok(Self::Unknown),
-            "conflict" => Ok(Self::Conflict),
-            "divergence" => Ok(Self::Divergence),
-            _ => Err(Malformed(text.to_string())),
-        }
+        text.parse::<Status>()?.tag().ok_or_else(|| Malformed(text.to_string()))
     }
 }
 
 impl Display for Tag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Unknown => "unknown",
-            Self::Conflict => "conflict",
-            Self::Divergence => "divergence",
-        })
+        Display::fmt(&Status::from(*self), f)
     }
 }
 
@@ -316,12 +328,12 @@ impl<'a> From<&'a str> for Document<'a> {
 impl<'a> Document<'a> {
     // Every run of lines led by a heading; the preamble is skipped.
     fn blocks(&'a self) -> Vec<Block<'a>> {
-        self.lines.chunk_by(|_, next| !next.is_heading()).filter_map(Block::new).collect()
+        self.lines.chunk_by(|_, next| next.heading().is_none()).filter_map(Block::new).collect()
     }
 }
 
-// One `### Requirement:` block: the heading line, the provenance lines
-// beneath it, then the body.
+// One `### Requirement:` block: the heading line less its marker, the
+// provenance lines beneath it, then the body.
 #[derive(Debug)]
 struct Block<'a> {
     heading: Line<'a>,
@@ -333,31 +345,32 @@ impl<'a> Block<'a> {
     // `None` for the preamble, the one run of lines not led by a heading.
     fn new(run: &'a [Line<'a>]) -> Option<Self> {
         let [heading, rest @ ..] = run else { return None };
-        if !heading.is_heading() {
-            return None;
-        }
+        let heading = heading.heading()?;
 
         // Provenance ends at the first non-blank line that is not a field.
         let split =
             rest.iter().take_while(|line| line.is_blank() || line.field().is_some()).count();
-        let header = Lines(&rest[..split]);
+        let (header, body) = rest.split_at(split);
         Some(Self {
-            heading: *heading,
+            heading,
             provenance: Provenance {
-                heading: *heading,
-                fields: header.fields(),
+                heading,
+                fields: Lines(header).fields(),
             },
-            body: Lines(&rest[split..]),
+            body: Lines(body),
         })
     }
 
     // Every requirement carries at least one scenario.
-    fn scenario(&self) -> Result<Line<'a>, Finding> {
-        self.body.scenario().ok_or_else(|| self.heading.fault(format!("no `{SCENARIO}` heading")))
+    fn scenario(&self) -> Result<(), Finding> {
+        if self.body.has_scenario() {
+            return Ok(());
+        }
+        Err(self.heading.fault(format!("no `{SCENARIO}` heading")))
     }
 }
 
-// `### Requirement: <subject>[ [<tag>]]`
+// `<subject>[ [<tag>]]`: a heading line after its marker.
 #[derive(Debug)]
 struct Heading<'a> {
     subject: &'a str,
@@ -369,11 +382,11 @@ impl<'a> TryFrom<Line<'a>> for Heading<'a> {
     type Error = Finding;
 
     fn try_from(line: Line<'a>) -> Result<Self, Finding> {
-        let text = line.text.strip_prefix(HEADING).unwrap_or_default().trim();
-        let (subject, token) = text
+        let (subject, token) = line
+            .text
             .strip_suffix(']')
             .and_then(|inner| inner.rsplit_once(" ["))
-            .map_or((text, None), |(subject, token)| (subject.trim_end(), Some(token)));
+            .map_or((line.text, None), |(subject, token)| (subject.trim_end(), Some(token)));
         if subject.is_empty() {
             return Err(line.fault("requirement heading has no name"));
         }
@@ -414,13 +427,18 @@ impl<'a> Provenance<'a> {
         })
     }
 
-    // Every malformed key is reported, not just the first.
+    // A list fault is one finding; a key fault names every malformed key.
     fn sources(&self) -> Result<Sources, Findings> {
         let field = self.field(Key::Sources)?;
-        field.value.parse::<Sources>().map_err(|keys| {
-            keys.into_iter()
+        field.value.parse::<Sources>().map_err(|malformed| match malformed {
+            MalformedSources::List(Malformed(list)) => field
+                .line
+                .fault(format!("malformed `Sources: {list}` (expected `[<source>, …]`)"))
+                .into(),
+            MalformedSources::Keys(keys) => keys
+                .into_iter()
                 .map(|Malformed(key)| field.line.fault(format!("malformed source key `{key}`")))
-                .collect()
+                .collect(),
         })
     }
 
@@ -443,12 +461,13 @@ impl<'a> Provenance<'a> {
 
     // Exactly one line per key.
     fn field(&self, key: Key) -> Result<Field<'a>, Finding> {
-        let mut fields = self.fields.iter().filter(|field| field.key == key);
-        let first = fields.next().ok_or_else(|| self.heading.fault(format!("no `{key}:` line")))?;
-        if let Some(duplicate) = fields.next() {
-            return Err(duplicate.line.fault(format!("duplicate `{key}:` line")));
+        let matching: Vec<Field<'a>> =
+            self.fields.iter().copied().filter(|field| field.key == key).collect();
+        match matching.as_slice() {
+            [] => Err(self.heading.fault(format!("no `{key}:` line"))),
+            [field] => Ok(*field),
+            [_, duplicate, ..] => Err(duplicate.line.fault(format!("duplicate `{key}:` line"))),
         }
-        Ok(*first)
     }
 }
 
@@ -502,8 +521,8 @@ impl<'a> Lines<'a> {
         text.join("\n").trim_matches('\n').to_string()
     }
 
-    fn scenario(self) -> Option<Line<'a>> {
-        self.0.iter().copied().find(|line| line.is_scenario())
+    fn has_scenario(self) -> bool {
+        self.0.iter().any(|line| line.is_scenario())
     }
 
     fn fields(self) -> Vec<Field<'a>> {
@@ -523,8 +542,10 @@ impl<'a> Line<'a> {
         self.text.is_empty()
     }
 
-    fn is_heading(self) -> bool {
-        self.text.starts_with(HEADING)
+    // The heading text after `### Requirement:`; `None` for any other line.
+    fn heading(self) -> Option<Self> {
+        let text = self.text.strip_prefix(HEADING)?.trim();
+        Some(Self { text, ..self })
     }
 
     fn is_scenario(self) -> bool {
@@ -689,6 +710,10 @@ Sessions expire after 30 minutes.
             (
                 "### Requirement: Evidence-less but agreed\n\nID: REQ-001\nSources: []\nStatus: agreed\n\nBody.\n",
                 "empty `Sources:` but not `Status: unknown`",
+            ),
+            (
+                "### Requirement: Unbracketed\n\nID: REQ-001\nSources: a, b\nStatus: agreed\n\nBody.\n",
+                "malformed `Sources: a, b` (expected `[<source>, …]`)",
             ),
             (
                 "### Requirement: Bad key\n\nID: REQ-001\nSources: [Docs!]\nStatus: agreed\n\nBody.\n",

@@ -9,17 +9,20 @@
 //! superseded revision — so a caller can see what changed without reading
 //! the documents.
 
+mod extract;
+mod synthesise;
+
 use emery_source::Source;
 use omnia_guest::api::Context;
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::extract::extract;
+use self::extract::extract;
+use self::synthesise::{reconcile, synthesise};
 use crate::sources::{SourceBinding, validate};
 pub use crate::store::Diff;
 use crate::store::Store;
-use crate::synthesise::{reconcile, synthesise};
 
 /// Generate a specification revision from source bindings.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
