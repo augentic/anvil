@@ -11,7 +11,7 @@
 use std::fmt;
 
 use emery_engine::show::ShowBody;
-use emery_engine::specify::SpecifyBody;
+use emery_engine::specify::{Changes, SpecifyBody};
 
 /// Terminal text rendering of one body.
 pub trait Text {
@@ -36,19 +36,26 @@ impl Text for SpecifyBody {
                 writeln!(out, "  diff vs {}: none (byte-stable)", diff.from)?;
             } else {
                 writeln!(out, "  diff vs {}: {}", diff.from, diff.artifacts.join(", "))?;
-                for subject in &diff.added {
-                    writeln!(out, "    + {subject}")?;
-                }
-                for subject in &diff.removed {
-                    writeln!(out, "    - {subject}")?;
-                }
-                for subject in &diff.changed {
-                    writeln!(out, "    ~ {subject}")?;
-                }
+                changes(out, "spec.md", &diff.spec)?;
+                changes(out, "design.md", &diff.design)?;
             }
         }
         Ok(())
     }
+}
+
+// One line per changed section, prefixed by its document.
+fn changes(out: &mut dyn fmt::Write, document: &str, changes: &Changes) -> fmt::Result {
+    for heading in &changes.added {
+        writeln!(out, "    {document} + {heading}")?;
+    }
+    for heading in &changes.removed {
+        writeln!(out, "    {document} - {heading}")?;
+    }
+    for heading in &changes.changed {
+        writeln!(out, "    {document} ~ {heading}")?;
+    }
+    Ok(())
 }
 
 // Text mode is the document alone — a deliberate exception to the

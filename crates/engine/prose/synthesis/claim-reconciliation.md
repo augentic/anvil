@@ -13,7 +13,7 @@ How the closed claim kinds group and where each lands across the two artifacts. 
 | `section` | `design.md` relevant H2 | none |
 | `excerpt` | `design.md` `## Technical logic`; contributes to `spec.md` only through its reconciliation row | optional `id` |
 | `type` | `design.md` `## Domain model` — `signature` verbatim | optional `id` |
-| `call` | `design.md` `## APIs and integrations` or `## Technical logic` | optional `id` |
+| `call` | `design.md` `## APIs and integrations` (the section plan requires it); internal delegation may also inform `## Technical logic` | optional `id` |
 | `example` | `spec.md` scenario via matching `id` prefix; `design.md` references keep `path` | required `id` |
 | `region` / `container` / `leaf` | `design.md` `## UI / layout` tree; never `spec.md` blocks | none (positional) |
 | `diagram` / `contract` | `design.md` relevant H2 | none |

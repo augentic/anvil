@@ -13,10 +13,12 @@ The request carries:
 
 1. **Claims** — every source's Evidence: its key, authority class (`intent` / `documentation` / `behaviour`), and typed claims. This is the complete evidence; nothing else exists.
 2. **Reconciliation** — the engine's resolved provenance rows for `spec.md`, one per requirement in final order: the minted `REQ-NNN` id, `Status:`, heading tag, `Sources:` list, the contributing claims, and the winning statement where one wins. These rows are engine-owned facts, not suggestions.
+3. **Sections** — the engine's section plan for `design.md`: every H2 of the closed vocabulary with its presence (`required`, `permitted`, or `omit`), computed from the claim kinds present. The plan is an engine-owned fact, not a suggestion.
 
 ## Contract
 
 - Answer with the raw Markdown document only — no fences around it, no commentary, no envelope.
 - Author bodies, scenarios, and notes. Render the heading name (the row's subject) and every provenance line (`ID:` / `Sources:` / `Status:` and the heading tag) **exactly** as its reconciliation row states — the engine refuses an answer that drops, reorders, renames, or rewrites a row.
+- Render `design.md` to the section plan — the engine refuses an answer that omits a required section, renders one no claim informs, cites a source that is not bound, or paraphrases a `type` signature.
 - Never invent evidence. Only cite claims present in the inputs. Preserve gaps as `[unknown]` rather than guessing; never auto-resolve a `[conflict]`.
 - No timestamps, run ids, or log lines anywhere in the output — an identical re-run must produce byte-identical documents.

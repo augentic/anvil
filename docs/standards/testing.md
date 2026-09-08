@@ -30,7 +30,7 @@ The root package's `tests/` directory is the default home for every behavior an 
 
 Root suites are organized by operator story, one auto-discovered test binary per verb-level narrative:
 
-- `tests/specify.rs` — the `specify` → `show` product arc: bindings (argv, `--description`, `--config`, root discovery), extraction and the extras gate, reconciliation and synthesis outcomes, the revision store (commit, pruning, corruption), re-mine diffs, and multi-project isolation.
+- `tests/specify.rs` — the `specify` → `show` product arc: bindings (argv, `--description`, `--config`, root discovery), extraction and the extras gate, reconciliation and synthesis outcomes (the `spec.md` row gate and the `design.md` section-plan gate), the revision store (commit, pruning, corruption), re-mine diffs, and multi-project isolation.
 - `tests/command.rs` — the CLI wire contract: the route budget, deleted verbs, help/version/completions, argv normalization, argument failures, exit codes, and the text/JSON channel shape.
 - `tests/plugin.rs` — plugin-rule mentions against the shipped grammar: live verbs and flags, and that every shipped skill is named by the always-applied rule.
 The component rung, `examples/component/tests/component.rs`, sits beside them as the fourth story — bare-name dispatch to a statically declared adapter, path loads with an agreeing and a disagreeing digest pin, a seamless component refused by the loader, and the reference-tool round-trip served in-process — in its own package only because its fixture build needs a build script the shipped binary must not carry.

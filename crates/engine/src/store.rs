@@ -10,11 +10,15 @@
 //! no longer matches its id is recognised as corruption. Only the current
 //! revision is kept, which keeps the store small and its meaning simple.
 
+use std::collections::BTreeMap;
+use std::fmt::Display;
+
 use anyhow::Context;
 use omnia_guest::{BlobStore, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+use crate::design::Design;
 use crate::spec::Spec;
 
 /// Keyvalue key holding the current revision id.
@@ -209,18 +213,16 @@ pub struct Diff {
     pub from: String,
     /// Changed file names in digest order.
     pub artifacts: Vec<String>,
-    /// Requirement subjects present only in the incoming `spec.md`.
-    pub added: Vec<String>,
-    /// Requirement subjects present only in the outgoing `spec.md`.
-    pub removed: Vec<String>,
-    /// Requirement subjects whose blocks changed.
-    pub changed: Vec<String>,
+    /// Requirement subjects that changed in `spec.md`.
+    pub spec: Changes,
+    /// Section headings that changed in `design.md`.
+    pub design: Changes,
 }
 
 impl Diff {
-    // Sections key on heading subjects, not positional ids. The diff is
-    // advisory: an outgoing spec that fails the grammar leaves the section
-    // lists empty, and the incoming spec was already parsed by synthesis.
+    // Sections key on heading names, not positions. The diff is advisory:
+    // an outgoing document that fails its grammar leaves the lists empty,
+    // and the incoming documents were already parsed by synthesis.
     fn between(outgoing: &Revision, incoming: &Revision) -> Self {
         let artifacts = outgoing
             .files()
@@ -230,29 +232,20 @@ impl Diff {
             .map(|((name, _), _)| (*name).to_string())
             .collect();
 
-        let (mut added, mut removed, mut changed) = (Vec::new(), Vec::new(), Vec::new());
-        if let (Ok(old), Ok(new)) = (outgoing.spec.parse::<Spec>(), incoming.spec.parse::<Spec>()) {
-            let old = old.by_subject();
-            let new = new.by_subject();
-            for (subject, block) in &new {
-                let bucket = match old.get(subject) {
-                    None => &mut added,
-                    Some(previous) if previous != block => &mut changed,
-                    Some(_) => continue,
-                };
-                bucket.push((*subject).to_string());
-            }
-            removed.extend(
-                old.keys().filter(|subject| !new.contains_key(*subject)).map(ToString::to_string),
-            );
-        }
+        let spec = match (outgoing.spec.parse::<Spec>(), incoming.spec.parse::<Spec>()) {
+            (Ok(old), Ok(new)) => Changes::between(&old.by_subject(), &new.by_subject()),
+            _ => Changes::default(),
+        };
+        let design = match (outgoing.design.parse::<Design>(), incoming.design.parse::<Design>()) {
+            (Ok(old), Ok(new)) => Changes::between(&old.by_kind(), &new.by_kind()),
+            _ => Changes::default(),
+        };
 
         Self {
             from: outgoing.id(),
             artifacts,
-            added,
-            removed,
-            changed,
+            spec,
+            design,
         }
     }
 
@@ -261,6 +254,40 @@ impl Diff {
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.artifacts.is_empty()
+    }
+}
+
+/// The sections of one document that differ between two revisions, keyed
+/// by heading name.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Changes {
+    /// Headings present only in the incoming document.
+    pub added: Vec<String>,
+    /// Headings present only in the outgoing document.
+    pub removed: Vec<String>,
+    /// Headings whose sections changed.
+    pub changed: Vec<String>,
+}
+
+impl Changes {
+    // A section that only moved is not a change.
+    fn between<K: Display + Ord, S: PartialEq>(
+        old: &BTreeMap<K, &S>, new: &BTreeMap<K, &S>,
+    ) -> Self {
+        let mut changes = Self::default();
+        for (heading, section) in new {
+            let bucket = match old.get(heading) {
+                None => &mut changes.added,
+                Some(previous) if *previous != *section => &mut changes.changed,
+                Some(_) => continue,
+            };
+            bucket.push(heading.to_string());
+        }
+        changes.removed.extend(
+            old.keys().filter(|heading| !new.contains_key(*heading)).map(ToString::to_string),
+        );
+        changes
     }
 }
 
@@ -302,7 +329,7 @@ mod tests {
     fn revision(spec: &str) -> Revision {
         Revision {
             spec: spec.to_string(),
-            design: "# Design\n".to_string(),
+            design: "# Design\n\n## Overview\n\nOne endpoint.\n".to_string(),
         }
     }
 }

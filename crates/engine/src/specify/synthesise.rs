@@ -7,17 +7,22 @@
 //! then asks the model to write `spec.md` and `design.md` from those rows.
 //!
 //! Splitting the two keeps every judgement about *which* sources win out of
-//! the model's hands. The model only writes prose, and its `spec.md` is
-//! parsed and compared back against the rows so it cannot drop, reorder, or
-//! quietly rewrite a requirement.
+//! the model's hands. The model only writes prose: its `spec.md` is parsed
+//! and compared back against the rows so it cannot drop, reorder, or quietly
+//! rewrite a requirement, and its `design.md` is parsed and compared against
+//! the section plan the claims dictate so it cannot invent or omit a section,
+//! cite an unbound source, or paraphrase a type signature.
 
-use std::fmt::{Display, Write as _};
+use std::collections::BTreeMap;
+use std::fmt::{self, Display, Write as _};
 
 use emery_source::types::{Authority, ClaimKind};
 use omnia_guest::model::{Message, Request, Role};
 use omnia_guest::{Error, Model, bad_gateway, bad_request};
+use serde_json::Value;
 
 use super::extract::SourceSet;
+use crate::design::{Design, SectionKind};
 use crate::spec::{ReqId, Spec, Status};
 use crate::store::Revision;
 
@@ -80,11 +85,33 @@ pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
     rows
 }
 
+/// Plans `design.md`: which sections the claims require, allow, or forbid.
+#[must_use]
+pub fn plan(sets: &[SourceSet]) -> Plan {
+    let present = |kinds: &[ClaimKind]| {
+        sets.iter().flat_map(|set| &set.claims).any(|claim| kinds.contains(&claim.kind))
+    };
+    let sections = SectionKind::ALL
+        .into_iter()
+        .map(|kind| {
+            let presence = match kind {
+                SectionKind::Overview => Presence::Required,
+                SectionKind::Observability => Presence::Permitted,
+                _ if present(informants(kind)) => Presence::Required,
+                SectionKind::TechnicalLogic => Presence::Permitted,
+                _ => Presence::Forbidden,
+            };
+            (kind, presence)
+        })
+        .collect();
+    Plan(sections)
+}
+
 /// Synthesises both documents and validates the model answers.
 ///
 /// # Errors
 ///
-/// Returns model, AST, provenance, or empty-design failures.
+/// Returns model, AST, provenance, or section-plan failures.
 pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
 ) -> Result<Revision, Error> {
@@ -93,12 +120,41 @@ pub async fn synthesise<M: Model>(
     check_rows(&spec.parse()?, rows)?;
 
     tracing::info!("synthesising design.md");
-    let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec)).await?;
-    if design.trim().is_empty() {
-        return Err(bad_request!("model returned an empty `design.md`"));
-    }
+    let plan = plan(sets);
+    let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec, &plan)).await?;
+    check_design(&design.parse()?, &plan, sets)?;
 
     Ok(Revision { spec, design })
+}
+
+/// The `design.md` section plan: one presence per section of the closed
+/// vocabulary, a function of the claim kinds alone.
+#[derive(Debug)]
+pub struct Plan(BTreeMap<SectionKind, Presence>);
+
+// Whether the evidence calls for a section, tolerates it, or rules it out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Presence {
+    Required,
+    Permitted,
+    Forbidden,
+}
+
+// The claim kinds whose presence requires a section; `Overview` and
+// `Observability` have no deterministic informant.
+const fn informants(kind: SectionKind) -> &'static [ClaimKind] {
+    match kind {
+        SectionKind::Overview | SectionKind::Observability => &[],
+        SectionKind::DomainModel => &[ClaimKind::Type],
+        SectionKind::Apis => &[ClaimKind::Call, ClaimKind::Contract],
+        SectionKind::TechnicalLogic => &[ClaimKind::Excerpt],
+        SectionKind::UiLayout => &[ClaimKind::Region, ClaimKind::Container, ClaimKind::Leaf],
+    }
+}
+
+// Whitespace-collapsed text, so a reflowed quotation still matches.
+fn normalise(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Provenance a `spec.md` requirement must preserve; the id is positional
@@ -154,7 +210,7 @@ struct Contributor {
 impl Contributor {
     // Statements compare with whitespace collapsed.
     fn normalised(&self) -> String {
-        self.statement.split_whitespace().collect::<Vec<_>>().join(" ")
+        normalise(&self.statement)
     }
 }
 
@@ -209,11 +265,34 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
     prompt
 }
 
-fn design_prompt(sets: &[SourceSet], spec: &str) -> String {
+fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
     let mut prompt = String::from("Author `design.md`.\n\n");
     render_claims(&mut prompt, sets);
+
+    prompt.push_str("\n## Sections (render exactly, in order)\n\n");
+    for (kind, presence) in &plan.0 {
+        let kinds = informants(*kind).iter().map(|kind| format!("`{kind}`")).collect::<Vec<_>>();
+        let reason = match (presence, kinds.is_empty()) {
+            (Presence::Required, false) => format!(": {} claims are present", kinds.join(" / ")),
+            (Presence::Forbidden, false) => format!(": no {} claim", kinds.join(" / ")),
+            (Presence::Permitted, _) => " where claims inform it".to_string(),
+            _ => String::new(),
+        };
+        let _ = writeln!(prompt, "- `## {kind}` — {presence}{reason}");
+    }
+
     let _ = write!(prompt, "\n## The validated `spec.md`\n\n{spec}");
     prompt
+}
+
+impl Display for Presence {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Required => "required",
+            Self::Permitted => "permitted",
+            Self::Forbidden => "omit",
+        })
+    }
 }
 
 fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
@@ -273,4 +352,51 @@ fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
 
 fn mismatch(detail: impl Display) -> Error {
     bad_request!("model `spec.md` does not match the reconciliation rows: {detail}")
+}
+
+// The model may not omit a required section, pad an uninformed one, cite
+// a source that is not bound, or paraphrase a type signature.
+fn check_design(design: &Design, plan: &Plan, sets: &[SourceSet]) -> Result<(), Error> {
+    let sections = design.by_kind();
+    for (kind, presence) in &plan.0 {
+        match (presence, sections.contains_key(kind)) {
+            (Presence::Required, false) => {
+                return Err(unevidenced(format!("`## {kind}` is required but absent")));
+            }
+            (Presence::Forbidden, true) => {
+                return Err(unevidenced(format!("`## {kind}` is present but no claim informs it")));
+            }
+            _ => {}
+        }
+    }
+
+    for section in &design.sections {
+        if let Some(key) = section.citations().find(|key| !sets.iter().any(|set| set.key == *key)) {
+            let kind = section.kind;
+            return Err(unevidenced(format!(
+                "`## {kind}` cites source `{key}`, which is not bound"
+            )));
+        }
+    }
+
+    // A quoted signature survives reflowing, never rewording.
+    let domain = sections.get(&SectionKind::DomainModel).map(|section| normalise(section.body()));
+    let types =
+        sets.iter().flat_map(|set| &set.claims).filter(|claim| claim.kind == ClaimKind::Type);
+    for claim in types {
+        let Some(Value::String(signature)) = claim.extras.get("signature") else { continue };
+        let quoted = domain.as_deref().is_some_and(|body| body.contains(&normalise(signature)));
+        if !quoted {
+            let label = claim.id.as_deref().or(claim.path.as_deref()).unwrap_or("<unnamed>");
+            return Err(unevidenced(format!(
+                "`## Domain model` must quote the signature of `type` `{label}` verbatim"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn unevidenced(detail: impl Display) -> Error {
+    bad_request!("model `design.md` does not match the evidence: {detail}")
 }

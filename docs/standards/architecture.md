@@ -33,7 +33,8 @@ The root `emery` package carries the Omnia deployment unit under `src/`: the gue
 ## Domain modules of note
 
 - **`crates/engine/src/plugin.rs`** — source-adapter loading over the typed `AdapterRef`: selector parsing, the per-run `Loader` memo issuing the `omnia:plugins/loader` load request for local components and registry packages (over the provider's `Plugins` capability, threading the binding's digest pin and registry override and returning the resolved digest), and the adapter `emery-version` gate, dispatched directly over the provider's `Source` capability (the WIT `metadata` import on wasm32, a scripted mock natively).
-- **`crates/engine/src/spec.rs`** — the fail-closed `spec.md` AST (`### Requirement:` blocks, `ID` / `Sources` / `Status`, heading tags). Synthesis refuses a model answer that does not parse; the re-mine diff uses the same parser for section subjects.
+- **`crates/engine/src/spec.rs`** — the fail-closed `spec.md` AST (`### Requirement:` blocks, `ID` / `Sources` / `Status`, heading tags). Synthesis refuses a model answer that does not parse or that drifts from the reconciliation rows; the re-mine diff uses the same parser for section subjects.
+- **`crates/engine/src/design.rs`** — the fail-closed `design.md` AST: a closed `## ` vocabulary (`Overview`, `Domain model`, `APIs and integrations`, `Technical logic`, `UI / layout`, `Observability`) in fixed order, non-empty bodies, no requirement or scenario headings, kebab-case `(from <source>)` citations. Synthesis refuses an answer that does not parse or that drifts from the claim-derived section plan (a required section absent, an uninformed one present, an unbound citation, a paraphrased `type` signature); the re-mine diff uses the same parser for section headings.
 
 The lenient v1 module trees (provenance, the task/decision/leads validators) were deleted at the Phase 3 spine cut and are documented at tag `v1`.
 

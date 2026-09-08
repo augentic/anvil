@@ -80,7 +80,7 @@ When `--format json` is provided, returns:
 - `revision` — the committed revision id, now current
 - `requirements` — requirement blocks in the committed `spec.md`
 - `sources` — number of sources extracted this run
-- `diff` — the re-mine diff against the superseded revision; absent on a first run, empty on a byte-stable re-run
+- `diff` — the re-mine diff against the superseded revision: `from`, the changed `artifacts`, and a `{ added, removed, changed }` object each for `spec` (requirement subjects) and `design` (section titles); absent on a first run, empty on a byte-stable re-run
 - `digests` — one `{ source, digest }` entry per loader-loaded adapter (local component or registry package): the resolved `sha256:<hex>` digest to commit as the binding's pin; absent when no binding loaded one
 
 ## See also

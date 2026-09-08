@@ -339,10 +339,12 @@ async fn remine_supersedes() {
 
     // --------------------------------------------------
     // Second run: the timeout now leads, the greeting changed, the
-    // export is gone, and an audit requirement appeared.
+    // export is gone, an audit requirement appeared, and the design
+    // overview follows the greeting.
     // --------------------------------------------------
+    let second_design = DESIGN_ANSWER.replace("hello", "howdy");
     let mut provider =
-        Provider::over(Arc::clone(&provider.storage), [REMINE_SECOND, DESIGN_ANSWER]);
+        Provider::over(Arc::clone(&provider.storage), [REMINE_SECOND, second_design.as_str()]);
     provider.source.evidence.insert(
         "docs".to_string(),
         Ok(docs_evidence(&[
@@ -357,10 +359,11 @@ async fn remine_supersedes() {
     // Observe: the diff, the swap, and the prune.
     // --------------------------------------------------
     let stdout = String::from_utf8_lossy(&resp.stdout);
-    assert!(stdout.contains(&format!("diff vs {first}: spec.md")), "{stdout}");
-    assert!(stdout.contains("+ access.audit"), "{stdout}");
-    assert!(stdout.contains("- legacy.export"), "{stdout}");
-    assert!(stdout.contains("~ greeting.behaviour"), "{stdout}");
+    assert!(stdout.contains(&format!("diff vs {first}: spec.md, design.md")), "{stdout}");
+    assert!(stdout.contains("spec.md + access.audit"), "{stdout}");
+    assert!(stdout.contains("spec.md - legacy.export"), "{stdout}");
+    assert!(stdout.contains("spec.md ~ greeting.behaviour"), "{stdout}");
+    assert!(stdout.contains("design.md ~ Overview"), "{stdout}");
     assert!(!stdout.contains("session.timeout"), "a renumbered block is not a change: {stdout}");
 
     let second = current(&provider.storage);
@@ -371,6 +374,34 @@ async fn remine_supersedes() {
     );
     let spec = document(&provider.storage, &second, "spec.md");
     assert!(String::from_utf8_lossy(&spec).contains("howdy"));
+    provider.model.assert_exhausted();
+}
+
+// The JSON envelope carries the re-mine diff per document: the changed
+// artifacts, then `spec` and `design` section lists keyed by heading.
+#[tokio::test]
+async fn diff_envelope() {
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let second_design = DESIGN_ANSWER.replace("hello", "howdy");
+    let provider = Provider::answering([
+        spec_answer.as_str(),
+        DESIGN_ANSWER,
+        spec_answer.as_str(),
+        second_design.as_str(),
+    ]);
+    cli_ok(&provider, &["emery", "specify", "docs"]).await;
+    let first = current(&provider.storage);
+
+    let resp = cli(&provider, &["emery", "--format", "json", "specify", "docs"]).await;
+    assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
+    let envelope: Value = serde_json::from_slice(&resp.stdout).expect("one JSON envelope");
+    let diff = &envelope["diff"];
+    assert_eq!(diff["from"], first, "{envelope}");
+    assert_eq!(diff["artifacts"], serde_json::json!(["design.md"]), "{envelope}");
+    assert_eq!(diff["spec"]["changed"], serde_json::json!([]), "{envelope}");
+    assert_eq!(diff["design"]["changed"], serde_json::json!(["Overview"]), "{envelope}");
+    assert_eq!(diff["design"]["added"], serde_json::json!([]), "{envelope}");
+    assert_eq!(diff["design"]["removed"], serde_json::json!([]), "{envelope}");
     provider.model.assert_exhausted();
 }
 
@@ -579,13 +610,71 @@ fn two_blocks(heading: &str, id: &str, sources: &str, status: &str) -> String {
     )
 }
 
-// The design leg is fail-closed too: an empty second answer refuses.
+// The design leg is fail-closed too: a second answer outside the design
+// grammar is refused, one breach per case — a blank answer, an H2 outside
+// the closed vocabulary, a requirement block leaking out of `spec.md`, and
+// a citation of a source the run never bound.
 #[tokio::test]
-async fn empty_design() {
+async fn malformed_design() {
     let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
-    let provider = Provider::answering([spec_answer.as_str(), "   "]);
-    fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-    assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+    let answers = [
+        "   ",
+        "# Design\n\n## Overview\n\nHello.\n\n## Decisions\n\n- Static.\n",
+        "# Design\n\n## Overview\n\n### Requirement: greeting.behaviour\n\nID: REQ-001\n",
+        "# Design\n\n## Overview\n\nThe endpoint is static (from nobody).\n",
+    ];
+    for answer in answers {
+        let provider = Provider::answering([spec_answer.as_str(), answer]);
+        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+        assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+    }
+}
+
+// The evidence plans `design.md`'s sections: a `type` claim requires
+// `## Domain model` quoting its signature verbatim, and a section no
+// claim informs may not appear. Every dishonest rendering is refused;
+// the honest one commits and `show` renders it.
+#[tokio::test]
+async fn dishonest_design() {
+    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
+    let signature = "interface Greeting { text: string }";
+    let evidence = || {
+        Ok(evidence(
+            Authority::Documentation,
+            vec![
+                requirement(
+                    "greeting.behaviour",
+                    "GET /greeting returns the static string 'hello'.",
+                ),
+                claim(ClaimKind::Type, "greeting.type", ("signature", signature)),
+            ],
+        ))
+    };
+    let honest = format!(
+        "# Design\n\n## Overview\n\nOne endpoint (from docs).\n\n\
+         ## Domain model\n\n`{signature}`\n"
+    );
+    let answers = [
+        // The required `## Domain model` is missing.
+        "# Design\n\n## Overview\n\nOne endpoint.\n".to_string(),
+        // `## UI / layout` appears with no spatial claim behind it.
+        format!("{honest}\n## UI / layout\n\n- page\n"),
+        // The signature is paraphrased.
+        honest.replace(signature, "interface Greeting { text: String }"),
+    ];
+    for answer in answers {
+        let mut provider = Provider::answering([spec_answer.as_str(), answer.as_str()]);
+        provider.source.evidence.insert("docs".to_string(), evidence());
+        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+        assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+    }
+
+    let mut provider = Provider::answering([spec_answer.as_str(), honest.as_str()]);
+    provider.source.evidence.insert("docs".to_string(), evidence());
+    cli_ok(&provider, &["emery", "specify", "docs"]).await;
+    let shown = cli_ok(&provider, &["emery", "show", "design"]).await;
+    assert_eq!(shown.stdout, honest.as_bytes(), "show renders the committed design.md alone");
+    provider.model.assert_exhausted();
 }
 
 // A model transport failure surfaces as one typed synthesis error.

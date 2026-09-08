@@ -17,8 +17,10 @@ use omnia_guest::{Error, bad_request};
 
 use crate::is_kebab;
 
-const HEADING: &str = "### Requirement:";
-const SCENARIO: &str = "#### Scenario:";
+/// The requirement heading marker.
+pub const HEADING: &str = "### Requirement:";
+/// The scenario heading marker.
+pub const SCENARIO: &str = "#### Scenario:";
 
 /// A parsed `spec.md`.
 #[derive(Debug)]

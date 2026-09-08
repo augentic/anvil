@@ -31,8 +31,8 @@ use serde::{Deserialize, Serialize};
 use self::extract::extract;
 use self::synthesise::{reconcile, synthesise};
 use crate::plugin::{AdapterRef, Loaded, Loader};
-pub use crate::store::Diff;
 use crate::store::Store;
+pub use crate::store::{Changes, Diff};
 use crate::{is_kebab, preopen_path};
 
 /// Run one `specify` over the context's provider.
