@@ -1119,6 +1119,7 @@ dependencies = [
  "hex",
  "omnia-guest",
  "omnia-test",
+ "schemars",
  "semver",
  "serde",
  "serde_json",

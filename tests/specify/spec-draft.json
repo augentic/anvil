@@ -1,0 +1,20 @@
+{
+  "preamble": [
+    "One bound source: the mock component's minimal greeting profile, reconciled with no disagreement and one acceptance gap."
+  ],
+  "requirements": [
+    {
+      "subject": "greeting.behaviour",
+      "body": [
+        "GET /greeting returns the static string 'hello'."
+      ],
+      "scenarios": [
+        {
+          "name": "Greeting requested",
+          "when": "`/greeting` is requested",
+          "then": "the response is `hello`"
+        }
+      ]
+    }
+  ]
+}

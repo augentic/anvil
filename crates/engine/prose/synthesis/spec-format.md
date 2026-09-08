@@ -1,12 +1,10 @@
 # Spec format
 
-Hard-coded heading conventions the fail-closed spec parser enforces. These are not configurable.
+Hard-coded conventions of the rendered `spec.md`. These are not configurable and none of them is yours to write.
 
-- **Requirement heading**: `### Requirement:`
-- **Requirement ID prefix**: `ID:`
-- **Requirement ID pattern**: `^REQ-[0-9]{3}$`
-- **Scenario heading**: `#### Scenario:`
+- **Title**: `# Specification`, then your `preamble` paragraphs.
+- **Requirement heading**: `### Requirement: <subject>[ <tag>]`
+- **Provenance lines**: `ID: REQ-NNN`, `Sources: [<source>, …]`, `Status: <status>`
+- **Scenario heading**: `#### Scenario: <name>`, then `- **GIVEN**` / `- **WHEN**` / `- **THEN**` bullets
 
-A requirement block starts at a `### Requirement:` heading and continues until the next requirement heading or end of file. Open the document with a short title and overview before the first block; the parser treats everything before the first heading as preamble.
-
-One flat document: no delta sections, no per-domain splits — `spec.md` is the whole reviewable set.
+Your `preamble` opens the document: a short overview of what was bound and what the rows say, as paragraphs. One flat document: no delta sections, no per-domain splits — `spec.md` is the whole reviewable set.

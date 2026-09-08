@@ -6,37 +6,23 @@ Every Evidence document carries one closed `authority` class. Highest wins:
 2. **`documentation`** — operator-provided written product or technical intent (internal docs, RFCs, product notes). Emitted by the `documentation` source adapter.
 3. **`behaviour`** — what legacy code actually does. Emitted by behaviour sources such as `typescript` and future code or observation adapters.
 
-The **engine** resolves authority deterministically before you are called; the reconciliation rows carry the outcome. You never pick winners, derive `status`, or reorder `Sources:` — you render the rows and write honest prose around them. The rendered `Sources:` list orders contributing source keys highest authority first.
+The **engine** resolves authority before you are called; the requirement rows carry the outcome. You never pick winners, derive `Status:`, or order `Sources:` — you draft honest content for the rows as they stand.
 
 ## Status derivation (engine-computed)
 
-When two sources' `requirement` claims share an id but their `statement` extras disagree, a unique highest-authority contributor wins as `divergence`; a tie at the top authority is unresolvable `conflict`.
+A requirement's contributing claims were grouped into agreeing classes. The engine ranks the classes by authority: one class is `agreed`; a unique highest-authority class winning over lower ones is `divergence`; two classes tied at the top authority are an unresolvable `conflict`. A requirement with no acceptance criterion in evidence is uncovered.
 
-| Contributing claims | Values | `Status:` | Tag |
-| ------------------- | ------ | --------- | --- |
-| 1, or ≥2 that agree | match | `agreed` | (none) |
-| ≥2, unique top authority disagrees with a lower one | differ | `divergence` | `[divergence]` |
-| ≥2 at the same top authority | differ | `conflict` | `[conflict]` |
-| requirement with no acceptance criterion in evidence | — | `unknown` | `[unknown]` |
+| Contributing classes | `Status:` | Tag |
+| -------------------- | --------- | --- |
+| 1, covered | `agreed` | (none) |
+| 1, uncovered | `unknown` | `[unknown]` |
+| ≥2, unique top authority | `divergence` | `[divergence]` |
+| ≥2 at the same top authority | `conflict` | `[conflict]` |
 
-## Body conventions per resolution
+An uncovered `divergence` or `conflict` row keeps its tag; the engine adds the gap note beneath its loser notes.
 
-- **`divergence`** — the winning (highest-authority) statement is the operative body; each losing value survives as one `Note:` line naming its source and class. Never delete the loser.
-- **`conflict`** — no operative body sentence: one `Note:` line per contributing value, then `Note: Operator reconciliation required.` Never pick a side.
-- **`agreed`** — the shared statement, lightly normalised; quote documentation language where possible, paraphrase behaviour into present-tense system prose.
+## What you draft per resolution
 
-### Worked divergence
-
-Docs say sessions expire after 30 minutes; code observes 15. Documentation outranks behaviour:
-
-```markdown
-### Requirement: Session timeout [divergence]
-
-ID: REQ-001
-Sources: [docs, code]
-Status: divergence
-
-The system expires idle sessions after 30 minutes. (from docs; documentation)
-
-Note: code observed 15-minute expiry; the documentation authority overrides.
-```
+- **`agreed`** / **`unknown`** — the shared statement as the operative body: quote documentation language lightly normalised, paraphrase behaviour into present-tense system prose.
+- **`divergence`** — the winning class's statement as the operative body. Do not mention the losers: the engine renders one `Note:` per losing class from their verbatim statements.
+- **`conflict`** — no body at all (`"body": []`). The engine renders one `Note:` per class and `Note: Operator reconciliation required.`; you draft only the scenario, which must not pick a side.

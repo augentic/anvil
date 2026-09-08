@@ -1,89 +1,41 @@
-//! Reconciliation and synthesis
+//! Synthesis
 //!
-//! Turns extracted claims into the two specification documents. Reconciling
-//! is deterministic: requirement claims about the same subject are grouped,
-//! agreement and disagreement are resolved by source authority, and
-//! requirements with no acceptance criterion are recorded as gaps. Synthesis
-//! then asks the model to write `spec.md` and `design.md` from those rows.
+//! Turns the requirement rows and the extracted claims into the two
+//! specification documents. The model is asked two typed questions — the
+//! content of `spec.md`, keyed by row subject, then the content of
+//! `design.md`, keyed by planned section — and each answer is checked against
+//! the rows, the section plan, and the evidence, with findings fed back for
+//! bounded repair. The engine then renders the canonical documents itself.
 //!
-//! Splitting the two keeps every judgement about *which* sources win out of
-//! the model's hands. The model only writes prose: its `spec.md` is parsed
-//! and compared back against the rows so it cannot drop, reorder, or quietly
-//! rewrite a requirement, and its `design.md` is parsed and compared against
-//! the section plan the claims dictate so it cannot invent or omit a section,
-//! cite an unbound source, or paraphrase a type signature.
+//! Nothing the engine already knows is asked of the model: it never writes a
+//! heading, an id, a `Sources:` list, a status, a note, or a type signature,
+//! so it cannot drop, reorder, or quietly rewrite a requirement, invent or
+//! omit a section, cite an unbound source, or paraphrase a signature.
 
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Write as _};
 
-use emery_source::types::{Authority, ClaimKind};
-use omnia_guest::model::{Message, Request, Role};
-use omnia_guest::{Error, Model, bad_gateway, bad_request};
-use serde_json::Value;
+use emery_source::types::ClaimKind;
+use omnia_guest::{Error, Model};
 
+use super::draft::{self, DesignDraft, SpecDraft, type_key, types};
 use super::extract::SourceSet;
-use crate::artifact::{Design, ReqId, SectionKind, Spec, Status};
+use super::judgment::{self, Question};
+use super::provenance::Row;
+use super::render;
+use crate::artifact::{ReqId, SectionKind, Status};
 use crate::store::Revision;
 
 // Prompt order is significant.
 const SPEC_PROSE: &[&str] = &[
     "synthesis/synthesise.md",
     "synthesis/authority.md",
-    "synthesis/claim-reconciliation.md",
+    "synthesis/claim-landing.md",
     "synthesis/requirement-block.md",
     "synthesis/spec-format.md",
     "synthesis/tags.md",
 ];
 const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-format.md"];
-
-/// Reconciles requirements by authority and appends uncovered acceptance gaps.
-#[must_use]
-pub fn reconcile(sets: &[SourceSet]) -> Vec<Row> {
-    // Groups keep first-seen order, which is the row order.
-    let mut groups: Vec<(&str, Vec<Contributor>)> = Vec::new();
-    let mut criteria: Vec<&str> = Vec::new();
-
-    for set in sets {
-        for claim in &set.claims {
-            let Some(id) = claim.id.as_deref() else { continue };
-            match claim.kind {
-                ClaimKind::Requirement => {
-                    let contributor = Contributor {
-                        source: set.key.clone(),
-                        authority: set.authority,
-                        statement: claim.statement(),
-                    };
-                    match groups.iter_mut().find(|(subject, _)| *subject == id) {
-                        Some((_, contributors)) => contributors.push(contributor),
-                        None => groups.push((id, vec![contributor])),
-                    }
-                }
-                ClaimKind::Criterion => criteria.push(id),
-                _ => {}
-            }
-        }
-    }
-
-    let mut rows = Vec::with_capacity(groups.len());
-    let mut gaps = Vec::new();
-
-    for (subject, mut contributors) in groups {
-        // Highest authority first; the sort is stable, so binding
-        // order is conserved within a class.
-        contributors.sort_by_key(|contributor| contributor.authority.rank());
-        rows.push(Row::resolve(subject, contributors));
-
-        // A criterion covers its own subject or a dotted child of it.
-        let covered = criteria.iter().any(|id| {
-            id.strip_prefix(subject).is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
-        });
-        if !covered {
-            gaps.push(subject);
-        }
-    }
-    rows.extend(gaps.into_iter().map(Row::gap));
-    rows
-}
 
 /// Plans `design.md`: which sections the claims require, allow, or forbid.
 #[must_use]
@@ -107,22 +59,44 @@ pub fn plan(sets: &[SourceSet]) -> Plan {
     Plan(sections)
 }
 
-/// Synthesises both documents and validates the model answers.
+/// Drafts, validates, and renders both documents.
 ///
 /// # Errors
 ///
-/// Returns model, AST, provenance, or section-plan failures.
+/// Returns the model failure or the exhausted draft findings.
 pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Row],
 ) -> Result<Revision, Error> {
-    tracing::info!("synthesising spec.md");
-    let spec = dispatch(model, SPEC_PROSE, &spec_prompt(sets, rows)).await?;
-    check_rows(&spec.parse()?, rows)?;
+    tracing::info!("drafting spec.md");
+    let question = Question {
+        system: judgment::system(SPEC_PROSE),
+        name: "spec-draft",
+        schema: draft::spec_schema(),
+    };
+    let drafted: SpecDraft = question
+        .ask(model, &spec_prompt(sets, rows), |answer| {
+            let drafted = judgment::parse(answer)?;
+            draft::check_spec(&drafted, rows)?;
+            Ok(drafted)
+        })
+        .await?;
+    let spec = render::spec(rows, &drafted);
 
-    tracing::info!("synthesising design.md");
+    tracing::info!("drafting design.md");
     let plan = plan(sets);
-    let design = dispatch(model, DESIGN_PROSE, &design_prompt(sets, &spec, &plan)).await?;
-    check_design(&design.parse()?, &plan, sets)?;
+    let question = Question {
+        system: judgment::system(DESIGN_PROSE),
+        name: "design-draft",
+        schema: draft::design_schema(),
+    };
+    let drafted: DesignDraft = question
+        .ask(model, &design_prompt(sets, &spec, &plan), |answer| {
+            let drafted = judgment::parse(answer)?;
+            draft::check_design(&drafted, &plan, sets)?;
+            Ok(drafted)
+        })
+        .await?;
+    let design = render::design(sets, &drafted);
 
     Ok(Revision { spec, design })
 }
@@ -132,11 +106,30 @@ pub async fn synthesise<M: Model>(
 #[derive(Debug)]
 pub struct Plan(BTreeMap<SectionKind, Presence>);
 
-// Whether the evidence calls for a section, tolerates it, or rules it out.
+impl Plan {
+    /// The plan's verdict on `kind`.
+    #[must_use]
+    pub fn presence(&self, kind: SectionKind) -> Presence {
+        self.0.get(&kind).copied().unwrap_or(Presence::Forbidden)
+    }
+
+    /// Every section the plan requires.
+    pub fn required(&self) -> impl Iterator<Item = SectionKind> + '_ {
+        self.0
+            .iter()
+            .filter(|(_, presence)| **presence == Presence::Required)
+            .map(|(kind, _)| *kind)
+    }
+}
+
+/// Whether the evidence calls for a section, tolerates it, or rules it out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Presence {
+pub enum Presence {
+    /// The section must be drafted.
     Required,
+    /// The section may be drafted where claims inform it.
     Permitted,
+    /// The section may not be drafted.
     Forbidden,
 }
 
@@ -152,124 +145,47 @@ const fn informants(kind: SectionKind) -> &'static [ClaimKind] {
     }
 }
 
-// Whitespace-collapsed text, so a reflowed quotation still matches.
-fn normalise(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-/// Provenance a `spec.md` requirement must preserve; the id is positional
-/// and the tag, sources, and divergence winner derive from these fields.
-#[derive(Debug, Clone)]
-pub struct Row {
-    subject: String,
-    status: Status,
-    contributors: Vec<Contributor>,
-}
-
-impl Row {
-    // Matching statements agree; a unique top authority wins divergence;
-    // disagreeing top-authority peers conflict.
-    fn resolve(subject: &str, contributors: Vec<Contributor>) -> Self {
-        let status = if all_equal(contributors.iter()) {
-            Status::Agreed
-        } else {
-            let top = contributors[0].authority.rank();
-            let peers = contributors.iter().take_while(|peer| peer.authority.rank() == top);
-            if all_equal(peers) { Status::Divergence } else { Status::Conflict }
-        };
-
-        Self {
-            subject: subject.to_string(),
-            status,
-            contributors,
-        }
-    }
-
-    // An acceptance gap: unknown, with no contributing source to cite.
-    fn gap(subject: &str) -> Self {
-        Self {
-            subject: format!("{subject} acceptance criteria"),
-            status: Status::Unknown,
-            contributors: Vec::new(),
-        }
-    }
-
-    fn sources(&self) -> impl Iterator<Item = &str> {
-        self.contributors.iter().map(|contributor| contributor.source.as_str())
-    }
-}
-
-// One source's contribution to a requirement group.
-#[derive(Debug, Clone)]
-struct Contributor {
-    source: String,
-    authority: Authority,
-    statement: String,
-}
-
-impl Contributor {
-    // Statements compare with whitespace collapsed.
-    fn normalised(&self) -> String {
-        normalise(&self.statement)
-    }
-}
-
-fn all_equal<'a>(mut contributors: impl Iterator<Item = &'a Contributor>) -> bool {
-    let Some(first) = contributors.next() else { return true };
-    let first = first.normalised();
-    contributors.all(|contributor| contributor.normalised() == first)
-}
-
-async fn dispatch<M: Model>(model: &M, prose: &[&str], user: &str) -> Result<String, Error> {
-    let system =
-        prose.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n");
-    let request = Request::builder()
-        .system(system)
-        .messages(vec![Message {
-            role: Role::User,
-            content: user.to_string(),
-        }])
-        .build();
-    let reply = Model::complete(model, request).await.map_err(|err| bad_gateway!(err))?;
-    Ok(reply.answer)
-}
-
 fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
-    let mut prompt = String::from("Author `spec.md`.\n\n");
+    let mut prompt = String::from("Draft `spec.md`.\n\n");
     render_claims(&mut prompt, sets);
 
-    prompt.push_str("\n## Reconciliation rows (render exactly, in order)\n\n");
+    prompt.push_str("\n## Requirement rows (draft one entry per subject)\n\n");
     for (index, row) in rows.iter().enumerate() {
-        let tag = row.status.tag().map(|tag| format!(" [{tag}]")).unwrap_or_default();
         let sources = row.sources().collect::<Vec<_>>().join(", ");
+        let coverage = if row.covered() { "evidenced" } else { "not evidenced" };
         let _ = writeln!(
             prompt,
-            "- {id} — heading `### Requirement: {subject}{tag}` — Status: {status} — Sources: [{sources}]",
+            "- {id} `{subject}` — Status: {status} — Sources: [{sources}] — acceptance criteria {coverage}",
             id = ReqId::nth(index),
-            subject = row.subject,
-            status = row.status,
+            subject = row.subject(),
+            status = row.status(),
         );
-        // Authority resolves a divergence in favour of the top contributor.
-        let divergence = row.status == Status::Divergence;
-        for (position, contributor) in row.contributors.iter().enumerate() {
-            let role = if divergence && position == 0 { "winner" } else { "contributor" };
-            let _ = writeln!(
-                prompt,
-                "  - {role}: {source} ({authority}): {statement}",
-                source = contributor.source,
-                authority = contributor.authority,
-                statement = contributor.statement,
-            );
+        for (position, class) in row.classes().iter().enumerate() {
+            let role = match (row.status(), position) {
+                (Status::Divergence, 0) => "winner",
+                (Status::Divergence, _) => "loser",
+                _ => "contributor",
+            };
+            for member in class {
+                let _ = writeln!(
+                    prompt,
+                    "  - {role}: {source} ({authority}, `{claim}`): {statement}",
+                    source = member.source,
+                    authority = member.authority,
+                    claim = member.id,
+                    statement = member.statement,
+                );
+            }
         }
     }
     prompt
 }
 
 fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
-    let mut prompt = String::from("Author `design.md`.\n\n");
+    let mut prompt = String::from("Draft `design.md`.\n\n");
     render_claims(&mut prompt, sets);
 
-    prompt.push_str("\n## Sections (render exactly, in order)\n\n");
+    prompt.push_str("\n## Sections\n\n");
     for (kind, presence) in &plan.0 {
         let kinds = informants(*kind).iter().map(|kind| format!("`{kind}`")).collect::<Vec<_>>();
         let reason = match (presence, kinds.is_empty()) {
@@ -278,10 +194,21 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
             (Presence::Permitted, _) => " where claims inform it".to_string(),
             _ => String::new(),
         };
-        let _ = writeln!(prompt, "- `## {kind}` — {presence}{reason}");
+        let _ = writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.key());
     }
 
-    let _ = write!(prompt, "\n## The validated `spec.md`\n\n{spec}");
+    let keys: Vec<&str> = types(sets).filter_map(type_key).collect();
+    if !keys.is_empty() {
+        prompt.push_str(
+            "\n## Type blocks\n\nReference each `type` claim exactly once under `domain-model` \
+             as a `{\"type\": \"<key>\"}` block; the engine inserts its signature verbatim.\n\n",
+        );
+        for key in keys {
+            let _ = writeln!(prompt, "- `{key}`");
+        }
+    }
+
+    let _ = write!(prompt, "\n## The rendered `spec.md`\n\n{spec}");
     prompt
 }
 
@@ -311,92 +238,4 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
             let _ = writeln!(prompt, "- {kind} `{id}` — {synopsis} — {extras}", kind = claim.kind);
         }
     }
-}
-
-// The model may not drop, reorder, or rewrite reconciliation rows.
-fn check_rows(spec: &Spec, rows: &[Row]) -> Result<(), Error> {
-    if spec.requirements.len() != rows.len() {
-        let expected = rows.len();
-        let found = spec.requirements.len();
-        return Err(mismatch(format!("expected {expected} requirement blocks, found {found}")));
-    }
-
-    for (index, (requirement, row)) in spec.requirements.iter().zip(rows).enumerate() {
-        let id = ReqId::nth(index);
-        if requirement.id != id {
-            let found = &requirement.id;
-            return Err(mismatch(format!("expected `{id}`, found `{found}`")));
-        }
-        // Headings are the reconciliation and re-mine-diff identity.
-        if requirement.subject != row.subject {
-            let subject = &row.subject;
-            let found = &requirement.subject;
-            return Err(mismatch(format!(
-                "`{id}` must head its subject `{subject}`, found `{found}`"
-            )));
-        }
-        if requirement.status != row.status {
-            let status = row.status;
-            return Err(mismatch(format!(
-                "`{id}` must carry `Status: {status}` and its mirroring tag"
-            )));
-        }
-        if !requirement.sources.keys().eq(row.sources()) {
-            let sources = row.sources().collect::<Vec<_>>().join(", ");
-            return Err(mismatch(format!("`{id}` must cite `Sources: [{sources}]`")));
-        }
-    }
-
-    Ok(())
-}
-
-fn mismatch(detail: impl Display) -> Error {
-    bad_request!("model `spec.md` does not match the reconciliation rows: {detail}")
-}
-
-// The model may not omit a required section, pad an uninformed one, cite
-// a source that is not bound, or paraphrase a type signature.
-fn check_design(design: &Design, plan: &Plan, sets: &[SourceSet]) -> Result<(), Error> {
-    let sections = design.by_kind();
-    for (kind, presence) in &plan.0 {
-        match (presence, sections.contains_key(kind)) {
-            (Presence::Required, false) => {
-                return Err(unevidenced(format!("`## {kind}` is required but absent")));
-            }
-            (Presence::Forbidden, true) => {
-                return Err(unevidenced(format!("`## {kind}` is present but no claim informs it")));
-            }
-            _ => {}
-        }
-    }
-
-    for section in &design.sections {
-        if let Some(key) = section.citations().find(|key| !sets.iter().any(|set| set.key == *key)) {
-            let kind = section.kind;
-            return Err(unevidenced(format!(
-                "`## {kind}` cites source `{key}`, which is not bound"
-            )));
-        }
-    }
-
-    // A quoted signature survives reflowing, never rewording.
-    let domain = sections.get(&SectionKind::DomainModel).map(|section| normalise(section.body()));
-    let types =
-        sets.iter().flat_map(|set| &set.claims).filter(|claim| claim.kind == ClaimKind::Type);
-    for claim in types {
-        let Some(Value::String(signature)) = claim.extras.get("signature") else { continue };
-        let quoted = domain.as_deref().is_some_and(|body| body.contains(&normalise(signature)));
-        if !quoted {
-            let label = claim.id.as_deref().or(claim.path.as_deref()).unwrap_or("<unnamed>");
-            return Err(unevidenced(format!(
-                "`## Domain model` must quote the signature of `type` `{label}` verbatim"
-            )));
-        }
-    }
-
-    Ok(())
-}
-
-fn unevidenced(detail: impl Display) -> Error {
-    bad_request!("model `design.md` does not match the evidence: {detail}")
 }

@@ -2,12 +2,14 @@
 //!
 //! The scenarios an operator lives through: binding sources, generating a
 //! specification, reviewing it, regenerating it, and hitting every refusal
-//! along the way — an invalid binding, an untrusted adapter, a model answer
-//! that breaks the spec grammar.
+//! along the way — an invalid binding, an untrusted adapter, a model draft
+//! that does not fit the rows or the plan after every repair.
 //!
 //! Each scenario drives the real command façade over scripted capabilities,
 //! so it reads as usage documentation while still asserting the exact
-//! envelope, exit code, and stored revision the operator would see.
+//! envelope, exit code, and stored revision the operator would see. The
+//! model answers are typed drafts, so the scripted turns are JSON and the
+//! stored documents are the engine's canonical renderings.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -26,10 +28,22 @@ use omnia_test::guest::{Memory, Namespaced, Scripted};
 use serde_json::Value;
 use support::{Provider, claim, cli, cli_ok, digest, evidence, fail, requirement};
 
-const SPEC_ANSWER: &str = include_str!("specify/1-spec.md");
-const DESIGN_ANSWER: &str = include_str!("specify/2-design.md");
-const PRECEDENCE_ANSWER: &str = include_str!("specify/3-precedence.md");
+// Scripted drafts and the canonical documents the engine renders from them.
+const SPEC_ANSWER: &str = include_str!("specify/spec-draft.json");
+const SPEC_RENDERED: &str = include_str!("specify/1-spec.md");
+const DESIGN_ANSWER: &str = include_str!("specify/design-draft.json");
+const DESIGN_RENDERED: &str = include_str!("specify/2-design.md");
+const GROUPING_ANSWER: &str = include_str!("specify/grouping.json");
+const PRECEDENCE_ANSWER: &str = include_str!("specify/precedence-draft.json");
+const PRECEDENCE_RENDERED: &str = include_str!("specify/3-precedence.md");
 const SOURCES: &str = include_str!("specify/emery.toml");
+
+// The grouping answer that merges `count` claims into one agreeing
+// requirement — what a run over one id bound several times expects.
+fn floor_grouping(count: usize) -> String {
+    let indices = (0..count).map(|index| index.to_string()).collect::<Vec<_>>().join(", ");
+    format!("{{\"groups\": [{{\"claims\": [{indices}], \"classes\": [[{indices}]]}}]}}")
+}
 
 fn project_tempdir() -> tempfile::TempDir {
     tempfile::TempDir::new_in(env!("CARGO_MANIFEST_DIR")).expect("project tempdir")
@@ -84,10 +98,16 @@ async fn gen_spec() {
     );
     assert!(provider.storage.state("project.yaml").is_none(), "no project record exists");
     let id = current(&provider.storage);
+    // The stored documents are the engine's canonical renderings of the
+    // drafts: headings, provenance, the gap tag and note are all rendered.
     let spec = document(&provider.storage, &id, "spec.md");
-    assert!(String::from_utf8_lossy(&spec).contains("[unknown]"));
+    assert_eq!(String::from_utf8_lossy(&spec), SPEC_RENDERED, "spec.md is rendered canonically");
     let design = document(&provider.storage, &id, "design.md");
-    assert!(!design.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&design),
+        DESIGN_RENDERED,
+        "design.md is rendered canonically"
+    );
 
     // Review is `show`: text stdout is the stored document, byte for byte.
     let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
@@ -113,8 +133,7 @@ async fn from_file() {
     fs::write(&config, SOURCES).expect("write emery.toml");
     let config = project_arg(&config);
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [greeting]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
 
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
@@ -132,7 +151,7 @@ async fn from_file() {
     let spec = document(&provider.storage, &id, "spec.md");
     assert!(
         String::from_utf8_lossy(&spec).contains("Sources: [greeting]"),
-        "the entry name is the binding key"
+        "the entry name is the binding key the renderer cites"
     );
     let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
     assert_eq!(shown.stdout, spec, "show renders the committed spec.md alone");
@@ -140,8 +159,9 @@ async fn from_file() {
     provider.model.assert_exhausted();
 }
 
-// One adapter may bind several roots: the loader is asked once, and
-// each binding extracts over its own workspace.
+// One adapter may bind several roots: the loader is asked once, each
+// binding extracts over its own workspace, and the two claims of one id
+// are one requirement citing both sources.
 #[tokio::test]
 async fn shared_adapter_several_roots() {
     let cases: &[(&str, &str, bool)] = &[
@@ -164,12 +184,19 @@ async fn shared_adapter_several_roots() {
         .expect("write emery.toml");
         let config = project_arg(&config);
 
-        let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs, api]");
-        let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+        let grouping = floor_grouping(2);
+        let provider = Provider::answering([grouping.as_str(), SPEC_ANSWER, DESIGN_ANSWER]);
 
         let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
         let stdout = String::from_utf8_lossy(&resp.stdout);
         assert!(stdout.contains("sources: 2"), "{adapter}: {stdout}");
+        assert!(stdout.contains("requirements: 1"), "{adapter}: {stdout}");
+        let id = current(&provider.storage);
+        let spec = document(&provider.storage, &id, "spec.md");
+        assert!(
+            String::from_utf8_lossy(&spec).contains("Sources: [docs, api]"),
+            "{adapter}: both bindings contribute to the one requirement"
+        );
         assert!(stdout.contains(&format!("digest docs: {}", digest("ab"))), "{adapter}: {stdout}");
         assert!(stdout.contains(&format!("digest api: {}", digest("ab"))), "{adapter}: {stdout}");
 
@@ -202,8 +229,7 @@ async fn discovery() {
     .expect("write emery.toml");
     std::env::set_current_dir(project.path()).expect("enter project");
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
 
     cli_ok(&provider, &["emery", "specify"]).await;
 
@@ -218,8 +244,7 @@ async fn discovery() {
 // component.
 #[tokio::test]
 async fn description_binding() {
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [intent]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
 
     cli_ok(&provider, &["emery", "specify", "--description", "intent=Ship it."]).await;
 
@@ -236,13 +261,16 @@ async fn description_binding() {
     provider.model.assert_exhausted();
 }
 
-// Authority reconciles disagreement: an intent directive outranks the
-// docs, tied documentation peers surface as [conflict] for the
-// operator, and the uncovered acceptance gap stays [unknown] — the
-// committed spec carries every resolution inline.
+// Requirement identity and agreement are one model partition over the
+// byte-equal-id floor, and authority derives the rest: the grouping
+// binds `code`'s `session-expiry` into the timeout requirement, where
+// the intent directive outranks it as [divergence] with one templated
+// loser note; tied documentation peers surface as [conflict] with no
+// body; and the uncovered timeout keeps its tag and gains the gap note
+// — no synthetic gap row, so the envelope counts two requirements.
 #[tokio::test]
 async fn authority_precedence() {
-    let mut provider = Provider::answering([PRECEDENCE_ANSWER, DESIGN_ANSWER]);
+    let mut provider = Provider::answering([GROUPING_ANSWER, PRECEDENCE_ANSWER, DESIGN_ANSWER]);
     provider.source.evidence.insert(
         "docs".to_string(),
         Ok(evidence(
@@ -273,7 +301,9 @@ async fn authority_precedence() {
             Authority::Behaviour,
             vec![
                 requirement("login.flow", "Users sign in with email and password."),
-                requirement("session.timeout", "Sessions expire after 15 minutes of inactivity."),
+                // Behaviour names the timeout differently; the grouping
+                // call, not the id, joins it to the requirement.
+                requirement("session-expiry", "Sessions expire after 15 minutes of inactivity."),
             ],
         )),
     );
@@ -302,15 +332,88 @@ async fn authority_precedence() {
     )
     .await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
-    assert!(stdout.contains("requirements: 3"), "{stdout}");
+    assert!(stdout.contains("requirements: 2"), "{stdout}");
     assert!(stdout.contains("sources: 4"), "{stdout}");
+
+    // The grouping request indexes every claim and withholds authority.
+    let grouping = &provider.model.seen()[0];
+    let request = grouping.messages.join("\n");
+    assert!(request.contains("- 4 `code` `session-expiry`"), "{request}");
+    assert!(request.contains("share the id `session.timeout`"), "the floor is stated: {request}");
+    assert!(!request.contains("documentation"), "authority is withheld: {request}");
+    assert!(!request.contains("behaviour"), "authority is withheld: {request}");
 
     let id = current(&provider.storage);
     let spec = String::from_utf8(document(&provider.storage, &id, "spec.md")).expect("utf-8");
-    assert!(spec.contains("login.flow [conflict]"), "tied docs peers conflict: {spec}");
-    assert!(spec.contains("session.timeout [divergence]"), "intent outranks docs: {spec}");
-    assert!(spec.contains("Sources: [intent, docs, code]"), "the intent directive wins: {spec}");
-    assert!(spec.contains("[unknown]"), "the acceptance gap is preserved: {spec}");
+    assert_eq!(spec, PRECEDENCE_RENDERED, "every resolution is rendered inline");
+    provider.model.assert_exhausted();
+}
+
+// A grouping the partition rules refuse — a floor pair split, a claim
+// in no group, a claim in two classes — is repaired with the findings
+// attached; a run out of repairs refuses typed and commits nothing.
+#[tokio::test]
+async fn grouping_refused() {
+    let bind = |provider: &mut Provider| {
+        provider.source.evidence.insert(
+            "docs".to_string(),
+            Ok(evidence(
+                Authority::Documentation,
+                vec![requirement("session.timeout", "Sessions expire after 30 minutes.")],
+            )),
+        );
+        provider.source.evidence.insert(
+            "code".to_string(),
+            Ok(evidence(
+                Authority::Behaviour,
+                vec![requirement("session.timeout", "Sessions expire after 15 minutes.")],
+            )),
+        );
+    };
+    let cases: &[(&str, &str)] = &[
+        (
+            r#"{"groups": [{"claims": [0], "classes": [[0]]}, {"claims": [1], "classes": [[1]]}]}"#,
+            "claims sharing the id `session.timeout` are split across groups",
+        ),
+        (r#"{"groups": [{"claims": [0], "classes": [[0]]}]}"#, "claim 1 is in no group"),
+        (
+            r#"{"groups": [{"claims": [0, 1], "classes": [[0, 1], [1]]}]}"#,
+            "claim 1 appears in more than one class",
+        ),
+        (r#"{"groups": [{"claims": [0, 1], "classes": [[0]]}]}"#, "claim 1 is in no class"),
+        ("not json", "did not deserialize"),
+    ];
+    for (answer, fragment) in cases {
+        let mut provider = Provider::answering([*answer, *answer, *answer]);
+        bind(&mut provider);
+        let envelope =
+            fail(&provider, &["emery", "specify", "docs", "code"], 1, "bad_request").await;
+        let message = envelope["message"].as_str().unwrap_or("");
+        assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
+        assert!(message.contains("after 2 repairs"), "{envelope}");
+        assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+        provider.model.assert_exhausted();
+    }
+
+    // The repaired answer commits: the same statements in two classes
+    // diverge, and the winner is the documentation.
+    let refused = r#"{"groups": [{"claims": [0], "classes": [[0]]}]}"#;
+    let repaired = r#"{"groups": [{"claims": [0, 1], "classes": [[0], [1]]}]}"#;
+    let spec = SPEC_ANSWER.replace("greeting.behaviour", "session.timeout");
+    let mut provider = Provider::answering([refused, repaired, spec.as_str(), DESIGN_ANSWER]);
+    bind(&mut provider);
+    cli_ok(&provider, &["emery", "specify", "docs", "code"]).await;
+    let repair = &provider.model.seen()[1];
+    let request = repair.messages.join("\n");
+    assert!(request.contains("## Findings"), "the findings ride the repair: {request}");
+    assert!(request.contains("claim 1 is in no group"), "{request}");
+    let id = current(&provider.storage);
+    let spec = String::from_utf8(document(&provider.storage, &id, "spec.md")).expect("utf-8");
+    assert!(spec.contains("### Requirement: session.timeout [divergence]"), "{spec}");
+    assert!(
+        spec.contains("Note: code (behaviour, session.timeout): Sessions expire after 15 minutes."),
+        "{spec}"
+    );
     provider.model.assert_exhausted();
 }
 
@@ -381,14 +484,9 @@ async fn remine_supersedes() {
 // artifacts, then `spec` and `design` section lists keyed by heading.
 #[tokio::test]
 async fn diff_envelope() {
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
     let second_design = DESIGN_ANSWER.replace("hello", "howdy");
-    let provider = Provider::answering([
-        spec_answer.as_str(),
-        DESIGN_ANSWER,
-        spec_answer.as_str(),
-        second_design.as_str(),
-    ]);
+    let provider =
+        Provider::answering([SPEC_ANSWER, DESIGN_ANSWER, SPEC_ANSWER, second_design.as_str()]);
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let first = current(&provider.storage);
 
@@ -424,89 +522,49 @@ fn docs_evidence(requirements: &[(&str, &str)]) -> types::Evidence {
     evidence(Authority::Documentation, claims)
 }
 
-const REMINE_FIRST: &str = "# Specification
+// The drafts are keyed by subject, so their order is immaterial; the
+// renderer places each under its row.
+const REMINE_FIRST: &str = r#"{
+  "preamble": ["The docs describe a greeting, a legacy export, and a session timeout."],
+  "requirements": [
+    {
+      "subject": "greeting.behaviour",
+      "body": ["GET /greeting returns the static string 'hello'."],
+      "scenarios": [{"name": "Greeting", "when": "the greeting is requested", "then": "the response is hello"}]
+    },
+    {
+      "subject": "legacy.export",
+      "body": ["Exports ship nightly."],
+      "scenarios": [{"name": "Export", "when": "exports are produced", "then": "they ship nightly"}]
+    },
+    {
+      "subject": "session.timeout",
+      "body": ["Sessions time out after an hour."],
+      "scenarios": [{"name": "Timeout", "when": "a session is idle for an hour", "then": "it times out"}]
+    }
+  ]
+}"#;
 
-### Requirement: greeting.behaviour
-
-ID: REQ-001
-Sources: [docs]
-Status: agreed
-
-GET /greeting returns the static string 'hello'.
-
-#### Scenario: Greeting
-
-- **WHEN** the greeting is requested
-- **THEN** the response is hello
-
-### Requirement: legacy.export
-
-ID: REQ-002
-Sources: [docs]
-Status: agreed
-
-Exports ship nightly.
-
-#### Scenario: Export
-
-- **WHEN** exports are produced
-- **THEN** they ship nightly
-
-### Requirement: session.timeout
-
-ID: REQ-003
-Sources: [docs]
-Status: agreed
-
-Sessions time out after an hour.
-
-#### Scenario: Timeout
-
-- **WHEN** a session is idle for an hour
-- **THEN** it times out
-";
-
-const REMINE_SECOND: &str = "# Specification
-
-### Requirement: session.timeout
-
-ID: REQ-001
-Sources: [docs]
-Status: agreed
-
-Sessions time out after an hour.
-
-#### Scenario: Timeout
-
-- **WHEN** a session is idle for an hour
-- **THEN** it times out
-
-### Requirement: greeting.behaviour
-
-ID: REQ-002
-Sources: [docs]
-Status: agreed
-
-GET /greeting returns the static string 'howdy'.
-
-#### Scenario: Greeting
-
-- **WHEN** the greeting is requested
-- **THEN** the response is howdy
-
-### Requirement: access.audit
-
-ID: REQ-003
-Sources: [docs]
-Status: agreed
-
-Access is audited.
-
-#### Scenario: Audit
-
-- **WHEN** access occurs
-- **THEN** it is audited
-";
+const REMINE_SECOND: &str = r#"{
+  "preamble": ["The docs describe a greeting, a legacy export, and a session timeout."],
+  "requirements": [
+    {
+      "subject": "session.timeout",
+      "body": ["Sessions time out after an hour."],
+      "scenarios": [{"name": "Timeout", "when": "a session is idle for an hour", "then": "it times out"}]
+    },
+    {
+      "subject": "greeting.behaviour",
+      "body": ["GET /greeting returns the static string 'howdy'."],
+      "scenarios": [{"name": "Greeting", "when": "the greeting is requested", "then": "the response is howdy"}]
+    },
+    {
+      "subject": "access.audit",
+      "body": ["Access is audited."],
+      "scenarios": [{"name": "Audit", "when": "access occurs", "then": "it is audited"}]
+    }
+  ]
+}"#;
 
 // A requirement claim missing its `statement` extra fails the whole
 // run typed (A8 fail-closed) before anything commits.
@@ -547,96 +605,120 @@ async fn version_too_new() {
     fail(&provider, &["emery", "specify", "docs"], 1, "unsupported-version").await;
 }
 
-// A model answer outside the fail-closed spec AST is refused, one
-// grammar breach per case: no blocks, malformed metadata, a bare
-// block, and duplicated requirement ids.
+// A spec draft outside its schema or its rows is refused after every
+// repair, one finding per case: not JSON, a row left undrafted, a subject
+// that is not a row, a subject drafted twice, no scenario, no body on a
+// non-conflict row, and a paragraph opening with a reserved marker. The
+// operator never sees a half-committed run.
 #[tokio::test]
-async fn unparseable_answer() {
-    let answers = [
-        "Not a spec at all.",
-        "# S\n\n### Requirement: greeting [wat]\n\nID: REQ-1\nSources: [Docs!]\nStatus: maybe\n\nBody.\n",
-        "# S\n\n### Requirement: greeting\n\nBody without any metadata.\n",
-        "# S\n\n### Requirement: [unknown]\n\nID: REQ-001\nSources: []\nStatus: unknown\n\nNo name.\n",
-        "# S\n\n### Requirement: a\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\n\
-         A.\n\n#### Scenario: A\n\n- **WHEN** a\n- **THEN** a\n\n\
-         ### Requirement: b\n\nID: REQ-001\nSources: [docs]\nStatus: agreed\n\n\
-         B.\n\n#### Scenario: B\n\n- **WHEN** b\n- **THEN** b\n",
+async fn invalid_draft() {
+    let one = |subject: &str, body: &str, scenarios: &str| {
+        format!(
+            r#"{{"preamble": [], "requirements": [{{"subject": "{subject}", "body": [{body}], "scenarios": [{scenarios}]}}]}}"#
+        )
+    };
+    let scenario = r#"{"name": "Greeting", "when": "greeted", "then": "hello"}"#;
+    let cases: Vec<(String, &str)> = vec![
+        ("Not a spec at all.".to_string(), "did not deserialize"),
+        (
+            r#"{"preamble": [], "requirements": []}"#.to_string(),
+            "row `greeting.behaviour` is not drafted",
+        ),
+        (
+            one("greeting.renamed", r#""Hello.""#, scenario),
+            "`greeting.renamed` is not a requirement row",
+        ),
+        (
+            format!(
+                r#"{{"preamble": [], "requirements": [{{"subject": "greeting.behaviour", "body": ["Hello."], "scenarios": [{scenario}]}}, {{"subject": "greeting.behaviour", "body": ["Again."], "scenarios": [{scenario}]}}]}}"#
+            ),
+            "drafted more than once",
+        ),
+        (one("greeting.behaviour", r#""Hello.""#, ""), "has no scenario"),
+        (one("greeting.behaviour", "", scenario), "has no body paragraph"),
+        (
+            one("greeting.behaviour", "\"### Requirement: smuggled\"", scenario),
+            "opens with the reserved marker `#`",
+        ),
+        (
+            one("greeting.behaviour", r#""Hello.\nSources: [other]""#, scenario),
+            "opens with the reserved marker `Sources:`",
+        ),
     ];
-    for answer in answers {
-        let provider = Provider::answering([answer]);
-        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+    for (answer, fragment) in cases {
+        let provider = Provider::answering([answer.as_str(), answer.as_str(), answer.as_str()]);
+        let envelope = fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+        let message = envelope["message"].as_str().unwrap_or("");
+        assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
         assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+        provider.model.assert_exhausted();
     }
 }
 
-// A syntactically valid answer must not drop, rename, retag, recite,
-// or renumber reconciliation rows: every dishonest rendering is a
-// provenance mismatch.
+// A finding is fed back with the previous answer, and the repaired
+// draft commits: the operator sees one committed revision, not the
+// intermediate miss.
 #[tokio::test]
-async fn dishonest_answer() {
-    // The honest rows: `REQ-001 greeting.behaviour` agreed over
-    // `[docs]`, then the `REQ-002` acceptance gap.
-    let answers = [
-        // The gap row is hidden.
-        "# S\n\n### Requirement: greeting.behaviour\n\nID: REQ-001\nSources: [docs]\n\
-         Status: agreed\n\nHello.\n\n#### Scenario: Greeting\n\n\
-         - **WHEN** greeted\n- **THEN** hello\n"
-            .to_string(),
-        // The subject heading is renamed.
-        two_blocks("greeting.renamed", "REQ-001", "[docs]", "agreed"),
-        // The status is retagged.
-        two_blocks("greeting.behaviour [divergence]", "REQ-001", "[docs]", "divergence"),
-        // The sources are recited.
-        two_blocks("greeting.behaviour", "REQ-001", "[other]", "agreed"),
-        // The requirement ids are renumbered.
-        two_blocks("greeting.behaviour", "REQ-009", "[docs]", "agreed"),
+async fn repaired_draft() {
+    let missing_scenario =
+        SPEC_ANSWER.replace(r#""then": "the response is `hello`""#, r#""then": """#);
+    assert_ne!(missing_scenario, SPEC_ANSWER, "the fixture carries the patched line");
+    let provider = Provider::answering([missing_scenario.as_str(), SPEC_ANSWER, DESIGN_ANSWER]);
+
+    cli_ok(&provider, &["emery", "specify", "source"]).await;
+
+    let repair = &provider.model.seen()[1];
+    let request = repair.messages.join("\n");
+    assert!(request.contains("## Previous answer (failed validation)"), "{request}");
+    assert!(request.contains("## Findings"), "{request}");
+    assert!(request.contains("scenario `then` is blank"), "{request}");
+    let id = current(&provider.storage);
+    let spec = document(&provider.storage, &id, "spec.md");
+    assert_eq!(String::from_utf8_lossy(&spec), SPEC_RENDERED, "the repaired draft is committed");
+    provider.model.assert_exhausted();
+}
+
+// The design leg is fail-closed too: a draft outside its schema or plan
+// is refused after every repair, one finding per case — not JSON, the
+// required overview absent, a section outside the closed vocabulary, a
+// requirement heading smuggled into a paragraph, and a citation of a
+// source the run never bound.
+#[tokio::test]
+async fn invalid_design() {
+    let overview = |text: &str| {
+        format!(
+            r#"{{"preamble": [], "sections": [{{"kind": "overview", "blocks": [{{"text": "{text}"}}]}}]}}"#
+        )
+    };
+    let cases: Vec<(String, &str)> = vec![
+        ("   ".to_string(), "did not deserialize"),
+        (r#"{"preamble": [], "sections": []}"#.to_string(), "`## Overview` is required but absent"),
+        (
+            r#"{"preamble": [], "sections": [{"kind": "decisions", "blocks": [{"text": "Static."}]}]}"#
+                .to_string(),
+            "did not deserialize",
+        ),
+        (overview("### Requirement: greeting.behaviour"), "opens with the reserved marker `#`"),
+        (overview("The endpoint is static (from nobody)."), "cites source `nobody`, which is not bound"),
     ];
-    for answer in answers {
-        let provider = Provider::answering([answer.as_str()]);
-        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+    for (answer, fragment) in cases {
+        let provider =
+            Provider::answering([SPEC_ANSWER, answer.as_str(), answer.as_str(), answer.as_str()]);
+        let envelope = fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+        let message = envelope["message"].as_str().unwrap_or("");
+        assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
         assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+        provider.model.assert_exhausted();
     }
 }
 
-// A parseable two-block answer with one dishonest first block.
-fn two_blocks(heading: &str, id: &str, sources: &str, status: &str) -> String {
-    format!(
-        "# Specification\n\n### Requirement: {heading}\n\nID: {id}\nSources: {sources}\n\
-         Status: {status}\n\nGET /greeting returns the static string 'hello'.\n\n\
-         #### Scenario: Greeting\n\n- **WHEN** greeted\n- **THEN** hello\n\n\
-         ### Requirement: greeting.behaviour acceptance criteria [unknown]\n\n\
-         ID: REQ-002\nSources: []\nStatus: unknown\n\nNo source contributed a criterion.\n\n\
-         #### Scenario: Acceptance gap\n\n- **WHEN** checked\n- **THEN** behaviour is unknown\n"
-    )
-}
-
-// The design leg is fail-closed too: a second answer outside the design
-// grammar is refused, one breach per case — a blank answer, an H2 outside
-// the closed vocabulary, a requirement block leaking out of `spec.md`, and
-// a citation of a source the run never bound.
-#[tokio::test]
-async fn malformed_design() {
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
-    let answers = [
-        "   ",
-        "# Design\n\n## Overview\n\nHello.\n\n## Decisions\n\n- Static.\n",
-        "# Design\n\n## Overview\n\n### Requirement: greeting.behaviour\n\nID: REQ-001\n",
-        "# Design\n\n## Overview\n\nThe endpoint is static (from nobody).\n",
-    ];
-    for answer in answers {
-        let provider = Provider::answering([spec_answer.as_str(), answer]);
-        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
-        assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
-    }
-}
-
-// The evidence plans `design.md`'s sections: a `type` claim requires
-// `## Domain model` quoting its signature verbatim, and a section no
-// claim informs may not appear. Every dishonest rendering is refused;
-// the honest one commits and `show` renders it.
+// The evidence plans `design.md`'s sections: a `type` claim requires a
+// `domain-model` section referencing it exactly once, and a section no
+// claim informs may not appear. Every dishonest draft is refused; the
+// honest one commits with the signature rendered verbatim, and `show`
+// renders it.
 #[tokio::test]
 async fn dishonest_design() {
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
     let signature = "interface Greeting { text: string }";
     let evidence = || {
         Ok(evidence(
@@ -650,30 +732,66 @@ async fn dishonest_design() {
             ],
         ))
     };
-    let honest = format!(
-        "# Design\n\n## Overview\n\nOne endpoint (from docs).\n\n\
-         ## Domain model\n\n`{signature}`\n"
-    );
-    let answers = [
-        // The required `## Domain model` is missing.
-        "# Design\n\n## Overview\n\nOne endpoint.\n".to_string(),
-        // `## UI / layout` appears with no spatial claim behind it.
-        format!("{honest}\n## UI / layout\n\n- page\n"),
-        // The signature is paraphrased.
-        honest.replace(signature, "interface Greeting { text: String }"),
+    let draft = |sections: &str| format!(r#"{{"preamble": [], "sections": [{sections}]}}"#);
+    let overview = r#"{"kind": "overview", "blocks": [{"text": "One endpoint (from docs)."}]}"#;
+    let domain = r#"{"kind": "domain-model", "blocks": [{"text": "The greeting payload is one string field."}, {"type": "greeting.type"}]}"#;
+    let honest = draft(&format!("{overview}, {domain}"));
+    let cases: Vec<(String, &str)> = vec![
+        // The required `domain-model` is missing.
+        (draft(overview), "`## Domain model` is required but absent"),
+        // `ui-layout` appears with no spatial claim behind it.
+        (
+            draft(&format!(
+                r#"{overview}, {domain}, {{"kind": "ui-layout", "blocks": [{{"text": "- page"}}]}}"#
+            )),
+            "`## UI / layout` is present but no claim informs it",
+        ),
+        // The signature is quoted as prose instead of referenced.
+        (
+            draft(&format!(
+                r#"{overview}, {{"kind": "domain-model", "blocks": [{{"text": "`{signature}`"}}]}}"#
+            )),
+            "type `greeting.type` is never referenced",
+        ),
+        // The type is referenced twice.
+        (
+            draft(&format!(
+                r#"{overview}, {{"kind": "domain-model", "blocks": [{{"type": "greeting.type"}}, {{"type": "greeting.type"}}]}}"#
+            )),
+            "type `greeting.type` is referenced 2 times",
+        ),
+        // A type block outside `domain-model`, naming no type claim.
+        (
+            draft(&format!(
+                r#"{{"kind": "overview", "blocks": [{{"type": "greeting.other"}}]}}, {domain}"#
+            )),
+            "type blocks belong under `## Domain model`",
+        ),
     ];
-    for answer in answers {
-        let mut provider = Provider::answering([spec_answer.as_str(), answer.as_str()]);
+    for (answer, fragment) in cases {
+        let mut provider =
+            Provider::answering([SPEC_ANSWER, answer.as_str(), answer.as_str(), answer.as_str()]);
         provider.source.evidence.insert("docs".to_string(), evidence());
-        fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+        let envelope = fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+        let message = envelope["message"].as_str().unwrap_or("");
+        assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
         assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+        provider.model.assert_exhausted();
     }
 
-    let mut provider = Provider::answering([spec_answer.as_str(), honest.as_str()]);
+    let mut provider = Provider::answering([SPEC_ANSWER, honest.as_str()]);
     provider.source.evidence.insert("docs".to_string(), evidence());
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let shown = cli_ok(&provider, &["emery", "show", "design"]).await;
-    assert_eq!(shown.stdout, honest.as_bytes(), "show renders the committed design.md alone");
+    let rendered = format!(
+        "# Design\n\n## Overview\n\nOne endpoint (from docs).\n\n## Domain model\n\n\
+         The greeting payload is one string field.\n\n```\n{signature}\n```\n"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&shown.stdout),
+        rendered,
+        "the signature is rendered verbatim where the draft placed it"
+    );
     provider.model.assert_exhausted();
 }
 
@@ -848,8 +966,9 @@ async fn binding_paths() {
     )
     .expect("write emery.toml");
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [zulu, intent, alpha]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    // Three sources contribute one id: the grouping turn merges them.
+    let grouping = floor_grouping(3);
+    let provider = Provider::answering([grouping.as_str(), SPEC_ANSWER, DESIGN_ANSWER]);
     let path = project_arg(&path);
     cli_ok(&provider, &["emery", "specify", "--config", &path]).await;
 
@@ -926,8 +1045,7 @@ async fn pinned_component() {
     .expect("write emery.toml");
     let config = project_arg(&config);
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [local]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
 
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let stdout = String::from_utf8_lossy(&resp.stdout);
@@ -998,8 +1116,7 @@ async fn github_refused() {
 #[tokio::test]
 async fn package_loads() {
     for reference in ["emery:demo@1.2.0", "demo@1.2.0"] {
-        let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");
-        let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+        let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
 
         cli_ok(&provider, &["emery", "specify", reference]).await;
 
@@ -1039,8 +1156,7 @@ async fn registry_override() {
     .expect("write emery.toml");
     let config = project_arg(&config);
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [ledger]");
-    let mut provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let mut provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     provider.plugins = provider.plugins.clone().digest("acme:ledger@2.1.0", digest("cd"));
 
     let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
@@ -1072,8 +1188,7 @@ async fn pinned_package() {
     fs::write(&config, pinned(&digest("ab"))).expect("write emery.toml");
     let config = project_arg(&config);
 
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [demo]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let request = provider.plugins.loads().first().cloned().expect("one load request");
     assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
@@ -1170,8 +1285,7 @@ async fn corrupt_current() {
 // bytes the id never named.
 #[tokio::test]
 async fn tampered_revision() {
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
     let id = current(&provider.storage);
 
@@ -1185,11 +1299,10 @@ async fn tampered_revision() {
 // the advisory diff.
 #[tokio::test]
 async fn specify_repairs_tampered() {
-    let first_spec = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
-    let second_spec = first_spec.replace("hello", "howdy");
+    let second_spec = SPEC_ANSWER.replace("hello", "howdy");
     let second_design = DESIGN_ANSWER.replace("hello", "howdy");
     let provider = Provider::answering([
-        first_spec.as_str(),
+        SPEC_ANSWER,
         DESIGN_ANSWER,
         second_spec.as_str(),
         second_design.as_str(),
@@ -1225,8 +1338,7 @@ async fn specify_repairs_tampered() {
 // a corrupt store never dead-ends the grammar.
 #[tokio::test]
 async fn specify_repairs_current() {
-    let spec_answer = SPEC_ANSWER.replace("Sources: [source]", "Sources: [docs]");
-    let provider = Provider::answering([spec_answer.as_str(), DESIGN_ANSWER]);
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     provider.storage.insert_state(CURRENT, b"\xff\xfe");
     fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
 

@@ -1,8 +1,9 @@
 //! The `specify` operation
 //!
 //! Emery's central operation: given a list of source bindings, extract each
-//! source's claims, reconcile them under authority precedence, synthesise
-//! `spec.md` and `design.md`, and commit the pair as one new revision.
+//! source's claims, derive the requirement rows under authority precedence,
+//! synthesise `spec.md` and `design.md`, and commit the pair as one new
+//! revision.
 //!
 //! A [`SourceBinding`] names one source to extract from: the adapter to use,
 //! the key the specification will cite it by, and either a workspace to read
@@ -15,7 +16,11 @@
 //! superseded revision — so a caller can see what changed without reading
 //! the documents.
 
+mod draft;
 mod extract;
+mod judgment;
+mod provenance;
+mod render;
 mod synthesise;
 
 use std::collections::BTreeSet;
@@ -29,7 +34,7 @@ use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
 use serde::{Deserialize, Serialize};
 
 use self::extract::extract;
-use self::synthesise::{reconcile, synthesise};
+use self::synthesise::synthesise;
 use crate::plugin::{AdapterRef, Loaded, Loader};
 use crate::store::Store;
 pub use crate::store::{Changes, Diff};
@@ -49,7 +54,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
 
     let provider = context.provider();
     let sets = extract(provider, &bindings).await?;
-    let rows = reconcile(&sets);
+    let rows = provenance::rows(provider, &sets).await?;
     let revision = synthesise(provider, &sets, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;
 
