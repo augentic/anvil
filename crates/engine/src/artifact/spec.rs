@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use omnia_guest::{Error, server_error};
 
-use super::{Document, Line, Lines};
+use crate::artifact::{Document, Line, Lines};
 
 /// The requirement heading marker.
 pub const HEADING: &str = "### Requirement:";
@@ -247,7 +247,7 @@ impl Display for Tag {
 // is what the re-mine diff compares, and `body` is read by nothing else.
 #[cfg(test)]
 mod tests {
-    use super::Spec;
+    use crate::artifact::Spec;
 
     #[test]
     fn body_is_the_text_alone() {

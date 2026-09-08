@@ -13,10 +13,10 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use super::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
-use super::extract::SourceSet;
-use super::provenance::{Contributor, Provenance, normalise};
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
+use crate::specify::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
+use crate::specify::extract::SourceSet;
+use crate::specify::provenance::{Contributor, Provenance, normalise};
 
 /// Renders `spec.md` from `rows` and their drafted content.
 #[must_use]
@@ -147,11 +147,11 @@ mod tests {
     use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
     use serde_json::json;
 
-    use super::super::answer::{DesignAnswer, SpecAnswer};
-    use super::super::extract::SourceSet;
-    use super::super::provenance::floor;
-    use super::super::synthesise::plan;
     use crate::artifact::{Design, SectionKind, Spec, Status};
+    use crate::specify::answer::{DesignAnswer, SpecAnswer};
+    use crate::specify::extract::SourceSet;
+    use crate::specify::provenance::floor;
+    use crate::specify::synthesise::plan;
 
     fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
         let mut extras = serde_json::Map::new();
@@ -208,7 +208,7 @@ mod tests {
         }))
         .expect("draft shape");
         spec_draft.check(&rows).expect("draft fits the rows");
-        let spec = super::spec(&rows, &spec_draft);
+        let spec = crate::specify::render::spec(&rows, &spec_draft);
         let read: Spec = spec.parse().expect("the rendering is canonical");
         let subjects: Vec<&str> = read.requirements.iter().map(|r| r.subject.as_str()).collect();
         assert_eq!(subjects, ["login.flow", "session.timeout"], "row order");
@@ -230,7 +230,7 @@ mod tests {
         }))
         .expect("draft shape");
         design_draft.check(&plan(&sets), &sets).expect("draft fits the plan");
-        let design = super::design(&sets, &design_draft);
+        let design = crate::specify::render::design(&sets, &design_draft);
         let read: Design = design.parse().expect("the rendering is canonical");
         let kinds: Vec<SectionKind> = read.sections.iter().map(|s| s.kind).collect();
         assert_eq!(kinds, [SectionKind::Overview, SectionKind::DomainModel], "vocabulary order");

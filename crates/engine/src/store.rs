@@ -294,7 +294,7 @@ impl Changes {
 mod tests {
     use omnia_test::guest::Memory;
 
-    use super::{CONTAINER, Revision, Store};
+    use crate::store::{CONTAINER, Revision, Store};
 
     #[tokio::test]
     async fn concurrent_commit_conflicts() {

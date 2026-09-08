@@ -17,12 +17,12 @@ use std::fmt::{self, Display, Write as _};
 use emery_source::types::{Claim, ClaimKind};
 use omnia_guest::{Error, Model};
 
-use super::answer::{DesignAnswer, SpecAnswer};
-use super::extract::SourceSet;
-use super::judgment::Question;
-use super::provenance::Provenance;
-use super::render;
 use crate::artifact::{ReqId, SectionKind, Status};
+use crate::specify::answer::{DesignAnswer, SpecAnswer};
+use crate::specify::extract::SourceSet;
+use crate::specify::provenance::Provenance;
+use crate::specify::question::Question;
+use crate::specify::render;
 use crate::store::Revision;
 
 // Prompt order is significant.

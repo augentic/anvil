@@ -16,11 +16,11 @@ use emery_source::types::Claim;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::extract::SourceSet;
-use super::judgment::Findings;
-use super::provenance::Provenance;
-use super::synthesise::{Plan, Presence};
 use crate::artifact::{SectionKind, Status, citations};
+use crate::specify::extract::SourceSet;
+use crate::specify::provenance::Provenance;
+use crate::specify::question::Findings;
+use crate::specify::synthesise::{Plan, Presence};
 
 // A paragraph line may not open with anything the renderer owns.
 const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];

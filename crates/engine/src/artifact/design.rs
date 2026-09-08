@@ -12,7 +12,7 @@ use omnia_guest::{Error, server_error};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::{Document, Line, Lines};
+use crate::artifact::{Document, Line, Lines};
 
 const MARKER: &str = "## ";
 const CITATION: &str = "(from ";
@@ -169,7 +169,7 @@ pub fn citations(text: &str) -> impl Iterator<Item = &str> {
 // is what the re-mine diff compares, and `body` is read by nothing else.
 #[cfg(test)]
 mod tests {
-    use super::{Design, SectionKind, citations};
+    use crate::artifact::{Design, SectionKind, citations};
 
     #[test]
     fn body_is_the_text_alone() {

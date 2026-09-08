@@ -21,9 +21,9 @@ use omnia_guest::{Error, Model};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::extract::SourceSet;
-use super::judgment::{Findings, Question};
 use crate::artifact::Status;
+use crate::specify::extract::SourceSet;
+use crate::specify::question::{Findings, Question};
 
 const PROSE: &[&str] = &["synthesis/grouping.md"];
 
