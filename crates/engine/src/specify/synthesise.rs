@@ -209,7 +209,7 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
 
 fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
     prompt.push_str("## Claims\n");
-    
+
     for set in sets {
         let _ = write!(
             prompt,

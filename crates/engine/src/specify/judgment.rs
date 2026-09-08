@@ -87,7 +87,7 @@ impl<T: DeserializeOwned + JsonSchema> Question<T> {
                     "model `{name}` answer failed validation after {MAX_REPAIRS} repairs:\n{findings}"
                 ));
             }
-            
+
             attempt += 1;
             prompt = format!(
                 "{user}\n\n## Previous answer (failed validation)\n\n{answer}\n\n\

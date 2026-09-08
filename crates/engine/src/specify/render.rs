@@ -117,7 +117,7 @@ fn notes(row: &Provenance) -> Option<String> {
 fn note(class: &[Contributor]) -> String {
     let sources = class.iter().map(|member| member.source.as_str()).collect::<Vec<_>>().join(", ");
     let lead = &class[0];
-    
+
     format!(
         "Note: {sources} ({authority}, {id}): {statement}",
         authority = lead.authority,

@@ -367,7 +367,7 @@ impl<'a> Claims<'a> {
 
     fn contributor(&self, index: usize) -> Contributor {
         let claim = &self.requirements[index];
-        
+
         Contributor {
             source: claim.source.to_string(),
             authority: claim.authority,
