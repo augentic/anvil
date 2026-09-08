@@ -14,12 +14,12 @@ use std::fmt::Write as _;
 
 use super::draft::{Block, DesignDraft, SpecDraft, signature, type_key, types};
 use super::extract::SourceSet;
-use super::provenance::{Contributor, Row, normalise};
+use super::provenance::{Contributor, Provenance, normalise};
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
 
 /// Renders `spec.md` from `rows` and their drafted content.
 #[must_use]
-pub fn spec(rows: &[Row], draft: &SpecDraft) -> String {
+pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
     let mut blocks: Vec<String> = vec!["# Specification".to_string()];
     blocks.extend(draft.preamble.iter().map(|paragraph| paragraph.trim().to_string()));
 
@@ -87,7 +87,7 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
 
 // The templated `Note:` lines: one per losing class (every class for a
 // conflict, then the reconciliation line), then the acceptance gap.
-fn notes(row: &Row) -> Option<String> {
+fn notes(row: &Provenance) -> Option<String> {
     let mut lines = Vec::new();
     match row.status() {
         Status::Divergence => lines.extend(row.classes().iter().skip(1).map(|class| note(class))),
@@ -135,7 +135,7 @@ mod tests {
 
     use super::super::draft::{self, DesignDraft, SpecDraft};
     use super::super::extract::SourceSet;
-    use super::super::provenance::floor_rows;
+    use super::super::provenance::floor;
     use super::super::synthesise::plan;
     use crate::artifact::{Design, SectionKind, Spec, Status};
 
@@ -178,7 +178,7 @@ mod tests {
                 claim(ClaimKind::Type, "session.type", ("signature", "type Session = {}")),
             ],
         )];
-        let rows = floor_rows(&sets);
+        let rows = floor(&sets);
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].status(), Status::Conflict, "two docs statements tie");
         assert_eq!(rows[1].status(), Status::Agreed, "covered by its criterion");

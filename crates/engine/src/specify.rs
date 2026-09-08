@@ -54,7 +54,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
 
     let provider = context.provider();
     let sets = extract(provider, &bindings).await?;
-    let rows = provenance::rows(provider, &sets).await?;
+    let rows = provenance::derive(provider, &sets).await?;
     let revision = synthesise(provider, &sets, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;
 

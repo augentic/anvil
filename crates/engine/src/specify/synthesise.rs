@@ -21,7 +21,7 @@ use omnia_guest::{Error, Model};
 use super::draft::{self, DesignDraft, SpecDraft, type_key, types};
 use super::extract::SourceSet;
 use super::judgment::{self, Question};
-use super::provenance::Row;
+use super::provenance::Provenance;
 use super::render;
 use crate::artifact::{ReqId, SectionKind, Status};
 use crate::store::Revision;
@@ -65,7 +65,7 @@ pub fn plan(sets: &[SourceSet]) -> Plan {
 ///
 /// Returns the model failure or the exhausted draft findings.
 pub async fn synthesise<M: Model>(
-    model: &M, sets: &[SourceSet], rows: &[Row],
+    model: &M, sets: &[SourceSet], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
     let question = Question {
@@ -145,7 +145,7 @@ const fn informants(kind: SectionKind) -> &'static [ClaimKind] {
     }
 }
 
-fn spec_prompt(sets: &[SourceSet], rows: &[Row]) -> String {
+fn spec_prompt(sets: &[SourceSet], rows: &[Provenance]) -> String {
     let mut prompt = String::from("Draft `spec.md`.\n\n");
     render_claims(&mut prompt, sets);
 

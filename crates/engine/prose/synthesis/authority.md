@@ -25,4 +25,4 @@ An uncovered `divergence` or `conflict` row keeps its tag; the engine adds the g
 
 - **`agreed`** / **`unknown`** — the shared statement as the operative body: quote documentation language lightly normalised, paraphrase behaviour into present-tense system prose.
 - **`divergence`** — the winning class's statement as the operative body. Do not mention the losers: the engine renders one `Note:` per losing class from their verbatim statements.
-- **`conflict`** — no body at all (`"body": []`). The engine renders one `Note:` per class and `Note: Operator reconciliation required.`; you draft only the scenario, which must not pick a side.
+- **`conflict`** — no body at all (`"body": []`). The engine renders one `Note:` per class and a closing note handing the decision to the operator; you draft only the scenario, which must not pick a side.

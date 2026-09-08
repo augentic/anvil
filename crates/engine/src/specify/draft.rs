@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 
 use super::extract::SourceSet;
 use super::judgment::{self, Findings};
-use super::provenance::Row;
+use super::provenance::Provenance;
 use super::synthesise::{Plan, Presence};
 use crate::artifact::{SectionKind, Status, citations};
 
@@ -124,11 +124,12 @@ const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 /// # Errors
 ///
 /// Returns every finding, for repair.
-pub fn check_spec(draft: &SpecDraft, rows: &[Row]) -> Result<(), Findings> {
+pub fn check_spec(draft: &SpecDraft, rows: &[Provenance]) -> Result<(), Findings> {
     let mut findings = Vec::new();
     paragraphs(&draft.preamble, "preamble", &mut findings);
 
-    let by_subject: BTreeMap<&str, &Row> = rows.iter().map(|row| (row.subject(), row)).collect();
+    let by_subject: BTreeMap<&str, &Provenance> =
+        rows.iter().map(|row| (row.subject(), row)).collect();
     let mut seen = BTreeSet::new();
     for requirement in &draft.requirements {
         let subject = requirement.subject.as_str();

@@ -1,7 +1,7 @@
 //! Requirement provenance
 //!
-//! Turns every source's requirement claims into the rows `spec.md` is built
-//! on. Which claims across sources describe one requirement, and which of
+//! Turns every source's requirement claims into the provenance of each
+//! requirement — the rows `spec.md` is built on. Which claims across sources describe one requirement, and which of
 //! them agree, is a judgement: the model answers it as one partition — claims
 //! into requirements, each requirement's claims into agreeing classes — over
 //! a deterministic floor that pre-merges byte-equal ids. The engine validates
@@ -26,17 +26,17 @@ use crate::artifact::Status;
 
 const PROSE: &[&str] = &["synthesis/grouping.md"];
 
-/// Derives the requirement rows of `sets`, asking the model to group the
-/// claims when two or more sources contribute.
+/// Derives the provenance of every requirement in `sets`, asking the model
+/// to group the claims on any run over two or more sources.
 ///
 /// # Errors
 ///
 /// Returns the model failure or the exhausted grouping findings.
-pub async fn rows<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Row>, Error> {
-    let claims = Claims::collect(sets);
-    if sets.len() < 2 || claims.requirements.len() < 2 {
-        return Ok(floor_rows(sets));
+pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Provenance>, Error> {
+    if sets.len() < 2 {
+        return Ok(floor(sets));
     }
+    let claims = Claims::collect(sets);
     tracing::info!("grouping requirement claims");
     let question = Question {
         system: judgment::system(PROSE),
@@ -53,10 +53,11 @@ pub async fn rows<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Row>, E
     Ok(claims.derive(&grouping))
 }
 
-/// The rows the floor alone derives: byte-equal ids are one requirement,
-/// whitespace-equal statements one class. What a run over one source gets.
+/// The provenance the floor alone derives: byte-equal ids are one
+/// requirement, whitespace-equal statements one class. What a run over one
+/// source gets.
 #[must_use]
-pub fn floor_rows(sets: &[SourceSet]) -> Vec<Row> {
+pub fn floor(sets: &[SourceSet]) -> Vec<Provenance> {
     let claims = Claims::collect(sets);
     claims.derive(&claims.floor())
 }
@@ -81,18 +82,19 @@ pub struct Group {
     pub classes: Vec<Vec<usize>>,
 }
 
-/// One requirement row: the subject `spec.md` heads it with, its status,
-/// whether an acceptance criterion covers it, and its contributors in
-/// agreeing classes, the winning class first.
+/// The provenance of one requirement — the row `spec.md` renders it as: the
+/// subject it is headed with, its status, whether an acceptance criterion
+/// covers it, and its contributors in agreeing classes, the winning class
+/// first.
 #[derive(Debug, Clone)]
-pub struct Row {
+pub struct Provenance {
     subject: String,
     status: Status,
     covered: bool,
     classes: Vec<Vec<Contributor>>,
 }
 
-impl Row {
+impl Provenance {
     // Highest authority first, binding order within a class; one class
     // agrees, a unique top authority wins divergence, top-authority peers
     // in different classes conflict; an uncovered agreed row is unknown.
@@ -347,7 +349,7 @@ impl<'a> Claims<'a> {
     }
 
     // Rows in first-seen order of each group's earliest claim.
-    fn derive(&self, grouping: &Grouping) -> Vec<Row> {
+    fn derive(&self, grouping: &Grouping) -> Vec<Provenance> {
         let mut groups: Vec<(usize, Vec<Vec<Contributor>>)> = grouping
             .groups
             .iter()
@@ -362,7 +364,7 @@ impl<'a> Claims<'a> {
             })
             .collect();
         groups.sort_by_key(|(first, _)| *first);
-        groups.into_iter().map(|(_, classes)| Row::derive(classes, &self.criteria)).collect()
+        groups.into_iter().map(|(_, classes)| Provenance::derive(classes, &self.criteria)).collect()
     }
 
     fn contributor(&self, index: usize) -> Contributor {

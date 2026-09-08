@@ -1,6 +1,6 @@
 # Tag grammar
 
-Three review-signal tags render into `spec.md` from each requirement's row, after the heading name. The engine writes them; they document uncertainty inline so the operator can reconcile sources and re-run `emery specify`.
+Three review-signal tags render into `spec.md` from each requirement's row, after the heading name. The engine writes them; they document uncertainty inline so the operator can resolve it at the source and re-run `emery specify`.
 
 ## Closed tag set
 
