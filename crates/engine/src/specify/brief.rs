@@ -10,7 +10,7 @@
 //! The model is never asked for anything the engine can decide itself, and
 //! nothing the engine renders comes from an unchecked answer.
 
-use std::fmt;
+use std::fmt::Display;
 
 use omnia_guest::model::{Findings, Question};
 use omnia_guest::{Error, Model};
@@ -20,7 +20,7 @@ use serde_json::Value;
 
 // `Sync`: the check closure `Question::ask` takes is `Send`, and it
 // borrows the brief.
-pub trait Brief: fmt::Display + Sync + Sized {
+pub trait Brief: Display + Sync + Sized {
     /// The typed answer the brief asks for.
     type Answer: JsonSchema + DeserializeOwned + Send;
 
@@ -42,10 +42,10 @@ pub trait Brief: fmt::Display + Sync + Sized {
     /// # Errors
     ///
     /// Returns every finding, for repair.
-    fn check(&self, answer: &Self::Answer) -> Result<(), Findings>;
+    fn verify(&self, answer: &Self::Answer) -> Result<(), Findings>;
 
-    /// Derives the output from the brief and the answer its check accepted.
-    fn conclude(self, answer: Self::Answer) -> Self::Output;
+    /// Transforms the answer into output specific to the brief.
+    fn into_output(self, answer: Self::Answer) -> Self::Output;
 
     /// Puts the brief to `model` and concludes the answer its check
     /// accepted.
@@ -64,14 +64,10 @@ pub trait Brief: fmt::Display + Sync + Sized {
         let answer = Question::<Self::Answer>::new(Self::NAME)
             .system(system)
             .schema(|schema| self.hints(schema))
-            .ask(model, self.to_string(), None, |answer| self.check(answer))
+            .ask(model, self.to_string(), None, |answer| self.verify(answer))
             .await?;
 
-        Ok(self.conclude(answer))
+        Ok(self.into_output(answer))
     }
 }
 
-// `Ok(())` for no findings, else every finding for repair.
-pub fn verdict(findings: Findings) -> Result<(), Findings> {
-    if findings.is_empty() { Ok(()) } else { Err(findings) }
-}

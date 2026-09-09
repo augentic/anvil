@@ -18,7 +18,7 @@
 mod design;
 mod spec;
 
-use std::fmt;
+use std::fmt::{self, Display, Formatter};
 
 use omnia_guest::model::Findings;
 use omnia_guest::{Error, Model};
@@ -34,14 +34,18 @@ use crate::store::Revision;
 // A paragraph line may not open with anything the renderer owns.
 const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 
-/// Drafts `spec.md` over `rows`, then `design.md` over the rendered spec,
-/// and renders both canonically.
+/// Takes evidence from all queried sources and asks the model to synthesise 
+/// into a single specification set containing both the specification and 
+/// design documents.
+/// 
+/// # Errors
+/// 
+/// Returns the model failure or the synthesis findings.
 pub async fn synthesise<M: Model>(
     model: &M, sources: &[SourceEvidence], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     let spec = SpecBrief::new(sources, rows).judge(model).await?;
     let design = DesignBrief::new(&spec, sources).judge(model).await?;
-
     Ok(Revision { spec, design })
 }
 
@@ -49,7 +53,7 @@ pub async fn synthesise<M: Model>(
 fn document(blocks: &[String]) -> String {
     let mut text = blocks
         .iter()
-        .map(|block| block.lines().map(str::trim_end).collect::<Vec<_>>().join("\n"))
+        .map(|b| b.lines().map(str::trim_end).collect::<Vec<_>>().join("\n"))
         .collect::<Vec<_>>()
         .join("\n\n");
     text.push('\n');
@@ -57,7 +61,7 @@ fn document(blocks: &[String]) -> String {
 }
 
 // Every claim of every source, for a brief's turn.
-fn render_claims(f: &mut fmt::Formatter<'_>, sources: &[SourceEvidence]) -> fmt::Result {
+fn render_claims(f: &mut Formatter<'_>, sources: &[SourceEvidence]) -> fmt::Result {
     f.write_str("## Claims\n")?;
 
     for source in sources {
@@ -83,14 +87,14 @@ fn render_claims(f: &mut fmt::Formatter<'_>, sources: &[SourceEvidence]) -> fmt:
     Ok(())
 }
 
-fn paragraphs(texts: &[String], label: impl fmt::Display, findings: &mut Findings) {
+fn paragraphs(texts: &[String], label: impl Display, findings: &mut Findings) {
     for text in texts {
         paragraph(text, &label, findings);
     }
 }
 
 // A paragraph is non-blank and opens no line with a reserved marker.
-fn paragraph(text: &str, label: impl fmt::Display, findings: &mut Findings) {
+fn paragraph(text: &str, label: impl Display, findings: &mut Findings) {
     if text.trim().is_empty() {
         findings.push(format!("- {label} has a blank paragraph"));
         return;
@@ -107,7 +111,7 @@ fn paragraph(text: &str, label: impl fmt::Display, findings: &mut Findings) {
 }
 
 // A scenario field is one non-blank line.
-fn line(text: &str, label: impl fmt::Display, findings: &mut Findings) {
+fn line(text: &str, label: impl Display, findings: &mut Findings) {
     if text.trim().is_empty() {
         findings.push(format!("- {label} is blank"));
     } else if text.contains('\n') {

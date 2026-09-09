@@ -18,7 +18,7 @@ use serde_json::{Value, json};
 
 use crate::artifact::{HEADING, ReqId, SCENARIO, Status};
 use crate::specify::SourceEvidence;
-use crate::specify::brief::{Brief, verdict};
+use crate::specify::brief::Brief;
 use crate::specify::provenance::{Contributor, Provenance, normalise};
 use crate::specify::synthesise::{document, line, paragraphs, render_claims};
 
@@ -65,7 +65,7 @@ impl Brief for SpecBrief<'_> {
 
     // The subject set equals the row set, a scenario per requirement, body
     // discipline per status, and no reserved marker.
-    fn check(&self, answer: &SpecAnswer) -> Result<(), Findings> {
+    fn verify(&self, answer: &SpecAnswer) -> Result<(), Findings> {
         let mut findings = Vec::new();
         paragraphs(&answer.preamble, "preamble", &mut findings);
 
@@ -116,11 +116,15 @@ impl Brief for SpecBrief<'_> {
             findings.push(format!("- requirement row `{subject}` is not drafted"));
         }
 
-        verdict(findings)
+        if !findings.is_empty() {
+            return Err(findings);
+        }
+
+        Ok(())
     }
 
     // Renders `spec.md`: the rows in order, each with its drafted content.
-    fn conclude(self, answer: SpecAnswer) -> String {
+    fn into_output(self, answer: SpecAnswer) -> Self::Output {
         let rows = self.rows;
         let entries: BTreeMap<&str, &Requirement> =
             answer.requirements.iter().map(|entry| (entry.subject.as_str(), entry)).collect();

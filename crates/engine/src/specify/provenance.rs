@@ -25,7 +25,7 @@ use serde_json::{Value, json};
 
 use crate::artifact::Status;
 use crate::specify::SourceEvidence;
-use crate::specify::brief::{Brief, verdict};
+use crate::specify::brief::Brief;
 
 /// Derives the provenance of every requirement in `sources`, asking the
 /// model to group the claims on any run over two or more sources.
@@ -268,7 +268,7 @@ impl Brief for Claims<'_> {
     }
 
     // Both levels are partitions, and no byte-equal-id pair is split.
-    fn check(&self, answer: &Grouping) -> Result<(), Findings> {
+    fn verify(&self, answer: &Grouping) -> Result<(), Findings> {
         let mut findings = Vec::new();
         let count = self.requirements.len();
         let mut placed: BTreeMap<usize, usize> = BTreeMap::new();
@@ -329,11 +329,15 @@ impl Brief for Claims<'_> {
             }
         }
 
-        verdict(findings)
+        if !findings.is_empty() {
+            return Err(findings);
+        }
+
+        Ok(())
     }
 
     // The rows the accepted grouping yields.
-    fn conclude(self, answer: Grouping) -> Vec<Provenance> {
+    fn into_output(self, answer: Grouping) -> Self::Output {
         self.rows(&answer)
     }
 }

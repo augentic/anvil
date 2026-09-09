@@ -8,7 +8,7 @@
 //! and the accepted pair renders the canonical document.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
+use std::fmt::{self, Display};
 
 use emery_source::types::{Claim, ClaimKind};
 use omnia_guest::model::Findings;
@@ -19,7 +19,7 @@ use strum::VariantArray as _;
 
 use crate::artifact::{SectionKind, citations};
 use crate::specify::SourceEvidence;
-use crate::specify::brief::{Brief, verdict};
+use crate::specify::brief::Brief;
 use crate::specify::synthesise::{document, paragraph, paragraphs, render_claims};
 
 /// The `design.md` brief: the rendered `spec.md` and the plan the draft is
@@ -79,7 +79,7 @@ impl Brief for DesignBrief<'_> {
 
     // The section set, one reference per type claim under `domain-model`,
     // bound citations, and no reserved marker.
-    fn check(&self, answer: &DesignAnswer) -> Result<(), Findings> {
+    fn verify(&self, answer: &DesignAnswer) -> Result<(), Findings> {
         let mut findings = Vec::new();
         paragraphs(&answer.preamble, "preamble", &mut findings);
 
@@ -140,12 +140,16 @@ impl Brief for DesignBrief<'_> {
             findings.push(format!("- type `{key}` is not a type claim"));
         }
 
-        verdict(findings)
+        if !findings.is_empty() {
+            return Err(findings);
+        }
+
+        Ok(())
     }
 
     // Renders `design.md`: the drafted sections in vocabulary order, each
     // `type` block replaced by the claim's signature.
-    fn conclude(self, answer: DesignAnswer) -> String {
+    fn into_output(self, answer: DesignAnswer) -> Self::Output {
         let signatures: BTreeMap<&str, &str> = self
             .plan
             .sources
@@ -182,7 +186,7 @@ impl Brief for DesignBrief<'_> {
 
 // The turn: every claim, the plan's verdict per section, the type blocks to
 // place, and the rendered `spec.md`.
-impl fmt::Display for DesignBrief<'_> {
+impl Display for DesignBrief<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Draft `design.md`.\n\n")?;
         render_claims(f, self.plan.sources)?;
