@@ -1,13 +1,18 @@
-//! Source records
+//! Contract types
 //!
-//! The types of the `source` interface itself: what an adapter is given
-//! ([`SourceInput`] over a workspace or an inline value), what it reports
-//! about itself ([`SourceMetadata`]), and what it returns — an [`Evidence`]
-//! document of typed [`Claim`]s with an [`Authority`] class.
+//! The Rust forms of the records in the `emery:adapter` WIT package: what an
+//! adapter is given ([`SourceInput`] over a workspace or an inline value),
+//! what it reports about itself ([`SourceMetadata`]), and what it returns —
+//! an [`Evidence`] document of typed [`Claim`]s with an [`Authority`] class.
+//! Engine and adapter code work with these; the generated wire bindings stay
+//! behind them, and operations fail with `omnia_guest::Error`.
 //!
 //! [`ClaimKind`] is the closed taxonomy the whole system agrees on, and each
 //! kind's required extras are declared next to it so the contract states in
-//! one place what a complete claim of that kind looks like.
+//! one place what a complete claim of that kind looks like. Serde derives sit
+//! only on the types that cross a JSON boundary: the [`Evidence`] a model
+//! answer is parsed into, and the [`SourceInput`] the engine's `specify`
+//! request carries.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
