@@ -11,42 +11,27 @@
 
 use std::future::Future;
 
-use crate::types::{Evidence, SourceInput, SourceMetadata};
+use omnia_guest::Error;
 
-/// Source import dispatch failure.
-#[derive(Clone, Debug, thiserror::Error)]
-pub enum DispatchError {
-    /// Adapter call failure.
-    #[error(transparent)]
-    Call(#[from] crate::types::Error),
-    /// Non-canonical JSON in an open extra (A8).
-    #[error("extra `{key}` is not canonical JSON ({detail}): {encoded}")]
-    Extras {
-        /// Extra key.
-        key: String,
-        /// Parse failure.
-        detail: String,
-        /// Wire value.
-        encoded: String,
-    },
-}
+use crate::types::{Evidence, SourceInput, SourceMetadata};
 
 /// Import-side source dispatch over the `emery:adapter/source` contract.
 ///
 /// Adapters implement the export-side `SourceAdapter` from `emery-adapter`
-/// instead.
+/// instead. An extract failure arrives classified: an adapter refusing its
+/// input is `BadRequest`, any other failure `BadGateway`.
 pub trait Source: Send + Sync {
     /// Dispatches `extract` to `id`.
     #[cfg(not(target_arch = "wasm32"))]
     fn extract(
         &self, id: &str, input: &SourceInput,
-    ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send;
+    ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 
     /// Dispatches `extract` to `id`.
     #[cfg(target_arch = "wasm32")]
     fn extract(
         &self, id: &str, input: &SourceInput,
-    ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
+    ) -> impl Future<Output = Result<Evidence, Error>> + Send {
         crate::wire::import::extract(id, input)
     }
 

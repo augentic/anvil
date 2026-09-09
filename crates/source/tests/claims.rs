@@ -6,7 +6,7 @@
 //! keeps the two enforcement points from disagreeing.
 
 use emery_source::claims::{extras_findings, id_findings};
-use emery_source::types::{ClaimKind, Error, Evidence};
+use emery_source::types::{ClaimKind, Evidence};
 
 #[test]
 fn clean_evidence_passes() {
@@ -20,7 +20,7 @@ fn clean_evidence_passes() {
     );
     assert!(id_findings(&clean.claims).is_empty());
     assert!(extras_findings(&clean.claims).is_empty());
-    clean.validate().expect("clean evidence passes the gate");
+    assert!(clean.findings().is_empty(), "clean evidence passes the gate");
 }
 
 #[test]
@@ -34,9 +34,8 @@ fn malformed_ids_fail_closed() {
     );
     assert_eq!(id_findings(&malformed.claims).len(), 2, "optional-id kinds pass unset");
     assert!(extras_findings(&malformed.claims).is_empty(), "extras are present");
-    let Err(Error::Internal(detail)) = malformed.validate() else {
-        panic!("malformed evidence must fail the gate");
-    };
+    let detail = malformed.findings().join("\n");
+    assert!(!detail.is_empty(), "malformed evidence must fail the gate");
     assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
     assert!(detail.contains("`Not.Valid`"), "finding names the malformed id: {detail}");
 }
@@ -61,10 +60,7 @@ fn missing_extras_fail_closed() {
     assert_eq!(findings.len(), 2, "one finding per absent extra: {findings:?}");
     assert!(findings[0].contains("`password-reset.request` is missing extra `statement`"));
     assert!(findings[1].contains("`password-reset.stale` is missing extra `replay-digest`"));
-    let Err(Error::Internal(detail)) = bare.validate() else {
-        panic!("absent extras must fail the gate");
-    };
-    assert!(detail.contains("missing extra `statement`"), "{detail}");
+    assert_eq!(bare.findings(), findings, "the document gate is the two rule sets joined");
 }
 
 fn evidence(json: &str) -> Evidence {

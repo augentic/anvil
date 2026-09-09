@@ -14,8 +14,8 @@ mod guest {
     emery_adapter::source!(crate::Adapter);
 }
 
-use emery_adapter::types::{Context, Error, Evidence, SourceContent, SourceInput};
-use emery_adapter::{Model, SourceAdapter, content_note, evidence};
+use emery_adapter::types::{Context, Evidence, SourceContent, SourceInput};
+use emery_adapter::{Error, Model, SourceAdapter, bad_request, content_note, evidence};
 use emery_prose::registry::{self, Doc};
 
 static DOCS: &[Doc] = &[
@@ -64,7 +64,7 @@ impl SourceAdapter for Adapter {
 fn greeting_note(input: &SourceInput) -> Result<String, Error> {
     match &input.content {
         SourceContent::Value(value) if value.trim().is_empty() => {
-            Err(Error::InvalidRequest("the bound greeting brief is empty".to_string()))
+            Err(bad_request!("the bound greeting brief is empty"))
         }
         SourceContent::Value(_) => Ok(content_note(input, "")),
         SourceContent::Workspace(_) => Ok(format!(

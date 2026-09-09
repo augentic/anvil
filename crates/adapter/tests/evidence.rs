@@ -4,14 +4,15 @@
 //! `Evidence` schema with the claim-id pattern, `check` set, the reference
 //! tools and workspace lend following the context), reference calls answered
 //! from the embedded corpus, a candidate the claim gate rejects corrected in
-//! place, the backend's spent rounds surfacing as `Internal` with the last
-//! findings, and a host refusal passing through typed.
+//! place, the backend's spent rounds surfacing as `bad_request` with the last
+//! findings, and a host refusal passing through as `bad_request`.
 
 use std::path::Path;
 
-use emery_adapter::types::{Authority, Backing, ClaimKind, Context, Error, Evidence, SourceInput};
-use emery_adapter::{Error as ModelError, ToolCall, content_note, evidence};
+use emery_adapter::types::{Authority, Backing, ClaimKind, Context, Evidence, SourceInput};
+use emery_adapter::{Error, ToolCall, content_note, evidence};
 use emery_prose::registry::Doc;
+use omnia_guest::model::Error as ModelError;
 use omnia_test::SeenFormat;
 use omnia_test::guest::Scripted;
 
@@ -149,7 +150,7 @@ async fn gate_findings_corrected() {
 }
 
 // When the backend spends its rounds on a rejected candidate the last
-// findings surface as `Internal`, so the host's own error is never the
+// findings surface as `bad_request`, so the host's own error is never the
 // adapter's answer.
 #[tokio::test]
 async fn rounds_exhausted() {
@@ -159,15 +160,16 @@ async fn rounds_exhausted() {
     let ctx = context(&[], None);
 
     let error = ask(&model, &ctx).await.expect_err("the only candidate fails the gate");
-    let Error::Internal(detail) = error else {
-        panic!("spent rounds are internal: {error}");
+    let Error::BadRequest { code, description } = error else {
+        panic!("spent rounds are a bad request: {error}");
     };
-    assert!(detail.contains("budget exhausted"), "{detail}");
-    assert!(detail.contains("id `Not.Valid` does not match"), "{detail}");
+    assert_eq!(code, "bad_request");
+    assert!(description.contains("budget exhausted"), "{description}");
+    assert!(description.contains("id `Not.Valid` does not match"), "{description}");
     assert_eq!(model.exchanges().len(), 1, "one check, rejected");
 }
 
-// A request the host refuses is the adapter's `InvalidRequest`, untouched.
+// A request the host refuses is a `bad_request` carrying the host's reason.
 #[tokio::test]
 async fn invalid_request_passes_through() {
     let model = Scripted::new([Err(ModelError::InvalidRequest("no such model".to_string()))]);
@@ -175,7 +177,7 @@ async fn invalid_request_passes_through() {
 
     let error = ask(&model, &ctx).await.expect_err("the host refused");
     assert!(
-        matches!(&error, Error::InvalidRequest(detail) if detail == "no such model"),
+        matches!(&error, Error::BadRequest { description, .. } if description == "invalid request: no such model"),
         "{error}"
     );
     assert!(model.exchanges().is_empty(), "nothing to check");

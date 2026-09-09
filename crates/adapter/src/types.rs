@@ -13,8 +13,7 @@ use std::path::Path;
 
 use emery_prose::registry::Doc;
 pub use emery_source::types::{
-    Authority, Backing, Claim, ClaimKind, Error, Evidence, SourceContent, SourceInput,
-    SourceMetadata,
+    Authority, Backing, Claim, ClaimKind, Evidence, SourceContent, SourceInput, SourceMetadata,
 };
 
 /// Call-scoped adapter environment.

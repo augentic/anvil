@@ -5,8 +5,8 @@
 //! exercise without a wasm build, which is the promise adapter authors' own
 //! test suites depend on.
 
-use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{Model, SourceAdapter, evidence};
+use emery_adapter::types::{Context, Evidence, SourceInput, SourceMetadata};
+use emery_adapter::{Error, Model, SourceAdapter, evidence};
 use emery_prose::registry::Doc;
 use omnia_test::guest::Scripted;
 

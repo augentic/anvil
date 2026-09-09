@@ -2,15 +2,15 @@
 //!
 //! What makes a claim well formed: the grammar its id must follow, which
 //! claim kinds must carry an id at all, and the extra fields each kind is
-//! required to include. [`Evidence::validate`] applies all of them to a whole
-//! document.
+//! required to include. [`Evidence::findings`] applies all of them to a whole
+//! document and reports every violation as one line.
 //!
 //! The rules live in the contract crate because two parties enforce them.
 //! An adapter checks its own answer so a bad claim can be repaired before it
 //! leaves the guest; the engine checks again on receipt, because it cannot
 //! assume every adapter did.
 
-use crate::types::{Claim, ClaimKind, Error, Evidence};
+use crate::types::{Claim, ClaimKind, Evidence};
 
 /// Claim-id grammar. Rides the derived `Claim.id` schema as a steering
 /// `pattern` and is enforced again in code.
@@ -72,24 +72,11 @@ impl Evidence {
         self.claims.iter().filter(|claim| claim.kind == ClaimKind::Type)
     }
 
-    /// Every id and extras finding over the document's claims.
+    /// Every id and extras finding over the document's claims; empty when
+    /// the document passes the gate.
     #[must_use]
     pub fn findings(&self) -> Vec<String> {
         findings(&self.claims)
-    }
-
-    /// Enforces claim-id grammar and required extras fail-closed.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Internal`] with one finding per violation.
-    pub fn validate(&self) -> Result<(), Error> {
-        let findings = self.findings();
-        if findings.is_empty() {
-            return Ok(());
-        }
-        let findings = findings.join("\n");
-        Err(Error::Internal(format!("invalid claims:\n{findings}")))
     }
 }
 

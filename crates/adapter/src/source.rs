@@ -20,7 +20,7 @@ pub fn dispatch_metadata<A: crate::SourceAdapter>() -> AdapterMetadata {
 ///
 /// # Errors
 ///
-/// Returns the adapter's extract error.
+/// Returns the adapter's failure lowered onto the wire variant.
 pub async fn dispatch_extract<A: crate::SourceAdapter>(
     id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {

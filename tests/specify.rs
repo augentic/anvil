@@ -22,9 +22,9 @@ use std::sync::Arc;
 
 use emery_engine::{CONTAINER, CURRENT};
 use emery_source::types::{Authority, ClaimKind, SourceContent};
-use emery_source::{DispatchError, types};
 use omnia_guest::model::Error as ModelError;
 use omnia_guest::plugins::{Digest, Error as LoadError, Location};
+use omnia_guest::{bad_gateway, bad_request};
 use omnia_test::SeenFormat;
 use omnia_test::guest::{Memory, Namespaced, Scripted};
 use serde_json::Value;
@@ -579,16 +579,32 @@ async fn extras_missing() {
     assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
 }
 
-// An adapter call failure surfaces as one typed error.
+// An adapter failure surfaces as the upstream error it is.
 #[tokio::test]
 async fn extract_fails() {
     let mut provider = Provider::idle();
-    provider.source.evidence.insert(
-        "docs".to_string(),
-        Err(DispatchError::Call(types::Error::Internal("the adapter exploded".to_string()))),
-    );
+    provider
+        .source
+        .evidence
+        .insert("docs".to_string(), Err(bad_gateway!("source `docs`: the adapter exploded")));
 
-    fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
+    let envelope = fail(&provider, &["emery", "specify", "docs"], 4, "bad_gateway").await;
+    assert_eq!(envelope["message"], "source `docs`: the adapter exploded");
+    assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
+}
+
+// An adapter refusing its input is the operator's error, not the
+// adapter's: the refusal keeps its class through the engine.
+#[tokio::test]
+async fn extract_refuses() {
+    let mut provider = Provider::idle();
+    provider
+        .source
+        .evidence
+        .insert("docs".to_string(), Err(bad_request!("source `docs`: the brief is empty")));
+
+    let envelope = fail(&provider, &["emery", "specify", "docs"], 1, "bad_request").await;
+    assert_eq!(envelope["message"], "source `docs`: the brief is empty");
     assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
 }
 

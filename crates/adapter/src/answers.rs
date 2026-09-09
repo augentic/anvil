@@ -13,19 +13,19 @@
 //! evidence to reject.
 
 use emery_source::claims;
-use omnia_guest::Model;
 use omnia_guest::model::Question;
+use omnia_guest::{Error, Model};
 
 use crate::references;
-use crate::types::{Context, Error, Evidence, SourceContent, SourceInput};
+use crate::types::{Context, Evidence, SourceContent, SourceInput};
 
 /// Asks the extract question and returns the accepted [`Evidence`].
 ///
 /// # Errors
 ///
-/// Returns [`Error::InvalidRequest`] for a request the host refuses, and
-/// [`Error::Internal`] for a model failure or the last gate findings once
-/// the backend's rounds are spent.
+/// A request the host refuses, or the last gate findings once the backend's
+/// rounds are spent, is `BadRequest`; a tool or transport failure is
+/// `BadGateway`.
 pub async fn evidence<P: Model>(
     model: &P, ctx: &Context<'_>, system: String, user: String,
 ) -> Result<Evidence, Error> {

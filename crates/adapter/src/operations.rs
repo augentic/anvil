@@ -11,9 +11,9 @@
 use std::future::Future;
 
 use emery_prose::registry::Doc;
-use omnia_guest::Model;
+use omnia_guest::{Error, Model};
 
-use crate::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
+use crate::types::{Context, Evidence, SourceInput, SourceMetadata};
 
 /// Contract implemented by source adapters.
 ///
@@ -36,6 +36,9 @@ pub trait SourceAdapter {
     fn docs() -> &'static [Doc];
 
     /// Extract the source's claim set.
+    ///
+    /// Refuse unusable input with `BadRequest`; the engine reports any other
+    /// class as an adapter failure.
     fn extract<P: Model>(
         model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;

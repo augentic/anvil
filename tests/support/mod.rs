@@ -13,13 +13,13 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
+use emery_source::Source;
 use emery_source::types::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceInput, SourceMetadata,
 };
-use emery_source::{DispatchError, Source};
 use omnia_guest::api::command::Response;
 use omnia_guest::plugins::Digest;
-use omnia_guest::{BlobStore, StateStore};
+use omnia_guest::{BlobStore, Error, StateStore};
 use omnia_test::guest::{Memory, Scripted, ScriptedLoader};
 use serde_json::Value;
 
@@ -30,11 +30,12 @@ type Recorded = Vec<(String, SourceInput)>;
 
 /// Scripted `Source`: per-key evidence, per-adapter minimum `emery`
 /// versions, and a record of every dispatch. An unscripted key answers
-/// the greeting requirement as documentation evidence.
+/// the greeting requirement as documentation evidence; a scripted failure
+/// is the classified error the wire lift would have produced.
 #[derive(Clone, Debug, Default)]
 pub struct SourceScript {
     /// Extract outcomes keyed by source key.
-    pub evidence: BTreeMap<String, Result<Evidence, DispatchError>>,
+    pub evidence: BTreeMap<String, Result<Evidence, Error>>,
     /// Minimum `emery` versions keyed by adapter name.
     pub versions: BTreeMap<String, String>,
     /// Every extract dispatch, recorded for call assertions.
@@ -101,7 +102,7 @@ omnia_test::delegate!(impl[S: StateStore + BlobStore + Send + Sync + 'static] Pr
 impl<S: Send + Sync + 'static> Source for Provider<S> {
     fn extract(
         &self, id: &str, input: &SourceInput,
-    ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
+    ) -> impl Future<Output = Result<Evidence, Error>> + Send {
         self.source.calls.lock().expect("calls").push((id.to_string(), input.clone()));
         let outcome = self.source.evidence.get(&input.key).cloned().unwrap_or_else(|| {
             Ok(evidence(

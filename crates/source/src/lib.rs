@@ -16,4 +16,4 @@ pub mod types;
 #[cfg(target_arch = "wasm32")]
 pub mod wire;
 
-pub use dispatch::{DispatchError, Source};
+pub use dispatch::Source;

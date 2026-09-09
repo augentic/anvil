@@ -8,11 +8,12 @@
 //! Adapters are guests the engine did not write, so their claims are checked
 //! against the contract's claim rules before anything downstream trusts them.
 //! A source that returns invalid claims stops the run with a typed error
-//! rather than seeding a bad specification.
+//! rather than seeding a bad specification; an adapter's own failure arrives
+//! already classified by the `Source` capability.
 
 use emery_source::Source;
-use emery_source::types::{self, Evidence};
-use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
+use emery_source::types::Evidence;
+use omnia_guest::{Error, Plugins, bad_request};
 
 use crate::plugin::Loader;
 use crate::specify::SourceConfig;
@@ -30,18 +31,15 @@ pub async fn evidence<P: Source + Plugins>(
 
         let key = &source.key;
         tracing::debug!(source = %key, "extracting");
+        let evidence = Source::extract(provider, &id, &input).await?;
 
-        let evidence = Source::extract(provider, &id, &input)
-            .await
-            .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
-
-        // re-validate claims against the contract's rules
-        evidence.validate().map_err(|err| {
-            let (types::Error::Internal(detail)
-            | types::Error::InvalidRequest(detail)
-            | types::Error::Io(detail)) = err;
-            bad_request!("source `{key}` returned {detail}")
-        })?;
+        // Re-runs the contract's claim gate fail-closed (A8); the guest's
+        // own check cannot be trusted over the wire.
+        let findings = evidence.findings();
+        if !findings.is_empty() {
+            let findings = findings.join("\n");
+            return Err(bad_request!("source `{key}` returned invalid claims:\n{findings}"));
+        }
 
         extracted.push(SourceEvidence {
             key: key.clone(),

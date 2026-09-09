@@ -170,7 +170,7 @@ mod tests {
 
     fn source(key: &str, authority: Authority, claims: Vec<Claim>) -> SourceEvidence {
         let evidence = Evidence { authority, claims };
-        evidence.validate().expect("valid claims");
+        assert!(evidence.findings().is_empty(), "valid claims");
         SourceEvidence {
             key: key.to_string(),
             evidence,

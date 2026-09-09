@@ -8,6 +8,10 @@
 //! the SDK's `source!` macro, and the engine guest calls into it through
 //! [`import`]. A single generation guarantees the two sides agree on the wire
 //! shape by construction.
+//!
+//! The WIT `error` variant lives here alone: an adapter's `omnia_guest::Error`
+//! is lowered onto it on export, and [`import::extract`] lifts it back into
+//! the same classes, so neither side of the seam names the wire variant.
 
 mod generated {
     #![allow(
@@ -140,20 +144,28 @@ impl From<crate::types::Evidence> for Evidence {
     }
 }
 
-impl From<crate::types::Error> for Error {
-    fn from(error: crate::types::Error) -> Self {
+// The wire carries the description alone: a refusal of the input lowers to
+// `invalid-request`, every other class to `internal`, and the lift restores
+// the class. `io` is accepted on lift but never produced.
+impl From<omnia_guest::Error> for Error {
+    fn from(error: omnia_guest::Error) -> Self {
+        let description = error.description();
         match error {
-            crate::types::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
-            crate::types::Error::Io(detail) => Self::Io(detail),
-            crate::types::Error::Internal(detail) => Self::Internal(detail),
+            omnia_guest::Error::BadRequest { .. } | omnia_guest::Error::NotFound { .. } => {
+                Self::InvalidRequest(description)
+            }
+            omnia_guest::Error::ServerError { .. } | omnia_guest::Error::BadGateway { .. } => {
+                Self::Internal(description)
+            }
         }
     }
 }
 
 /// Typed wrappers for source WIT imports.
 pub mod import {
+    use omnia_guest::{Error, bad_gateway, bad_request};
+
     use super::generated::emery::adapter::source as wire;
-    use crate::dispatch::DispatchError;
     use crate::types;
 
     /// Returns resolve-time metadata for `id`.
@@ -172,14 +184,17 @@ pub mod import {
     ///
     /// # Errors
     ///
-    /// Returns the adapter call failure or A8 extras refusal.
-    pub async fn extract(
-        id: &str, input: &types::SourceInput,
-    ) -> Result<types::Evidence, DispatchError> {
-        let answer = wire::extract(id.to_string(), input.clone().into())
-            .await
-            .map_err(|err| DispatchError::Call(err.into()))?;
-        answer.try_into()
+    /// An adapter refusing its input is `BadRequest`; any other adapter
+    /// failure, or an extra that is not canonical JSON, is `BadGateway`.
+    pub async fn extract(id: &str, input: &types::SourceInput) -> Result<types::Evidence, Error> {
+        let answer =
+            wire::extract(id.to_string(), input.clone().into()).await.map_err(|err| match err {
+                wire::Error::InvalidRequest(detail) => bad_request!("source `{id}`: {detail}"),
+                wire::Error::Io(detail) | wire::Error::Internal(detail) => {
+                    bad_gateway!("source `{id}`: {detail}")
+                }
+            })?;
+        evidence(answer).map_err(|detail| bad_gateway!("source `{id}`: {detail}"))
     }
 
     impl From<types::SourceContent> for wire::Content {
@@ -196,16 +211,6 @@ pub mod import {
             Self {
                 key: input.key,
                 content: input.content.into(),
-            }
-        }
-    }
-
-    impl From<wire::Error> for types::Error {
-        fn from(error: wire::Error) -> Self {
-            match error {
-                wire::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
-                wire::Error::Io(detail) => Self::Io(detail),
-                wire::Error::Internal(detail) => Self::Internal(detail),
             }
         }
     }
@@ -250,47 +255,28 @@ pub mod import {
         }
     }
 
-    impl TryFrom<wire::Claim> for types::Claim {
-        type Error = DispatchError;
-
-        fn try_from(claim: wire::Claim) -> Result<Self, DispatchError> {
-            let mut extras = serde_json::Map::new();
-            for (key, encoded) in claim.extras {
-                let value = match serde_json::from_str(&encoded) {
-                    Ok(value) => value,
-                    Err(err) => {
-                        return Err(DispatchError::Extras {
-                            key,
-                            detail: err.to_string(),
-                            encoded,
-                        });
-                    }
-                };
-                extras.insert(key, value);
-            }
-            Ok(Self {
-                kind: claim.kind.into(),
-                id: claim.id,
-                path: claim.path,
-                synopsis: claim.synopsis,
-                backing: claim.backing.map(Into::into),
-                extras,
-            })
-        }
+    fn evidence(evidence: wire::Evidence) -> Result<types::Evidence, String> {
+        Ok(types::Evidence {
+            authority: evidence.authority.into(),
+            claims: evidence.claims.into_iter().map(claim).collect::<Result<_, _>>()?,
+        })
     }
 
-    impl TryFrom<wire::Evidence> for types::Evidence {
-        type Error = DispatchError;
-
-        fn try_from(evidence: wire::Evidence) -> Result<Self, DispatchError> {
-            Ok(Self {
-                authority: evidence.authority.into(),
-                claims: evidence
-                    .claims
-                    .into_iter()
-                    .map(TryInto::try_into)
-                    .collect::<Result<_, _>>()?,
-            })
+    fn claim(claim: wire::Claim) -> Result<types::Claim, String> {
+        let mut extras = serde_json::Map::new();
+        for (key, encoded) in claim.extras {
+            let value = serde_json::from_str(&encoded).map_err(|err| {
+                format!("extra `{key}` is not canonical JSON ({err}): {encoded}")
+            })?;
+            extras.insert(key, value);
         }
+        Ok(types::Claim {
+            kind: claim.kind.into(),
+            id: claim.id,
+            path: claim.path,
+            synopsis: claim.synopsis,
+            backing: claim.backing.map(Into::into),
+            extras,
+        })
     }
 }
