@@ -3,9 +3,9 @@
 //! One judgment put to the model: what the engine asks, how it steers the
 //! answer, and what it accepts. A brief carries a run's facts, names the
 //! prose that instructs the model, renders the turn, tightens the answer's
-//! derived schema to the run, and holds every candidate to the facts; only
-//! an answer its check accepts is concluded — into rows or a document — and
-//! the brief alone does the concluding.
+//! derived schema to the run, and verifies every candidate against the facts;
+//! only an answer it accepts becomes output — rows or a document — and the
+//! brief alone produces that output.
 //!
 //! The model is never asked for anything the engine can decide itself, and
 //! nothing the engine renders comes from an unchecked answer.
@@ -34,10 +34,10 @@ pub trait Brief: Display + Sync + Sized {
     const PROSE: &'static [&'static str];
 
     /// Tightens the derived `schema` toward this run. Hints for the
-    /// provider; [`Self::check`] is the gate.
+    /// provider; [`Self::verify`] is the gate.
     fn hints(&self, schema: &mut Value);
 
-    /// Holds a candidate answer to the run's facts.
+    /// Verifies a candidate answer against the run's facts.
     ///
     /// # Errors
     ///
@@ -47,8 +47,8 @@ pub trait Brief: Display + Sync + Sized {
     /// Transforms the answer into output specific to the brief.
     fn into_output(self, answer: Self::Answer) -> Self::Output;
 
-    /// Puts the brief to `model` and concludes the answer its check
-    /// accepted.
+    /// Puts the brief to `model` and turns the answer its verification
+    /// accepted into this brief's output.
     ///
     /// # Errors
     ///
@@ -70,4 +70,3 @@ pub trait Brief: Display + Sync + Sized {
         Ok(self.into_output(answer))
     }
 }
-

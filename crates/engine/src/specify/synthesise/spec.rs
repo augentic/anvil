@@ -2,10 +2,10 @@
 //!
 //! Asks the model for the content of `spec.md`: the preamble and, for every
 //! requirement row, a body and its acceptance scenarios. The rows, their
-//! headings, and their provenance lines are the engine's, so the schema
-//! names the row subjects, the check holds the draft to exactly one entry
-//! per row disciplined by the row's status, and the accepted pair renders
-//! the canonical document.
+//! headings, and their provenance lines are the engine's: the schema names
+//! the row subjects, every candidate draft is verified to carry exactly one
+//! entry per row in the shape the row's status allows, and the engine renders
+//! the accepted draft into the canonical document.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write as _};
@@ -22,15 +22,16 @@ use crate::specify::brief::Brief;
 use crate::specify::provenance::{Contributor, Provenance, normalise};
 use crate::specify::synthesise::{document, line, paragraphs, render_claims};
 
-/// The `spec.md` brief: the evidence and the requirement rows the draft is
-/// held to.
+/// What the engine needs to ask the model for `spec.md` and to verify its
+/// draft: the extracted evidence and the requirement rows.
 pub struct SpecBrief<'a> {
     sources: &'a [SourceEvidence],
     rows: &'a [Provenance],
 }
 
 impl<'a> SpecBrief<'a> {
-    /// Briefs `spec.md` over `sources` and their `rows`.
+    /// Creates the brief for `spec.md` from the extracted `sources` and the
+    /// requirement `rows` derived from them.
     #[must_use]
     pub const fn new(sources: &'a [SourceEvidence], rows: &'a [Provenance]) -> Self {
         Self { sources, rows }
@@ -52,8 +53,9 @@ impl Brief for SpecBrief<'_> {
         "synthesis/tags.md",
     ];
 
-    // Exactly one entry per row, each subject one of the row subjects, at
-    // least one scenario.
+    // Tightens the derived schema to this run: exactly one requirement entry
+    // per row, each `subject` drawn from the row subjects, and at least one
+    // scenario per entry.
     fn hints(&self, schema: &mut Value) {
         let count = self.rows.len();
         schema["properties"]["requirements"]["minItems"] = json!(count);
@@ -63,8 +65,9 @@ impl Brief for SpecBrief<'_> {
         schema["$defs"]["Requirement"]["properties"]["scenarios"]["minItems"] = json!(1);
     }
 
-    // The subject set equals the row set, a scenario per requirement, body
-    // discipline per status, and no reserved marker.
+    // Verifies a candidate draft against the rows: every row drafted exactly
+    // once and nothing else, at least one scenario per entry with one-line
+    // fields, a body on every row except a conflict row, no reserved opener.
     fn verify(&self, answer: &SpecAnswer) -> Result<(), Findings> {
         let mut findings = Vec::new();
         paragraphs(&answer.preamble, "preamble", &mut findings);
@@ -166,7 +169,9 @@ impl Brief for SpecBrief<'_> {
     }
 }
 
-// The turn: every claim, then every row with its contributors in role.
+// Renders the user turn of the prompt: every claim of every source, then
+// every requirement row with its id, status, sources, and coverage, each
+// contributing claim labelled winner / loser / contributor.
 impl fmt::Display for SpecBrief<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Draft `spec.md`.\n\n")?;
@@ -249,8 +254,9 @@ pub struct Scenario {
     pub then: String,
 }
 
-// The templated `Note:` lines: one per losing class (every class for a
-// conflict, then the reconciliation line), then the acceptance gap.
+// Builds the `Note:` lines appended to a requirement: one per losing class of
+// a divergence, one per class plus the reconciliation line for a conflict,
+// then one when the acceptance criteria are not evidenced. `None` if none.
 fn notes(row: &Provenance) -> Option<String> {
     let mut lines = Vec::new();
 
@@ -270,7 +276,8 @@ fn notes(row: &Provenance) -> Option<String> {
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
-// `Note: <sources> (<authority>, <id>): <statement>` for one class.
+// Formats one class as `Note: <sources> (<authority>, <id>): <statement>`,
+// listing every member's source but taking the rest from the lead member.
 fn note(class: &[Contributor]) -> String {
     let sources = class.iter().map(|member| member.source.as_str()).collect::<Vec<_>>().join(", ");
     let lead = &class[0];

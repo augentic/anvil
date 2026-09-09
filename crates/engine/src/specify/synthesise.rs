@@ -1,14 +1,13 @@
 //! Synthesis
 //!
 //! Turns the requirement rows and the extracted claims into the two
-//! specification documents. The model is asked two typed questions — the
-//! content of `spec.md`, keyed by row subject, then the content of
-//! `design.md`, keyed by planned section — each put as a brief whose check
-//! holds every candidate to the rows, the section plan, and the evidence.
-//! The accepted answer, bound to its brief, then renders the canonical
-//! document: every heading, provenance line, tag, note, and signature is
-//! the engine's, so the stored bytes are a function of the facts and the
-//! draft alone, and a changed byte re-ids every revision.
+//! specification documents. The model is asked two typed questions in turn —
+//! the content of `spec.md`, then the content of `design.md` — each put as a
+//! brief that verifies every candidate answer against the rows, the section
+//! plan, and the evidence before the engine renders the accepted answer into
+//! the canonical document. Every heading, provenance line, tag, note, and
+//! signature is the engine's, so the stored bytes are a function of the facts
+//! and the draft alone, and a changed byte re-ids every revision.
 //!
 //! Nothing the engine already knows is asked of the model: it never writes a
 //! heading, an id, a `Sources:` list, a status, a note, or a type signature,
@@ -31,16 +30,18 @@ use crate::specify::brief::Brief as _;
 use crate::specify::provenance::Provenance;
 use crate::store::Revision;
 
-// A paragraph line may not open with anything the renderer owns.
+// Line openers the renderer reserves for its own markup; no drafted paragraph
+// may start a line with one of them.
 const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 
-/// Takes evidence from all queried sources and asks the model to synthesise 
-/// into a single specification set containing both the specification and 
-/// design documents.
-/// 
+/// Takes evidence from all queried sources, with the requirement rows derived
+/// from it, and asks the model to synthesise them into a single specification
+/// set containing both the specification and design documents.
+///
 /// # Errors
-/// 
-/// Returns the model failure or the synthesis findings.
+///
+/// A model failure is `bad_gateway`; an answer outside the schema, or a draft
+/// the backend could not repair within its rounds, is `bad_request`.
 pub async fn synthesise<M: Model>(
     model: &M, sources: &[SourceEvidence], rows: &[Provenance],
 ) -> Result<Revision, Error> {
@@ -49,7 +50,8 @@ pub async fn synthesise<M: Model>(
     Ok(Revision { spec, design })
 }
 
-// One blank line between blocks, no trailing spaces, a trailing newline.
+// Joins rendered blocks into the document text: one blank line between
+// blocks, trailing spaces stripped from every line, one trailing newline.
 fn document(blocks: &[String]) -> String {
     let mut text = blocks
         .iter()
@@ -60,7 +62,9 @@ fn document(blocks: &[String]) -> String {
     text
 }
 
-// Every claim of every source, for a brief's turn.
+// Writes the `## Claims` section of a brief's prompt: every claim of every
+// source, grouped under the source's key and authority, so the model sees
+// the whole body of evidence it must draft from.
 fn render_claims(f: &mut Formatter<'_>, sources: &[SourceEvidence]) -> fmt::Result {
     f.write_str("## Claims\n")?;
 
@@ -93,7 +97,8 @@ fn paragraphs(texts: &[String], label: impl Display, findings: &mut Findings) {
     }
 }
 
-// A paragraph is non-blank and opens no line with a reserved marker.
+// Checks one drafted paragraph, recording a finding when it is blank or
+// when any of its lines opens with a marker the renderer reserves.
 fn paragraph(text: &str, label: impl Display, findings: &mut Findings) {
     if text.trim().is_empty() {
         findings.push(format!("- {label} has a blank paragraph"));
@@ -110,7 +115,8 @@ fn paragraph(text: &str, label: impl Display, findings: &mut Findings) {
     }
 }
 
-// A scenario field is one non-blank line.
+// Checks one scenario field, recording a finding when it is blank or spans
+// more than one line.
 fn line(text: &str, label: impl Display, findings: &mut Findings) {
     if text.trim().is_empty() {
         findings.push(format!("- {label} is blank"));

@@ -2,10 +2,10 @@
 //!
 //! Asks the model for the content of `design.md`: the preamble and the blocks
 //! of each section. Which sections of the closed vocabulary a run calls for
-//! is decided by the claim kinds it extracted, so the schema names that
-//! subset, the check holds the draft to the plan, to the bound sources it
-//! may cite, and to the `type` claims whose signatures the engine inserts,
-//! and the accepted pair renders the canonical document.
+//! is decided by the claim kinds it extracted: the schema names that subset,
+//! every candidate draft is verified against the plan, the bound sources it
+//! may cite, and the `type` claims whose signatures the engine inserts, and
+//! the engine renders the accepted draft into the canonical document.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Display};
@@ -22,16 +22,16 @@ use crate::specify::SourceEvidence;
 use crate::specify::brief::Brief;
 use crate::specify::synthesise::{document, paragraph, paragraphs, render_claims};
 
-/// The `design.md` brief: the rendered `spec.md` and the plan the draft is
-/// held to.
+/// What the engine needs to ask the model for `design.md` and to verify its
+/// draft: the rendered `spec.md` and the section plan.
 pub struct DesignBrief<'a> {
     spec: &'a str,
     plan: Plan<'a>,
 }
 
 impl<'a> DesignBrief<'a> {
-    /// Briefs `design.md` over the rendered `spec` and the plan `sources`
-    /// call for.
+    /// Creates the brief for `design.md` from the rendered `spec` and a
+    /// section plan derived from the claim kinds in `sources`.
     #[must_use]
     pub fn new(spec: &'a str, sources: &'a [SourceEvidence]) -> Self {
         Self {
@@ -49,8 +49,9 @@ impl Brief for DesignBrief<'_> {
     const PROSE: &'static [&'static str] =
         &["synthesis/synthesise.md", "synthesis/design-format.md"];
 
-    // At least every required section, section kinds the plan does not
-    // forbid, and type blocks naming this run's `type` claims.
+    // Tightens the derived schema to this run's plan: at least as many
+    // sections as the plan requires, `kind` limited to the kinds the plan does
+    // not forbid, and `type` blocks limited to this run's `type` claim keys.
     fn hints(&self, schema: &mut Value) {
         schema["properties"]["sections"]["minItems"] = json!(self.plan.required().count());
 
@@ -77,8 +78,9 @@ impl Brief for DesignBrief<'_> {
         }
     }
 
-    // The section set, one reference per type claim under `domain-model`,
-    // bound citations, and no reserved marker.
+    // Verifies a candidate draft against the plan: every required section
+    // present, none forbidden, duplicated, or empty; each `type` claim placed
+    // once, only under `## Domain model`; citations bound; no reserved opener.
     fn verify(&self, answer: &DesignAnswer) -> Result<(), Findings> {
         let mut findings = Vec::new();
         paragraphs(&answer.preamble, "preamble", &mut findings);
@@ -184,8 +186,9 @@ impl Brief for DesignBrief<'_> {
     }
 }
 
-// The turn: every claim, the plan's verdict per section, the type blocks to
-// place, and the rendered `spec.md`.
+// Renders the user turn of the prompt: every claim of every source, the
+// plan's verdict on each section kind with its reason, the `type` claims to
+// place, and the rendered `spec.md` the design must follow.
 impl Display for DesignBrief<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Draft `design.md`.\n\n")?;
@@ -255,9 +258,9 @@ pub enum Block {
     Type(String),
 }
 
-// Everything the engine holds the draft to: the kind of every extracted
-// claim, which decides each section of the closed vocabulary; the bound
-// sources; and the `type` claims to reference.
+// The facts a design draft is verified against: the kinds of every extracted
+// claim (which decide the sections this run requires, permits, or forbids),
+// the bound sources it may cite, and the `type` claim keys it must reference.
 struct Plan<'a> {
     kinds: Vec<ClaimKind>,
     sources: &'a [SourceEvidence],
@@ -281,7 +284,9 @@ impl<'a> Plan<'a> {
         }
     }
 
-    // The plan's verdict on `kind`.
+    // Decides whether section `kind` is required, permitted, or forbidden:
+    // `Overview`, and any kind with an informant claim present, is required;
+    // uninformed `Observability` / `TechnicalLogic` permitted; the rest forbidden.
     fn presence(&self, kind: SectionKind) -> Presence {
         let informed = informants(kind).iter().any(|claim| self.kinds.contains(claim));
         match (kind, informed) {
@@ -293,7 +298,7 @@ impl<'a> Plan<'a> {
         }
     }
 
-    // Every section the plan requires, in vocabulary order.
+    // Lists every section the plan requires, in vocabulary order.
     fn required(&self) -> impl Iterator<Item = SectionKind> + '_ {
         SectionKind::VARIANTS
             .iter()
@@ -312,8 +317,9 @@ enum Presence {
     Forbidden,
 }
 
-// The claim kinds whose presence requires a section; `Overview` and
-// `Observability` have no deterministic informant.
+// Maps a section kind to the claim kinds whose presence requires it.
+// `Overview` and `Observability` have none: the first is always required, the
+// second only ever permitted.
 const fn informants(kind: SectionKind) -> &'static [ClaimKind] {
     match kind {
         SectionKind::Overview | SectionKind::Observability => &[],
@@ -324,7 +330,8 @@ const fn informants(kind: SectionKind) -> &'static [ClaimKind] {
     }
 }
 
-// The `{"type": …}` variant of the derived `Block` `oneOf`.
+// Finds the `{"type": …}` variant of the `oneOf` schemars derives for `Block`,
+// so `hints` can restrict its `enum` to this run's type keys.
 fn type_block(schema: &mut Value) -> Option<&mut Value> {
     schema
         .pointer_mut("/$defs/Block/oneOf")?
