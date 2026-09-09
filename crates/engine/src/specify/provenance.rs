@@ -18,7 +18,7 @@ use std::fmt::Write as _;
 
 use emery_source::types::{Authority, ClaimKind};
 use omnia_guest::model::{Findings, Question};
-use omnia_guest::schemars::JsonSchema;
+use schemars::JsonSchema;
 use omnia_guest::{Error, Model};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -64,7 +64,7 @@ pub fn floor(sets: &[SourceSet]) -> Vec<Provenance> {
 /// partition of its claims into agreeing classes.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars", title = "Emery grouping answer")]
+#[schemars(title = "Emery grouping answer")]
 pub struct Grouping {
     /// One entry per requirement.
     pub groups: Vec<Group>,
@@ -73,7 +73,6 @@ pub struct Grouping {
 /// The claims of one requirement and how they agree.
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars")]
 pub struct Group {
     /// Indices of every claim describing this requirement.
     pub claims: Vec<usize>,

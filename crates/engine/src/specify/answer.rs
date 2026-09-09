@@ -16,7 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use emery_source::claims::DOTTED_KEBAB_PATTERN;
 use emery_source::types::Claim;
 use omnia_guest::model::Findings;
-use omnia_guest::schemars::JsonSchema;
+use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use strum::VariantArray as _;
@@ -32,7 +32,7 @@ const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 /// The `spec.md` draft: preamble paragraphs and one entry per row.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars", title = "Emery spec draft")]
+#[schemars(title = "Emery spec draft")]
 pub struct SpecAnswer {
     /// Markdown paragraphs before the first requirement.
     pub preamble: Vec<String>,
@@ -121,7 +121,6 @@ impl SpecAnswer {
 /// The drafted content of one requirement.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars")]
 pub struct Requirement {
     /// The row's subject, exactly as listed.
     #[schemars(regex(pattern = DOTTED_KEBAB_PATTERN))]
@@ -135,7 +134,6 @@ pub struct Requirement {
 /// One acceptance scenario.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars")]
 pub struct Scenario {
     /// The scenario heading name.
     pub name: String,
@@ -151,7 +149,7 @@ pub struct Scenario {
 /// The `design.md` draft: preamble paragraphs and one entry per section.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars", title = "Emery design draft")]
+#[schemars(title = "Emery design draft")]
 pub struct DesignAnswer {
     /// Markdown paragraphs before the first section.
     pub preamble: Vec<String>,
@@ -276,7 +274,6 @@ impl DesignAnswer {
 /// The drafted content of one section.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(crate = "omnia_guest::schemars")]
 pub struct Section {
     /// The section, from the closed vocabulary.
     pub kind: SectionKind,
@@ -288,7 +285,6 @@ pub struct Section {
 /// signature the renderer inserts verbatim.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
-#[schemars(crate = "omnia_guest::schemars")]
 pub enum Block {
     /// One Markdown paragraph; inline `(from <source>)` citations allowed.
     Text(String),
@@ -335,7 +331,7 @@ fn line(text: &str, label: &str, findings: &mut Findings) {
 mod tests {
     use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
     use omnia_guest::model::{Format, Question};
-    use omnia_guest::schemars::JsonSchema;
+    use schemars::JsonSchema;
     use serde::de::DeserializeOwned;
     use serde_json::{Value, json};
 

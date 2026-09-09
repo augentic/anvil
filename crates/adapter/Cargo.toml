@@ -16,7 +16,7 @@ workspace = true
 [dependencies]
 emery-prose.workspace = true
 emery-source.workspace = true
-omnia-guest = { workspace = true, features = ["schema"] }
+omnia-guest.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
