@@ -33,7 +33,6 @@ use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
 use serde::{Deserialize, Serialize};
 
-use self::extract::extract;
 use self::synthesise::synthesise;
 use crate::plugin::{AdapterRef, Loader};
 use crate::preopen_path;
@@ -53,7 +52,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     validate(&sources)?;
 
     let provider = context.provider();
-    let extracted = extract(provider, &sources).await?;
+    let extracted = extract::evidence(provider, &sources).await?;
     let rows = provenance::derive(provider, &extracted).await?;
     let revision = synthesise(provider, &extracted, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;

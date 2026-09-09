@@ -131,7 +131,7 @@ async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Res
 }
 
 /// Loads, extracts, and validates every source.
-pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Error> {
+pub async fn evidence<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Error> {
     for source in sources {
         let adapter = /* … */;
         let evidence = dispatch(provider, &adapter.id, &source.input()?).await?;
@@ -143,7 +143,7 @@ pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Er
 
 // GOOD — entry first, capability named, phases separated, wrapper inlined
 /// Loads, extracts, and validates every source.
-pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Error> {
+pub async fn evidence<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Error> {
     for source in sources {
         let input = source.input()?;
         let adapter = /* … */;

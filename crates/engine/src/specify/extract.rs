@@ -18,7 +18,7 @@ use crate::plugin::Loader;
 use crate::specify::SourceConfig;
 
 /// Loads, extracts, and validates every source.
-pub async fn extract<P: Source + Plugins>(
+pub async fn evidence<P: Source + Plugins>(
     provider: &P, sources: &[SourceConfig],
 ) -> Result<Vec<SourceEvidence>, Error> {
     let mut extracted = Vec::with_capacity(sources.len());
