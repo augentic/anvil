@@ -18,8 +18,8 @@ use std::fmt::Write as _;
 
 use emery_source::types::{Authority, ClaimKind};
 use omnia_guest::model::{Findings, Question};
-use schemars::JsonSchema;
 use omnia_guest::{Error, Model};
+use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 

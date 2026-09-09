@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
-use schemars::JsonSchema;
 use omnia_guest::{Error, server_error};
+use schemars::JsonSchema;
 use serde::Deserialize;
 use strum::VariantArray as _;
 
