@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Emery adapter SDK: the source operations trait, the evidence call with bounded repair, the reference-tool closure, and the wasm export macro over the emery-source contract"
+description = "Emery adapter SDK: the source operations trait, the typed evidence question over omnia's model capability, the reference-tool closure, and the wasm export macro over the emery-source contract"
 categories = ["development-tools"]
 keywords = ["emery", "adapter", "sdk"]
 readme = "../../README.md"
@@ -16,9 +16,7 @@ workspace = true
 [dependencies]
 emery-prose.workspace = true
 emery-source.workspace = true
-omnia-guest.workspace = true
-schemars.workspace = true
-serde.workspace = true
+omnia-guest = { workspace = true, features = ["schema"] }
 serde_json.workspace = true
 
 [dev-dependencies]

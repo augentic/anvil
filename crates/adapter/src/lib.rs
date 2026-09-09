@@ -8,8 +8,7 @@
 //! The contract itself lives in `emery-source` and is re-exported here, so an
 //! adapter depends on one crate and never sees the wire bindings directly.
 
-pub mod answers;
-mod call;
+mod answers;
 mod operations;
 pub mod references;
 pub mod types;
@@ -18,12 +17,12 @@ pub mod types;
 pub mod source;
 
 pub use answers::{content_note, evidence};
-pub use call::{MAX_REPAIRS, judgment, repaired};
 pub use emery_source::{DispatchError, SOURCE_INTERFACE, Source};
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;
 pub use omnia_guest::model::{
-    Error, Format, Function, Message, Reply, Request, Role, SchemaFormat, Tool, ToolCall,
+    Error, Findings, Format, Function, Message, Question, Reply, Request, Role, SchemaFormat, Tool,
+    ToolCall, ToolFuture, Tools,
 };
 pub use operations::SourceAdapter;

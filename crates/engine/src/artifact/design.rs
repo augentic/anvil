@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
+use omnia_guest::schemars::JsonSchema;
 use omnia_guest::{Error, server_error};
-use schemars::JsonSchema;
 use serde::Deserialize;
 use strum::VariantArray as _;
 
@@ -100,6 +100,7 @@ impl PartialEq for Section {
     strum::VariantArray,
 )]
 #[serde(rename_all = "kebab-case")]
+#[schemars(crate = "omnia_guest::schemars")]
 #[strum(serialize_all = "kebab-case")]
 pub enum SectionKind {
     /// `## Overview`: what the system is and why.

@@ -15,14 +15,15 @@
 use std::fmt::Write as _;
 
 use emery_source::types::{Claim, ClaimKind};
+use omnia_guest::model::Question;
 use omnia_guest::{Error, Model};
 use strum::VariantArray as _;
 
 use crate::artifact::{ReqId, SectionKind, Status};
+use crate::specify;
 use crate::specify::answer::{DesignAnswer, SpecAnswer};
 use crate::specify::extract::SourceSet;
 use crate::specify::provenance::Provenance;
-use crate::specify::question::Question;
 use crate::specify::render;
 use crate::store::Revision;
 
@@ -46,17 +47,19 @@ pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
-
-    let question = Question::<SpecAnswer>::new("spec-draft", SPEC_PROSE);
-    let drafted =
-        question.ask(model, &spec_prompt(sets, rows), |drafted| drafted.check(rows)).await?;
+    let drafted = Question::<SpecAnswer>::new("spec-draft")
+        .system(specify::system(SPEC_PROSE))
+        .schema(SpecAnswer::hints(rows))
+        .ask(model, spec_prompt(sets, rows), None, |drafted| drafted.check(rows))
+        .await?;
     let spec = render::spec(rows, &drafted);
 
     tracing::info!("drafting design.md");
     let plan = plan(sets);
-    let question = Question::<DesignAnswer>::new("design-draft", DESIGN_PROSE);
-    let drafted = question
-        .ask(model, &design_prompt(sets, &spec, &plan), |drafted| drafted.check(&plan, sets))
+    let drafted = Question::<DesignAnswer>::new("design-draft")
+        .system(specify::system(DESIGN_PROSE))
+        .schema(DesignAnswer::hints(&plan, sets))
+        .ask(model, design_prompt(sets, &spec, &plan), None, |drafted| drafted.check(&plan, sets))
         .await?;
     let design = render::design(sets, &drafted);
 

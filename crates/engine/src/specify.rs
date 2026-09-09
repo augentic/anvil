@@ -19,7 +19,6 @@
 mod answer;
 mod extract;
 mod provenance;
-mod question;
 mod render;
 mod synthesise;
 
@@ -213,4 +212,9 @@ fn validate(bindings: &[SourceConfig]) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+// Joins the synthesis prose at `paths` into one system prompt.
+fn system(paths: &[&str]) -> String {
+    paths.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n")
 }

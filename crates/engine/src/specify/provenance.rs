@@ -17,13 +17,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use emery_source::types::{Authority, ClaimKind};
+use omnia_guest::model::{Findings, Question};
+use omnia_guest::schemars::JsonSchema;
 use omnia_guest::{Error, Model};
-use schemars::JsonSchema;
 use serde::Deserialize;
+use serde_json::{Value, json};
 
 use crate::artifact::Status;
+use crate::specify;
 use crate::specify::extract::SourceSet;
-use crate::specify::question::{Findings, Question};
 
 const PROSE: &[&str] = &["synthesis/grouping.md"];
 
@@ -40,8 +42,11 @@ pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Prove
 
     let claims = Claims::collect(sets);
     tracing::info!("grouping requirement claims");
-    let question = Question::<Grouping>::new("grouping", PROSE);
-    let grouping = question.ask(model, &claims.prompt(), |grouping| claims.check(grouping)).await?;
+    let grouping = Question::<Grouping>::new("grouping")
+        .system(specify::system(PROSE))
+        .schema(claims.hints())
+        .ask(model, claims.prompt(), None, |grouping| claims.check(grouping))
+        .await?;
 
     Ok(claims.rows(&grouping))
 }
@@ -59,7 +64,7 @@ pub fn floor(sets: &[SourceSet]) -> Vec<Provenance> {
 /// partition of its claims into agreeing classes.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(title = "Emery grouping answer")]
+#[schemars(crate = "omnia_guest::schemars", title = "Emery grouping answer")]
 pub struct Grouping {
     /// One entry per requirement.
     pub groups: Vec<Group>,
@@ -68,6 +73,7 @@ pub struct Grouping {
 /// The claims of one requirement and how they agree.
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(crate = "omnia_guest::schemars")]
 pub struct Group {
     /// Indices of every claim describing this requirement.
     pub claims: Vec<usize>,
@@ -248,6 +254,21 @@ impl<'a> Claims<'a> {
         prompt
     }
 
+    // Steers the grouping schema toward this run: every index is below the
+    // claim count and at least one group is answered. Hints for a
+    // constrained decoder; `check` is the gate.
+    fn hints(&self) -> impl FnOnce(&mut Value) {
+        let last = self.requirements.len().saturating_sub(1);
+        move |schema| {
+            for pointer in ["/properties/claims/items", "/properties/classes/items/items"] {
+                if let Some(index) = schema.pointer_mut(&format!("/$defs/Group{pointer}")) {
+                    index["maximum"] = json!(last);
+                }
+            }
+            schema["properties"]["groups"]["minItems"] = json!(1);
+        }
+    }
+
     // The deterministic floor: byte-equal ids are one group, and within a
     // group whitespace-equal statements are one class.
     fn floor(&self) -> Grouping {
@@ -372,4 +393,55 @@ fn covers(criterion: &str, requirement: &str) -> bool {
 // Whitespace-collapsed text, so a reflowed statement still matches.
 pub fn normalise(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+// The hints edit the derived `Group` definition; a derive change that moved
+// it would silently turn the index bound into a no-op.
+#[cfg(test)]
+mod tests {
+    use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
+    use omnia_guest::model::{Format, Question};
+    use serde_json::json;
+
+    use super::{Claims, Grouping};
+    use crate::specify::extract::SourceSet;
+
+    fn set(key: &str, ids: &[&str]) -> SourceSet {
+        let claims = ids
+            .iter()
+            .map(|id| Claim {
+                kind: ClaimKind::Requirement,
+                id: Some((*id).to_string()),
+                path: None,
+                synopsis: None,
+                backing: None,
+                extras: serde_json::Map::new(),
+            })
+            .collect();
+        SourceSet {
+            key: key.to_string(),
+            evidence: Evidence {
+                authority: Authority::Documentation,
+                claims,
+            },
+            digest: None,
+        }
+    }
+
+    #[test]
+    fn grouping_hints_land() {
+        let sets = [set("docs", &["a.one", "a.two"]), set("code", &["a.three"])];
+        let claims = Claims::collect(&sets);
+        let question = Question::<Grouping>::new("grouping").schema(claims.hints());
+        let Format::Schema(spec) = &question.request().format else {
+            panic!("a question steers by schema");
+        };
+        let schema: serde_json::Value = serde_json::from_str(&spec.schema).expect("schema is JSON");
+
+        assert_eq!(schema["properties"]["groups"]["minItems"], json!(1));
+        let group = &schema["$defs"]["Group"]["properties"];
+        assert_eq!(group["claims"]["items"]["maximum"], json!(2));
+        assert_eq!(group["claims"]["items"]["type"], json!("integer"), "the derive is intact");
+        assert_eq!(group["classes"]["items"]["items"]["maximum"], json!(2));
+    }
 }

@@ -9,7 +9,7 @@
 //! kind's required extras are declared next to it so the contract states in
 //! one place what a complete claim of that kind looks like.
 
-use schemars::JsonSchema;
+use omnia_guest::schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::claims::DOTTED_KEBAB_PATTERN;
@@ -64,6 +64,7 @@ impl SourceInput {
 /// Claim-set authority, ordered `intent` > `documentation` > `behaviour`.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[schemars(crate = "omnia_guest::schemars")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Authority {
     /// Operator directives.
@@ -89,6 +90,7 @@ impl Authority {
 /// Closed claim taxonomy; update the workflow contract and schema together.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[schemars(crate = "omnia_guest::schemars")]
 #[strum(serialize_all = "kebab-case")]
 pub enum ClaimKind {
     /// Operator intent.
@@ -124,6 +126,7 @@ pub enum ClaimKind {
 /// Claim backing.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+#[schemars(crate = "omnia_guest::schemars")]
 pub enum Backing {
     /// Inline verbatim data.
     Payload(String),
@@ -137,6 +140,7 @@ pub enum Backing {
 /// `backing` are lenient: malformed shapes become absent.
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+#[schemars(crate = "omnia_guest::schemars")]
 pub struct Claim {
     /// Kind from the closed taxonomy.
     pub kind: ClaimKind,
@@ -161,6 +165,7 @@ pub struct Claim {
 /// Extracted claims and their document-level authority.
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+#[schemars(crate = "omnia_guest::schemars")]
 pub struct Evidence {
     /// Document-level authority.
     pub authority: Authority,

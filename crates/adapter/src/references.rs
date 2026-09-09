@@ -8,8 +8,10 @@
 //! is no server behind them, so an adapter needs no network access and no
 //! external endpoint to expose its references.
 
+use std::future::ready;
+
 use emery_prose::registry::{self, Doc};
-use omnia_guest::model::{Function, Tool, ToolCall};
+use omnia_guest::model::{Function, Tool, ToolCall, ToolFuture, Tools};
 use serde_json::{Value, json};
 
 /// The reference tools declared for a docs-carrying judgment.
@@ -44,6 +46,16 @@ pub fn tools() -> Vec<Tool> {
                 .build(),
         ),
     ]
+}
+
+/// The tool handler a question passes to `ask`: [`answer`] over `docs`, or
+/// `None` when the adapter embeds nothing to consult.
+#[must_use]
+pub fn answering(docs: &'static [Doc]) -> Option<Tools> {
+    (!docs.is_empty()).then(|| {
+        Box::new(move |call: ToolCall| -> ToolFuture { Box::pin(ready(answer(docs, &call))) })
+            as Tools
+    })
 }
 
 /// Answers one reference tool call over the embedded `docs`.

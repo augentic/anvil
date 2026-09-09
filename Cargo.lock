@@ -1041,8 +1041,6 @@ dependencies = [
  "emery-source",
  "omnia-guest",
  "omnia-test",
- "schemars",
- "serde",
  "serde_json",
  "tempfile",
  "tokio",
@@ -1069,7 +1067,6 @@ dependencies = [
  "hex",
  "omnia-guest",
  "omnia-test",
- "schemars",
  "semver",
  "serde",
  "serde_json",
@@ -1092,7 +1089,6 @@ name = "emery-source"
 version = "0.38.0"
 dependencies = [
  "omnia-guest",
- "schemars",
  "serde",
  "serde_json",
  "strum 0.28.0",
@@ -2382,6 +2378,7 @@ dependencies = [
  "omnia-wasi-otel",
  "omnia-wasi-sql",
  "omnia-wasi-websocket",
+ "schemars",
  "sea-query",
  "serde",
  "serde_json",
