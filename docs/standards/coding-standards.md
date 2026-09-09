@@ -87,7 +87,7 @@ Prefer short, idiomatic Rust names. Don't restate context the surrounding module
 
 **Identifier length.** Declared item names (`fn` / `struct` / `enum` / `trait` / `type` / `const` / `static` / `mod`), named fields, and enum variants are **≤ 25 characters** (Unicode scalars on the bare identifier, not the module path). **Review only** — clippy has no identifier-length lint (`module_name_repetitions` still catches in-module restatement). Push narrative into docs, comments, or nested `mod` context — not into the identifier.
 
-**Tests.** A `#[test]` `fn` names the *scenario* in 1–3 words (`read_rendered`, `shared_roots`), never the outcome or the assertion (`rendered_documents_read_back`, `clean_evidence_passes`). The `//` requirement comment above the test carries the why; the identifier does not.
+**Tests.** A `#[test]` `fn` names the *scenario* in 1–3 words (`gen_spec`, `shared_roots`), never the outcome or the assertion (`rendered_documents_read_back`, `clean_evidence_passes`). The `//` requirement comment above the test carries the why; the identifier does not.
 
 A function defined in `mod <name>` (or `commands/<name>.rs`) MUST NOT carry `<name>` as a suffix or prefix on its own name — the module path already supplies that context. Clippy's `module_name_repetitions` (on by default through the `pedantic` group) catches this at lint time.
 
@@ -106,8 +106,8 @@ fn add(ctx: &Ctx) -> ... { ... }
 fn rendered_documents_read_back() { ... }
 
 // GOOD — the scenario; the comment carries the why
-// Rendered spec/design documents read back as the rows they were written from.
-fn read_rendered() { ... }
+// A re-run over changed evidence reports the heading-level remine.
+fn remine_supersedes() { ... }
 ```
 
 ## Brevity

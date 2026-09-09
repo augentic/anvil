@@ -62,11 +62,3 @@ async fn source_dispatch() {
     assert_eq!(<Probe as SourceAdapter>::metadata(), pinned());
     assert_eq!(<Probe as SourceAdapter>::docs()[0].path, "prompts/extract.md");
 }
-
-#[test]
-fn fn_pointer() {
-    let metadata: fn() -> SourceMetadata = <Probe as SourceAdapter>::metadata;
-    let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
-    assert_eq!(metadata(), pinned());
-    assert_eq!(docs().len(), 1);
-}

@@ -43,11 +43,10 @@ pub async fn derive<M: Model>(
     Claims::collect(sources).judge(model).await
 }
 
-/// The provenance the floor alone derives: byte-equal ids are one
-/// requirement, whitespace-equal statements one class. What a run over one
-/// source gets.
-#[must_use]
-pub fn floor(sources: &[SourceEvidence]) -> Vec<Provenance> {
+// The provenance the floor alone derives: byte-equal ids are one
+// requirement, whitespace-equal statements one class. What a run over one
+// source gets.
+fn floor(sources: &[SourceEvidence]) -> Vec<Provenance> {
     let claims = Claims::collect(sources);
     claims.rows(&claims.floor())
 }
@@ -393,35 +392,4 @@ fn covers(criterion: &str, requirement: &str) -> bool {
 // Whitespace-collapsed text, so a reflowed statement still matches.
 pub fn normalise(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-// The hints edit the derived `Group` definition; a derive change that moved
-// it would silently turn the index bound into a no-op.
-#[cfg(test)]
-mod tests {
-    use emery_source::types::ClaimKind;
-    use omnia_guest::model::Question;
-    use serde_json::json;
-
-    use super::{Claims, Grouping};
-    use crate::specify::brief::Brief;
-    use crate::specify::fixture::{claim, schema, source};
-
-    #[test]
-    fn grouping_hints() {
-        let requirement = |id| claim(ClaimKind::Requirement, id, ("statement", "As stated."));
-        let sources = [
-            source("docs", vec![requirement("a.one"), requirement("a.two")]),
-            source("code", vec![requirement("a.three")]),
-        ];
-        let brief = Claims::collect(&sources);
-        let question = Question::<Grouping>::new(Claims::NAME).schema(|schema| brief.hints(schema));
-        let schema = schema(&question);
-
-        assert_eq!(schema["properties"]["groups"]["minItems"], json!(1));
-        let group = &schema["$defs"]["Group"]["properties"];
-        assert_eq!(group["claims"]["items"]["maximum"], json!(2));
-        assert_eq!(group["claims"]["items"]["type"], json!("integer"), "the derive is intact");
-        assert_eq!(group["classes"]["items"]["items"]["maximum"], json!(2));
-    }
 }

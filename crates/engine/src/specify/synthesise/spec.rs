@@ -278,35 +278,3 @@ fn note(class: &[Contributor]) -> String {
         statement = normalise(&lead.statement),
     )
 }
-
-// The hints edit the schema `schemars` derives; a derive change that moves
-// a definition would silently turn a hint into a no-op, so each pointer is
-// held here.
-#[cfg(test)]
-mod tests {
-    use omnia_guest::model::Question;
-    use serde_json::json;
-
-    use super::{SpecAnswer, SpecBrief};
-    use crate::specify::brief::Brief;
-    use crate::specify::fixture::{schema, sources};
-    use crate::specify::provenance::floor;
-
-    #[test]
-    fn hints_land() {
-        let sources = sources();
-        let rows = floor(&sources);
-        let brief = SpecBrief::new(&sources, &rows);
-        let question =
-            Question::<SpecAnswer>::new(SpecBrief::NAME).schema(|schema| brief.hints(schema));
-        let schema = schema(&question);
-
-        assert!(question.request().check, "the check is the gate");
-        assert_eq!(schema["properties"]["requirements"]["minItems"], json!(2));
-        assert_eq!(schema["properties"]["requirements"]["maxItems"], json!(2));
-        let requirement = &schema["$defs"]["Requirement"]["properties"];
-        assert_eq!(requirement["subject"]["enum"], json!(["auth.login", "auth.logout"]));
-        assert_eq!(requirement["subject"]["type"], json!("string"), "the derive is intact");
-        assert_eq!(requirement["scenarios"]["minItems"], json!(1));
-    }
-}

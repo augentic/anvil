@@ -11,6 +11,7 @@
       "scenarios": [
         {
           "name": "Greeting requested",
+          "given": ["the greeting surface is bound"],
           "when": "`/greeting` is requested",
           "then": "the response is `hello`"
         }

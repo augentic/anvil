@@ -14,5 +14,6 @@ Note: acceptance criteria not evidenced.
 
 #### Scenario: Greeting requested
 
+- **GIVEN** the greeting surface is bound
 - **WHEN** `/greeting` is requested
 - **THEN** the response is `hello`

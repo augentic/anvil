@@ -332,12 +332,24 @@ async fn authority_precedence() {
     assert!(stdout.contains("sources: 4"), "{stdout}");
 
     // The grouping request indexes every claim and withholds authority.
+    // The schema bounds those indexes; a derive reshape that no-ops the
+    // pointer would silently drop the hint.
     let grouping = &provider.model.seen()[0];
     let request = grouping.messages.join("\n");
     assert!(request.contains("- 4 `code` `session-expiry`"), "{request}");
     assert!(request.contains("share the id `session.timeout`"), "the floor is stated: {request}");
     assert!(!request.contains("documentation"), "authority is withheld: {request}");
     assert!(!request.contains("behaviour"), "authority is withheld: {request}");
+    let SeenFormat::Schema { name, schema } = &grouping.format else {
+        panic!("the grouping is steered by schema");
+    };
+    assert_eq!(name, "grouping");
+    let schema: Value = serde_json::from_str(schema).expect("the steering schema is JSON");
+    assert_eq!(schema["properties"]["groups"]["minItems"], 1);
+    let group = &schema["$defs"]["Group"]["properties"];
+    assert_eq!(group["claims"]["items"]["maximum"], 5, "six claims, last index 5");
+    assert_eq!(group["claims"]["items"]["type"], "integer", "the derive is intact");
+    assert_eq!(group["classes"]["items"]["items"]["maximum"], 5);
 
     let id = current(&provider.storage);
     let spec = String::from_utf8(document(&provider.storage, &id, "spec.md")).expect("utf-8");
@@ -690,11 +702,14 @@ async fn repaired_draft() {
     let schema: Value = serde_json::from_str(schema).expect("the steering schema is JSON");
     assert_eq!(schema["properties"]["requirements"]["minItems"], 1);
     assert_eq!(schema["properties"]["requirements"]["maxItems"], 1);
+    let requirement = &schema["$defs"]["Requirement"]["properties"];
     assert_eq!(
-        schema["$defs"]["Requirement"]["properties"]["subject"]["enum"],
+        requirement["subject"]["enum"],
         serde_json::json!(["greeting.behaviour"]),
         "the row subjects ride the schema as a hint"
     );
+    assert_eq!(requirement["subject"]["type"], "string", "the derive is intact");
+    assert_eq!(requirement["scenarios"]["minItems"], 1);
 
     let check = &provider.model.exchanges()[0];
     assert_eq!(check.tool, "check");
@@ -763,7 +778,8 @@ async fn dishonest_design() {
         ))
     };
     let draft = |sections: &str| format!(r#"{{"preamble": [], "sections": [{sections}]}}"#);
-    let overview = r#"{"kind": "overview", "blocks": [{"text": "One endpoint (from docs)."}]}"#;
+    // `(from the browser)` is prose — a citation key is one token.
+    let overview = r#"{"kind": "overview", "blocks": [{"text": "Requests arrive (from the browser) and (from docs) they route."}]}"#;
     let domain = r#"{"kind": "domain-model", "blocks": [{"text": "The greeting payload is one string field."}, {"type": "greeting.type"}]}"#;
     let honest = draft(&format!("{overview}, {domain}"));
     let cases: Vec<(String, &str)> = vec![
@@ -812,10 +828,32 @@ async fn dishonest_design() {
     let mut provider = Provider::answering([SPEC_ANSWER, honest.as_str()]);
     provider.source.evidence.insert("docs".to_string(), evidence());
     cli_ok(&provider, &["emery", "specify", "docs"]).await;
+
+    let draft = &provider.model.seen()[1];
+    let SeenFormat::Schema { name, schema } = &draft.format else {
+        panic!("the design is steered by schema");
+    };
+    assert_eq!(name, "design-draft");
+    let schema: Value = serde_json::from_str(schema).expect("the steering schema is JSON");
+    assert_eq!(schema["properties"]["sections"]["minItems"], 2);
+    let kind = &schema["$defs"]["Section"]["properties"]["kind"];
+    assert_eq!(
+        kind["enum"],
+        serde_json::json!(["overview", "domain-model", "technical-logic", "observability"])
+    );
+    assert_eq!(kind["type"], "string");
+    assert!(kind.get("$ref").is_none() && schema["$defs"].get("SectionKind").is_none());
+    let variants = schema["$defs"]["Block"]["oneOf"].as_array().expect("Block is a oneOf");
+    let block = variants
+        .iter()
+        .find(|variant| variant["required"] == serde_json::json!(["type"]))
+        .expect("the type block variant");
+    assert_eq!(block["properties"]["type"]["enum"], serde_json::json!(["greeting.type"]));
+
     let shown = cli_ok(&provider, &["emery", "show", "design"]).await;
     let rendered = format!(
-        "# Design\n\n## Overview\n\nOne endpoint (from docs).\n\n## Domain model\n\n\
-         The greeting payload is one string field.\n\n```\n{signature}\n```\n"
+        "# Design\n\n## Overview\n\nRequests arrive (from the browser) and (from docs) they route.\n\n\
+         ## Domain model\n\nThe greeting payload is one string field.\n\n```\n{signature}\n```\n"
     );
     assert_eq!(
         String::from_utf8_lossy(&shown.stdout),

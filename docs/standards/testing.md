@@ -101,7 +101,7 @@ Root scenarios exercise engine and transport code from the root package, so the 
 
 ## Test naming
 
-Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. Name the *scenario* (`read_rendered`, `shared_roots`), never the outcome (`rendered_documents_read_back`, `clean_evidence_passes`). The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` supplies its module. Don't restate it in every `fn`. The 25-char cap counts the bare `fn` identifier, not the module path.
+Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. Name the *scenario* (`gen_spec`, `shared_roots`), never the outcome (`rendered_documents_read_back`, `clean_evidence_passes`). The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` supplies its module. Don't restate it in every `fn`. The 25-char cap counts the bare `fn` identifier, not the module path.
 
 - Drop tokens the binary name or enclosing module already supplies: in `command.rs`, write `unknown_verb`, not `command_unknown_verb_refuses`.
 - Group a cluster that shares a subject under a nested `mod <subject>` rather than repeating the subject as a prefix.
