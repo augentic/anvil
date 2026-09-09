@@ -2,11 +2,15 @@
 //!
 //! What an adapter can rely on from the evidence answer path: the schema
 //! tracks the `Evidence` DTO, a well formed answer deserializes, unknown
-//! fields in open bodies are tolerated, and a failing answer surfaces as the
-//! repairable error the judgment loop retries on.
+//! fields in open bodies are tolerated, and a failing answer is repaired
+//! in-adapter with the gate's findings.
 
-use emery_adapter::answers::{evidence_schema, evidence_tail};
-use emery_adapter::types::{Authority, Backing, ClaimKind, Error, Evidence};
+use std::path::Path;
+
+use emery_adapter::answers::evidence_schema;
+use emery_adapter::types::{Authority, Backing, ClaimKind, Context, Evidence, SourceInput};
+use emery_adapter::{content_note, evidence};
+use omnia_test::guest::Scripted;
 
 #[test]
 fn schema_tracks_dto() {
@@ -109,25 +113,44 @@ fn open_body_fields_lenient() {
 }
 
 // Parse failures and gate findings — id grammar and required extras
-// alike — surface as repairable `Internal`, so the adapter repairs a
-// claim the engine would otherwise refuse.
+// alike — are repaired in-adapter, so the engine never sees the claim it
+// would otherwise refuse.
+#[tokio::test]
+async fn evidence_repairs_gate_findings() {
+    let model = Scripted::answering([
+        r#"{"authority":"documentation"}"#,
+        r#"{"authority":"documentation","claims":[{"kind":"requirement"}]}"#,
+        r#"{"authority":"documentation","claims":[
+            {"kind":"requirement","id":"password-reset.request","statement":"Users reset by email."},
+            {"kind":"decision"}
+        ]}"#,
+    ]);
+    let ctx = Context {
+        adapter_id: "source:probe",
+        project_root: Path::new("."),
+        docs: &[],
+        lend: None,
+    };
+
+    let accepted = evidence(&model, &ctx, "SYSTEM".to_string(), "USER".to_string())
+        .await
+        .expect("the third answer passes the gate");
+    assert_eq!(accepted.claims.len(), 2);
+
+    let requests = model.requests();
+    assert_eq!(requests.len(), 3, "two repairs");
+    let first = &requests[1].messages[0].content;
+    assert!(first.contains("did not deserialize"), "{first}");
+    let second = &requests[2].messages[0].content;
+    assert!(second.contains("claims require an id"), "finding names the missing id: {second}");
+    assert!(second.contains("missing extra `statement`"), "and the extra: {second}");
+}
+
 #[test]
-fn tail_is_repairable() {
-    let clean = r#"{"authority":"documentation","claims":[
-        {"kind":"requirement","id":"password-reset.request","statement":"Users reset by email."},
-        {"kind":"decision"}
-    ]}"#;
-    assert_eq!(evidence_tail(clean).expect("clean evidence passes the tail").claims.len(), 2);
+fn content_note_names_the_binding() {
+    let workspace = content_note(&SourceInput::workspace("docs", "/lend/docs"), "the docs tree");
+    assert!(workspace.contains("`/lend/docs` — the docs tree the prompt walks"), "{workspace}");
 
-    let Err(Error::Internal(detail)) = evidence_tail(r#"{"authority":"documentation"}"#) else {
-        panic!("an unparseable answer must fail the tail");
-    };
-    assert!(detail.contains("did not deserialize"), "{detail}");
-
-    let malformed = r#"{"authority":"documentation","claims":[{"kind":"requirement"}]}"#;
-    let Err(Error::Internal(detail)) = evidence_tail(malformed) else {
-        panic!("malformed evidence must fail the tail");
-    };
-    assert!(detail.contains("claims require an id"), "finding names the missing id: {detail}");
-    assert!(detail.contains("missing extra `statement`"), "and the extra: {detail}");
+    let value = content_note(&SourceInput::value("brief", "Ship it."), "unused");
+    assert!(value.contains("no `$SOURCE_DIR` is lent:\n\nShip it."), "{value}");
 }

@@ -18,6 +18,7 @@ omnia-guest.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+strum.workspace = true
 thiserror.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

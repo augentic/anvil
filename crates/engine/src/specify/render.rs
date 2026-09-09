@@ -13,6 +13,8 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
+use strum::VariantArray as _;
+
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
 use crate::specify::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
 use crate::specify::extract::SourceSet;
@@ -73,7 +75,7 @@ pub fn design(sets: &[SourceSet], draft: &DesignAnswer) -> String {
     let mut blocks: Vec<String> = vec!["# Design".to_string()];
     blocks.extend(draft.preamble.iter().map(|paragraph| paragraph.trim().to_string()));
 
-    for kind in SectionKind::ALL {
+    for &kind in SectionKind::VARIANTS {
         let Some(section) = draft.sections.iter().find(|section| section.kind == kind) else {
             continue;
         };

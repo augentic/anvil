@@ -2,8 +2,9 @@
 //!
 //! The smallest complete source adapter: it reads a greeting fixture and
 //! asks the model to describe it as claims. It exists so the engine can be
-//! exercised end to end — the component rung, the live journey — without
-//! depending on a first-party adapter from the adapters repository.
+//! exercised end to end on the live journey without depending on a
+//! first-party adapter from the adapters repository, and so the SDK's wasm32
+//! export side is linted by `make wasm`.
 //!
 //! It is also the reference shape for adapter authors: one `SourceAdapter`
 //! implementation, an embedded prose tree, and a single `source!` export.
@@ -13,9 +14,8 @@ mod guest {
     emery_adapter::source!(crate::Adapter);
 }
 
-use emery_adapter::answers::{evidence_schema, evidence_tail};
-use emery_adapter::types::{Context, Error, Evidence, SourceContent, SourceInput, SourceMetadata};
-use emery_adapter::{Model, SourceAdapter, repaired};
+use emery_adapter::types::{Context, Error, Evidence, SourceContent, SourceInput};
+use emery_adapter::{Model, SourceAdapter, content_note, evidence};
 use emery_prose::registry::{self, Doc};
 
 static DOCS: &[Doc] = &[
@@ -37,10 +37,6 @@ impl SourceAdapter for Adapter {
     // Development-only: must never match a release pin.
     const IDENTITY: &str = concat!("source@", env!("CARGO_PKG_VERSION"));
 
-    fn metadata() -> SourceMetadata {
-        SourceMetadata { emery_version: None }
-    }
-
     fn docs() -> &'static [Doc] {
         DOCS
     }
@@ -58,29 +54,23 @@ impl SourceAdapter for Adapter {
              document; do not write it yourself.",
             id = ctx.adapter_id,
             key = input.key,
-            content = content_note(input)?,
+            content = greeting_note(input)?,
         );
-        let schema = evidence_schema();
-        repaired(model, ctx, system, user, "evidence", &schema, evidence_tail).await
+        evidence(model, ctx, system, user).await
     }
 }
 
-fn content_note(input: &SourceInput) -> Result<String, Error> {
+// The shared note, plus the greeting fallback and the empty-brief refusal.
+fn greeting_note(input: &SourceInput) -> Result<String, Error> {
     match &input.content {
-        SourceContent::Value(value) => {
-            if value.trim().is_empty() {
-                return Err(Error::InvalidRequest("the bound greeting brief is empty".to_string()));
-            }
-            Ok(format!(
-                "The bound material is this inline value; no `$SOURCE_DIR` is lent:\n\n{value}\n\n\
-                 Nothing else is reachable; extract works only from this value."
-            ))
+        SourceContent::Value(value) if value.trim().is_empty() => {
+            Err(Error::InvalidRequest("the bound greeting brief is empty".to_string()))
         }
-        SourceContent::Workspace(root) => Ok(format!(
-            "`$SOURCE_DIR` is the read-only view at `{root}` — the greeting tree the \
-             prompt walks. Prefer the bound tree; fall back to `references/greeting.md` \
-             when the tree does not state a greeting. Nothing outside it is reachable; \
-             extract mines only this source."
+        SourceContent::Value(_) => Ok(content_note(input, "")),
+        SourceContent::Workspace(_) => Ok(format!(
+            "{} Prefer the bound tree; fall back to `references/greeting.md` when the tree \
+             does not state a greeting.",
+            content_note(input, "the greeting tree")
         )),
     }
 }

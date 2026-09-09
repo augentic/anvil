@@ -12,7 +12,8 @@ use omnia_guest::api::Context;
 use omnia_guest::{BlobStore, Error, StateStore};
 use serde::{Deserialize, Serialize};
 
-use crate::store::{Revision, Store};
+pub use crate::artifact::Document;
+use crate::store::Store;
 
 /// Read one document of the current revision.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -20,26 +21,6 @@ use crate::store::{Revision, Store};
 pub struct Show {
     /// Which document to read.
     pub document: Document,
-}
-
-/// The reviewable documents of one revision.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Document {
-    /// The behavioural specification document.
-    Spec,
-    /// The rebuild design document.
-    Design,
-}
-
-impl Document {
-    // The one place a document variant meets its revision field.
-    fn body(self, revision: Revision) -> String {
-        match self {
-            Self::Spec => revision.spec,
-            Self::Design => revision.design,
-        }
-    }
 }
 
 /// Successful review result.
@@ -75,6 +56,6 @@ pub async fn show<P: StateStore + BlobStore>(
     Ok(ShowBody {
         revision: revision.id(),
         document,
-        body: document.body(revision),
+        body: revision.into_body(document),
     })
 }

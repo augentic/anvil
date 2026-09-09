@@ -23,8 +23,14 @@ pub trait SourceAdapter {
     /// Compile-time `name@version` identity.
     const IDENTITY: &str;
 
-    /// Resolve-time metadata.
-    fn metadata() -> SourceMetadata;
+    /// Resolve-time metadata; by default the SDK's own version is the
+    /// exact `emery` pin.
+    #[must_use]
+    fn metadata() -> SourceMetadata {
+        SourceMetadata {
+            emery_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+        }
+    }
 
     /// Embedded prose registry.
     fn docs() -> &'static [Doc];

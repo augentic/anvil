@@ -24,15 +24,6 @@ fn step(...) { ... }
 // GOOD — same scope, #[expect]
 #[expect(clippy::cognitive_complexity, reason = "linear state machine")]
 fn step(...) { ... }
-
-// GOOD — module-root suppression that legitimately covers every item below
-// crates/engine/src/generated.rs
-#![allow(
-    missing_docs,
-    clippy::pedantic,
-    clippy::nursery,
-    reason = "binary-internal context-fence code consumed only by the `agents` command; documenting ~30 internal fields adds noise, not API surface"
-)]
 ```
 
 ## Comments
@@ -218,7 +209,6 @@ Response DTOs (`*Body`, `*Row`) are **top-level** structs under `mod`. Declaring
 | Filesystem path                          | `PathBuf`                                                                                                         | never `String`; serde's default carries the path losslessly |
 | Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]`                                                       | drop `.to_string()` at construction                         |
 | Stable kebab discriminant                | `&'static str`                                                                                                    | lives in the binary                                         |
-| Timestamp written into JSON              | `jiff::Timestamp` with the engine crate's `serde_time::rfc3339` adapter (or `rfc3339_opt` on `Option<Timestamp>`) | serde owns the format                                       |
 | Count                                    | `usize`                                                                                                           | JSON has neither `u32` nor `u64`                            |
 
 **Single-variant enums are dead overhead.** Drop either the variant or the enum; the type's name already says "this DTO represents kind X". The `BriefAction::Init` pattern is the canonical example of what not to add.

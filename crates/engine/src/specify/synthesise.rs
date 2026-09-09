@@ -12,10 +12,11 @@
 //! so it cannot drop, reorder, or quietly rewrite a requirement, invent or
 //! omit a section, cite an unbound source, or paraphrase a signature.
 
-use std::fmt::{self, Display, Write as _};
+use std::fmt::Write as _;
 
 use emery_source::types::{Claim, ClaimKind};
 use omnia_guest::{Error, Model};
+use strum::VariantArray as _;
 
 use crate::artifact::{ReqId, SectionKind, Status};
 use crate::specify::answer::{DesignAnswer, SpecAnswer};
@@ -98,29 +99,24 @@ impl Plan {
 
     /// Every section the plan requires, in vocabulary order.
     pub fn required(&self) -> impl Iterator<Item = SectionKind> + '_ {
-        SectionKind::ALL.into_iter().filter(|kind| self.presence(*kind) == Presence::Required)
+        SectionKind::VARIANTS
+            .iter()
+            .copied()
+            .filter(|kind| self.presence(*kind) == Presence::Required)
     }
 }
 
 /// Whether the evidence calls for a section, tolerates it, or rules it out.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "lowercase")]
 pub enum Presence {
     /// The section must be drafted.
     Required,
     /// The section may be drafted where claims inform it.
     Permitted,
     /// The section may not be drafted.
+    #[strum(to_string = "omit")]
     Forbidden,
-}
-
-impl Display for Presence {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Required => "required",
-            Self::Permitted => "permitted",
-            Self::Forbidden => "omit",
-        })
-    }
 }
 
 // The claim kinds whose presence requires a section; `Overview` and
@@ -179,7 +175,7 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
     render_claims(&mut prompt, sets);
 
     prompt.push_str("\n## Sections\n\n");
-    for kind in SectionKind::ALL {
+    for &kind in SectionKind::VARIANTS {
         let presence = plan.presence(kind);
         let kinds = informants(kind).iter().map(|kind| format!("`{kind}`")).collect::<Vec<_>>();
         let reason = match (presence, kinds.is_empty()) {
@@ -188,7 +184,8 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
             (Presence::Permitted, _) => " where claims inform it".to_string(),
             _ => String::new(),
         };
-        let _ = writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.key());
+        let _ =
+            writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.as_ref());
     }
 
     let keys: Vec<&str> =

@@ -162,38 +162,33 @@ pub struct Contributor {
     pub id: String,
     /// The claim's `statement` extra.
     pub statement: String,
+    // The claim's synopsis, shown to the grouping judgment alone.
+    synopsis: Option<String>,
     // Position in binding order, the tie-break within an authority.
     index: usize,
 }
 
 // Every requirement claim in binding order, and every criterion id.
 struct Claims<'a> {
-    requirements: Vec<Indexed<'a>>,
+    requirements: Vec<Contributor>,
     criteria: Vec<&'a str>,
-}
-
-struct Indexed<'a> {
-    source: &'a str,
-    authority: Authority,
-    id: &'a str,
-    statement: String,
-    synopsis: Option<&'a str>,
 }
 
 impl<'a> Claims<'a> {
     fn collect(sets: &'a [SourceSet]) -> Self {
-        let mut requirements = Vec::new();
+        let mut requirements: Vec<Contributor> = Vec::new();
         let mut criteria = Vec::new();
         for set in sets {
             for claim in &set.evidence.claims {
                 let Some(id) = claim.id.as_deref() else { continue };
                 match claim.kind {
-                    ClaimKind::Requirement => requirements.push(Indexed {
-                        source: &set.key,
+                    ClaimKind::Requirement => requirements.push(Contributor {
+                        source: set.key.clone(),
                         authority: set.evidence.authority,
-                        id,
+                        id: id.to_string(),
                         statement: claim.statement(),
-                        synopsis: claim.synopsis.as_deref(),
+                        synopsis: claim.synopsis.clone(),
+                        index: requirements.len(),
                     }),
                     ClaimKind::Criterion => criteria.push(id),
                     _ => {}
@@ -216,7 +211,7 @@ impl<'a> Claims<'a> {
         );
 
         for (index, claim) in self.requirements.iter().enumerate() {
-            let synopsis = claim.synopsis.unwrap_or("-");
+            let synopsis = claim.synopsis.as_deref().unwrap_or("-");
             let _ = writeln!(
                 prompt,
                 "- {index} `{source}` `{id}` — {statement} — {synopsis}",
@@ -235,7 +230,7 @@ impl<'a> Claims<'a> {
         }
 
         for group in merged {
-            let id = self.requirements[group.claims[0]].id;
+            let id = &self.requirements[group.claims[0]].id;
             let indices =
                 group.claims.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
             let _ = writeln!(
@@ -259,7 +254,7 @@ impl<'a> Claims<'a> {
         let mut groups: Vec<(&str, Group)> = Vec::new();
         for (index, claim) in self.requirements.iter().enumerate() {
             let position = groups.iter().position(|(id, _)| *id == claim.id).unwrap_or_else(|| {
-                groups.push((claim.id, Group::default()));
+                groups.push((claim.id.as_str(), Group::default()));
                 groups.len() - 1
             });
             let group = &mut groups[position].1;
@@ -333,7 +328,7 @@ impl<'a> Claims<'a> {
         let mut by_id: BTreeMap<&str, BTreeSet<usize>> = BTreeMap::new();
         for (index, claim) in self.requirements.iter().enumerate() {
             if let Some(position) = placed.get(&index) {
-                by_id.entry(claim.id).or_default().insert(*position);
+                by_id.entry(claim.id.as_str()).or_default().insert(*position);
             }
         }
 
@@ -356,25 +351,15 @@ impl<'a> Claims<'a> {
                 let classes = group
                     .classes
                     .iter()
-                    .map(|class| class.iter().map(|&index| self.contributor(index)).collect())
+                    .map(|class| {
+                        class.iter().map(|&index| self.requirements[index].clone()).collect()
+                    })
                     .collect();
                 (first, classes)
             })
             .collect();
         groups.sort_by_key(|(first, _)| *first);
         groups.into_iter().map(|(_, classes)| Provenance::of(classes, &self.criteria)).collect()
-    }
-
-    fn contributor(&self, index: usize) -> Contributor {
-        let claim = &self.requirements[index];
-
-        Contributor {
-            source: claim.source.to_string(),
-            authority: claim.authority,
-            id: claim.id.to_string(),
-            statement: claim.statement.clone(),
-            index,
-        }
     }
 }
 

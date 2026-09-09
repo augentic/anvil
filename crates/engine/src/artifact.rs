@@ -16,23 +16,46 @@ mod spec;
 
 use std::ops::Deref;
 
+use serde::{Deserialize, Serialize};
+
 pub use self::design::{Design, SectionKind, citations};
 pub use self::spec::{HEADING, ReqId, SCENARIO, Spec, Status};
 
-/// A document as right-trimmed lines.
+/// The reviewable documents of one revision, in digest order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::VariantArray)]
+#[serde(rename_all = "kebab-case")]
+pub enum Document {
+    /// The behavioural specification document.
+    Spec,
+    /// The rebuild design document.
+    Design,
+}
+
+impl Document {
+    /// The document's file name in the revision store.
+    #[must_use]
+    pub const fn file(self) -> &'static str {
+        match self {
+            Self::Spec => "spec.md",
+            Self::Design => "design.md",
+        }
+    }
+}
+
+/// A document's text as right-trimmed lines.
 #[derive(Debug)]
-pub struct Document<'a> {
+pub struct Text<'a> {
     lines: Vec<Line<'a>>,
 }
 
-impl<'a> From<&'a str> for Document<'a> {
+impl<'a> From<&'a str> for Text<'a> {
     fn from(text: &'a str) -> Self {
         let lines = text.lines().map(|raw| Line(raw.trim_end())).collect();
         Self { lines }
     }
 }
 
-impl<'a> Document<'a> {
+impl<'a> Text<'a> {
     /// Every run of lines led by a `marker` heading: the heading line with
     /// its marker stripped, then the body. The preamble before the first
     /// heading is skipped.

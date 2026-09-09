@@ -11,8 +11,9 @@ use std::str::FromStr;
 use omnia_guest::{Error, server_error};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use strum::VariantArray as _;
 
-use crate::artifact::{Document, Line, Lines};
+use crate::artifact::{Document, Line, Lines, Text};
 
 const MARKER: &str = "## ";
 const CITATION: &str = "(from ";
@@ -25,8 +26,7 @@ pub struct Design {
 }
 
 impl Design {
-    /// The artifact's file name.
-    pub const NAME: &str = "design.md";
+    const NAME: &str = Document::Design.file();
 
     /// Sections keyed by their heading, the stable diff identity.
     #[must_use]
@@ -40,8 +40,7 @@ impl FromStr for Design {
 
     // A document the renderer did not write is corruption.
     fn from_str(text: &str) -> Result<Self, Error> {
-        let document = Document::from(text);
-        let sections = document
+        let sections = Text::from(text)
             .blocks(MARKER)
             .map(Section::read)
             .collect::<Result<Vec<_>, _>>()
@@ -85,9 +84,23 @@ impl PartialEq for Section {
 }
 
 /// The closed `## ` vocabulary, in document order. A draft names a section
-/// by its kebab-case key (`domain-model`); the document by its title.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, JsonSchema)]
+/// by its kebab-case key (`as_ref()`, `domain-model`); the document by its
+/// title (`Display`, `Domain model`).
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    JsonSchema,
+    strum::AsRefStr,
+    strum::VariantArray,
+)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum SectionKind {
     /// `## Overview`: what the system is and why.
     Overview,
@@ -103,39 +116,17 @@ pub enum SectionKind {
     Observability,
 }
 
-impl SectionKind {
-    /// Every section, in document order.
-    pub const ALL: [Self; 6] = [
-        Self::Overview,
-        Self::DomainModel,
-        Self::Apis,
-        Self::TechnicalLogic,
-        Self::UiLayout,
-        Self::Observability,
-    ];
-
-    const fn title(self) -> &'static str {
-        match self {
+// The document spelling: the section title.
+impl Display for SectionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
             Self::Overview => "Overview",
             Self::DomainModel => "Domain model",
             Self::Apis => "APIs and integrations",
             Self::TechnicalLogic => "Technical logic",
             Self::UiLayout => "UI / layout",
             Self::Observability => "Observability",
-        }
-    }
-
-    /// The draft key: the serde spelling of the variant.
-    #[must_use]
-    pub const fn key(self) -> &'static str {
-        match self {
-            Self::Overview => "overview",
-            Self::DomainModel => "domain-model",
-            Self::Apis => "apis",
-            Self::TechnicalLogic => "technical-logic",
-            Self::UiLayout => "ui-layout",
-            Self::Observability => "observability",
-        }
+        })
     }
 }
 
@@ -143,16 +134,11 @@ impl FromStr for SectionKind {
     type Err = String;
 
     fn from_str(text: &str) -> Result<Self, String> {
-        Self::ALL
-            .into_iter()
-            .find(|kind| kind.title() == text)
+        Self::VARIANTS
+            .iter()
+            .copied()
+            .find(|kind| kind.to_string() == text)
             .ok_or_else(|| format!("unknown section `## {text}`"))
-    }
-}
-
-impl Display for SectionKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.title())
     }
 }
 

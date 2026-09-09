@@ -12,8 +12,8 @@
 
 use crate::types::{Claim, ClaimKind, Error, Evidence};
 
-/// Claim-id grammar; the answer schema accepts strings, so it is
-/// enforced in code.
+/// Claim-id grammar. Rides the derived `Claim.id` schema as a steering
+/// `pattern` and is enforced again in code.
 pub const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
 /// Every id and extras finding over `claims`.
@@ -72,13 +72,19 @@ impl Evidence {
         self.claims.iter().filter(|claim| claim.kind == ClaimKind::Type)
     }
 
+    /// Every id and extras finding over the document's claims.
+    #[must_use]
+    pub fn findings(&self) -> Vec<String> {
+        findings(&self.claims)
+    }
+
     /// Enforces claim-id grammar and required extras fail-closed.
     ///
     /// # Errors
     ///
     /// Returns [`Error::Internal`] with one finding per violation.
     pub fn validate(&self) -> Result<(), Error> {
-        let findings = findings(&self.claims);
+        let findings = self.findings();
         if findings.is_empty() {
             return Ok(());
         }

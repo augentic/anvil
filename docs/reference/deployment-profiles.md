@@ -17,7 +17,7 @@ Loaded components are not engine state: a path- or package-shaped adapter loads 
 
 ## The shipped profile: local filesystem
 
-The native arm of [`src/lib.rs`](../../src/lib.rs) binds both storage hosts to `omnia_filesystem::Client` with the root compiled into the invocation: a durable, network-free store at `.omnia/storage` under the invocation directory (`blobstore/` and `keyvalue/`). The root is deployment policy, not an environment tunable — retargeting it means shipping a different profile, never setting `FILESYSTEM_ROOT`. One invocation directory is one project; isolation between projects is the filesystem root itself. Revisions survive restart, and nothing writes the working tree — the `.` mount is read-only.
+The `deployment!` macro in the native arm of [`src/lib.rs`](../../src/lib.rs) binds both storage hosts to `omnia_filesystem::Client` with the root compiled into the invocation: a durable, network-free store at `.omnia/storage` under the invocation directory (`blobstore/` and `keyvalue/`). The root is deployment policy, not an environment tunable — retargeting it means shipping a different profile, never setting `FILESYSTEM_ROOT`. One invocation directory is one project; isolation between projects is the filesystem root itself. Revisions survive restart, and nothing writes the working tree — the `.` mount is read-only.
 
 ## Project-id-keyed shared backings
 
