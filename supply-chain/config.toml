@@ -62,10 +62,6 @@ audit-as-crates-io = false
 version = "0.26.1"
 criteria = "safe-to-deploy"
 
-[[exemptions.ahash]]
-version = "0.8.12"
-criteria = "safe-to-deploy"
-
 [[exemptions.android_system_properties]]
 version = "0.1.6"
 criteria = "safe-to-deploy"
@@ -120,14 +116,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.bon-macros]]
 version = "3.10.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.borrow-or-share]]
-version = "0.2.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.bytecount]]
-version = "0.6.9"
 criteria = "safe-to-deploy"
 
 [[exemptions.cap-fs-ext]]
@@ -294,20 +282,12 @@ criteria = "safe-to-deploy"
 version = "1.18.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.email_address]]
-version = "0.2.9"
-criteria = "safe-to-deploy"
-
 [[exemptions.encoding_rs]]
 version = "0.8.40"
 criteria = "safe-to-deploy"
 
 [[exemptions.etcetera]]
 version = "0.11.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.fancy-regex]]
-version = "0.19.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
@@ -320,14 +300,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.fixedbitset]]
 version = "0.5.7"
-criteria = "safe-to-deploy"
-
-[[exemptions.fluent-uri]]
-version = "0.4.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.fraction]]
-version = "0.17.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.fromenv]]
@@ -431,7 +403,7 @@ version = "0.1.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.hybrid-array]]
-version = "0.4.14"
+version = "0.4.15"
 criteria = "safe-to-deploy"
 
 [[exemptions.hyper]]
@@ -538,18 +510,6 @@ criteria = "safe-to-deploy"
 version = "0.3.105"
 criteria = "safe-to-deploy"
 
-[[exemptions.jsonschema]]
-version = "0.52.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.jsonschema-regex]]
-version = "0.52.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.jsonschema-value]]
-version = "0.52.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.jsonwebtoken]]
 version = "10.4.0"
 criteria = "safe-to-deploy"
@@ -606,10 +566,6 @@ criteria = "safe-to-deploy"
 version = "0.6.6"
 criteria = "safe-to-deploy"
 
-[[exemptions.micromap]]
-version = "0.3.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.mime]]
 version = "0.3.16"
 criteria = "safe-to-deploy"
@@ -624,30 +580,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.moka]]
 version = "0.12.16"
-criteria = "safe-to-deploy"
-
-[[exemptions.num]]
-version = "0.4.3"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-bigint]]
-version = "0.4.8"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-cmp]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-complex]]
-version = "0.4.6"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-integer]]
-version = "0.1.47"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-iter]]
-version = "0.1.46"
 criteria = "safe-to-deploy"
 
 [[exemptions.oauth2]]
@@ -696,10 +628,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.opentelemetry_sdk]]
 version = "0.32.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.outref]]
-version = "0.5.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.pastey]]
@@ -802,16 +730,12 @@ criteria = "safe-to-deploy"
 version = "0.5.18"
 criteria = "safe-to-deploy"
 
-[[exemptions.referencing]]
-version = "0.52.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.reqwest]]
 version = "0.12.28"
 criteria = "safe-to-deploy"
 
 [[exemptions.reqwest]]
-version = "0.13.4"
+version = "0.13.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.ring]]
@@ -1090,10 +1014,6 @@ criteria = "safe-to-deploy"
 version = "2.9.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.unicode-general-category]]
-version = "1.1.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.untrusted]]
 version = "0.9.0"
 criteria = "safe-to-deploy"
@@ -1106,16 +1026,8 @@ criteria = "safe-to-deploy"
 version = "1.26.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.uuid-simd]]
-version = "0.8.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.version_check]]
 version = "0.9.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.vsimd]]
-version = "0.8.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.walkdir]]
@@ -1203,11 +1115,11 @@ version = "0.8.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerocopy]]
-version = "0.8.56"
+version = "0.8.57"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerocopy-derive]]
-version = "0.8.56"
+version = "0.8.57"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerofrom]]
