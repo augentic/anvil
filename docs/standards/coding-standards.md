@@ -127,7 +127,7 @@ A module reads top-down: what it does, what it yields, how. **Review only.**
 ```rust
 // BAD — entry buried under a private helper, wrapper with one caller
 async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Result<Evidence, Error> {
-    provider.extract(id, input).await.map_err(|err| bad_gateway!("source `{id}`: {err}"))
+    provider.extract(id, input).await
 }
 
 /// Loads, extracts, and validates every source.
@@ -135,7 +135,7 @@ pub async fn evidence<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, E
     for source in sources {
         let adapter = /* … */;
         let evidence = dispatch(provider, &adapter.id, &source.input()?).await?;
-        evidence.validate().map_err(/* … */)?;
+        gate(&evidence)?;
         extracted.push(SourceEvidence { /* … */ });
     }
     Ok(extracted)
@@ -148,12 +148,12 @@ pub async fn evidence<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, E
         let input = source.input()?;
         let adapter = /* … */;
 
-        let id = &adapter.id;
-        let evidence = Source::extract(provider, id, &input)
-            .await
-            .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
+        let evidence = Source::extract(provider, &adapter.id, &input).await?;
 
-        evidence.validate().map_err(/* … */)?;
+        let findings = evidence.findings();
+        if !findings.is_empty() {
+            return Err(bad_request!(/* … */));
+        }
         extracted.push(SourceEvidence { /* … */ });
     }
 
@@ -245,9 +245,9 @@ pub fn handle(body: &HandleBody, out: &mut dyn fmt::Write) -> fmt::Result {
 
 ## Errors
 
-Engine operations return `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct Omnia defaults with the crate-root macros (`bad_request!`, `not_found!`, `server_error!`, `bad_gateway!`); those emit snake_case codes (`bad_request`, …). Keep explicit variant construction only for the three recovery discriminants (`specify-source-required`, `unsupported-version`, `spec-not-generated`). Do not introduce a house error type or constructor wrappers.
+Engine operations, the adapter SDK, and adapters return `omnia_guest::Error` (`BadRequest`, `NotFound`, `ServerError`, `BadGateway`). Construct Omnia defaults with the crate-root macros (`bad_request!`, `not_found!`, `server_error!`, `bad_gateway!`); those emit snake_case codes (`bad_request`, …). Keep explicit variant construction only for the three recovery discriminants (`specify-source-required`, `unsupported-version`, `spec-not-generated`). Do not introduce a house error type or constructor wrappers; the adapter WIT `error` variant is lowered and lifted inside `emery_source::wire` alone (see [style.md](./style.md#failures-are-omnia-errors)).
 
-**Class on a direct match.** Pick the Omnia variant that matches the failure: operator or input refusals are `BadRequest` (exit 1), missing resources are `NotFound` (exit 2), upstream or model failures are `BadGateway` (exit 4). Anything else — I/O, storage, leftover conversions — is `ServerError` (exit 3). Do not invent new codes or new exit slots. See [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes).
+**Class on a direct match.** Pick the Omnia variant that matches the failure: operator or input refusals are `BadRequest` (exit 1), missing resources are `NotFound` (exit 2), upstream or model failures are `BadGateway` (exit 4). Anything else — I/O, storage, leftover conversions — is `ServerError` (exit 3). An adapter's `BadRequest` keeps its class through the `Source` capability, so an adapter refusing its input exits 1 like any other input refusal; every other adapter failure reaches the engine as `BadGateway`. Do not invent new codes or new exit slots. See [handler-shape.md §"Exit codes"](./handler-shape.md#exit-codes).
 
 **Hint lookup.** Long-form recovery hints live in `crates/cli/src/lib.rs` (`hint` on `unsupported-version` / `specify-source-required` / `spec-not-generated` and the loader discriminants, attached through `Command::hints`). Adding a new hint extends that lookup, not the error type. Engine descriptions stay transport-neutral — they name the path, adapter, or rule, never a flag, a verb, or "the CLI"; flag-vocabulary recovery text belongs in the hint table.
 

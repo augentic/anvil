@@ -11,9 +11,9 @@ The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module
 // BAD: SourceAdapterLoader GOOD: Loader
 ```
 
-## Engine failures are Omnia errors
+## Failures are Omnia errors
 
-Engine and CLI code does not introduce an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `unsupported-version`, and `spec-not-generated`. The adapter WIT seam (`emery_source::types::Error`) is a different contract — do not replace it with Omnia errors.
+No Emery code — engine, CLI, the adapter SDK, or an adapter — introduces an `Error` type. Return `omnia_guest::Error` and pick the class on a direct match: `BadRequest` for operator or input refusals, `NotFound` for missing resources, `BadGateway` for upstream or model failures; everything else is `ServerError`. Construct defaults with `bad_request!` and siblings (snake_case `error` field). Keep explicit variants only for `specify-source-required`, `unsupported-version`, and `spec-not-generated`. Inside a fn, `anyhow` carries the unclassified tail — `.context(…)?` over a storage or filesystem call lands as `server_error` — but never `.context()` an Omnia `Error`, whose `Display` repeats its code. The adapter contract is obliged to keep its WIT `error` variant; it is contained in `emery_source::wire`, where the export side lowers an adapter's Omnia `Error` onto it (`BadRequest` / `NotFound` → `invalid-request`, the rest → `internal`) and `wire::import::extract` lifts it back (`invalid-request` → `bad_request`, `io` / `internal` → `bad_gateway`). Nothing else names the wire variant.
 
 ```rust
 // BAD — a house error type, even if it later maps to Omnia.
@@ -52,7 +52,7 @@ store.cas(CURRENT_KEY, observed.as_deref(), id.as_bytes()).await?;
 
 ## Reach for the standard crate first
 
-Before writing a macro or a trait, search crates.io. Top-1000 crates that fit beat hand-rolled equivalents: `strum` for kebab-case enum mirrors, `thiserror` for error layering, `anyhow` for error wrapping in tests, `derive_more` for trivial newtype impls.
+Before writing a macro or a trait, search crates.io. Top-1000 crates that fit beat hand-rolled equivalents: `strum` for kebab-case enum mirrors, `anyhow` for error context over the unclassified tail and in tests, `derive_more` for trivial newtype impls.
 
 ```rust
 // BAD — hand-rolled Display/FromStr mirror of a Serialize derive.
