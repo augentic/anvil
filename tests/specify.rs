@@ -977,18 +977,16 @@ async fn binding_paths() {
     assert_eq!(order, ["zulu", "intent", "alpha"], "entries bind in declaration order");
     for key in ["zulu", "alpha"] {
         let (_, input) = calls.iter().find(|(_, input)| input.key == key).expect("dispatched");
-        let SourceContent::Workspace(workspace) = &input.content else {
+        let SourceContent::Workspace(root) = &input.content else {
             panic!("a path binding lends a workspace");
         };
         assert!(
-            !Path::new(&workspace.root).is_absolute(),
-            "the lend must stay `.`-relative for the guest preopen: {}",
-            workspace.root
+            !Path::new(root).is_absolute(),
+            "the lend must stay `.`-relative for the guest preopen: {root}"
         );
         assert!(
-            workspace.root.ends_with("docs") && !workspace.root.contains(".."),
-            "`.` and `..` fold away lexically against the file's directory: {}",
-            workspace.root
+            root.ends_with("docs") && !root.contains(".."),
+            "`.` and `..` fold away lexically against the file's directory: {root}"
         );
     }
     let (_, input) = calls.iter().find(|(_, input)| input.key == "intent").expect("dispatched");

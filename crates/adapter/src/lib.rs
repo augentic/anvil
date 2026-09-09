@@ -18,7 +18,7 @@ pub mod types;
 pub mod source;
 
 pub use call::{MAX_REPAIRS, judgment, repaired};
-pub use emery_source::{AdapterIdentity, DispatchError, IdentityError, SOURCE_INTERFACE, Source};
+pub use emery_source::{DispatchError, SOURCE_INTERFACE, Source};
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;

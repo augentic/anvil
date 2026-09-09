@@ -2,7 +2,7 @@
 /// operations. Adapter guests export the `source` interface alone. No
 /// resource types cross the contract: dispatch carries plain values,
 /// routed by each call's `adapter-id` first argument.
-package emery:adapter@0.1.0;
+package emery:adapter@0.2.0;
 
 interface types {
   /// The error returned by operations.
@@ -33,19 +33,12 @@ interface types {
 interface source {
   use types.{ adapter-id, error };
 
-  /// Read-only view for a location-backed source. No revision-store grant
-  /// and no writable stage.
-  record workspace {
-    /// Opaque identity of the preparation.
-    id: string,
-    /// Deployment-local path of the read-only view root.
-    root: string,
-  }
-
   /// Either a read-only source view or an inline value. Never a
   /// revision-store path or lifecycle artifact root.
   variant content {
-    workspace(workspace),
+    /// Deployment-local path of the read-only view root. No
+    /// revision-store grant and no writable stage.
+    workspace(string),
     value(string),
   }
 

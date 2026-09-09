@@ -15,11 +15,12 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use emery_source::Source;
+use emery_source::claims::is_kebab;
 use omnia_guest::plugins::{Digest, Location, Plugin, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 use serde::{Deserialize, Serialize};
 
-use crate::{is_kebab, preopen_path};
+use crate::preopen_path;
 
 /// One run's adapter loads over a provider: loads memoize by identity
 /// for the run, so a second binding on the same adapter reuses the held

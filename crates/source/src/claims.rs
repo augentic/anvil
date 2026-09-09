@@ -67,6 +67,11 @@ pub fn extras_findings(claims: &[Claim]) -> Vec<String> {
 }
 
 impl Evidence {
+    /// Every `type` claim.
+    pub fn types(&self) -> impl Iterator<Item = &Claim> {
+        self.claims.iter().filter(|claim| claim.kind == ClaimKind::Type)
+    }
+
     /// Enforces claim-id grammar and required extras fail-closed.
     ///
     /// # Errors
@@ -130,7 +135,10 @@ fn is_dotted_kebab(value: &str) -> bool {
     !value.is_empty() && value.split('.').all(is_kebab)
 }
 
-fn is_kebab(value: &str) -> bool {
+/// The kebab grammar shared by claim-id segments, binding keys, and
+/// adapter names: `[a-z0-9]+(-[a-z0-9]+)*`.
+#[must_use]
+pub fn is_kebab(value: &str) -> bool {
     !value.is_empty()
         && value.split('-').all(|seg| {
             !seg.is_empty() && seg.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())

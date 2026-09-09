@@ -171,8 +171,7 @@ mod tests {
         evidence.validate().expect("valid claims");
         SourceSet {
             key: key.to_string(),
-            authority,
-            claims: evidence.claims,
+            evidence,
             digest: None,
         }
     }

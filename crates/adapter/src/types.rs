@@ -14,7 +14,7 @@ use std::path::Path;
 use emery_prose::registry::Doc;
 pub use emery_source::types::{
     Authority, Backing, Claim, ClaimKind, Error, Evidence, SourceContent, SourceInput,
-    SourceMetadata, SourceWorkspace,
+    SourceMetadata,
 };
 
 /// Call-scoped adapter environment.

@@ -76,12 +76,11 @@ fn content_note(input: &SourceInput) -> Result<String, Error> {
                  Nothing else is reachable; extract works only from this value."
             ))
         }
-        SourceContent::Workspace(view) => Ok(format!(
-            "`$SOURCE_DIR` is the read-only view at `{}` — the greeting tree the \
+        SourceContent::Workspace(root) => Ok(format!(
+            "`$SOURCE_DIR` is the read-only view at `{root}` — the greeting tree the \
              prompt walks. Prefer the bound tree; fall back to `references/greeting.md` \
              when the tree does not state a greeting. Nothing outside it is reachable; \
-             extract mines only this source.",
-            view.root
+             extract mines only this source."
         )),
     }
 }

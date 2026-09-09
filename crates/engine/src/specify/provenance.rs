@@ -185,12 +185,12 @@ impl<'a> Claims<'a> {
         let mut requirements = Vec::new();
         let mut criteria = Vec::new();
         for set in sets {
-            for claim in &set.claims {
+            for claim in &set.evidence.claims {
                 let Some(id) = claim.id.as_deref() else { continue };
                 match claim.kind {
                     ClaimKind::Requirement => requirements.push(Indexed {
                         source: &set.key,
-                        authority: set.authority,
+                        authority: set.evidence.authority,
                         id,
                         statement: claim.statement(),
                         synopsis: claim.synopsis.as_deref(),

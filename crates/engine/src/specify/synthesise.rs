@@ -66,7 +66,7 @@ pub async fn synthesise<M: Model>(
 #[must_use]
 pub fn plan(sets: &[SourceSet]) -> Plan {
     let mut kinds: Vec<ClaimKind> = Vec::new();
-    for claim in sets.iter().flat_map(|set| &set.claims) {
+    for claim in sets.iter().flat_map(|set| &set.evidence.claims) {
         if !kinds.contains(&claim.kind) {
             kinds.push(claim.kind);
         }
@@ -215,10 +215,10 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
             prompt,
             "\n### source `{key}` ({authority})\n\n",
             key = set.key,
-            authority = set.authority
+            authority = set.evidence.authority
         );
 
-        for claim in &set.claims {
+        for claim in &set.evidence.claims {
             let id = claim.id.as_deref().unwrap_or("-");
             let synopsis = claim.synopsis.as_deref().unwrap_or("");
             let extras = serde_json::to_string(&claim.extras).unwrap_or_default();

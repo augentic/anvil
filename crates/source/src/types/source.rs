@@ -12,7 +12,7 @@
 use std::fmt;
 
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Resolve-time source adapter metadata.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -21,26 +21,19 @@ pub struct SourceMetadata {
     pub emery_version: Option<String>,
 }
 
-/// Read-only source workspace.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SourceWorkspace {
-    /// Opaque preparation identity.
-    pub id: String,
-    /// Deployment-local view root.
-    pub root: String,
-}
-
 /// Workspace or inline source content.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum SourceContent {
-    /// Read-only view of a location-backed source.
-    Workspace(SourceWorkspace),
+    /// Deployment-local root of a read-only source view.
+    Workspace(String),
     /// Inline value without a filesystem lend.
     Value(String),
 }
 
 /// Source operation input.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct SourceInput {
     /// Binding key.
     pub key: String,
@@ -49,6 +42,15 @@ pub struct SourceInput {
 }
 
 impl SourceInput {
+    /// Creates workspace input over `root`.
+    #[must_use]
+    pub fn workspace(key: impl Into<String>, root: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            content: SourceContent::Workspace(root.into()),
+        }
+    }
+
     /// Creates inline-value input.
     #[must_use]
     pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
