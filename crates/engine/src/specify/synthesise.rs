@@ -22,7 +22,7 @@ use strum::VariantArray as _;
 use crate::artifact::{ReqId, SectionKind, Status};
 use crate::specify;
 use crate::specify::answer::{DesignAnswer, SpecAnswer};
-use crate::specify::extract::SourceSet;
+use crate::specify::extract::SourceEvidence;
 use crate::specify::provenance::Provenance;
 use crate::specify::render;
 use crate::store::Revision;
@@ -44,33 +44,35 @@ const DESIGN_PROSE: &[&str] = &["synthesis/synthesise.md", "synthesis/design-for
 ///
 /// Returns the model failure or the exhausted draft findings.
 pub async fn synthesise<M: Model>(
-    model: &M, sets: &[SourceSet], rows: &[Provenance],
+    model: &M, sources: &[SourceEvidence], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
     let drafted = Question::<SpecAnswer>::new("spec-draft")
         .system(specify::system(SPEC_PROSE))
         .schema(SpecAnswer::hints(rows))
-        .ask(model, spec_prompt(sets, rows), None, |drafted| drafted.check(rows))
+        .ask(model, spec_prompt(sources, rows), None, |drafted| drafted.check(rows))
         .await?;
     let spec = render::spec(rows, &drafted);
 
     tracing::info!("drafting design.md");
-    let plan = plan(sets);
+    let plan = plan(sources);
     let drafted = Question::<DesignAnswer>::new("design-draft")
         .system(specify::system(DESIGN_PROSE))
-        .schema(DesignAnswer::hints(&plan, sets))
-        .ask(model, design_prompt(sets, &spec, &plan), None, |drafted| drafted.check(&plan, sets))
+        .schema(DesignAnswer::hints(&plan, sources))
+        .ask(model, design_prompt(sources, &spec, &plan), None, |drafted| {
+            drafted.check(&plan, sources)
+        })
         .await?;
-    let design = render::design(sets, &drafted);
+    let design = render::design(sources, &drafted);
 
     Ok(Revision { spec, design })
 }
 
 /// Plans `design.md`: which sections the claims require, allow, or forbid.
 #[must_use]
-pub fn plan(sets: &[SourceSet]) -> Plan {
+pub fn plan(sources: &[SourceEvidence]) -> Plan {
     let mut kinds: Vec<ClaimKind> = Vec::new();
-    for claim in sets.iter().flat_map(|set| &set.evidence.claims) {
+    for claim in sources.iter().flat_map(|source| &source.evidence.claims) {
         if !kinds.contains(&claim.kind) {
             kinds.push(claim.kind);
         }
@@ -134,9 +136,9 @@ const fn informants(kind: SectionKind) -> &'static [ClaimKind] {
     }
 }
 
-fn spec_prompt(sets: &[SourceSet], rows: &[Provenance]) -> String {
+fn spec_prompt(sources: &[SourceEvidence], rows: &[Provenance]) -> String {
     let mut prompt = String::from("Draft `spec.md`.\n\n");
-    render_claims(&mut prompt, sets);
+    render_claims(&mut prompt, sources);
 
     prompt.push_str("\n## Requirement rows (draft one entry per subject)\n\n");
     for (index, row) in rows.iter().enumerate() {
@@ -173,9 +175,9 @@ fn spec_prompt(sets: &[SourceSet], rows: &[Provenance]) -> String {
     prompt
 }
 
-fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
+fn design_prompt(sources: &[SourceEvidence], spec: &str, plan: &Plan) -> String {
     let mut prompt = String::from("Draft `design.md`.\n\n");
-    render_claims(&mut prompt, sets);
+    render_claims(&mut prompt, sources);
 
     prompt.push_str("\n## Sections\n\n");
     for &kind in SectionKind::VARIANTS {
@@ -191,8 +193,11 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
             writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.as_ref());
     }
 
-    let keys: Vec<&str> =
-        sets.iter().flat_map(SourceSet::types).filter_map(Claim::type_key).collect();
+    let keys: Vec<&str> = sources
+        .iter()
+        .flat_map(|source| source.evidence.types())
+        .filter_map(Claim::type_key)
+        .collect();
     if !keys.is_empty() {
         prompt.push_str(
             "\n## Type blocks\n\nReference each `type` claim exactly once under `domain-model` \
@@ -207,18 +212,18 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
     prompt
 }
 
-fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
+fn render_claims(prompt: &mut String, sources: &[SourceEvidence]) {
     prompt.push_str("## Claims\n");
 
-    for set in sets {
+    for source in sources {
         let _ = write!(
             prompt,
             "\n### source `{key}` ({authority})\n\n",
-            key = set.key,
-            authority = set.evidence.authority
+            key = source.key,
+            authority = source.evidence.authority
         );
 
-        for claim in &set.evidence.claims {
+        for claim in &source.evidence.claims {
             let id = claim.id.as_deref().unwrap_or("-");
             let synopsis = claim.synopsis.as_deref().unwrap_or("");
             let extras = serde_json::to_string(&claim.extras).unwrap_or_default();

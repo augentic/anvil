@@ -81,7 +81,7 @@ When `--format json` is provided, returns:
 - `requirements` — requirement rows in the committed `spec.md`, one per grouped requirement (an acceptance gap is a note on its row, never a row of its own)
 - `sources` — number of sources extracted this run
 - `diff` — the re-mine diff against the superseded revision: `from`, the changed `artifacts`, and a `{ added, removed, changed }` object each for `spec` (requirement subjects) and `design` (section titles); absent on a first run, empty on a byte-stable re-run
-- `digests` — one `{ source, digest }` entry per loader-loaded adapter (local component or registry package): the resolved `sha256:<hex>` digest to commit as the source's pin; absent when no source loaded one
+- `digests` — the resolved `sha256:<hex>` digest of each loader-loaded adapter (local component or registry package), keyed by source: the value to commit as that source's pin; absent when no source loaded one
 
 ## See also
 

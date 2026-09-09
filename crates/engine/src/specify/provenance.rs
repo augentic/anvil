@@ -25,22 +25,24 @@ use serde_json::{Value, json};
 
 use crate::artifact::Status;
 use crate::specify;
-use crate::specify::extract::SourceSet;
+use crate::specify::extract::SourceEvidence;
 
 const PROSE: &[&str] = &["synthesis/grouping.md"];
 
-/// Derives the provenance of every requirement in `sets`, asking the model
-/// to group the claims on any run over two or more sources.
+/// Derives the provenance of every requirement in `sources`, asking the
+/// model to group the claims on any run over two or more sources.
 ///
 /// # Errors
 ///
 /// Returns the model failure or the exhausted grouping findings.
-pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Provenance>, Error> {
-    if sets.len() < 2 {
-        return Ok(floor(sets));
+pub async fn derive<M: Model>(
+    model: &M, sources: &[SourceEvidence],
+) -> Result<Vec<Provenance>, Error> {
+    if sources.len() < 2 {
+        return Ok(floor(sources));
     }
 
-    let claims = Claims::collect(sets);
+    let claims = Claims::collect(sources);
     tracing::info!("grouping requirement claims");
     let grouping = Question::<Grouping>::new("grouping")
         .system(specify::system(PROSE))
@@ -55,8 +57,8 @@ pub async fn derive<M: Model>(model: &M, sets: &[SourceSet]) -> Result<Vec<Prove
 /// requirement, whitespace-equal statements one class. What a run over one
 /// source gets.
 #[must_use]
-pub fn floor(sets: &[SourceSet]) -> Vec<Provenance> {
-    let claims = Claims::collect(sets);
+pub fn floor(sources: &[SourceEvidence]) -> Vec<Provenance> {
+    let claims = Claims::collect(sources);
     claims.rows(&claims.floor())
 }
 
@@ -180,16 +182,16 @@ struct Claims<'a> {
 }
 
 impl<'a> Claims<'a> {
-    fn collect(sets: &'a [SourceSet]) -> Self {
+    fn collect(sources: &'a [SourceEvidence]) -> Self {
         let mut requirements: Vec<Contributor> = Vec::new();
         let mut criteria = Vec::new();
-        for set in sets {
-            for claim in &set.evidence.claims {
+        for source in sources {
+            for claim in &source.evidence.claims {
                 let Some(id) = claim.id.as_deref() else { continue };
                 match claim.kind {
                     ClaimKind::Requirement => requirements.push(Contributor {
-                        source: set.key.clone(),
-                        authority: set.evidence.authority,
+                        source: source.key.clone(),
+                        authority: source.evidence.authority,
                         id: id.to_string(),
                         statement: claim.statement(),
                         synopsis: claim.synopsis.clone(),
@@ -403,9 +405,9 @@ mod tests {
     use serde_json::json;
 
     use super::{Claims, Grouping};
-    use crate::specify::extract::SourceSet;
+    use crate::specify::extract::SourceEvidence;
 
-    fn set(key: &str, ids: &[&str]) -> SourceSet {
+    fn source(key: &str, ids: &[&str]) -> SourceEvidence {
         let claims = ids
             .iter()
             .map(|id| Claim {
@@ -417,20 +419,19 @@ mod tests {
                 extras: serde_json::Map::new(),
             })
             .collect();
-        SourceSet {
+        SourceEvidence {
             key: key.to_string(),
             evidence: Evidence {
                 authority: Authority::Documentation,
                 claims,
             },
-            digest: None,
         }
     }
 
     #[test]
     fn grouping_hints_land() {
-        let sets = [set("docs", &["a.one", "a.two"]), set("code", &["a.three"])];
-        let claims = Claims::collect(&sets);
+        let sources = [source("docs", &["a.one", "a.two"]), source("code", &["a.three"])];
+        let claims = Claims::collect(&sources);
         let question = Question::<Grouping>::new("grouping").schema(claims.hints());
         let Format::Schema(spec) = &question.request().format else {
             panic!("a question steers by schema");

@@ -130,45 +130,38 @@ async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Res
     provider.extract(id, input).await.map_err(|err| bad_gateway!("source `{id}`: {err}"))
 }
 
-/// Resolves, extracts, and validates every source.
-pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+/// Loads, extracts, and validates every source.
+pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Error> {
     for source in sources {
-        let resolved = /* … */;
-        let evidence = dispatch(provider, &resolved.id, &source.input()?).await?;
-        let set = SourceSet { /* … */ };
-        set.validate()?;
-        sets.push(set);
+        let adapter = /* … */;
+        let evidence = dispatch(provider, &adapter.id, &source.input()?).await?;
+        evidence.validate().map_err(/* … */)?;
+        extracted.push(SourceEvidence { /* … */ });
     }
-    Ok(sets)
+    Ok(extracted)
 }
 
 // GOOD — entry first, capability named, phases separated, wrapper inlined
-/// Resolves, extracts, and validates every source.
-pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
+/// Loads, extracts, and validates every source.
+pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceEvidence>, Error> {
     for source in sources {
         let input = source.input()?;
-        let resolved = /* … */;
+        let adapter = /* … */;
 
-        let id = &resolved.id;
+        let id = &adapter.id;
         let evidence = Source::extract(provider, id, &input)
             .await
             .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
 
-        let set = SourceSet { /* … */ };
-        set.validate()?;
-        sets.push(set);
+        evidence.validate().map_err(/* … */)?;
+        extracted.push(SourceEvidence { /* … */ });
     }
 
-    Ok(sets)
+    Ok(extracted)
 }
 
-/// A validated claim set extracted from one source.
-pub struct SourceSet { /* … */ }
-
-impl SourceSet {
-    // Validates claim grammar and required extras fail-closed (A8).
-    fn validate(&self) -> Result<(), Error> { /* … */ }
-}
+/// One source's evidence, under the key the documents cite it by.
+pub struct SourceEvidence { /* … */ }
 ```
 
 ## Format dispatch

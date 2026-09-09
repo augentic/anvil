@@ -22,7 +22,7 @@ mod provenance;
 mod render;
 mod synthesise;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use emery_source::Source;
@@ -54,25 +54,15 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     validate(&sources)?;
 
     let provider = context.provider();
-    let sets = extract(provider, &sources).await?;
-    let rows = provenance::derive(provider, &sets).await?;
-    let revision = synthesise(provider, &sets, &rows).await?;
+    let (extracted, digests) = extract(provider, &sources).await?;
+    let rows = provenance::derive(provider, &extracted).await?;
+    let revision = synthesise(provider, &extracted, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;
-
-    let digests = sets
-        .iter()
-        .filter_map(|set| {
-            Some(SourceDigest {
-                source: set.key.clone(),
-                digest: set.digest.clone()?,
-            })
-        })
-        .collect();
 
     Ok(SpecifyBody {
         revision: committed.id,
         requirements: rows.len(),
-        sources: sets.len(),
+        sources: extracted.len(),
         diff: committed.diff,
         digests,
     })
@@ -172,20 +162,11 @@ pub struct SpecifyBody {
     /// superseded revision was unreadable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
-    /// Resolved digests of loader-loaded adapters; commit one as its
-    /// source's `digest` pin to make the load reproducible.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub digests: Vec<SourceDigest>,
-}
-
-/// One loader-resolved source digest reported by `emery specify`.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct SourceDigest {
-    /// The source key.
-    pub source: String,
-    /// The resolved `sha256:<hex>` content digest.
-    pub digest: Digest,
+    /// The resolved `sha256:<hex>` digest of each loader-loaded adapter,
+    /// by source key; commit one as its source's `digest` pin to make the
+    /// load reproducible.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub digests: BTreeMap<String, Digest>,
 }
 
 // Refuses an empty list (`specify-source-required`), a malformed or repeated

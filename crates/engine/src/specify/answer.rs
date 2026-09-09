@@ -22,7 +22,7 @@ use serde_json::{Value, json};
 use strum::VariantArray as _;
 
 use crate::artifact::{SectionKind, Status, citations};
-use crate::specify::extract::SourceSet;
+use crate::specify::extract::SourceEvidence;
 use crate::specify::provenance::Provenance;
 use crate::specify::synthesise::{Plan, Presence};
 
@@ -158,11 +158,11 @@ pub struct DesignAnswer {
 }
 
 impl DesignAnswer {
-    /// Steers the draft schema toward `plan` and `sets`: at least every
+    /// Steers the draft schema toward `plan` and `sources`: at least every
     /// required section, section kinds the plan does not forbid, and type
     /// blocks naming this run's `type` claims. Hints for the provider;
     /// [`Self::check`] is the gate.
-    pub fn hints(plan: &Plan, sets: &[SourceSet]) -> impl FnOnce(&mut Value) {
+    pub fn hints(plan: &Plan, sources: &[SourceEvidence]) -> impl FnOnce(&mut Value) {
         let required = json!(plan.required().count());
         let kinds: Vec<&str> = SectionKind::VARIANTS
             .iter()
@@ -170,8 +170,11 @@ impl DesignAnswer {
             .map(AsRef::as_ref)
             .collect();
         let kinds = json!(kinds);
-        let keys: Vec<&str> =
-            sets.iter().flat_map(SourceSet::types).filter_map(Claim::type_key).collect();
+        let keys: Vec<&str> = sources
+            .iter()
+            .flat_map(|source| source.evidence.types())
+            .filter_map(Claim::type_key)
+            .collect();
         let keys = (!keys.is_empty()).then(|| json!(keys));
         move |schema| {
             schema["properties"]["sections"]["minItems"] = required;
@@ -199,18 +202,18 @@ impl DesignAnswer {
         }
     }
 
-    /// Holds the draft to `plan` and `sets`: the section set, one reference
-    /// per type claim under `domain-model`, bound citations, and no reserved
-    /// marker.
+    /// Holds the draft to `plan` and `sources`: the section set, one
+    /// reference per type claim under `domain-model`, bound citations, and no
+    /// reserved marker.
     ///
     /// # Errors
     ///
     /// Returns every finding, for repair.
-    pub fn check(&self, plan: &Plan, sets: &[SourceSet]) -> Result<(), Findings> {
+    pub fn check(&self, plan: &Plan, sources: &[SourceEvidence]) -> Result<(), Findings> {
         let mut findings = Vec::new();
         paragraphs(&self.preamble, "preamble", &mut findings);
 
-        let bound: BTreeSet<&str> = sets.iter().map(|set| set.key.as_str()).collect();
+        let bound: BTreeSet<&str> = sources.iter().map(|source| source.key.as_str()).collect();
         let mut seen = BTreeSet::new();
         let mut references: BTreeMap<&str, usize> = BTreeMap::new();
         for section in &self.sections {
@@ -253,8 +256,11 @@ impl DesignAnswer {
             findings.push(format!("- `## {kind}` is required but absent"));
         }
 
-        let keys: BTreeSet<&str> =
-            sets.iter().flat_map(SourceSet::types).filter_map(Claim::type_key).collect();
+        let keys: BTreeSet<&str> = sources
+            .iter()
+            .flat_map(|source| source.evidence.types())
+            .filter_map(Claim::type_key)
+            .collect();
         for key in &keys {
             match references.get(key).copied().unwrap_or_default() {
                 1 => {}
@@ -336,7 +342,7 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::{DesignAnswer, SpecAnswer};
-    use crate::specify::extract::SourceSet;
+    use crate::specify::extract::SourceEvidence;
     use crate::specify::provenance::floor;
     use crate::specify::synthesise::plan;
 
@@ -353,8 +359,8 @@ mod tests {
         }
     }
 
-    fn sets() -> Vec<SourceSet> {
-        vec![SourceSet {
+    fn sources() -> Vec<SourceEvidence> {
+        vec![SourceEvidence {
             key: "docs".to_string(),
             evidence: Evidence {
                 authority: Authority::Documentation,
@@ -364,7 +370,6 @@ mod tests {
                     claim(ClaimKind::Type, "auth.session", ("signature", "struct Session;")),
                 ],
             },
-            digest: None,
         }]
     }
 
@@ -377,8 +382,8 @@ mod tests {
 
     #[test]
     fn spec_hints_land() {
-        let sets = sets();
-        let rows = floor(&sets);
+        let sources = sources();
+        let rows = floor(&sources);
         let question = Question::<SpecAnswer>::new("spec-draft").schema(SpecAnswer::hints(&rows));
         let schema = schema(&question);
 
@@ -393,10 +398,10 @@ mod tests {
 
     #[test]
     fn design_hints_land() {
-        let sets = sets();
-        let plan = plan(&sets);
-        let question =
-            Question::<DesignAnswer>::new("design-draft").schema(DesignAnswer::hints(&plan, &sets));
+        let sources = sources();
+        let plan = plan(&sources);
+        let question = Question::<DesignAnswer>::new("design-draft")
+            .schema(DesignAnswer::hints(&plan, &sources));
         let schema = schema(&question);
 
         // Overview and the type-informed domain model are required; the

@@ -17,7 +17,7 @@ use strum::VariantArray as _;
 
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
 use crate::specify::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
-use crate::specify::extract::SourceSet;
+use crate::specify::extract::SourceEvidence;
 use crate::specify::provenance::{Contributor, Provenance, normalise};
 
 /// Renders `spec.md` from `rows` and their drafted content.
@@ -63,12 +63,12 @@ pub fn spec(rows: &[Provenance], draft: &SpecAnswer) -> String {
 }
 
 /// Renders `design.md` from the drafted sections and the type claims of
-/// `sets`, sections in vocabulary order.
+/// `sources`, sections in vocabulary order.
 #[must_use]
-pub fn design(sets: &[SourceSet], draft: &DesignAnswer) -> String {
-    let signatures: BTreeMap<&str, &str> = sets
+pub fn design(sources: &[SourceEvidence], draft: &DesignAnswer) -> String {
+    let signatures: BTreeMap<&str, &str> = sources
         .iter()
-        .flat_map(SourceSet::types)
+        .flat_map(|source| source.evidence.types())
         .filter_map(|claim| Some((claim.type_key()?, claim.signature()?)))
         .collect();
 
@@ -151,7 +151,7 @@ mod tests {
 
     use crate::artifact::{Design, SectionKind, Spec, Status};
     use crate::specify::answer::{DesignAnswer, SpecAnswer};
-    use crate::specify::extract::SourceSet;
+    use crate::specify::extract::SourceEvidence;
     use crate::specify::provenance::floor;
     use crate::specify::synthesise::plan;
 
@@ -168,13 +168,12 @@ mod tests {
         }
     }
 
-    fn set(key: &str, authority: Authority, claims: Vec<Claim>) -> SourceSet {
+    fn source(key: &str, authority: Authority, claims: Vec<Claim>) -> SourceEvidence {
         let evidence = Evidence { authority, claims };
         evidence.validate().expect("valid claims");
-        SourceSet {
+        SourceEvidence {
             key: key.to_string(),
             evidence,
-            digest: None,
         }
     }
 
@@ -182,7 +181,7 @@ mod tests {
     // writes reads back as the rows and sections it was rendered from.
     #[test]
     fn rendered_documents_read_back() {
-        let sets = [set(
+        let sources = [source(
             "docs",
             Authority::Documentation,
             vec![
@@ -193,7 +192,7 @@ mod tests {
                 claim(ClaimKind::Type, "session.type", ("signature", "type Session = {}")),
             ],
         )];
-        let rows = floor(&sets);
+        let rows = floor(&sources);
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].status(), Status::Conflict, "two docs statements tie");
         assert_eq!(rows[1].status(), Status::Agreed, "covered by its criterion");
@@ -230,8 +229,8 @@ mod tests {
             ]
         }))
         .expect("draft shape");
-        design_draft.check(&plan(&sets), &sets).expect("draft fits the plan");
-        let design = crate::specify::render::design(&sets, &design_draft);
+        design_draft.check(&plan(&sources), &sources).expect("draft fits the plan");
+        let design = crate::specify::render::design(&sources, &design_draft);
         let read: Design = design.parse().expect("the rendering is canonical");
         let kinds: Vec<SectionKind> = read.sections.iter().map(|s| s.kind).collect();
         assert_eq!(kinds, [SectionKind::Overview, SectionKind::DomainModel], "vocabulary order");

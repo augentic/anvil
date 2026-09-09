@@ -1115,8 +1115,7 @@ async fn tofu_digest_reported() {
     let resp = cli(&provider, &["emery", "--format", "json", "specify", &component]).await;
     assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
     let envelope: Value = serde_json::from_slice(&resp.stdout).expect("one JSON envelope");
-    assert_eq!(envelope["digests"][0]["source"], "source", "{envelope}");
-    assert_eq!(envelope["digests"][0]["digest"], digest("cd").as_str(), "{envelope}");
+    assert_eq!(envelope["digests"]["source"], digest("cd").as_str(), "{envelope}");
     provider.model.assert_exhausted();
 }
 

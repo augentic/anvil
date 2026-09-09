@@ -19,8 +19,8 @@ pub fn specify(body: &SpecifyBody, out: &mut dyn fmt::Write) -> fmt::Result {
     writeln!(out, "committed revision {}", body.revision)?;
     writeln!(out, "  requirements: {}", body.requirements)?;
     writeln!(out, "  sources: {}", body.sources)?;
-    for entry in &body.digests {
-        writeln!(out, "  digest {}: {}", entry.source, entry.digest)?;
+    for (source, digest) in &body.digests {
+        writeln!(out, "  digest {source}: {digest}")?;
     }
     if let Some(diff) = &body.diff {
         if diff.is_empty() {
