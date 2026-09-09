@@ -2,7 +2,7 @@
 /// operations. Adapter guests export the `source` interface alone. No
 /// resource types cross the contract: dispatch carries plain values,
 /// routed by each call's `adapter-id` first argument.
-package emery:adapter@0.2.0;
+package emery:adapter@0.1.0;
 
 interface types {
   /// The error returned by operations.

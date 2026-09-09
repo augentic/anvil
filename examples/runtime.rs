@@ -30,7 +30,7 @@ cfg_if::cfg_if! {
                 { name: ".", path: "." },
             ],
             plugins: {
-                interfaces: [emery_source::SOURCE_INTERFACE],
+                interfaces: ["emery:adapter/source@0.1.0"],
                 locations: [
                     { name: ".", path: "." },
                 ],

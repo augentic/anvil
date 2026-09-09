@@ -17,7 +17,7 @@ pub mod types;
 pub mod source;
 
 pub use answers::{content_note, evidence};
-pub use emery_source::{DispatchError, SOURCE_INTERFACE, Source};
+pub use emery_source::{DispatchError, Source};
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;

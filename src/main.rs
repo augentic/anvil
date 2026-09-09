@@ -28,7 +28,7 @@ omnia::runtime!({
         { name: ".", path: "." },
     ],
     plugins: {
-        interfaces: [emery_source::SOURCE_INTERFACE],
+        interfaces: ["emery:adapter/source@0.1.0"],
         locations: [
             { name: ".", path: "." },
             { registry: "omnia.host" },
