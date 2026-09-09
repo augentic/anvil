@@ -22,7 +22,7 @@ use strum::VariantArray as _;
 use crate::artifact::{ReqId, SectionKind, Status};
 use crate::specify;
 use crate::specify::answer::{DesignAnswer, SpecAnswer};
-use crate::specify::extract::SourceEvidence;
+use crate::specify::SourceEvidence;
 use crate::specify::provenance::Provenance;
 use crate::specify::render;
 use crate::store::Revision;

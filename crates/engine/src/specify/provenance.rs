@@ -25,7 +25,7 @@ use serde_json::{Value, json};
 
 use crate::artifact::Status;
 use crate::specify;
-use crate::specify::extract::SourceEvidence;
+use crate::specify::SourceEvidence;
 
 const PROSE: &[&str] = &["synthesis/grouping.md"];
 
@@ -405,7 +405,7 @@ mod tests {
     use serde_json::json;
 
     use super::{Claims, Grouping};
-    use crate::specify::extract::SourceEvidence;
+    use crate::specify::SourceEvidence;
 
     fn source(key: &str, ids: &[&str]) -> SourceEvidence {
         let claims = ids

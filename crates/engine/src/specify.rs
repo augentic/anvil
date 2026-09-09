@@ -16,7 +16,6 @@
 //! changed without reading the documents.
 
 mod answer;
-mod extract;
 mod provenance;
 mod render;
 mod synthesise;
@@ -27,7 +26,7 @@ use std::path::Path;
 use emery_source::Source;
 use emery_source::claims::is_kebab;
 pub use emery_source::types::SourceContent;
-use emery_source::types::SourceInput;
+use emery_source::types::{Evidence, SourceInput};
 use omnia_guest::api::Context;
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
@@ -52,7 +51,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     validate(&sources)?;
 
     let provider = context.provider();
-    let extracted = extract::evidence(provider, &sources).await?;
+    let extracted = evidence(provider, &sources).await?;
     let rows = provenance::derive(provider, &extracted).await?;
     let revision = synthesise(provider, &extracted, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;
@@ -185,6 +184,46 @@ fn validate(sources: &[SourceConfig]) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+// Loads, extracts, and validates every source. Adapters are guests the
+// engine did not write, so the contract's claim gate is re-run fail-closed
+// (A8) before anything downstream trusts their claims; an adapter's own
+// failure arrives already classified by the `Source` capability.
+async fn evidence<P: Source + Plugins>(
+    provider: &P, sources: &[SourceConfig],
+) -> Result<Vec<SourceEvidence>, Error> {
+    let mut extracted = Vec::with_capacity(sources.len());
+    let loader = Loader::new(provider);
+
+    for source in sources {
+        let input = source.input()?;
+        let id = source.load(&loader).await?;
+
+        let key = &source.key;
+        tracing::debug!(source = %key, "extracting");
+        let evidence = Source::extract(provider, &id, &input).await?;
+
+        let findings = evidence.findings();
+        if !findings.is_empty() {
+            let findings = findings.join("\n");
+            return Err(bad_request!("source `{key}` returned invalid claims:\n{findings}"));
+        }
+
+        extracted.push(SourceEvidence {
+            key: key.clone(),
+            evidence,
+        });
+    }
+
+    Ok(extracted)
+}
+
+// One source's validated evidence, under the key the documents cite it by.
+#[derive(Debug)]
+struct SourceEvidence {
+    key: String,
+    evidence: Evidence,
 }
 
 // Joins the synthesis prose at `paths` into one system prompt.

@@ -22,7 +22,7 @@ use serde_json::{Value, json};
 use strum::VariantArray as _;
 
 use crate::artifact::{SectionKind, Status, citations};
-use crate::specify::extract::SourceEvidence;
+use crate::specify::SourceEvidence;
 use crate::specify::provenance::Provenance;
 use crate::specify::synthesise::{Plan, Presence};
 
@@ -342,7 +342,7 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::{DesignAnswer, SpecAnswer};
-    use crate::specify::extract::SourceEvidence;
+    use crate::specify::SourceEvidence;
     use crate::specify::provenance::floor;
     use crate::specify::synthesise::plan;
 
