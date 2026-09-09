@@ -17,8 +17,9 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use emery_source::Source;
 use emery_source::types::{Evidence, SourceInput, SourceMetadata};
-use emery_source::{DispatchError, Source};
+use omnia_guest::Error;
 use omnia_test::guest::Memory;
 
 // Capabilities are never dispatched; the suite only inspects the grammar.
@@ -52,7 +53,7 @@ impl omnia_guest::Model for Inert {
 impl Source for Inert {
     fn extract(
         &self, _id: &str, _input: &SourceInput,
-    ) -> impl Future<Output = Result<Evidence, DispatchError>> + Send {
+    ) -> impl Future<Output = Result<Evidence, Error>> + Send {
         std::future::ready(never_extracted())
     }
 
@@ -169,7 +170,7 @@ fn never_loaded() -> Result<omnia_guest::plugins::Plugin, omnia_guest::plugins::
     unreachable!("the plugin suite never dispatches the loader")
 }
 
-fn never_extracted() -> Result<Evidence, DispatchError> {
+fn never_extracted() -> Result<Evidence, Error> {
     unreachable!("the plugin suite never dispatches Source")
 }
 

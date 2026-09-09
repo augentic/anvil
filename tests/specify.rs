@@ -21,7 +21,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use emery_engine::{CONTAINER, CURRENT};
-use emery_source::types::{Authority, ClaimKind, SourceContent};
+use emery_source::types::{Authority, ClaimKind, Evidence, SourceContent};
 use omnia_guest::model::Error as ModelError;
 use omnia_guest::plugins::{Digest, Error as LoadError, Location};
 use omnia_guest::{bad_gateway, bad_request};
@@ -502,7 +502,7 @@ async fn diff_envelope() {
 
 // Docs evidence over `(subject, statement)` requirements in row order,
 // each covered by its own criterion.
-fn docs_evidence(requirements: &[(&str, &str)]) -> types::Evidence {
+fn docs_evidence(requirements: &[(&str, &str)]) -> Evidence {
     let claims = requirements
         .iter()
         .flat_map(|(subject, statement)| {

@@ -265,9 +265,8 @@ pub mod import {
     fn claim(claim: wire::Claim) -> Result<types::Claim, String> {
         let mut extras = serde_json::Map::new();
         for (key, encoded) in claim.extras {
-            let value = serde_json::from_str(&encoded).map_err(|err| {
-                format!("extra `{key}` is not canonical JSON ({err}): {encoded}")
-            })?;
+            let value = serde_json::from_str(&encoded)
+                .map_err(|err| format!("extra `{key}` is not canonical JSON ({err}): {encoded}"))?;
             extras.insert(key, value);
         }
         Ok(types::Claim {
