@@ -16,8 +16,8 @@ use std::fmt::Write as _;
 use strum::VariantArray as _;
 
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
-use crate::specify::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
 use crate::specify::SourceEvidence;
+use crate::specify::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
 use crate::specify::provenance::{Contributor, Provenance, normalise};
 
 /// Renders `spec.md` from `rows` and their drafted content.
@@ -150,8 +150,8 @@ mod tests {
     use serde_json::json;
 
     use crate::artifact::{Design, SectionKind, Spec, Status};
-    use crate::specify::answer::{DesignAnswer, SpecAnswer};
     use crate::specify::SourceEvidence;
+    use crate::specify::answer::{DesignAnswer, SpecAnswer};
     use crate::specify::provenance::floor;
     use crate::specify::synthesise::plan;
 
