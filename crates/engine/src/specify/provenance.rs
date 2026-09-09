@@ -14,20 +14,18 @@
 //! toward a winner; a run over one source never asks at all.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Write as _;
+use std::fmt;
 
 use emery_source::types::{Authority, ClaimKind};
-use omnia_guest::model::{Findings, Question};
+use omnia_guest::model::Findings;
 use omnia_guest::{Error, Model};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::artifact::Status;
-use crate::specify;
 use crate::specify::SourceEvidence;
-
-const PROSE: &[&str] = &["synthesis/grouping.md"];
+use crate::specify::brief::{Brief, verdict};
 
 /// Derives the provenance of every requirement in `sources`, asking the
 /// model to group the claims on any run over two or more sources.
@@ -42,15 +40,7 @@ pub async fn derive<M: Model>(
         return Ok(floor(sources));
     }
 
-    let claims = Claims::collect(sources);
-    tracing::info!("grouping requirement claims");
-    let grouping = Question::<Grouping>::new("grouping")
-        .system(specify::system(PROSE))
-        .schema(claims.hints())
-        .ask(model, claims.prompt(), None, |grouping| claims.check(grouping))
-        .await?;
-
-    Ok(claims.rows(&grouping))
+    Claims::collect(sources).judge(model).await
 }
 
 /// The provenance the floor alone derives: byte-equal ids are one
@@ -209,67 +199,6 @@ impl<'a> Claims<'a> {
         }
     }
 
-    // The grouping request: every claim indexed, authority withheld, the
-    // floor stated.
-    fn prompt(&self) -> String {
-        let mut prompt = String::from(
-            "Group the requirement claims.\n\n\
-             ## Requirement claims (index, source, id, statement, synopsis)\n\n",
-        );
-
-        for (index, claim) in self.requirements.iter().enumerate() {
-            let synopsis = claim.synopsis.as_deref().unwrap_or("-");
-            let _ = writeln!(
-                prompt,
-                "- {index} `{source}` `{id}` — {statement} — {synopsis}",
-                source = claim.source,
-                id = claim.id,
-                statement = claim.statement,
-            );
-        }
-
-        prompt.push_str("\n## Floor\n\n");
-        let floor = self.floor();
-        let merged: Vec<&Group> =
-            floor.groups.iter().filter(|group| group.claims.len() > 1).collect();
-        if merged.is_empty() {
-            prompt.push_str("No two claims share an id; every grouping is your judgement.\n");
-        }
-
-        for group in merged {
-            let id = &self.requirements[group.claims[0]].id;
-            let indices =
-                group.claims.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
-            let _ = writeln!(
-                prompt,
-                "- claims {indices} share the id `{id}` and are pre-merged; an answer that splits \
-                 them across groups is refused."
-            );
-        }
-
-        prompt.push_str(
-            "\nAnswer with every index in exactly one group, and every group's claims in exactly \
-             one agreeing class.\n",
-        );
-
-        prompt
-    }
-
-    // Steers the grouping schema toward this run: every index is below the
-    // claim count and at least one group is answered. Hints for a
-    // constrained decoder; `check` is the gate.
-    fn hints(&self) -> impl FnOnce(&mut Value) {
-        let last = self.requirements.len().saturating_sub(1);
-        move |schema| {
-            for pointer in ["/properties/claims/items", "/properties/classes/items/items"] {
-                if let Some(index) = schema.pointer_mut(&format!("/$defs/Group{pointer}")) {
-                    index["maximum"] = json!(last);
-                }
-            }
-            schema["properties"]["groups"]["minItems"] = json!(1);
-        }
-    }
-
     // The deterministic floor: byte-equal ids are one group, and within a
     // group whitespace-equal statements are one class.
     fn floor(&self) -> Grouping {
@@ -298,13 +227,54 @@ impl<'a> Claims<'a> {
         }
     }
 
+    // Rows in first-seen order of each group's earliest claim.
+    fn rows(&self, grouping: &Grouping) -> Vec<Provenance> {
+        let mut groups: Vec<(usize, Vec<Vec<Contributor>>)> = grouping
+            .groups
+            .iter()
+            .map(|group| {
+                let first = group.claims.iter().copied().min().unwrap_or_default();
+                let classes = group
+                    .classes
+                    .iter()
+                    .map(|class| {
+                        class.iter().map(|&index| self.requirements[index].clone()).collect()
+                    })
+                    .collect();
+                (first, classes)
+            })
+            .collect();
+        groups.sort_by_key(|(first, _)| *first);
+        groups.into_iter().map(|(_, classes)| Provenance::of(classes, &self.criteria)).collect()
+    }
+}
+
+impl Brief for Claims<'_> {
+    type Answer = Grouping;
+    type Output = Vec<Provenance>;
+
+    const NAME: &'static str = "grouping";
+    const PROSE: &'static [&'static str] = &["synthesis/grouping.md"];
+
+    // Every index is below the claim count and at least one group is
+    // answered.
+    fn hints(&self, schema: &mut Value) {
+        let last = self.requirements.len().saturating_sub(1);
+        for pointer in ["/properties/claims/items", "/properties/classes/items/items"] {
+            if let Some(index) = schema.pointer_mut(&format!("/$defs/Group{pointer}")) {
+                index["maximum"] = json!(last);
+            }
+        }
+        schema["properties"]["groups"]["minItems"] = json!(1);
+    }
+
     // Both levels are partitions, and no byte-equal-id pair is split.
-    fn check(&self, grouping: &Grouping) -> Result<(), Findings> {
+    fn check(&self, answer: &Grouping) -> Result<(), Findings> {
         let mut findings = Vec::new();
         let count = self.requirements.len();
         let mut placed: BTreeMap<usize, usize> = BTreeMap::new();
 
-        for (position, group) in grouping.groups.iter().enumerate() {
+        for (position, group) in answer.groups.iter().enumerate() {
             if group.claims.is_empty() {
                 findings.push(format!("- group {position} has no claims"));
             }
@@ -360,28 +330,57 @@ impl<'a> Claims<'a> {
             }
         }
 
-        if findings.is_empty() { Ok(()) } else { Err(findings) }
+        verdict(findings)
     }
 
-    // Rows in first-seen order of each group's earliest claim.
-    fn rows(&self, grouping: &Grouping) -> Vec<Provenance> {
-        let mut groups: Vec<(usize, Vec<Vec<Contributor>>)> = grouping
-            .groups
-            .iter()
-            .map(|group| {
-                let first = group.claims.iter().copied().min().unwrap_or_default();
-                let classes = group
-                    .classes
-                    .iter()
-                    .map(|class| {
-                        class.iter().map(|&index| self.requirements[index].clone()).collect()
-                    })
-                    .collect();
-                (first, classes)
-            })
-            .collect();
-        groups.sort_by_key(|(first, _)| *first);
-        groups.into_iter().map(|(_, classes)| Provenance::of(classes, &self.criteria)).collect()
+    // The rows the accepted grouping yields.
+    fn conclude(self, answer: Grouping) -> Vec<Provenance> {
+        self.rows(&answer)
+    }
+}
+
+// The turn: every claim indexed, authority withheld, the floor stated.
+impl fmt::Display for Claims<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(
+            "Group the requirement claims.\n\n\
+             ## Requirement claims (index, source, id, statement, synopsis)\n\n",
+        )?;
+
+        for (index, claim) in self.requirements.iter().enumerate() {
+            let synopsis = claim.synopsis.as_deref().unwrap_or("-");
+            writeln!(
+                f,
+                "- {index} `{source}` `{id}` — {statement} — {synopsis}",
+                source = claim.source,
+                id = claim.id,
+                statement = claim.statement,
+            )?;
+        }
+
+        f.write_str("\n## Floor\n\n")?;
+        let floor = self.floor();
+        let merged: Vec<&Group> =
+            floor.groups.iter().filter(|group| group.claims.len() > 1).collect();
+        if merged.is_empty() {
+            f.write_str("No two claims share an id; every grouping is your judgement.\n")?;
+        }
+
+        for group in merged {
+            let id = &self.requirements[group.claims[0]].id;
+            let indices =
+                group.claims.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+            writeln!(
+                f,
+                "- claims {indices} share the id `{id}` and are pre-merged; an answer that splits \
+                 them across groups is refused."
+            )?;
+        }
+
+        f.write_str(
+            "\nAnswer with every index in exactly one group, and every group's claims in exactly \
+             one agreeing class.\n",
+        )
     }
 }
 
@@ -400,43 +399,24 @@ pub fn normalise(text: &str) -> String {
 // it would silently turn the index bound into a no-op.
 #[cfg(test)]
 mod tests {
-    use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
-    use omnia_guest::model::{Format, Question};
+    use emery_source::types::ClaimKind;
+    use omnia_guest::model::Question;
     use serde_json::json;
 
     use super::{Claims, Grouping};
-    use crate::specify::SourceEvidence;
-
-    fn source(key: &str, ids: &[&str]) -> SourceEvidence {
-        let claims = ids
-            .iter()
-            .map(|id| Claim {
-                kind: ClaimKind::Requirement,
-                id: Some((*id).to_string()),
-                path: None,
-                synopsis: None,
-                backing: None,
-                extras: serde_json::Map::new(),
-            })
-            .collect();
-        SourceEvidence {
-            key: key.to_string(),
-            evidence: Evidence {
-                authority: Authority::Documentation,
-                claims,
-            },
-        }
-    }
+    use crate::specify::brief::Brief;
+    use crate::specify::fixture::{claim, schema, source};
 
     #[test]
-    fn grouping_hints_land() {
-        let sources = [source("docs", &["a.one", "a.two"]), source("code", &["a.three"])];
-        let claims = Claims::collect(&sources);
-        let question = Question::<Grouping>::new("grouping").schema(claims.hints());
-        let Format::Schema(spec) = &question.request().format else {
-            panic!("a question steers by schema");
-        };
-        let schema: serde_json::Value = serde_json::from_str(&spec.schema).expect("schema is JSON");
+    fn grouping_hints() {
+        let requirement = |id| claim(ClaimKind::Requirement, id, ("statement", "As stated."));
+        let sources = [
+            source("docs", vec![requirement("a.one"), requirement("a.two")]),
+            source("code", vec![requirement("a.three")]),
+        ];
+        let brief = Claims::collect(&sources);
+        let question = Question::<Grouping>::new(Claims::NAME).schema(|schema| brief.hints(schema));
+        let schema = schema(&question);
 
         assert_eq!(schema["properties"]["groups"]["minItems"], json!(1));
         let group = &schema["$defs"]["Group"]["properties"];

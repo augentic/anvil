@@ -93,7 +93,7 @@ async fn bare_context() {
 // Reference calls are answered in-process from the corpus before the
 // candidate is checked.
 #[tokio::test]
-async fn references_answered() {
+async fn doc_refs() {
     let model = Scripted::answering([VALID]).calling(
         0,
         [
@@ -127,7 +127,7 @@ async fn references_answered() {
 // sent back as the correction and the next candidate is checked again, so
 // the engine never sees the claim it would otherwise refuse.
 #[tokio::test]
-async fn gate_findings_corrected() {
+async fn gate_findings() {
     let model = Scripted::answering([
         r#"{"authority":"documentation","claims":[{"kind":"requirement"}]}"#,
         VALID,
@@ -171,7 +171,7 @@ async fn rounds_exhausted() {
 
 // A request the host refuses is a `bad_request` carrying the host's reason.
 #[tokio::test]
-async fn invalid_request_passes_through() {
+async fn invalid_request() {
     let model = Scripted::new([Err(ModelError::InvalidRequest("no such model".to_string()))]);
     let ctx = context(&[], None);
 
@@ -184,7 +184,7 @@ async fn invalid_request_passes_through() {
 }
 
 #[test]
-fn evidence_deserializes() {
+fn parse_evidence() {
     let evidence: Evidence = serde_json::from_str(
         r#"{
             "authority": "behaviour",
@@ -235,7 +235,7 @@ fn evidence_deserializes() {
 
 // Unpinned `synopsis` and `backing` shapes become absent, not fatal.
 #[test]
-fn open_body_fields_lenient() {
+fn open_fields() {
     let evidence: Evidence = serde_json::from_str(
         r#"{
             "authority": "documentation",
@@ -256,7 +256,7 @@ fn open_body_fields_lenient() {
 }
 
 #[test]
-fn content_note_names_the_source() {
+fn source_note() {
     let workspace = content_note(&SourceInput::workspace("docs", "/lend/docs"), "the docs tree");
     assert!(workspace.contains("`/lend/docs` — the docs tree the prompt walks"), "{workspace}");
 

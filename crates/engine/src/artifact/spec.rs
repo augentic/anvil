@@ -200,7 +200,7 @@ mod tests {
     use crate::artifact::Spec;
 
     #[test]
-    fn body_is_the_text_alone() {
+    fn text_body() {
         let text = "\
 # Specification
 
@@ -239,7 +239,7 @@ Note: code (behaviour, session-expiry): Sessions expire after 15 minutes.
 
     // A document this engine did not render is corruption.
     #[test]
-    fn non_canonical_is_corruption() {
+    fn non_canonical() {
         for text in [
             "# Title only\n",
             "### Requirement: greeting\n\nBody without provenance.\n",

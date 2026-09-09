@@ -161,7 +161,7 @@ async fn from_file() {
 // source extracts over its own workspace, and the two claims of one id
 // are one requirement citing both sources.
 #[tokio::test]
-async fn shared_adapter_several_roots() {
+async fn shared_roots() {
     let cases: &[(&str, &str, bool)] = &[
         ("emery:documentation@1.2.0", "emery:documentation@1.2.0", false),
         ("./source.wasm", "source:source", true),
@@ -839,7 +839,7 @@ async fn model_fails() {
 // The operator-owned `emery.toml` parses fail-closed: every malformed
 // carrier refuses typed before anything commits.
 #[tokio::test]
-async fn config_file_refused() {
+async fn config_file() {
     let cases: &[(&str, u8, &str, &str)] = &[
         ("not toml [", 1, "bad_request", "TOML parse error"),
         (
@@ -1032,7 +1032,7 @@ async fn source_paths() {
 // Local components are read fresh on every run — nothing mirrors, so
 // a re-run after the operator deletes the source file refuses typed.
 #[tokio::test]
-async fn deleted_component_refused() {
+async fn deleted_wasm() {
     let workspace = project_tempdir();
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");
@@ -1086,7 +1086,7 @@ async fn pinned_component() {
 // loader's typed mismatch refusal surfaces on the exit contract before
 // anything extracts or commits.
 #[tokio::test]
-async fn digest_mismatch_refused() {
+async fn digest_mismatch() {
     let dir = project_tempdir();
     fs::write(dir.path().join("source.wasm"), b"\0asm-stub").expect("stub wasm");
     let config = dir.path().join("emery.toml");
@@ -1208,7 +1208,7 @@ async fn pinned_package() {
 // A second source that re-pins an already-loaded adapter refuses
 // already-active: the loader cannot re-bind the identity.
 #[tokio::test]
-async fn shared_adapter_conflicting_pin() {
+async fn conflicting_pin() {
     let dir = project_tempdir();
     let config = dir.path().join("emery.toml");
     fs::write(
@@ -1235,7 +1235,7 @@ async fn shared_adapter_conflicting_pin() {
 // BadGateway exit; a component refused host-side validation is
 // `refused` on the BadRequest exit.
 #[tokio::test]
-async fn load_failures_typed() {
+async fn load_failures() {
     let mut provider = Provider::idle();
     provider.plugins = provider.plugins.clone().refuse(
         "emery:demo@1.2.0",
@@ -1256,7 +1256,7 @@ async fn load_failures_typed() {
 // Package references pin an exact SemVer — no branches, tags, or
 // namespace-less names.
 #[tokio::test]
-async fn package_ref_refused() {
+async fn package_ref() {
     let cases: &[(&str, &str)] = &[
         ("emery:demo", "missing `@<version>`"),
         ("emery:demo@main", "invalid version `main`"),
@@ -1298,7 +1298,7 @@ async fn tampered_revision() {
 // predecessor commits, prunes the tampered blobs, and suppresses only
 // the advisory diff.
 #[tokio::test]
-async fn specify_repairs_tampered() {
+async fn repair_tampered() {
     let second_spec = SPEC_ANSWER.replace("hello", "howdy");
     let second_design = DESIGN_ANSWER.replace("hello", "howdy");
     let provider = Provider::answering([
@@ -1337,7 +1337,7 @@ async fn specify_repairs_tampered() {
 // no id fail `show` closed, yet the next `specify` swaps over them, so
 // a corrupt store never dead-ends the grammar.
 #[tokio::test]
-async fn specify_repairs_current() {
+async fn repair_current() {
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     provider.storage.insert_state(CURRENT, b"\xff\xfe");
     fail(&provider, &["emery", "show", "spec"], 3, "server_error").await;
@@ -1354,7 +1354,7 @@ async fn specify_repairs_current() {
 // is host policy over the engine's flat keys, with no engine change
 // (portable-storage step 8).
 #[tokio::test]
-async fn multi_project_isolation() {
+async fn multi_project() {
     let workspace = project_tempdir();
     let component = workspace.path().join("source.wasm");
     fs::write(&component, b"\0asm-stub").expect("stub wasm");

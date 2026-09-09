@@ -15,9 +15,8 @@
 //! the diff against the superseded revision — so a caller can see what
 //! changed without reading the documents.
 
-mod answer;
+mod brief;
 mod provenance;
-mod render;
 mod synthesise;
 
 use std::collections::BTreeSet;
@@ -226,7 +225,56 @@ struct SourceEvidence {
     evidence: Evidence,
 }
 
-// Joins the synthesis prose at `paths` into one system prompt.
-fn system(paths: &[&str]) -> String {
-    paths.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n")
+// One documentation source of two requirements and a type, and the schema
+// a brief's hints edited: what every brief's tests build on.
+#[cfg(test)]
+mod fixture {
+    use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
+    use omnia_guest::model::{Format, Question};
+    use schemars::JsonSchema;
+    use serde::de::DeserializeOwned;
+    use serde_json::{Value, json};
+
+    use crate::specify::SourceEvidence;
+
+    pub fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
+        let mut extras = serde_json::Map::new();
+        extras.insert(extra.0.to_string(), json!(extra.1));
+        Claim {
+            kind,
+            id: Some(id.to_string()),
+            path: None,
+            synopsis: None,
+            backing: None,
+            extras,
+        }
+    }
+
+    pub fn source(key: &str, claims: Vec<Claim>) -> SourceEvidence {
+        SourceEvidence {
+            key: key.to_string(),
+            evidence: Evidence {
+                authority: Authority::Documentation,
+                claims,
+            },
+        }
+    }
+
+    pub fn sources() -> Vec<SourceEvidence> {
+        vec![source(
+            "docs",
+            vec![
+                claim(ClaimKind::Requirement, "auth.login", ("statement", "Users log in.")),
+                claim(ClaimKind::Requirement, "auth.logout", ("statement", "Users log out.")),
+                claim(ClaimKind::Type, "auth.session", ("signature", "struct Session;")),
+            ],
+        )]
+    }
+
+    pub fn schema<T: JsonSchema + DeserializeOwned + Send>(question: &Question<T>) -> Value {
+        let Format::Schema(spec) = &question.request().format else {
+            panic!("a question steers by schema");
+        };
+        serde_json::from_str(&spec.schema).expect("the steering schema is JSON")
+    }
 }

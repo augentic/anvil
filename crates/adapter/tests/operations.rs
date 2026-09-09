@@ -64,7 +64,7 @@ async fn source_dispatch() {
 }
 
 #[test]
-fn fn_pointer_coercion() {
+fn fn_pointer() {
     let metadata: fn() -> SourceMetadata = <Probe as SourceAdapter>::metadata;
     let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
     assert_eq!(metadata(), pinned());

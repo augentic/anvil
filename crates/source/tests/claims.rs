@@ -9,7 +9,7 @@ use emery_source::claims::{extras_findings, id_findings};
 use emery_source::types::{ClaimKind, Evidence};
 
 #[test]
-fn clean_evidence_passes() {
+fn clean_evidence() {
     let clean = evidence(
         r#"{"authority":"documentation","claims":[
             {"kind":"requirement","id":"password-reset.request","statement":"Users reset by email."},
@@ -24,7 +24,7 @@ fn clean_evidence_passes() {
 }
 
 #[test]
-fn malformed_ids_fail_closed() {
+fn malformed_ids() {
     let malformed = evidence(
         r#"{"authority":"documentation","claims":[
             {"kind":"requirement","statement":"Unnamed."},
@@ -42,7 +42,7 @@ fn malformed_ids_fail_closed() {
 
 // The closed table is the single A8 rule both gates consume.
 #[test]
-fn missing_extras_fail_closed() {
+fn missing_extras() {
     assert_eq!(ClaimKind::Requirement.required_extras(), ["statement"]);
     assert_eq!(ClaimKind::Criterion.required_extras(), ["criterion"]);
     assert_eq!(ClaimKind::Example.required_extras(), ["replay-digest"]);

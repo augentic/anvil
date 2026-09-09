@@ -36,7 +36,7 @@ Root suites are organized by operator story, one auto-discovered test binary per
 
 Shared scenario plumbing lives in the dir form `tests/support/mod.rs` (invisible to auto-discovery), declared per binary with `mod support;`. `command.rs` and `plugin.rs` path-include `tests/support/verbs.rs` for the live verb set parsed from `emery --help`. Fixtures are root-local under `tests/<binary>/` and embedded with `include_str!`. Root binaries are gated `#![cfg(not(target_arch = "wasm32"))]`.
 
-Root scenarios read like usage documentation, the same way `credibil/dwn`'s `tests/` directory demonstrates its product: a module doc naming the story, a `//` requirement comment above each test, a short identifier, and section comments separating arrange, act, and observe. A new contributor should be able to learn the CLI from `tests/specify.rs` alone.
+Root scenarios read like usage documentation, the same way `credibil/dwn`'s `tests/` directory demonstrates its product: a module doc naming the story, a `//` requirement comment above each test, a short scenario name, and section comments separating arrange, act, and observe. A new contributor should be able to learn the CLI from `tests/specify.rs` alone.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -101,11 +101,10 @@ Root scenarios exercise engine and transport code from the root package, so the 
 
 ## Test naming
 
-Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 25-char cap below counts the bare `fn` identifier, not the module path.
+Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. Name the *scenario* (`read_rendered`, `shared_roots`), never the outcome (`rendered_documents_read_back`, `clean_evidence_passes`). The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` supplies its module. Don't restate it in every `fn`. The 25-char cap counts the bare `fn` identifier, not the module path.
 
-- Drop tokens the binary name or enclosing module already supplies: in `command.rs`, write `unknown_verb_refuses`, not `command_unknown_verb_refuses_typed`.
+- Drop tokens the binary name or enclosing module already supplies: in `command.rs`, write `unknown_verb`, not `command_unknown_verb_refuses`.
 - Group a cluster that shares a subject under a nested `mod <subject>` rather than repeating the subject as a prefix.
-- Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the `//` requirement comment above the `fn`, not the identifier.
 
 `module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 25-char cap is review-only ([coding-standards.md §"Naming"](./coding-standards.md#naming)).

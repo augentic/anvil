@@ -313,7 +313,7 @@ mod tests {
     use crate::store::{CONTAINER, Revision, Store};
 
     #[tokio::test]
-    async fn concurrent_commit_conflicts() {
+    async fn commit_conflict() {
         let memory = Memory::default();
         let store = Store::new(&memory);
 

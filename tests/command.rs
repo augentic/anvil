@@ -122,7 +122,7 @@ async fn route_budget() {
 // file to discover it refuses typed and writes nothing. The CWD move
 // is safe under nextest's process-per-test isolation.
 #[tokio::test]
-async fn specify_without_sources() {
+async fn no_sources() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     std::env::set_current_dir(dir.path()).expect("enter empty project");
     let provider = Provider::idle();
@@ -140,7 +140,7 @@ async fn specify_without_sources() {
 // project-relative `emery.toml`; a missing explicit file is a read
 // error, never a discovery miss.
 #[tokio::test]
-async fn specify_default_config_path() {
+async fn default_config() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     std::env::set_current_dir(dir.path()).expect("enter empty project");
     let provider = Provider::idle();
@@ -154,7 +154,7 @@ async fn specify_default_config_path() {
 
 // `--config` carries the whole source list; mixing refuses typed.
 #[tokio::test]
-async fn specify_mixed_sources() {
+async fn mixed_sources() {
     let provider = Provider::idle();
 
     for argv in [
@@ -170,7 +170,7 @@ async fn specify_mixed_sources() {
 // Each source binds once; a repeated key refuses typed whichever
 // carrier repeats it.
 #[tokio::test]
-async fn specify_duplicate_source() {
+async fn duplicate() {
     let provider = Provider::idle();
     for argv in [
         &["emery", "specify", "docs", "docs"][..],
@@ -183,7 +183,7 @@ async fn specify_duplicate_source() {
 
 // `--description` needs the `<adapter>=<text>` shape.
 #[tokio::test]
-async fn specify_malformed_description() {
+async fn bad_description() {
     let provider = Provider::idle();
     fail(&provider, &["emery", "specify", "--description", "no-equals"], 1, "bad_request").await;
 }
@@ -191,7 +191,7 @@ async fn specify_malformed_description() {
 // The superseded flag spellings are deleted from the grammar, not
 // aliased (hard cut): clap refuses them as unknown arguments.
 #[tokio::test]
-async fn specify_old_flags_deleted() {
+async fn old_flags() {
     let provider = Provider::idle();
     for argv in [
         &["emery", "specify", "--sources", "emery.toml"][..],
@@ -203,7 +203,7 @@ async fn specify_old_flags_deleted() {
 
 // The read verb fails typed before any revision is committed.
 #[tokio::test]
-async fn show_without_revision() {
+async fn no_revision() {
     let provider = Provider::idle();
 
     let response = cli(&provider, &["emery", "show", "spec"]).await;
@@ -216,7 +216,7 @@ async fn show_without_revision() {
 }
 
 #[tokio::test]
-async fn globals_and_completions() {
+async fn completions() {
     let provider = Provider::idle();
 
     let completions = cli_ok(&provider, &["emery", "completions", "zsh"]).await;
@@ -229,7 +229,7 @@ async fn globals_and_completions() {
 
 // Adapters version independently, so the binary reports its own SemVer.
 #[tokio::test]
-async fn version_host_semver() {
+async fn host_semver() {
     let provider = Provider::idle();
     let response = cli_ok(&provider, &["emery", "--version"]).await;
     let stdout = String::from_utf8_lossy(&response.stdout);

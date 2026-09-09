@@ -158,7 +158,7 @@ mod tests {
     use crate::artifact::{Design, SectionKind, citations};
 
     #[test]
-    fn body_is_the_text_alone() {
+    fn text_body() {
         let text = "\
 # Design
 
@@ -186,7 +186,7 @@ interface User { id: string }
 
     // A document this engine did not render is corruption.
     #[test]
-    fn non_canonical_is_corruption() {
+    fn non_canonical() {
         for text in [
             "# Title only\n",
             "## Decisions\n\nBody.\n",
@@ -200,7 +200,7 @@ interface User { id: string }
 
     // Prose that happens to open with `(from` is not a citation.
     #[test]
-    fn phrases_are_not_citations() {
+    fn bare_phrases() {
         let text = "Requests arrive (from the browser) and (from docs) they route.";
         assert_eq!(citations(text).collect::<Vec<_>>(), ["docs"]);
     }

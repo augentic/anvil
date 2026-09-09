@@ -90,7 +90,7 @@ async fn grammar(argv: &[&str]) -> omnia_guest::api::command::Response {
 
 // Plugin-rule CLI mentions must resolve to live verbs and flags.
 #[tokio::test]
-async fn rule_matches_router() {
+async fn rule_matches() {
     let rule = plugin_dir().join("rules/emery.mdc");
     let doc = std::fs::read_to_string(&rule)
         .unwrap_or_else(|err| panic!("reading {}: {err}", rule.display()));
@@ -146,7 +146,7 @@ async fn rule_matches_router() {
 
 // Every shipped skill is named by the always-applied rule.
 #[test]
-fn rule_names_every_skill() {
+fn every_skill() {
     let doc = std::fs::read_to_string(plugin_dir().join("rules/emery.mdc")).expect("rule");
     let skills = std::fs::read_dir(plugin_dir().join("skills")).expect("skills dir");
     for entry in skills {
