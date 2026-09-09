@@ -30,12 +30,12 @@ pub async fn evidence<P: Source + Plugins>(
 
         let key = &source.key;
         tracing::debug!(source = %key, "extracting");
+
         let evidence = Source::extract(provider, &id, &input)
             .await
             .map_err(|err| bad_gateway!("source `{id}`: {err}"))?;
 
-        // Re-runs the contract's claim gate fail-closed (A8); the guest's
-        // own check cannot be trusted over the wire.
+        // re-validate claims against the contract's rules
         evidence.validate().map_err(|err| {
             let (types::Error::Internal(detail)
             | types::Error::InvalidRequest(detail)
