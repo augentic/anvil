@@ -16,7 +16,7 @@ use std::str::FromStr;
 
 use emery_source::Source;
 use emery_source::claims::is_kebab;
-use omnia_guest::plugins::{Digest, Location, Plugin, PluginCache, PluginRef};
+use omnia_guest::plugins::{Digest, Location, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 use serde::{Deserialize, Serialize};
 
@@ -51,18 +51,15 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
     /// Returns selector, load, or version failures.
     pub async fn load(
         &self, selector: &AdapterRef, pin: Option<&Digest>, registry: Option<&str>,
-    ) -> Result<Loaded, Error> {
+    ) -> Result<String, Error> {
         let name = selector.name();
-        let loaded = match selector.request(pin, registry)? {
-            Some(request) => Loaded::from(self.cache.ensure(&request).await?),
-            None => Loaded {
-                id: dispatch_id(name),
-                digest: None,
-            },
+        let id = match selector.request(pin, registry)? {
+            Some(request) => self.cache.ensure(&request).await?.id().to_owned(),
+            None => dispatch_id(name),
         };
-        check_version(self.provider, name, &loaded.id)?;
+        check_version(self.provider, name, &id)?;
 
-        Ok(loaded)
+        Ok(id)
     }
 }
 
@@ -92,26 +89,6 @@ fn check_version<P: Source>(provider: &P, name: &str, id: &str) -> Result<(), Er
     }
 
     Ok(())
-}
-
-/// One loaded source adapter: the routed dispatch id plus, for a
-/// loader-loaded adapter, its content digest.
-#[derive(Debug)]
-pub struct Loaded {
-    /// Routed dispatch id: the package reference for a registry
-    /// package, `source:<name>` otherwise.
-    pub id: String,
-    /// Sha256 digest of the loaded component bytes.
-    pub digest: Option<Digest>,
-}
-
-impl From<Plugin> for Loaded {
-    fn from(plugin: Plugin) -> Self {
-        Self {
-            id: plugin.id().to_owned(),
-            digest: Some(plugin.digest().clone()),
-        }
-    }
 }
 
 /// An operator-supplied adapter reference; on the wire it is the operator

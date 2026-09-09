@@ -11,10 +11,9 @@
 //! shape serves the command line, a config file, and any other transport,
 //! and it is checked whole before a single adapter loads.
 //!
-//! The result reports what was committed — the revision id, the counts, the
-//! resolved adapter digests an operator can pin, and the diff against the
-//! superseded revision — so a caller can see what changed without reading
-//! the documents.
+//! The result reports what was committed — the revision id, the counts, and
+//! the diff against the superseded revision — so a caller can see what
+//! changed without reading the documents.
 
 mod answer;
 mod extract;
@@ -22,7 +21,7 @@ mod provenance;
 mod render;
 mod synthesise;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use emery_source::Source;
@@ -36,7 +35,7 @@ use serde::{Deserialize, Serialize};
 
 use self::extract::extract;
 use self::synthesise::synthesise;
-use crate::plugin::{AdapterRef, Loaded, Loader};
+use crate::plugin::{AdapterRef, Loader};
 use crate::preopen_path;
 use crate::store::Store;
 pub use crate::store::{Changes, Diff};
@@ -54,7 +53,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     validate(&sources)?;
 
     let provider = context.provider();
-    let (extracted, digests) = extract(provider, &sources).await?;
+    let extracted = extract(provider, &sources).await?;
     let rows = provenance::derive(provider, &extracted).await?;
     let revision = synthesise(provider, &extracted, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;
@@ -64,7 +63,6 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
         requirements: rows.len(),
         sources: extracted.len(),
         diff: committed.diff,
-        digests,
     })
 }
 
@@ -99,7 +97,7 @@ pub struct SourceConfig {
 
 impl SourceConfig {
     // Loads this source's adapter under its pin and registry override.
-    async fn load<P: Source + Plugins>(&self, loader: &Loader<'_, P>) -> Result<Loaded, Error> {
+    async fn load<P: Source + Plugins>(&self, loader: &Loader<'_, P>) -> Result<String, Error> {
         loader.load(&self.adapter, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
@@ -162,11 +160,6 @@ pub struct SpecifyBody {
     /// superseded revision was unreadable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
-    /// The resolved `sha256:<hex>` digest of each loader-loaded adapter,
-    /// by source key; commit one as its source's `digest` pin to make the
-    /// load reproducible.
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
-    pub digests: BTreeMap<String, Digest>,
 }
 
 // Refuses an empty list (`specify-source-required`), a malformed or repeated

@@ -44,14 +44,13 @@ The success body names the committed revision and its reviewable set:
     "artifacts": ["spec.md", "design.md"],
     "spec": { "added": [], "removed": [], "changed": ["session.timeout"] },
     "design": { "added": [], "removed": [], "changed": ["Domain model"] }
-  },
-  "digests": { "custom": "sha256:9f2c44…" }
+  }
 }
 ```
 
 `diff` is the re-mine diff against the superseded revision: the changed artifacts, then one `{ added, removed, changed }` object per document — `spec` lists requirement subjects (heading names, so a block that only moved is not a change), `design` lists `## ` section titles. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it. Text mode prints one line per changed section prefixed by its document: `    spec.md ~ session.timeout`, `    design.md ~ Domain model`.
 
-`digests` maps each source key to the resolved sha256 content digest of its loader-loaded adapter — a local component or a registry package — pinned or not; it is absent when no source loaded one. On an unpinned first run this is the trust-on-first-use report — commit the digest as the source's `digest` pin in `emery.toml` to make the load reproducible. A pin that no longer matches the resolved bytes fails with `error: "refused"` (exit 1).
+A pin that no longer matches the resolved bytes fails with `error: "refused"` (exit 1).
 
 `requirements` counts the requirement rows of the committed `spec.md` — one per grouped requirement; an acceptance gap is a `Note:` on its row, not a row of its own.
 

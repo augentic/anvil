@@ -78,7 +78,7 @@ async fn gen_spec() {
     // --------------------------------------------------
     // Act: the first specify.
     // --------------------------------------------------
-    let resp = cli_ok(&provider, &["emery", "specify", &component]).await;
+    cli_ok(&provider, &["emery", "specify", &component]).await;
 
     // --------------------------------------------------
     // Observe: the load, the current id, and the revision.
@@ -90,10 +90,6 @@ async fn gen_spec() {
     };
     assert!(path.ends_with("source.wasm"), "the preopen-relative path rides the request: {path}");
     assert!(request.digest.is_none(), "an unpinned source requests no digest");
-    // TOFU: the resolved digest rides the success envelope for the
-    // operator to commit as the source's pin.
-    let stdout = String::from_utf8_lossy(&resp.stdout);
-    assert!(stdout.contains(&format!("digest source: {}", digest("ab"))), "{stdout}");
     assert!(
         provider.storage.objects("adapters").is_empty(),
         "nothing mirrors into engine storage; the loader reads the file fresh"
@@ -199,8 +195,6 @@ async fn shared_adapter_several_roots() {
             String::from_utf8_lossy(&spec).contains("Sources: [docs, api]"),
             "{adapter}: both sources contribute to the one requirement"
         );
-        assert!(stdout.contains(&format!("digest docs: {}", digest("ab"))), "{adapter}: {stdout}");
-        assert!(stdout.contains(&format!("digest api: {}", digest("ab"))), "{adapter}: {stdout}");
 
         let loads = provider.plugins.loads();
         assert_eq!(loads.len(), 1, "{adapter}: one adapter identity loads once");
@@ -1046,8 +1040,8 @@ async fn component_missing() {
     }
 }
 
-// A pin that matches the resolved bytes loads and extracts, and the
-// success envelope confirms the digest beside the source key.
+// A pin that matches the resolved bytes loads and extracts; the pin
+// rides the load request.
 #[tokio::test]
 async fn pinned_component() {
     let dir = project_tempdir();
@@ -1064,10 +1058,7 @@ async fn pinned_component() {
     let config = project_arg(&config);
 
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
-
-    let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
-    let stdout = String::from_utf8_lossy(&resp.stdout);
-    assert!(stdout.contains(&format!("digest local: {}", digest("ab"))), "{stdout}");
+    cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
 
     let loads = provider.plugins.loads();
     let request = loads.first().expect("one load request");
@@ -1098,25 +1089,6 @@ async fn digest_mismatch_refused() {
 
     fail(&provider, &["emery", "specify", "--config", &config], 1, "refused").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
-}
-
-// TOFU: an unpinned local component reports its resolved digest in the
-// JSON success envelope so the operator can commit it as the pin.
-#[tokio::test]
-async fn tofu_digest_reported() {
-    let workspace = project_tempdir();
-    let component = workspace.path().join("source.wasm");
-    fs::write(&component, b"\0asm-stub").expect("stub wasm");
-    let component = project_arg(&component);
-
-    let mut provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
-    provider.plugins = provider.plugins.clone().digest("source:source", digest("cd"));
-
-    let resp = cli(&provider, &["emery", "--format", "json", "specify", &component]).await;
-    assert_eq!(resp.exit, 0, "{}", String::from_utf8_lossy(&resp.stderr));
-    let envelope: Value = serde_json::from_slice(&resp.stdout).expect("one JSON envelope");
-    assert_eq!(envelope["digests"]["source"], digest("cd").as_str(), "{envelope}");
-    provider.model.assert_exhausted();
 }
 
 // GitHub URLs are refused: a source checkout is not an adapter.
@@ -1159,8 +1131,7 @@ async fn package_loads() {
 }
 
 // The source's `registry` key overrides the acquirer's default
-// endpoint per source, and an unpinned registry load reports its
-// resolved digest for the operator to commit (TOFU).
+// endpoint per source.
 #[tokio::test]
 async fn registry_override() {
     let dir = project_tempdir();
@@ -1173,10 +1144,8 @@ async fn registry_override() {
     .expect("write emery.toml");
     let config = project_arg(&config);
 
-    let mut provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
-    provider.plugins = provider.plugins.clone().digest("acme:ledger@2.1.0", digest("cd"));
-
-    let resp = cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
+    let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
+    cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
 
     let loads = provider.plugins.loads();
     let request = loads.first().expect("one load request");
@@ -1186,8 +1155,6 @@ async fn registry_override() {
         Location::Registry(Some("registry.acme.example".to_string())),
         "the source's override rides the load request"
     );
-    let stdout = String::from_utf8_lossy(&resp.stdout);
-    assert!(stdout.contains(&format!("digest ledger: {}", digest("cd"))), "{stdout}");
     provider.model.assert_exhausted();
 }
 

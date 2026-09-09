@@ -49,9 +49,8 @@ pub struct Provider<S = Memory> {
     /// The scripted `Source`.
     pub source: SourceScript,
     /// The scripted `Plugins` loader: an unscripted, unpinned package
-    /// resolves to the fixed `digest("ab")` the `specify` scenarios
-    /// assert in their envelopes; a pin that disagrees with a scripted
-    /// digest refuses `refused`, mirroring the host's
+    /// resolves to the fixed `digest("ab")`; a pin that disagrees with a
+    /// scripted digest refuses `refused`, mirroring the host's
     /// verify-before-validate step.
     pub plugins: ScriptedLoader,
     /// The scripted storage pair.
