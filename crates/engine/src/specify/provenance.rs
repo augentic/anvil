@@ -94,7 +94,7 @@ pub struct Provenance {
 }
 
 impl Provenance {
-    // Highest authority first, binding order within a class; one class
+    // Highest authority first, source order within a class; one class
     // agrees, a unique top authority wins divergence, top-authority peers
     // in different classes conflict; an uncovered agreed row is unknown.
     fn of(mut classes: Vec<Vec<Contributor>>, criteria: &[&str]) -> Self {
@@ -147,7 +147,7 @@ impl Provenance {
         &self.classes
     }
 
-    /// Every contributing source key, highest authority first and binding
+    /// Every contributing source key, highest authority first and source
     /// order within an authority.
     pub fn sources(&self) -> impl Iterator<Item = &str> {
         let mut members: Vec<&Contributor> = self.classes.iter().flatten().collect();
@@ -159,7 +159,7 @@ impl Provenance {
 /// One source's claim in a requirement row.
 #[derive(Debug, Clone)]
 pub struct Contributor {
-    /// The binding key.
+    /// The source key.
     pub source: String,
     /// The source's authority class.
     pub authority: Authority,
@@ -169,11 +169,11 @@ pub struct Contributor {
     pub statement: String,
     // The claim's synopsis, shown to the grouping judgment alone.
     synopsis: Option<String>,
-    // Position in binding order, the tie-break within an authority.
+    // Position in source order, the tie-break within an authority.
     index: usize,
 }
 
-// Every requirement claim in binding order, and every criterion id.
+// Every requirement claim in source order, and every criterion id.
 struct Claims<'a> {
     requirements: Vec<Contributor>,
     criteria: Vec<&'a str>,

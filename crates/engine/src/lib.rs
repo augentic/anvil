@@ -1,8 +1,8 @@
 //! The specification engine
 //!
 //! Emery's core: the operations that generate a specification revision from
-//! bound sources ([`specify`]) and read one back for review ([`show`]),
-//! together with the source binding rules and adapter references those
+//! sources ([`specify`]) and read one back for review ([`show`]),
+//! together with the source rules and adapter references those
 //! operations accept.
 //!
 //! The engine is transport-neutral. It speaks in typed operations and

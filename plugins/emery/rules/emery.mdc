@@ -17,7 +17,7 @@ The v1 delivery workflow (plan / refine / execute / status / finalize and the `s
 /emery:specify <adapter>           (every revision)
 ```
 
-That is the whole shipped surface. The binding list never persists — repeat the adapters on every run, or keep them in an operator-owned `emery.toml` selected with `--config [<path>]` (`--config` alone means the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root file as a fallback). Never hand-edit `.emery/` state (the revision store); route through the CLI.
+That is the whole shipped surface. The source list never persists — repeat the adapters on every run, or keep them in an operator-owned `emery.toml` selected with `--config [<path>]` (`--config` alone means the project-relative `emery.toml`; a run naming no sources at all discovers the project-root file as a fallback). Never hand-edit `.emery/` state (the revision store); route through the CLI.
 
 ## Tracing and output
 
@@ -46,8 +46,8 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 | `specify-source-required` | `emery specify` was run without naming a source, and no project-root `emery.toml` was found | `emery specify <adapter>` (and/or `--description <adapter>=<text>`, or `--config [<path>]`) |
 | `unsupported-version` | The installed binary is older than an adapter's declared minimum `emery-version` | Reinstall through the binary's install channel (the hint prints the literal command), then rerun |
 | `spec-not-generated` | `emery show` was run before any revision was committed | `/emery:specify <adapter>` first |
-| `refused` | The loader rejected the request (a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or an unserved location) | Read the message: update or drop the binding's `digest`, or fix the artifact / location |
-| `unavailable` | The registry fetch for a package adapter failed (network, endpoint, or a missing exact version) | Check connectivity, that the exact version exists, and the binding's `registry` override, then rerun |
+| `refused` | The loader rejected the request (a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or an unserved location) | Read the message: update or drop the source's `digest`, or fix the artifact / location |
+| `unavailable` | The registry fetch for a package adapter failed (network, endpoint, or a missing exact version) | Check connectivity, that the exact version exists, and the source's `registry` override, then rerun |
 
 ### Reviewing the generated documents
 

@@ -1,6 +1,6 @@
 [package]
 name = "emery-cli"
-description = "The emery command grammar: clap verbs, binding carriers, text renderers, and the hint table over emery-engine"
+description = "The emery command grammar: clap verbs, source carriers, text renderers, and the hint table over emery-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

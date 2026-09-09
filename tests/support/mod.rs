@@ -33,7 +33,7 @@ type Recorded = Vec<(String, SourceInput)>;
 /// the greeting requirement as documentation evidence.
 #[derive(Clone, Debug, Default)]
 pub struct SourceScript {
-    /// Extract outcomes keyed by binding key.
+    /// Extract outcomes keyed by source key.
     pub evidence: BTreeMap<String, Result<Evidence, DispatchError>>,
     /// Minimum `emery` versions keyed by adapter name.
     pub versions: BTreeMap<String, String>,

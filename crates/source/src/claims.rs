@@ -141,7 +141,7 @@ fn is_dotted_kebab(value: &str) -> bool {
     !value.is_empty() && value.split('.').all(is_kebab)
 }
 
-/// The kebab grammar shared by claim-id segments, binding keys, and
+/// The kebab grammar shared by claim-id segments, source keys, and
 /// adapter names: `[a-z0-9]+(-[a-z0-9]+)*`.
 #[must_use]
 pub fn is_kebab(value: &str) -> bool {

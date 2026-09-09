@@ -42,11 +42,11 @@ interface source {
     value(string),
   }
 
-  /// Typed source-operation input: the source binding key plus
+  /// Typed source-operation input: the source key plus
   /// workspace-or-value. Sources are value-in — they never read the
   /// revision store or lifecycle authority.
   record input {
-    /// Source-binding key.
+    /// Source key.
     key: string,
     /// Read-only source view or inline value.
     content: content,

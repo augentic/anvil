@@ -6,8 +6,8 @@
 //! run, verifying an optional digest pin and refusing adapters that require
 //! a newer Emery than the one running.
 //!
-//! Loads are remembered for the run so two bindings on the same adapter
-//! share one guest, and a conflicting pin on the second binding is caught
+//! Loads are remembered for the run so two sources on the same adapter
+//! share one guest, and a conflicting pin on the second source is caught
 //! here rather than surfacing as a confusing host error.
 
 use std::fmt;
@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use crate::preopen_path;
 
 /// One run's adapter loads over a provider: loads memoize by identity
-/// for the run, so a second binding on the same adapter reuses the held
+/// for the run, so a second source on the same adapter reuses the held
 /// guest and a disagreeing pin refuses `already-active` from the memo
 /// rather than the host.
 pub struct Loader<'a, P: Source + Plugins> {

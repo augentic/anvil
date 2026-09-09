@@ -53,11 +53,11 @@ The success body names the committed revision and its reviewable set:
 
 `diff` is the re-mine diff against the superseded revision: the changed artifacts, then one `{ added, removed, changed }` object per document — `spec` lists requirement subjects (heading names, so a block that only moved is not a change), `design` lists `## ` section titles. It is absent on a first run and empty (`artifacts: []`) on a byte-stable re-run; nothing is persisted for it. Text mode prints one line per changed section prefixed by its document: `    spec.md ~ session.timeout`, `    design.md ~ Domain model`.
 
-`digests` reports the resolved sha256 content digest of every loader-loaded adapter — a local component or a registry package — pinned or not; it is absent when no binding loaded one. On an unpinned first run this is the trust-on-first-use report — commit the digest as the binding's `digest` pin in `emery.toml` to make the load reproducible. A pin that no longer matches the resolved bytes fails with `error: "refused"` (exit 1).
+`digests` reports the resolved sha256 content digest of every loader-loaded adapter — a local component or a registry package — pinned or not; it is absent when no source loaded one. On an unpinned first run this is the trust-on-first-use report — commit the digest as the source's `digest` pin in `emery.toml` to make the load reproducible. A pin that no longer matches the resolved bytes fails with `error: "refused"` (exit 1).
 
 `requirements` counts the requirement rows of the committed `spec.md` — one per grouped requirement; an acceptance gap is a `Note:` on its row, not a row of its own.
 
-`emery specify` with no source — and no project-root `emery.toml` to discover — fails with `error: "specify-source-required"` (exit 1); mixing `--config` with positional adapters or `--description`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--config` without a value explicitly selects the project-relative `emery.toml`. A GitHub URL binding fails with `error: "bad_request"`. Validation refusals from the extract gate, or a model draft (grouping, spec, or design) that still fails its check once the backend's rounds are spent, exit 1 with `error: "bad_request"` carrying the last correction and its findings; a model failure exits 4 with `error: "bad_gateway"`.
+`emery specify` with no source — and no project-root `emery.toml` to discover — fails with `error: "specify-source-required"` (exit 1); mixing `--config` with positional adapters or `--description`, or naming an absolute or project-escaping local path, fails with `error: "bad_request"` (exit 1). `--config` without a value explicitly selects the project-relative `emery.toml`. A GitHub URL source fails with `error: "bad_request"`. Validation refusals from the extract gate, or a model draft (grouping, spec, or design) that still fails its check once the backend's rounds are spent, exit 1 with `error: "bad_request"` carrying the last correction and its findings; a model failure exits 4 with `error: "bad_gateway"`.
 
 ### `emery show <spec|design>`
 
@@ -84,10 +84,10 @@ Every failing verb emits the same flat envelope on stderr:
 ```json
 {
   "error": "specify-source-required",
-  "message": "no source bindings",
+  "message": "no sources",
   "exit-code": 1,
   "hint": "pass one or more adapters to `emery specify`, or add an `emery.toml` at the project root"
 }
 ```
 
-An optional `hint` key carries a static recovery hint when the error defines one; the `message` is transport-neutral (it names the rule, path, or adapter), and flag-vocabulary recovery text lives in the hint. Text mode prints the same envelope as `error[specify-source-required]: no source bindings` followed by a `hint:` line when one is defined; the discriminant is grep-stable in both formats, so a `message` never repeats it.
+An optional `hint` key carries a static recovery hint when the error defines one; the `message` is transport-neutral (it names the rule, path, or adapter), and flag-vocabulary recovery text lives in the hint. Text mode prints the same envelope as `error[specify-source-required]: no sources` followed by a `hint:` line when one is defined; the discriminant is grep-stable in both formats, so a `message` never repeats it.

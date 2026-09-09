@@ -11,7 +11,7 @@ emery show design
 
 ## Description
 
-The one read verb: renders the named document of the current revision — a verifiable, non-authoritative projection of the store, never a second authority. `spec` and `design` are the whole revision; there is no `show bindings` or `show receipts`.
+The one read verb: renders the named document of the current revision — a verifiable, non-authoritative projection of the store, never a second authority. `spec` and `design` are the whole revision; there is no `show sources` or `show receipts`.
 
 Text output is the document body alone — a deliberate exception to the result-line convention so `emery show spec | less` (or a redirect) is the document byte for byte. The revision id rides the JSON envelope.
 

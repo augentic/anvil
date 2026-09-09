@@ -1,8 +1,8 @@
 //! The `specify` → `show` product arc
 //!
-//! The scenarios an operator lives through: binding sources, generating a
+//! The scenarios an operator lives through: naming sources, generating a
 //! specification, reviewing it, regenerating it, and hitting every refusal
-//! along the way — an invalid binding, an untrusted adapter, a model draft
+//! along the way — an invalid source, an untrusted adapter, a model draft
 //! that still does not fit the rows or the plan once the backend's rounds
 //! are spent.
 //!
@@ -41,7 +41,7 @@ const PRECEDENCE_RENDERED: &str = include_str!("specify/3-precedence.md");
 const SOURCES: &str = include_str!("specify/emery.toml");
 
 // The grouping answer that merges `count` claims into one agreeing
-// requirement — what a run over one id bound several times expects.
+// requirement — what a run over one id appearing several times expects.
 fn floor_grouping(count: usize) -> String {
     let indices = (0..count).map(|index| index.to_string()).collect::<Vec<_>>().join(", ");
     format!("{{\"groups\": [{{\"claims\": [{indices}], \"classes\": [[{indices}]]}}]}}")
@@ -89,9 +89,9 @@ async fn gen_spec() {
         panic!("a local component loads by path");
     };
     assert!(path.ends_with("source.wasm"), "the preopen-relative path rides the request: {path}");
-    assert!(request.digest.is_none(), "an unpinned binding requests no digest");
+    assert!(request.digest.is_none(), "an unpinned source requests no digest");
     // TOFU: the resolved digest rides the success envelope for the
-    // operator to commit as the binding's pin.
+    // operator to commit as the source's pin.
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains(&format!("digest source: {}", digest("ab"))), "{stdout}");
     assert!(
@@ -126,7 +126,7 @@ async fn gen_spec() {
 }
 
 // `--config` is the other specify authority: entry names become
-// binding keys, and a local adapter resolves relative to the file.
+// source keys, and a local adapter resolves relative to the file.
 #[tokio::test]
 async fn from_file() {
     let workspace = project_tempdir();
@@ -153,7 +153,7 @@ async fn from_file() {
     let spec = document(&provider.storage, &id, "spec.md");
     assert!(
         String::from_utf8_lossy(&spec).contains("Sources: [greeting]"),
-        "the entry name is the binding key the renderer cites"
+        "the entry name is the source key the renderer cites"
     );
     let shown = cli_ok(&provider, &["emery", "show", "spec"]).await;
     assert_eq!(shown.stdout, spec, "show renders the committed spec.md alone");
@@ -161,8 +161,8 @@ async fn from_file() {
     provider.model.assert_exhausted();
 }
 
-// One adapter may bind several roots: the loader is asked once, each
-// binding extracts over its own workspace, and the two claims of one id
+// One adapter may name several roots: the loader is asked once, each
+// source extracts over its own workspace, and the two claims of one id
 // are one requirement citing both sources.
 #[tokio::test]
 async fn shared_adapter_several_roots() {
@@ -197,7 +197,7 @@ async fn shared_adapter_several_roots() {
         let spec = document(&provider.storage, &id, "spec.md");
         assert!(
             String::from_utf8_lossy(&spec).contains("Sources: [docs, api]"),
-            "{adapter}: both bindings contribute to the one requirement"
+            "{adapter}: both sources contribute to the one requirement"
         );
         assert!(stdout.contains(&format!("digest docs: {}", digest("ab"))), "{adapter}: {stdout}");
         assert!(stdout.contains(&format!("digest api: {}", digest("ab"))), "{adapter}: {stdout}");
@@ -207,7 +207,7 @@ async fn shared_adapter_several_roots() {
         assert_eq!(loads[0].package, *package, "{adapter}");
 
         let calls = provider.source.calls.lock().expect("calls");
-        assert_eq!(calls.len(), 2, "{adapter}: each binding extracts");
+        assert_eq!(calls.len(), 2, "{adapter}: each source extracts");
         assert_eq!(calls[0].0, *package);
         assert_eq!(calls[0].1.key, "docs");
         assert_eq!(calls[1].0, *package);
@@ -218,8 +218,8 @@ async fn shared_adapter_several_roots() {
     }
 }
 
-// A run naming no bindings at all discovers the project-root
-// `emery.toml` before failing — never merged with argv bindings. The
+// A run naming no sources at all discovers the project-root
+// `emery.toml` before failing — never merged with argv sources. The
 // CWD move is hermetic under nextest's process-per-test isolation.
 #[tokio::test]
 async fn discovery() {
@@ -241,11 +241,11 @@ async fn discovery() {
     provider.model.assert_exhausted();
 }
 
-// `--description` binds inline text under the adapter's name: no
+// `--description` supplies inline text under the adapter's name: no
 // filesystem lend reaches extract, and a bare adapter needs no local
 // component.
 #[tokio::test]
-async fn description_binding() {
+async fn description_source() {
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
 
     cli_ok(&provider, &["emery", "specify", "--description", "intent=Ship it."]).await;
@@ -866,7 +866,7 @@ async fn config_file_refused() {
              [[source]]\nname = \"docs\"\nadapter = \"intent\"\n",
             1,
             "bad_request",
-            "bound twice",
+            "appears twice",
         ),
         // A malformed pin on a local component refuses before any load.
         (
@@ -972,10 +972,10 @@ async fn loader_keys_gated() {
 // File-relative `path` entries anchor at the file's directory, fold
 // `.` and `..` lexically, and stay `.`-relative so the guest preopen
 // can open them; `description` entries lend nothing; `[[source]]`
-// entries bind in declaration order, not name order — all observed on
+// entries extract in declaration order, not name order — all observed on
 // the `SourceInput` the adapter receives.
 #[tokio::test]
-async fn binding_paths() {
+async fn source_paths() {
     let dir = project_tempdir();
     let path = dir.path().join("emery.toml");
     fs::write(
@@ -994,11 +994,11 @@ async fn binding_paths() {
 
     let calls = provider.source.calls.lock().expect("calls");
     let order: Vec<&str> = calls.iter().map(|(_, input)| input.key.as_str()).collect();
-    assert_eq!(order, ["zulu", "intent", "alpha"], "entries bind in declaration order");
+    assert_eq!(order, ["zulu", "intent", "alpha"], "entries extract in declaration order");
     for key in ["zulu", "alpha"] {
         let (_, input) = calls.iter().find(|(_, input)| input.key == key).expect("dispatched");
         let SourceContent::Workspace(root) = &input.content else {
-            panic!("a path binding lends a workspace");
+            panic!("a path source lends a workspace");
         };
         assert!(
             !Path::new(root).is_absolute(),
@@ -1013,7 +1013,7 @@ async fn binding_paths() {
     assert_eq!(
         input.content,
         SourceContent::Value("Ship it.".to_string()),
-        "a file `description` entry binds inline text"
+        "a file `description` entry supplies inline text"
     );
     drop(calls);
     provider.model.assert_exhausted();
@@ -1047,7 +1047,7 @@ async fn component_missing() {
 }
 
 // A pin that matches the resolved bytes loads and extracts, and the
-// success envelope confirms the digest beside the binding key.
+// success envelope confirms the digest beside the source key.
 #[tokio::test]
 async fn pinned_component() {
     let dir = project_tempdir();
@@ -1071,7 +1071,7 @@ async fn pinned_component() {
 
     let loads = provider.plugins.loads();
     let request = loads.first().expect("one load request");
-    assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
+    assert_eq!(request.digest, Some(digest("ab")), "the source's pin rides the load request");
     provider.model.assert_exhausted();
 }
 
@@ -1149,17 +1149,17 @@ async fn package_loads() {
             Location::Registry(None),
             "no override selects the acquirer's default registry"
         );
-        assert!(request.digest.is_none(), "an unpinned binding requests no digest");
+        assert!(request.digest.is_none(), "an unpinned source requests no digest");
         let calls = provider.source.calls.lock().expect("calls");
         let (id, input) = calls.first().expect("one extract dispatch");
         assert_eq!(id, "emery:demo@1.2.0", "the routed id is the loaded package identity");
-        assert_eq!(input.key, "demo", "the binding key is the adapter name");
+        assert_eq!(input.key, "demo", "the source key is the adapter name");
         drop(calls);
         provider.model.assert_exhausted();
     }
 }
 
-// The binding's `registry` key overrides the acquirer's default
+// The source's `registry` key overrides the acquirer's default
 // endpoint per source, and an unpinned registry load reports its
 // resolved digest for the operator to commit (TOFU).
 #[tokio::test]
@@ -1185,7 +1185,7 @@ async fn registry_override() {
     assert_eq!(
         request.location,
         Location::Registry(Some("registry.acme.example".to_string())),
-        "the binding's override rides the load request"
+        "the source's override rides the load request"
     );
     let stdout = String::from_utf8_lossy(&resp.stdout);
     assert!(stdout.contains(&format!("digest ledger: {}", digest("cd"))), "{stdout}");
@@ -1209,7 +1209,7 @@ async fn pinned_package() {
     let provider = Provider::answering([SPEC_ANSWER, DESIGN_ANSWER]);
     cli_ok(&provider, &["emery", "specify", "--config", &config]).await;
     let request = provider.plugins.loads().first().cloned().expect("one load request");
-    assert_eq!(request.digest, Some(digest("ab")), "the binding's pin rides the load request");
+    assert_eq!(request.digest, Some(digest("ab")), "the source's pin rides the load request");
     provider.model.assert_exhausted();
 
     let mismatched = project_tempdir();
@@ -1223,7 +1223,7 @@ async fn pinned_package() {
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
-// A second binding that re-pins an already-loaded adapter refuses
+// A second source that re-pins an already-loaded adapter refuses
 // already-active: the loader cannot re-bind the identity.
 #[tokio::test]
 async fn shared_adapter_conflicting_pin() {

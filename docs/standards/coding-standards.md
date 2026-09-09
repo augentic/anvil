@@ -47,7 +47,7 @@ Density caps are **review only** — clippy and rustfmt cannot express them. The
 // GOOD
 //! The `specify` operation
 //!
-//! Emery's central operation: given a list of source bindings, extract each
+//! Emery's central operation: given a list of sources, extract each
 //! source's claims, derive the requirement rows under authority precedence,
 //! synthesise `spec.md` and `design.md`, and commit the pair as one new
 //! revision.
@@ -130,11 +130,11 @@ async fn dispatch<P: Source>(provider: &P, id: &str, input: &SourceInput) -> Res
     provider.extract(id, input).await.map_err(|err| bad_gateway!("source `{id}`: {err}"))
 }
 
-/// Resolves, extracts, and validates every source binding.
+/// Resolves, extracts, and validates every source.
 pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
-    for binding in bindings {
+    for source in sources {
         let resolved = /* … */;
-        let evidence = dispatch(provider, &resolved.id, &binding.input()?).await?;
+        let evidence = dispatch(provider, &resolved.id, &source.input()?).await?;
         let set = SourceSet { /* … */ };
         set.validate()?;
         sets.push(set);
@@ -143,10 +143,10 @@ pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> 
 }
 
 // GOOD — entry first, capability named, phases separated, wrapper inlined
-/// Resolves, extracts, and validates every source binding.
+/// Resolves, extracts, and validates every source.
 pub async fn extract<P: Source + Plugins>(...) -> Result<Vec<SourceSet>, Error> {
-    for binding in bindings {
-        let input = binding.input()?;
+    for source in sources {
+        let input = source.input()?;
         let resolved = /* … */;
 
         let id = &resolved.id;

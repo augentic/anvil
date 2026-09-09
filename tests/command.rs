@@ -118,7 +118,7 @@ async fn route_budget() {
     }
 }
 
-// A bindingless run discovers the project-root `emery.toml`; with no
+// A run naming no sources discovers the project-root `emery.toml`; with no
 // file to discover it refuses typed and writes nothing. The CWD move
 // is safe under nextest's process-per-test isolation.
 #[tokio::test]
@@ -130,7 +130,7 @@ async fn specify_without_sources() {
     let response = cli(&provider, &["emery", "specify"]).await;
     assert_eq!(response.exit, 1);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("no source bindings"), "{stderr}");
+    assert!(stderr.contains("no sources"), "{stderr}");
 
     fail(&provider, &["emery", "specify"], 1, "specify-source-required").await;
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
@@ -152,7 +152,7 @@ async fn specify_default_config_path() {
     assert!(provider.storage.is_empty(), "a refused run writes nothing");
 }
 
-// `--config` carries the whole binding list; mixing refuses typed.
+// `--config` carries the whole source list; mixing refuses typed.
 #[tokio::test]
 async fn specify_mixed_sources() {
     let provider = Provider::idle();

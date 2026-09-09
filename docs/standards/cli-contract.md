@@ -14,7 +14,7 @@ Never hand-edit `.emery/` state (the revision store); never `mkdir -p .emery/...
 
 ## Verb tree
 
-- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator: resolve the sources named on the invocation (a project-relative local component loads through the deployment loader, read fresh each run; an exact package reference fetches from the binding's `registry` override or the compiled-in default endpoint; either load's optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extract, derive the requirement rows, synthesise, and commit `spec.md` / `design.md` as one revision, atomically swapping the current revision id. `--config` without a value selects the project-relative `emery.toml`; a run naming no bindings at all discovers the project-root `emery.toml` as a fallback, never merged with argv bindings. The binding list is per-run input, never persisted. Invoked without a source — and with nothing to discover — it exits `1` with `specify-source-required`; mixing `--config` with argv bindings, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
+- `emery specify <adapter>... [--description <adapter>=<text>] [--config [<path>]]` — the spec generator: resolve the sources named on the invocation (a project-relative local component loads through the deployment loader, read fresh each run; an exact package reference fetches from the source's `registry` override or the compiled-in default endpoint; either load's optional `digest` pin is verified host-side and the resolved digest rides the success envelope), extract, derive the requirement rows, synthesise, and commit `spec.md` / `design.md` as one revision, atomically swapping the current revision id. `--config` without a value selects the project-relative `emery.toml`; a run naming no sources at all discovers the project-root `emery.toml` as a fallback, never merged with argv sources. The source list is per-run input, never persisted. Invoked without a source — and with nothing to discover — it exits `1` with `specify-source-required`; mixing `--config` with argv sources, or naming a filesystem path outside the `.` project preopen, exits `1` with `bad_request`.
 - `emery show <spec|design>` — print a reviewable document of the current revision; text stdout is the document body alone. Before any commit it fails `spec-not-generated` (exit `2`).
 - `emery completions <shell>` — auto-derived shell completions over the live clap surface.
 
@@ -28,11 +28,11 @@ The canonical envelope shapes live in [docs/reference/cli-output-shapes.md](../r
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
-- `specify-source-required` — `emery specify` without a source binding and with no project-root `emery.toml` to discover.
+- `specify-source-required` — `emery specify` without a source and with no project-root `emery.toml` to discover.
 - `spec-not-generated` — `emery show` before any revision is committed.
 - `unsupported-version` — an adapter's declared minimum `emery-version` is newer than the running binary.
 - `refused` — the loader rejected the request: a mismatched or malformed `digest` pin, an invalid component, a missing source-seam export, or a location kind this deployment does not serve; the message names which.
-- `unavailable` — the deployment's acquirer could not produce a registry package (network, endpoint, or a missing exact version); check connectivity and the binding's `registry` override.
+- `unavailable` — the deployment's acquirer could not produce a registry package (network, endpoint, or a missing exact version); check connectivity and the source's `registry` override.
 
 ## Exit codes
 

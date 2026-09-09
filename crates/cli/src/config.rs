@@ -1,13 +1,13 @@
-//! Source bindings from the command line
+//! Sources from the command line
 //!
-//! Builds the list of source bindings a `specify` run works from. An
+//! Builds the list of sources a `specify` run works from. An
 //! operator can name adapters and inline descriptions directly on the
 //! command line, point at an `emery.toml` with `--config`, or name nothing
 //! and let the project-root `emery.toml` be picked up.
 //!
-//! The binding list is an input to each run, never something Emery stores,
-//! so this module is the only place that knows where bindings come from.
-//! Mixing a config file with command-line bindings is refused rather than
+//! The source list is an input to each run, never something Emery stores,
+//! so this module is the only place that knows where sources come from.
+//! Mixing a config file with command-line sources is refused rather than
 //! merged, so a run has exactly one source of truth.
 
 use std::path::{Path, PathBuf};
@@ -16,15 +16,15 @@ use emery_engine::specify::{SourceConfig, SourceContent};
 use emery_engine::{AdapterRef, preopen_path};
 use omnia_guest::{Error, bad_request, server_error};
 
-/// The project-root config discovered by a bindingless run.
+/// The project-root config discovered by a run naming no sources.
 pub const CONFIG_FILE: &str = "emery.toml";
 
-/// Decodes the run's binding list from the `specify` arguments.
+/// Decodes the run's source list from the `specify` arguments.
 ///
 /// # Errors
 ///
 /// Returns a `BadRequest` when `--config` is mixed with positional
-/// adapters or `--description` bindings, and propagates the argv,
+/// adapters or `--description` sources, and propagates the argv,
 /// file, and discovery decoder failures.
 pub fn decode(
     adapters: &[String], descriptions: &[String], config: Option<&str>,
@@ -62,10 +62,10 @@ fn discover() -> Result<Vec<SourceConfig>, Error> {
 // Each positional adapter lends the workspace at `.`; each
 // `--description` entry is inline. The key is the adapter name.
 fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceConfig>, Error> {
-    let mut bindings = Vec::new();
+    let mut sources = Vec::new();
     for value in adapters {
         let adapter: AdapterRef = value.parse()?;
-        bindings.push(SourceConfig {
+        sources.push(SourceConfig {
             key: adapter.name().to_owned(),
             adapter,
             content: SourceContent::Workspace(".".to_string()),
@@ -83,7 +83,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceC
             ));
         };
         let adapter: AdapterRef = selector.parse()?;
-        bindings.push(SourceConfig {
+        sources.push(SourceConfig {
             key: adapter.name().to_owned(),
             adapter,
             content: SourceContent::Value(text.to_string()),
@@ -92,7 +92,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceC
         });
     }
 
-    Ok(bindings)
+    Ok(sources)
 }
 
 // The operator-owned file: parsed fail-closed, never written by the engine.
@@ -110,11 +110,11 @@ fn from_file(path: &Path) -> Result<Vec<SourceConfig>, Error> {
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    file.source.iter().map(|entry| binding(entry, base)).collect()
+    file.source.iter().map(|entry| source(entry, base)).collect()
 }
 
 // The operator-authored schema: ordered `[[source]]` entries whose
-// `name` is the binding key, with exactly one optional content key.
+// `name` is the source key, with exactly one optional content key.
 #[derive(Debug, Default, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
@@ -142,7 +142,7 @@ struct SourceEntry {
     digest: Option<String>,
 }
 
-fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceConfig, Error> {
+fn source(entry: &SourceEntry, base: &Path) -> Result<SourceConfig, Error> {
     let name = &entry.name;
     // A local component path resolves relative to the file, like Cargo
     // `path` dependencies; other selector kinds pass through unchanged.

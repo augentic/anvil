@@ -1,7 +1,7 @@
 # Emery configuration.
 #
-# Each [[source]] entry binds one source, in declaration order; `name`
-# is the binding key. Exactly one content key — `path` or `description`
+# Each [[source]] entry names one source, in declaration order; `name`
+# is the source key. Exactly one content key — `path` or `description`
 # (omitted means the workspace lend at `.`). `path` and a local
 # component `adapter` resolve relative to this file.
 
@@ -16,8 +16,8 @@ path = "docs/"
 # name = "docs"
 # adapter = "emery:documentation@1.2.0"
 
-# # Local path, resolved relative to this file. The name is the binding
-# # key, so one adapter may bind several roots.
+# # Local path, resolved relative to this file. The name is the source
+# # key, so one adapter may name several roots.
 # [[source]]
 # name = "api-surface"
 # adapter = "typescript"

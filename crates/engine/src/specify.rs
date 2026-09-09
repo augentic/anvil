@@ -1,6 +1,6 @@
 //! The `specify` operation
 //!
-//! Emery's central operation: given a list of source bindings, extract each
+//! Emery's central operation: given a list of sources, extract each
 //! source's claims, derive the requirement rows under authority precedence,
 //! synthesise `spec.md` and `design.md`, and commit the pair as one new
 //! revision.
@@ -45,7 +45,7 @@ pub use crate::store::{Changes, Diff};
 ///
 /// # Errors
 ///
-/// Returns `BadRequest` for a binding the rules refuse or a claim the gate
+/// Returns `BadRequest` for a source the rules refuse or a claim the gate
 /// rejects, and passes through the extract, synthesis, and store failures.
 pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     input: Specify, context: Context<P>,
@@ -78,7 +78,7 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     })
 }
 
-/// Generate a specification revision from source bindings.
+/// Generate a specification revision from sources.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Specify {
@@ -86,11 +86,11 @@ pub struct Specify {
     pub sources: Vec<SourceConfig>,
 }
 
-/// A source binding for one run.
+/// A source for one run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceConfig {
-    /// Stable kebab-case binding key.
+    /// Stable kebab-case source key.
     pub key: String,
     /// The adapter selector.
     pub adapter: AdapterRef,
@@ -108,12 +108,12 @@ pub struct SourceConfig {
 }
 
 impl SourceConfig {
-    // Loads this binding's adapter under its pin and registry override.
+    // Loads this source's adapter under its pin and registry override.
     async fn load<P: Source + Plugins>(&self, loader: &Loader<'_, P>) -> Result<Loaded, Error> {
         loader.load(&self.adapter, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
-    // Maps this binding to the adapter `extract` input; the one place an
+    // Maps this source to the adapter `extract` input; the one place an
     // operator root meets the guest preopen.
     fn input(&self) -> Result<SourceInput, Error> {
         let content = match &self.content {
@@ -173,7 +173,7 @@ pub struct SpecifyBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff: Option<Diff>,
     /// Resolved digests of loader-loaded adapters; commit one as its
-    /// binding's `digest` pin to make the load reproducible.
+    /// source's `digest` pin to make the load reproducible.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<SourceDigest>,
 }
@@ -182,7 +182,7 @@ pub struct SpecifyBody {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceDigest {
-    /// The binding key.
+    /// The source key.
     pub source: String,
     /// The resolved `sha256:<hex>` content digest.
     pub digest: Digest,
@@ -191,24 +191,24 @@ pub struct SourceDigest {
 // Refuses an empty list (`specify-source-required`), a malformed or repeated
 // key, a `digest` on a bare name the loader never acquires, a `registry` on
 // a selector the registry never serves, or a root outside the preopen.
-fn validate(bindings: &[SourceConfig]) -> Result<(), Error> {
-    if bindings.is_empty() {
+fn validate(sources: &[SourceConfig]) -> Result<(), Error> {
+    if sources.is_empty() {
         return Err(Error::BadRequest {
             code: "specify-source-required".into(),
-            description: "no source bindings".into(),
+            description: "no sources".into(),
         });
     }
 
     let mut keys = BTreeSet::new();
-    for binding in bindings {
-        let key = binding.key.as_str();
+    for source in sources {
+        let key = source.key.as_str();
         if !is_kebab(key) {
             return Err(bad_request!("source `{key}` is not a kebab-case key"));
         }
         if !keys.insert(key) {
-            return Err(bad_request!("source `{key}` is bound twice"));
+            return Err(bad_request!("source `{key}` appears twice"));
         }
-        binding.validate()?;
+        source.validate()?;
     }
 
     Ok(())

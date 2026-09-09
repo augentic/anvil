@@ -1,9 +1,9 @@
 # emery.toml — operator-authored; the engine never writes this file.
 # Selected with `emery specify --config [<path>]`, or discovered at the
-# project root by a run naming no bindings at all.
+# project root by a run naming no sources at all.
 
-# Each [[source]] entry binds one source, in declaration order; `name`
-# is the binding key. The adapter is file-relative.
+# Each [[source]] entry names one source, in declaration order; `name`
+# is the source key. The adapter is file-relative.
 [[source]]
 name = "greeting"
 adapter = "./source.wasm"
@@ -13,8 +13,8 @@ adapter = "./source.wasm"
 # name = "docs"
 # adapter = "emery:documentation@1.2.0"
 
-# # Local path, resolved relative to this file. The name is the binding
-# # key, so one adapter may bind several roots.
+# # Local path, resolved relative to this file. The name is the source
+# # key, so one adapter may name several roots.
 # [[source]]
 # name = "api-surface"
 # adapter = "typescript"

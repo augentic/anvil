@@ -28,8 +28,8 @@ use omnia_guest::api::{Client, Format, Metadata};
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 const SPECIFY_DESC: &str = "Generate spec.md and design.md from source adapters.\n\n\
     Name one or more adapters, use `--description <adapter>=<text>` for inline input, \
-    or use `--config [<path>]` (default: `emery.toml`). With no bindings, Emery looks \
-    for `emery.toml` in the project root. Config and command-line bindings cannot be \
+    or use `--config [<path>]` (default: `emery.toml`). With no sources, Emery looks \
+    for `emery.toml` in the project root. Config and command-line sources cannot be \
     combined.\n\n\
     Adapter paths are project-relative. Each run reloads adapters, verifies optional \
     digest pins, reconciles their claims, and atomically commits a new revision.";

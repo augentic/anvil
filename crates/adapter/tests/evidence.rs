@@ -254,7 +254,7 @@ fn open_body_fields_lenient() {
 }
 
 #[test]
-fn content_note_names_the_binding() {
+fn content_note_names_the_source() {
     let workspace = content_note(&SourceInput::workspace("docs", "/lend/docs"), "the docs tree");
     assert!(workspace.contains("`/lend/docs` — the docs tree the prompt walks"), "{workspace}");
 
