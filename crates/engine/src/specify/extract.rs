@@ -2,25 +2,25 @@
 //!
 //! The first leg of a `specify` run: every bound source is handed to its
 //! adapter, and the adapter returns the claims it found. The result is one
-//! [`SourceSet`] per binding, carrying the claims, their authority class,
-//! and the digest of the adapter that produced them.
+//! [`SourceSet`] per binding, carrying the evidence document and the digest
+//! of the adapter that produced it.
 //!
 //! Adapters are guests the engine did not write, so their claims are checked
 //! against the contract's claim rules before anything downstream trusts them.
 //! A source that returns invalid claims stops the run with a typed error
 //! rather than seeding a bad specification.
 
-use emery_source::types::{Authority, Claim, ClaimKind};
-use emery_source::{Source, claims};
+use emery_source::Source;
+use emery_source::types::{self, Claim, Evidence};
 use omnia_guest::plugins::Digest;
 use omnia_guest::{Error, Plugins, bad_gateway, bad_request};
 
-use super::SourceBinding;
 use crate::plugin::Loader;
+use crate::specify::SourceConfig;
 
 /// Loads, extracts, and validates every source binding.
 pub async fn extract<P: Source + Plugins>(
-    provider: &P, bindings: &[SourceBinding],
+    provider: &P, bindings: &[SourceConfig],
 ) -> Result<Vec<SourceSet>, Error> {
     let mut sets = Vec::with_capacity(bindings.len());
     let loader = Loader::new(provider);
@@ -37,8 +37,7 @@ pub async fn extract<P: Source + Plugins>(
 
         let set = SourceSet {
             key: binding.key.clone(),
-            authority: evidence.authority,
-            claims: evidence.claims,
+            evidence,
             digest: adapter.digest,
         };
         set.validate()?;
@@ -53,10 +52,8 @@ pub async fn extract<P: Source + Plugins>(
 pub struct SourceSet {
     /// The authored binding key.
     pub key: String,
-    /// Claim-set authority class.
-    pub authority: Authority,
-    /// The validated claims.
-    pub claims: Vec<Claim>,
+    /// The validated evidence document.
+    pub evidence: Evidence,
     /// Resolved content digest of a loader-loaded adapter.
     pub digest: Option<Digest>,
 }
@@ -64,17 +61,18 @@ pub struct SourceSet {
 impl SourceSet {
     /// Every `type` claim.
     pub fn types(&self) -> impl Iterator<Item = &Claim> {
-        self.claims.iter().filter(|claim| claim.kind == ClaimKind::Type)
+        self.evidence.types()
     }
 
-    // Validates claim grammar and required extras fail-closed (A8).
+    // Re-runs the contract's claim gate fail-closed (A8); the guest's own
+    // check cannot be trusted over the wire.
     fn validate(&self) -> Result<(), Error> {
-        let findings = claims::findings(&self.claims);
-        if !findings.is_empty() {
+        self.evidence.validate().map_err(|err| {
             let key = &self.key;
-            let findings = findings.join("\n");
-            return Err(bad_request!("source `{key}` returned invalid claims:\n{findings}"));
-        }
-        Ok(())
+            let (types::Error::Internal(detail)
+            | types::Error::InvalidRequest(detail)
+            | types::Error::Io(detail)) = err;
+            bad_request!("source `{key}` returned {detail}")
+        })
     }
 }

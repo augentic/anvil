@@ -5,7 +5,7 @@
 //! synthesise `spec.md` and `design.md`, and commit the pair as one new
 //! revision.
 //!
-//! A [`SourceBinding`] names one source to extract from: the adapter to use,
+//! A [`SourceConfig`] names one source to extract from: the adapter to use,
 //! the key the specification will cite it by, and either a workspace to read
 //! or an inline value. The list is per-run input, never stored, so the same
 //! shape serves the command line, a config file, and any other transport,
@@ -16,9 +16,8 @@
 //! superseded revision — so a caller can see what changed without reading
 //! the documents.
 
-mod draft;
+mod answer;
 mod extract;
-mod judgment;
 mod provenance;
 mod render;
 mod synthesise;
@@ -27,7 +26,9 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use emery_source::Source;
-use emery_source::types::{SourceContent, SourceInput, SourceWorkspace};
+use emery_source::claims::is_kebab;
+pub use emery_source::types::SourceContent;
+use emery_source::types::SourceInput;
 use omnia_guest::api::Context;
 use omnia_guest::plugins::Digest;
 use omnia_guest::{BlobStore, Error, Model, Plugins, StateStore, bad_request};
@@ -36,9 +37,9 @@ use serde::{Deserialize, Serialize};
 use self::extract::extract;
 use self::synthesise::synthesise;
 use crate::plugin::{AdapterRef, Loaded, Loader};
+use crate::preopen_path;
 use crate::store::Store;
 pub use crate::store::{Changes, Diff};
-use crate::{is_kebab, preopen_path};
 
 /// Run one `specify` over the context's provider.
 ///
@@ -49,11 +50,11 @@ use crate::{is_kebab, preopen_path};
 pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
     input: Specify, context: Context<P>,
 ) -> Result<SpecifyBody, Error> {
-    let Specify { bindings } = input;
-    validate(&bindings)?;
+    let Specify { sources } = input;
+    validate(&sources)?;
 
     let provider = context.provider();
-    let sets = extract(provider, &bindings).await?;
+    let sets = extract(provider, &sources).await?;
     let rows = provenance::derive(provider, &sets).await?;
     let revision = synthesise(provider, &sets, &rows).await?;
     let committed = Store::new(provider).commit(&revision).await?;
@@ -81,20 +82,21 @@ pub async fn specify<P: Model + Source + StateStore + BlobStore + Plugins>(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Specify {
-    /// The run's source bindings, in extraction order.
-    pub bindings: Vec<SourceBinding>,
+    /// The run's source configurations, in extraction order.
+    pub sources: Vec<SourceConfig>,
 }
 
 /// A source binding for one run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct SourceBinding {
+pub struct SourceConfig {
     /// Stable kebab-case binding key.
     pub key: String,
     /// The adapter selector.
     pub adapter: AdapterRef,
-    /// What the adapter extracts.
-    pub content: BindingContent,
+    /// What the adapter extracts: a project-relative read-only root
+    /// (`.` binds the project) or an inline value.
+    pub content: SourceContent,
     /// Optional sha256 content pin for a loader-loaded adapter,
     /// verified host-side before validation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -105,17 +107,32 @@ pub struct SourceBinding {
     pub registry: Option<String>,
 }
 
-impl SourceBinding {
+impl SourceConfig {
     // Loads this binding's adapter under its pin and registry override.
     async fn load<P: Source + Plugins>(&self, loader: &Loader<'_, P>) -> Result<Loaded, Error> {
         loader.load(&self.adapter, self.digest.as_ref(), self.registry.as_deref()).await
     }
 
-    // Maps this binding to the adapter `extract` input.
+    // Maps this binding to the adapter `extract` input; the one place an
+    // operator root meets the guest preopen.
     fn input(&self) -> Result<SourceInput, Error> {
+        let content = match &self.content {
+            // `.` spans the project preopen, including `.emery/`, until
+            // guest capability profiles can exclude the revision store.
+            SourceContent::Workspace(relative) => {
+                let relative = preopen_path(Path::new(relative))?;
+                let root = if relative == Path::new(".") {
+                    relative
+                } else {
+                    Path::new(".").join(relative)
+                };
+                SourceContent::Workspace(root.display().to_string())
+            }
+            SourceContent::Value(text) => SourceContent::Value(text.clone()),
+        };
         Ok(SourceInput {
             key: self.key.clone(),
-            content: self.content.source(&self.key)?,
+            content,
         })
     }
 
@@ -138,39 +155,6 @@ impl SourceBinding {
         }
 
         self.input().map(drop)
-    }
-}
-
-/// Workspace or inline source content.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BindingContent {
-    /// Project-relative read-only root; `.` binds the project.
-    Workspace(String),
-    /// Inline description text; no filesystem view.
-    Description(String),
-}
-
-impl BindingContent {
-    // The one place a content variant meets the adapter's input.
-    fn source(&self, key: &str) -> Result<SourceContent, Error> {
-        Ok(match self {
-            // `.` spans the project preopen, including `.emery/`, until
-            // guest capability profiles can exclude the revision store.
-            Self::Workspace(relative) => {
-                let relative = preopen_path(Path::new(relative))?;
-                let root = if relative == Path::new(".") {
-                    relative
-                } else {
-                    Path::new(".").join(relative)
-                };
-                SourceContent::Workspace(SourceWorkspace {
-                    id: key.to_owned(),
-                    root: root.display().to_string(),
-                })
-            }
-            Self::Description(text) => SourceContent::Value(text.clone()),
-        })
     }
 }
 
@@ -207,7 +191,7 @@ pub struct SourceDigest {
 // Refuses an empty list (`specify-source-required`), a malformed or repeated
 // key, a `digest` on a bare name the loader never acquires, a `registry` on
 // a selector the registry never serves, or a root outside the preopen.
-fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
+fn validate(bindings: &[SourceConfig]) -> Result<(), Error> {
     if bindings.is_empty() {
         return Err(Error::BadRequest {
             code: "specify-source-required".into(),
@@ -228,4 +212,9 @@ fn validate(bindings: &[SourceBinding]) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+// Joins the synthesis prose at `paths` into one system prompt.
+fn system(paths: &[&str]) -> String {
+    paths.iter().map(|path| crate::prose::body(path)).collect::<Vec<_>>().join("\n\n---\n\n")
 }

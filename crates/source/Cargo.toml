@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "The emery:adapter/source contract, both sides: WIT bindings, the Evidence DTOs, the import-side Source capability, adapter identity, and the claim gate (id grammar + required extras)"
+description = "The emery:adapter/source contract, both sides: WIT bindings, the Evidence DTOs, the import-side Source capability, and the claim gate (id grammar + required extras)"
 categories = ["development-tools"]
 keywords = ["emery", "adapter", "wit"]
 readme = "../../README.md"
@@ -18,6 +18,7 @@ omnia-guest.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+strum.workspace = true
 thiserror.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

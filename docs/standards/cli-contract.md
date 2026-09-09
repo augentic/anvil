@@ -36,16 +36,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 ## Exit codes
 
-The CLI uses the Omnia 1:1 exit map. The authoritative definition lives in [`AGENTS.md`](../../AGENTS.md#exit-codes). Summary for skills:
-
-| Code | Name | Skills see it on |
-|---|---|---|
-| `0` | `EXIT_SUCCESS` | Command succeeded; parse the body. |
-| `1` | `BadRequest` | Operator or input refusal (`specify-source-required`, `unsupported-version`, the loader's kebab-case refusals — `refused` and `already-active` — or the Omnia default `bad_request`). Parse the top-level `error` discriminant; on `unsupported-version`, tell the operator to update the installed binary through its install channel. |
-| `2` | `NotFound` | Missing resource (`spec-not-generated`, or the Omnia default `not_found`). |
-| `3` | `ServerError` | Unclassified default: I/O, storage (`server_error`, or the loader's `internal`). |
-| `4` | `BadGateway` | Upstream, model, or component-acquisition failure (`bad_gateway`, the loader's `unavailable`). |
-| `64` | `USAGE_EXIT` | Clap usage error (unknown verb or flag, missing argument). Clap's own usage text on stderr, no JSON envelope — a skill that sees 64 has built a bad argv. |
+The CLI uses the Omnia 1:1 exit map; the one table lives in [`AGENTS.md` § Exit codes](../../AGENTS.md#exit-codes). Two notes for skills: on `unsupported-version` (exit `1`), tell the operator to update the installed binary through its install channel; exit `64` carries clap's own usage text on stderr and no JSON envelope — a skill that sees it has built a bad argv.
 
 Skills should branch on the exit code first (success vs failure class) and on the three kebab recovery discriminants second (`specify-source-required`, `unsupported-version`, `spec-not-generated`). Other failures share the Omnia snake_case default for that class (`bad_request`, `not_found`, `server_error`, `bad_gateway`). New exit codes are not invented by skills or the CLI.
 

@@ -1,11 +1,13 @@
-//! Content drafts
+//! Content answers
 //!
-//! The two typed answers the model writes the documents' content as, and the
-//! checks that hold each to the rows and the section plan. A draft carries
-//! only what needs synthesis — paragraphs, scenarios, and type references —
-//! keyed by the engine's subjects; every heading, provenance line, note, and
-//! signature is the renderer's. What the schema cannot express — that the
-//! subject set equals the row set, that a conflict row has no body, that
+//! Typed answers from the model when requested to synthesise extracted claims.
+//!
+//! An answer carries only what needs synthesis — paragraphs, scenarios, and
+//! type references — keyed by the engine's subjects; every heading,
+//! provenance line, note, and signature is the renderer's. The schema fixes
+//! the shape and, tightened by each answer's `hints`, steers the provider
+//! toward this run's subjects and sections; what no schema expresses — that
+//! the subject set equals the row set, that a conflict row has no body, that
 //! every type claim is referenced once — is checked here, and a miss is fed
 //! back for repair.
 
@@ -13,14 +15,16 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use emery_source::claims::DOTTED_KEBAB_PATTERN;
 use emery_source::types::Claim;
+use omnia_guest::model::Findings;
 use schemars::JsonSchema;
 use serde::Deserialize;
+use serde_json::{Value, json};
+use strum::VariantArray as _;
 
-use super::extract::SourceSet;
-use super::judgment::Findings;
-use super::provenance::Provenance;
-use super::synthesise::{Plan, Presence};
 use crate::artifact::{SectionKind, Status, citations};
+use crate::specify::extract::SourceSet;
+use crate::specify::provenance::Provenance;
+use crate::specify::synthesise::{Plan, Presence};
 
 // A paragraph line may not open with anything the renderer owns.
 const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
@@ -29,14 +33,29 @@ const RESERVED: &[&str] = &["#", "ID:", "Sources:", "Status:", "Note:"];
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[schemars(title = "Emery spec draft")]
-pub struct SpecDraft {
+pub struct SpecAnswer {
     /// Markdown paragraphs before the first requirement.
     pub preamble: Vec<String>,
     /// One entry per requirement row, keyed by subject; any order.
     pub requirements: Vec<Requirement>,
 }
 
-impl SpecDraft {
+impl SpecAnswer {
+    /// Steers the draft schema toward `rows`: exactly one entry per row,
+    /// each subject one of the row subjects, at least one scenario. Hints
+    /// for the provider; [`Self::check`] is the gate.
+    pub fn hints(rows: &[Provenance]) -> impl FnOnce(&mut Value) {
+        let subjects: Vec<&str> = rows.iter().map(Provenance::subject).collect();
+        let subjects = json!(subjects);
+        let count = json!(rows.len());
+        move |schema| {
+            schema["properties"]["requirements"]["minItems"] = count.clone();
+            schema["properties"]["requirements"]["maxItems"] = count;
+            schema["$defs"]["Requirement"]["properties"]["subject"]["enum"] = subjects;
+            schema["$defs"]["Requirement"]["properties"]["scenarios"]["minItems"] = json!(1);
+        }
+    }
+
     /// Holds the draft to `rows`: the subject set equals the row set, a
     /// scenario per requirement, body discipline per status, and no reserved
     /// marker.
@@ -131,14 +150,55 @@ pub struct Scenario {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[schemars(title = "Emery design draft")]
-pub struct DesignDraft {
+pub struct DesignAnswer {
     /// Markdown paragraphs before the first section.
     pub preamble: Vec<String>,
     /// One entry per rendered section; any order.
     pub sections: Vec<Section>,
 }
 
-impl DesignDraft {
+impl DesignAnswer {
+    /// Steers the draft schema toward `plan` and `sets`: at least every
+    /// required section, section kinds the plan does not forbid, and type
+    /// blocks naming this run's `type` claims. Hints for the provider;
+    /// [`Self::check`] is the gate.
+    pub fn hints(plan: &Plan, sets: &[SourceSet]) -> impl FnOnce(&mut Value) {
+        let required = json!(plan.required().count());
+        let kinds: Vec<&str> = SectionKind::VARIANTS
+            .iter()
+            .filter(|kind| plan.presence(**kind) != Presence::Forbidden)
+            .map(AsRef::as_ref)
+            .collect();
+        let kinds = json!(kinds);
+        let keys: Vec<&str> =
+            sets.iter().flat_map(SourceSet::types).filter_map(Claim::type_key).collect();
+        let keys = (!keys.is_empty()).then(|| json!(keys));
+        move |schema| {
+            schema["properties"]["sections"]["minItems"] = required;
+            // The derived `kind` refers to the whole vocabulary; the run's
+            // subset replaces the reference in place.
+            let kind = &mut schema["$defs"]["Section"]["properties"]["kind"];
+            if let Some(kind) = kind.as_object_mut() {
+                kind.remove("$ref");
+                kind.insert("type".to_string(), json!("string"));
+                kind.insert("enum".to_string(), kinds);
+            }
+            if let Some(defs) = schema["$defs"].as_object_mut() {
+                defs.remove("SectionKind");
+            }
+            if let Some(keys) = keys
+                && let Some(block) = schema
+                    .pointer_mut("/$defs/Block/oneOf")
+                    .and_then(Value::as_array_mut)
+                    .and_then(|variants| {
+                        variants.iter_mut().find(|variant| variant["required"] == json!(["type"]))
+                    })
+            {
+                block["properties"]["type"]["enum"] = keys;
+            }
+        }
+    }
+
     /// Holds the draft to `plan` and `sets`: the section set, one reference
     /// per type claim under `domain-model`, bound citations, and no reserved
     /// marker.
@@ -261,5 +321,99 @@ fn line(text: &str, label: &str, findings: &mut Findings) {
         findings.push(format!("- {label} is blank"));
     } else if text.contains('\n') {
         findings.push(format!("- {label} spans more than one line"));
+    }
+}
+
+// The hints edit the schema `schemars` derives; a derive change that moves
+// a definition would silently turn a hint into a no-op, so each pointer is
+// held here.
+#[cfg(test)]
+mod tests {
+    use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
+    use omnia_guest::model::{Format, Question};
+    use schemars::JsonSchema;
+    use serde::de::DeserializeOwned;
+    use serde_json::{Value, json};
+
+    use super::{DesignAnswer, SpecAnswer};
+    use crate::specify::extract::SourceSet;
+    use crate::specify::provenance::floor;
+    use crate::specify::synthesise::plan;
+
+    fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
+        let mut extras = serde_json::Map::new();
+        extras.insert(extra.0.to_string(), json!(extra.1));
+        Claim {
+            kind,
+            id: Some(id.to_string()),
+            path: None,
+            synopsis: None,
+            backing: None,
+            extras,
+        }
+    }
+
+    fn sets() -> Vec<SourceSet> {
+        vec![SourceSet {
+            key: "docs".to_string(),
+            evidence: Evidence {
+                authority: Authority::Documentation,
+                claims: vec![
+                    claim(ClaimKind::Requirement, "auth.login", ("statement", "Users log in.")),
+                    claim(ClaimKind::Requirement, "auth.logout", ("statement", "Users log out.")),
+                    claim(ClaimKind::Type, "auth.session", ("signature", "struct Session;")),
+                ],
+            },
+            digest: None,
+        }]
+    }
+
+    fn schema<T: JsonSchema + DeserializeOwned + Send>(question: &Question<T>) -> Value {
+        let Format::Schema(spec) = &question.request().format else {
+            panic!("a question steers by schema");
+        };
+        serde_json::from_str(&spec.schema).expect("the steering schema is JSON")
+    }
+
+    #[test]
+    fn spec_hints_land() {
+        let sets = sets();
+        let rows = floor(&sets);
+        let question = Question::<SpecAnswer>::new("spec-draft").schema(SpecAnswer::hints(&rows));
+        let schema = schema(&question);
+
+        assert!(question.request().check, "the check is the gate");
+        assert_eq!(schema["properties"]["requirements"]["minItems"], json!(2));
+        assert_eq!(schema["properties"]["requirements"]["maxItems"], json!(2));
+        let requirement = &schema["$defs"]["Requirement"]["properties"];
+        assert_eq!(requirement["subject"]["enum"], json!(["auth.login", "auth.logout"]));
+        assert_eq!(requirement["subject"]["type"], json!("string"), "the derive is intact");
+        assert_eq!(requirement["scenarios"]["minItems"], json!(1));
+    }
+
+    #[test]
+    fn design_hints_land() {
+        let sets = sets();
+        let plan = plan(&sets);
+        let question =
+            Question::<DesignAnswer>::new("design-draft").schema(DesignAnswer::hints(&plan, &sets));
+        let schema = schema(&question);
+
+        // Overview and the type-informed domain model are required; the
+        // uninformed spatial and API sections are forbidden.
+        assert_eq!(schema["properties"]["sections"]["minItems"], json!(2));
+        let kind = &schema["$defs"]["Section"]["properties"]["kind"];
+        assert_eq!(
+            kind["enum"],
+            json!(["overview", "domain-model", "technical-logic", "observability"])
+        );
+        assert_eq!(kind["type"], json!("string"));
+        assert!(kind.get("$ref").is_none() && schema["$defs"].get("SectionKind").is_none());
+        let variants = schema["$defs"]["Block"]["oneOf"].as_array().expect("Block is a oneOf");
+        let block = variants
+            .iter()
+            .find(|variant| variant["required"] == json!(["type"]))
+            .expect("the type block variant");
+        assert_eq!(block["properties"]["type"]["enum"], json!(["auth.session"]));
     }
 }

@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-use emery_engine::show::ShowBody;
+use emery_engine::show::{Document, ShowBody};
 use emery_engine::specify::{Changes, SpecifyBody};
 
 /// The `specify` result line and its indented detail.
@@ -27,15 +27,16 @@ pub fn specify(body: &SpecifyBody, out: &mut dyn fmt::Write) -> fmt::Result {
             writeln!(out, "  diff vs {}: none (byte-stable)", diff.from)?;
         } else {
             writeln!(out, "  diff vs {}: {}", diff.from, diff.artifacts.join(", "))?;
-            changes(out, "spec.md", &diff.spec)?;
-            changes(out, "design.md", &diff.design)?;
+            changes(out, Document::Spec, &diff.spec)?;
+            changes(out, Document::Design, &diff.design)?;
         }
     }
     Ok(())
 }
 
 // One line per changed section, prefixed by its document.
-fn changes(out: &mut dyn fmt::Write, document: &str, changes: &Changes) -> fmt::Result {
+fn changes(out: &mut dyn fmt::Write, document: Document, changes: &Changes) -> fmt::Result {
+    let document = document.file();
     for heading in &changes.added {
         writeln!(out, "    {document} + {heading}")?;
     }

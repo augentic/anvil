@@ -38,28 +38,10 @@ impl From<crate::types::SourceMetadata> for AdapterMetadata {
     }
 }
 
-impl From<crate::types::SourceWorkspace> for Workspace {
-    fn from(view: crate::types::SourceWorkspace) -> Self {
-        Self {
-            id: view.id,
-            root: view.root,
-        }
-    }
-}
-
-impl From<Workspace> for crate::types::SourceWorkspace {
-    fn from(view: Workspace) -> Self {
-        Self {
-            id: view.id,
-            root: view.root,
-        }
-    }
-}
-
 impl From<crate::types::SourceContent> for Content {
     fn from(content: crate::types::SourceContent) -> Self {
         match content {
-            crate::types::SourceContent::Workspace(view) => Self::Workspace(view.into()),
+            crate::types::SourceContent::Workspace(root) => Self::Workspace(root),
             crate::types::SourceContent::Value(value) => Self::Value(value),
         }
     }
@@ -68,7 +50,7 @@ impl From<crate::types::SourceContent> for Content {
 impl From<Content> for crate::types::SourceContent {
     fn from(content: Content) -> Self {
         match content {
-            Content::Workspace(view) => Self::Workspace(view.into()),
+            Content::Workspace(root) => Self::Workspace(root),
             Content::Value(value) => Self::Value(value),
         }
     }
@@ -200,19 +182,10 @@ pub mod import {
         answer.try_into()
     }
 
-    impl From<types::SourceWorkspace> for wire::Workspace {
-        fn from(view: types::SourceWorkspace) -> Self {
-            Self {
-                id: view.id,
-                root: view.root,
-            }
-        }
-    }
-
     impl From<types::SourceContent> for wire::Content {
         fn from(content: types::SourceContent) -> Self {
             match content {
-                types::SourceContent::Workspace(view) => Self::Workspace(view.into()),
+                types::SourceContent::Workspace(root) => Self::Workspace(root),
                 types::SourceContent::Value(value) => Self::Value(value),
             }
         }

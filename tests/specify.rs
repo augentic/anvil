@@ -3,7 +3,8 @@
 //! The scenarios an operator lives through: binding sources, generating a
 //! specification, reviewing it, regenerating it, and hitting every refusal
 //! along the way — an invalid binding, an untrusted adapter, a model draft
-//! that does not fit the rows or the plan after every repair.
+//! that still does not fit the rows or the plan once the backend's rounds
+//! are spent.
 //!
 //! Each scenario drives the real command façade over scripted capabilities,
 //! so it reads as usage documentation while still asserting the exact
@@ -24,6 +25,7 @@ use emery_source::types::{Authority, ClaimKind, SourceContent};
 use emery_source::{DispatchError, types};
 use omnia_guest::model::Error as ModelError;
 use omnia_guest::plugins::{Digest, Error as LoadError, Location};
+use omnia_test::SeenFormat;
 use omnia_test::guest::{Memory, Namespaced, Scripted};
 use serde_json::Value;
 use support::{Provider, claim, cli, cli_ok, digest, evidence, fail, requirement};
@@ -350,8 +352,9 @@ async fn authority_precedence() {
 }
 
 // A grouping the partition rules refuse — a floor pair split, a claim
-// in no group, a claim in two classes — is repaired with the findings
-// attached; a run out of repairs refuses typed and commits nothing.
+// in no group, a claim in two classes — is sent back as the correction
+// and the next candidate checked; a backend out of rounds refuses typed
+// with the last correction and commits nothing.
 #[tokio::test]
 async fn grouping_refused() {
     let bind = |provider: &mut Provider| {
@@ -381,7 +384,7 @@ async fn grouping_refused() {
             "claim 1 appears in more than one class",
         ),
         (r#"{"groups": [{"claims": [0, 1], "classes": [[0]]}]}"#, "claim 1 is in no class"),
-        ("not json", "did not deserialize"),
+        ("not json", "schema and answer type disagree"),
     ];
     for (answer, fragment) in cases {
         let mut provider = Provider::answering([*answer, *answer, *answer]);
@@ -390,23 +393,23 @@ async fn grouping_refused() {
             fail(&provider, &["emery", "specify", "docs", "code"], 1, "bad_request").await;
         let message = envelope["message"].as_str().unwrap_or("");
         assert!(message.contains(fragment), "expected `{fragment}` in: {envelope}");
-        assert!(message.contains("after 2 repairs"), "{envelope}");
         assert!(provider.storage.state(CURRENT).is_none(), "a refused run commits nothing");
         provider.model.assert_exhausted();
     }
 
-    // The repaired answer commits: the same statements in two classes
+    // The corrected answer commits: the same statements in two classes
     // diverge, and the winner is the documentation.
     let refused = r#"{"groups": [{"claims": [0], "classes": [[0]]}]}"#;
-    let repaired = r#"{"groups": [{"claims": [0, 1], "classes": [[0], [1]]}]}"#;
+    let corrected = r#"{"groups": [{"claims": [0, 1], "classes": [[0], [1]]}]}"#;
     let spec = SPEC_ANSWER.replace("greeting.behaviour", "session.timeout");
-    let mut provider = Provider::answering([refused, repaired, spec.as_str(), DESIGN_ANSWER]);
+    let mut provider = Provider::answering([refused, corrected, spec.as_str(), DESIGN_ANSWER]);
     bind(&mut provider);
     cli_ok(&provider, &["emery", "specify", "docs", "code"]).await;
-    let repair = &provider.model.seen()[1];
-    let request = repair.messages.join("\n");
-    assert!(request.contains("## Findings"), "the findings ride the repair: {request}");
-    assert!(request.contains("claim 1 is in no group"), "{request}");
+    let check = &provider.model.exchanges()[0];
+    assert_eq!(check.tool, "check", "the engine judges each candidate over the check tool");
+    let correction = check.outcome.as_ref().expect_err("the first grouping is rejected");
+    assert!(correction.contains("## Findings"), "the findings ride the correction: {correction}");
+    assert!(correction.contains("claim 1 is in no group"), "{correction}");
     let id = current(&provider.storage);
     let spec = String::from_utf8(document(&provider.storage, &id, "spec.md")).expect("utf-8");
     assert!(spec.contains("### Requirement: session.timeout [divergence]"), "{spec}");
@@ -605,11 +608,11 @@ async fn version_too_new() {
     fail(&provider, &["emery", "specify", "docs"], 1, "unsupported-version").await;
 }
 
-// A spec draft outside its schema or its rows is refused after every
-// repair, one finding per case: not JSON, a row left undrafted, a subject
-// that is not a row, a subject drafted twice, no scenario, no body on a
-// non-conflict row, and a paragraph opening with a reserved marker. The
-// operator never sees a half-committed run.
+// A spec draft outside its schema or its rows is refused once the
+// backend's rounds are spent, one finding per case: not JSON, a row left
+// undrafted, a subject that is not a row, a subject drafted twice, no
+// scenario, no body on a non-conflict row, and a paragraph opening with a
+// reserved marker. The operator never sees a half-committed run.
 #[tokio::test]
 async fn invalid_draft() {
     let one = |subject: &str, body: &str, scenarios: &str| {
@@ -619,7 +622,7 @@ async fn invalid_draft() {
     };
     let scenario = r#"{"name": "Greeting", "when": "greeted", "then": "hello"}"#;
     let cases: Vec<(String, &str)> = vec![
-        ("Not a spec at all.".to_string(), "did not deserialize"),
+        ("Not a spec at all.".to_string(), "schema and answer type disagree"),
         (
             r#"{"preamble": [], "requirements": []}"#.to_string(),
             "row `greeting.behaviour` is not drafted",
@@ -655,9 +658,10 @@ async fn invalid_draft() {
     }
 }
 
-// A finding is fed back with the previous answer, and the repaired
-// draft commits: the operator sees one committed revision, not the
-// intermediate miss.
+// The schema steers the draft toward this run's rows; the check is the
+// gate. A finding is fed back as the correction with the previous answer,
+// and the corrected draft commits: the operator sees one committed
+// revision, not the intermediate miss.
 #[tokio::test]
 async fn repaired_draft() {
     let missing_scenario =
@@ -667,11 +671,27 @@ async fn repaired_draft() {
 
     cli_ok(&provider, &["emery", "specify", "source"]).await;
 
-    let repair = &provider.model.seen()[1];
-    let request = repair.messages.join("\n");
-    assert!(request.contains("## Previous answer (failed validation)"), "{request}");
-    assert!(request.contains("## Findings"), "{request}");
-    assert!(request.contains("scenario `then` is blank"), "{request}");
+    let draft = &provider.model.seen()[0];
+    assert!(draft.check, "acceptance is the engine's check, not the reply text");
+    let SeenFormat::Schema { name, schema } = &draft.format else {
+        panic!("the draft is steered by schema");
+    };
+    assert_eq!(name, "spec-draft");
+    let schema: Value = serde_json::from_str(schema).expect("the steering schema is JSON");
+    assert_eq!(schema["properties"]["requirements"]["minItems"], 1);
+    assert_eq!(schema["properties"]["requirements"]["maxItems"], 1);
+    assert_eq!(
+        schema["$defs"]["Requirement"]["properties"]["subject"]["enum"],
+        serde_json::json!(["greeting.behaviour"]),
+        "the row subjects ride the schema as a hint"
+    );
+
+    let check = &provider.model.exchanges()[0];
+    assert_eq!(check.tool, "check");
+    let correction = check.outcome.as_ref().expect_err("the first draft is rejected");
+    assert!(correction.contains("## Previous answer (rejected)"), "{correction}");
+    assert!(correction.contains("## Findings"), "{correction}");
+    assert!(correction.contains("scenario `then` is blank"), "{correction}");
     let id = current(&provider.storage);
     let spec = document(&provider.storage, &id, "spec.md");
     assert_eq!(String::from_utf8_lossy(&spec), SPEC_RENDERED, "the repaired draft is committed");
@@ -679,10 +699,10 @@ async fn repaired_draft() {
 }
 
 // The design leg is fail-closed too: a draft outside its schema or plan
-// is refused after every repair, one finding per case — not JSON, the
-// required overview absent, a section outside the closed vocabulary, a
-// requirement heading smuggled into a paragraph, and a citation of a
-// source the run never bound.
+// is refused once the backend's rounds are spent, one finding per case —
+// not JSON, the required overview absent, a section outside the closed
+// vocabulary, a requirement heading smuggled into a paragraph, and a
+// citation of a source the run never bound.
 #[tokio::test]
 async fn invalid_design() {
     let overview = |text: &str| {
@@ -691,12 +711,12 @@ async fn invalid_design() {
         )
     };
     let cases: Vec<(String, &str)> = vec![
-        ("   ".to_string(), "did not deserialize"),
+        ("   ".to_string(), "schema and answer type disagree"),
         (r#"{"preamble": [], "sections": []}"#.to_string(), "`## Overview` is required but absent"),
         (
             r#"{"preamble": [], "sections": [{"kind": "decisions", "blocks": [{"text": "Static."}]}]}"#
                 .to_string(),
-            "did not deserialize",
+            "schema and answer type disagree",
         ),
         (overview("### Requirement: greeting.behaviour"), "opens with the reserved marker `#`"),
         (overview("The endpoint is static (from nobody)."), "cites source `nobody`, which is not bound"),
@@ -977,18 +997,16 @@ async fn binding_paths() {
     assert_eq!(order, ["zulu", "intent", "alpha"], "entries bind in declaration order");
     for key in ["zulu", "alpha"] {
         let (_, input) = calls.iter().find(|(_, input)| input.key == key).expect("dispatched");
-        let SourceContent::Workspace(workspace) = &input.content else {
+        let SourceContent::Workspace(root) = &input.content else {
             panic!("a path binding lends a workspace");
         };
         assert!(
-            !Path::new(&workspace.root).is_absolute(),
-            "the lend must stay `.`-relative for the guest preopen: {}",
-            workspace.root
+            !Path::new(root).is_absolute(),
+            "the lend must stay `.`-relative for the guest preopen: {root}"
         );
         assert!(
-            workspace.root.ends_with("docs") && !workspace.root.contains(".."),
-            "`.` and `..` fold away lexically against the file's directory: {}",
-            workspace.root
+            root.ends_with("docs") && !root.contains(".."),
+            "`.` and `..` fold away lexically against the file's directory: {root}"
         );
     }
     let (_, input) = calls.iter().find(|(_, input)| input.key == "intent").expect("dispatched");

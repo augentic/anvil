@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use omnia_guest::{Error, server_error};
 
-use super::{Document, Line, Lines};
+use crate::artifact::{Document, Line, Lines, Text};
 
 /// The requirement heading marker.
 pub const HEADING: &str = "### Requirement:";
@@ -25,8 +25,7 @@ pub struct Spec {
 }
 
 impl Spec {
-    /// The artifact's file name.
-    pub const NAME: &str = "spec.md";
+    const NAME: &str = Document::Spec.file();
 
     /// Requirement blocks keyed by their subject.
     #[must_use]
@@ -43,8 +42,7 @@ impl FromStr for Spec {
 
     // A document the renderer did not write is corruption.
     fn from_str(text: &str) -> Result<Self, Error> {
-        let document = Document::from(text);
-        let requirements = document
+        let requirements = Text::from(text)
             .blocks(HEADING)
             .map(Requirement::read)
             .collect::<Result<Vec<_>, _>>()
@@ -112,7 +110,10 @@ impl Requirement {
             .filter(|key| !key.is_empty())
             .map(str::to_string)
             .collect();
-        let status = field("Status")?.parse::<Status>()?;
+        let status = field("Status")?;
+        let status = status
+            .parse::<Status>()
+            .map_err(|_unknown| format!("`{subject}`: unknown `Status: {status}`"))?;
         if tag != status.tag().map(|tag| tag.to_string()).as_deref() {
             return Err(format!("`{subject}`: heading tag does not mirror `Status: {status}`"));
         }
@@ -169,8 +170,10 @@ impl Display for ReqId {
     }
 }
 
-/// The closed `Status:` vocabulary.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// The closed `Status:` vocabulary; every status but `agreed` doubles as
+/// the heading `[tag]`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "kebab-case")]
 pub enum Status {
     /// One class of contributors, covered by a criterion.
     Agreed,
@@ -185,61 +188,8 @@ pub enum Status {
 impl Status {
     /// The heading tag this status pairs with; `agreed` carries none.
     #[must_use]
-    pub const fn tag(self) -> Option<Tag> {
-        match self {
-            Self::Agreed => None,
-            Self::Unknown => Some(Tag::Unknown),
-            Self::Conflict => Some(Tag::Conflict),
-            Self::Divergence => Some(Tag::Divergence),
-        }
-    }
-}
-
-impl FromStr for Status {
-    type Err = String;
-
-    fn from_str(text: &str) -> Result<Self, String> {
-        match text {
-            "agreed" => Ok(Self::Agreed),
-            "unknown" => Ok(Self::Unknown),
-            "conflict" => Ok(Self::Conflict),
-            "divergence" => Ok(Self::Divergence),
-            _ => Err(format!("unknown `Status: {text}`")),
-        }
-    }
-}
-
-impl Display for Status {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Agreed => "agreed",
-            Self::Unknown => "unknown",
-            Self::Conflict => "conflict",
-            Self::Divergence => "divergence",
-        })
-    }
-}
-
-/// The closed heading `[tag]` vocabulary: every status but `agreed`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Tag {
-    /// Mirrors `Status: unknown`.
-    Unknown,
-    /// Mirrors `Status: conflict`.
-    Conflict,
-    /// Mirrors `Status: divergence`.
-    Divergence,
-}
-
-// A tag is spelled as the status it mirrors.
-impl Display for Tag {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let status = match self {
-            Self::Unknown => Status::Unknown,
-            Self::Conflict => Status::Conflict,
-            Self::Divergence => Status::Divergence,
-        };
-        Display::fmt(&status, f)
+    pub fn tag(self) -> Option<Self> {
+        (self != Self::Agreed).then_some(self)
     }
 }
 
@@ -247,7 +197,7 @@ impl Display for Tag {
 // is what the re-mine diff compares, and `body` is read by nothing else.
 #[cfg(test)]
 mod tests {
-    use super::Spec;
+    use crate::artifact::Spec;
 
     #[test]
     fn body_is_the_text_alone() {

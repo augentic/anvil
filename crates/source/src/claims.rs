@@ -12,8 +12,8 @@
 
 use crate::types::{Claim, ClaimKind, Error, Evidence};
 
-/// Claim-id grammar; the answer schema accepts strings, so it is
-/// enforced in code.
+/// Claim-id grammar. Rides the derived `Claim.id` schema as a steering
+/// `pattern` and is enforced again in code.
 pub const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
 /// Every id and extras finding over `claims`.
@@ -67,13 +67,24 @@ pub fn extras_findings(claims: &[Claim]) -> Vec<String> {
 }
 
 impl Evidence {
+    /// Every `type` claim.
+    pub fn types(&self) -> impl Iterator<Item = &Claim> {
+        self.claims.iter().filter(|claim| claim.kind == ClaimKind::Type)
+    }
+
+    /// Every id and extras finding over the document's claims.
+    #[must_use]
+    pub fn findings(&self) -> Vec<String> {
+        findings(&self.claims)
+    }
+
     /// Enforces claim-id grammar and required extras fail-closed.
     ///
     /// # Errors
     ///
     /// Returns [`Error::Internal`] with one finding per violation.
     pub fn validate(&self) -> Result<(), Error> {
-        let findings = findings(&self.claims);
+        let findings = self.findings();
         if findings.is_empty() {
             return Ok(());
         }
@@ -130,7 +141,10 @@ fn is_dotted_kebab(value: &str) -> bool {
     !value.is_empty() && value.split('.').all(is_kebab)
 }
 
-fn is_kebab(value: &str) -> bool {
+/// The kebab grammar shared by claim-id segments, binding keys, and
+/// adapter names: `[a-z0-9]+(-[a-z0-9]+)*`.
+#[must_use]
+pub fn is_kebab(value: &str) -> bool {
     !value.is_empty()
         && value.split('-').all(|seg| {
             !seg.is_empty() && seg.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())

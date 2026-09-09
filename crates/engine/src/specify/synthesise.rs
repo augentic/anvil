@@ -12,17 +12,19 @@
 //! so it cannot drop, reorder, or quietly rewrite a requirement, invent or
 //! omit a section, cite an unbound source, or paraphrase a signature.
 
-use std::fmt::{self, Display, Write as _};
+use std::fmt::Write as _;
 
 use emery_source::types::{Claim, ClaimKind};
+use omnia_guest::model::Question;
 use omnia_guest::{Error, Model};
+use strum::VariantArray as _;
 
-use super::draft::{DesignDraft, SpecDraft};
-use super::extract::SourceSet;
-use super::judgment::Question;
-use super::provenance::Provenance;
-use super::render;
 use crate::artifact::{ReqId, SectionKind, Status};
+use crate::specify;
+use crate::specify::answer::{DesignAnswer, SpecAnswer};
+use crate::specify::extract::SourceSet;
+use crate::specify::provenance::Provenance;
+use crate::specify::render;
 use crate::store::Revision;
 
 // Prompt order is significant.
@@ -45,17 +47,19 @@ pub async fn synthesise<M: Model>(
     model: &M, sets: &[SourceSet], rows: &[Provenance],
 ) -> Result<Revision, Error> {
     tracing::info!("drafting spec.md");
-
-    let question = Question::<SpecDraft>::new("spec-draft", SPEC_PROSE);
-    let drafted =
-        question.ask(model, &spec_prompt(sets, rows), |drafted| drafted.check(rows)).await?;
+    let drafted = Question::<SpecAnswer>::new("spec-draft")
+        .system(specify::system(SPEC_PROSE))
+        .schema(SpecAnswer::hints(rows))
+        .ask(model, spec_prompt(sets, rows), None, |drafted| drafted.check(rows))
+        .await?;
     let spec = render::spec(rows, &drafted);
 
     tracing::info!("drafting design.md");
     let plan = plan(sets);
-    let question = Question::<DesignDraft>::new("design-draft", DESIGN_PROSE);
-    let drafted = question
-        .ask(model, &design_prompt(sets, &spec, &plan), |drafted| drafted.check(&plan, sets))
+    let drafted = Question::<DesignAnswer>::new("design-draft")
+        .system(specify::system(DESIGN_PROSE))
+        .schema(DesignAnswer::hints(&plan, sets))
+        .ask(model, design_prompt(sets, &spec, &plan), None, |drafted| drafted.check(&plan, sets))
         .await?;
     let design = render::design(sets, &drafted);
 
@@ -66,7 +70,7 @@ pub async fn synthesise<M: Model>(
 #[must_use]
 pub fn plan(sets: &[SourceSet]) -> Plan {
     let mut kinds: Vec<ClaimKind> = Vec::new();
-    for claim in sets.iter().flat_map(|set| &set.claims) {
+    for claim in sets.iter().flat_map(|set| &set.evidence.claims) {
         if !kinds.contains(&claim.kind) {
             kinds.push(claim.kind);
         }
@@ -98,29 +102,24 @@ impl Plan {
 
     /// Every section the plan requires, in vocabulary order.
     pub fn required(&self) -> impl Iterator<Item = SectionKind> + '_ {
-        SectionKind::ALL.into_iter().filter(|kind| self.presence(*kind) == Presence::Required)
+        SectionKind::VARIANTS
+            .iter()
+            .copied()
+            .filter(|kind| self.presence(*kind) == Presence::Required)
     }
 }
 
 /// Whether the evidence calls for a section, tolerates it, or rules it out.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "lowercase")]
 pub enum Presence {
     /// The section must be drafted.
     Required,
     /// The section may be drafted where claims inform it.
     Permitted,
     /// The section may not be drafted.
+    #[strum(to_string = "omit")]
     Forbidden,
-}
-
-impl Display for Presence {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Required => "required",
-            Self::Permitted => "permitted",
-            Self::Forbidden => "omit",
-        })
-    }
 }
 
 // The claim kinds whose presence requires a section; `Overview` and
@@ -179,7 +178,7 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
     render_claims(&mut prompt, sets);
 
     prompt.push_str("\n## Sections\n\n");
-    for kind in SectionKind::ALL {
+    for &kind in SectionKind::VARIANTS {
         let presence = plan.presence(kind);
         let kinds = informants(kind).iter().map(|kind| format!("`{kind}`")).collect::<Vec<_>>();
         let reason = match (presence, kinds.is_empty()) {
@@ -188,7 +187,8 @@ fn design_prompt(sets: &[SourceSet], spec: &str, plan: &Plan) -> String {
             (Presence::Permitted, _) => " where claims inform it".to_string(),
             _ => String::new(),
         };
-        let _ = writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.key());
+        let _ =
+            writeln!(prompt, "- `{key}` (`## {kind}`) — {presence}{reason}", key = kind.as_ref());
     }
 
     let keys: Vec<&str> =
@@ -215,10 +215,10 @@ fn render_claims(prompt: &mut String, sets: &[SourceSet]) {
             prompt,
             "\n### source `{key}` ({authority})\n\n",
             key = set.key,
-            authority = set.authority
+            authority = set.evidence.authority
         );
 
-        for claim in &set.claims {
+        for claim in &set.evidence.claims {
             let id = claim.id.as_deref().unwrap_or("-");
             let synopsis = claim.synopsis.as_deref().unwrap_or("");
             let extras = serde_json::to_string(&claim.extras).unwrap_or_default();

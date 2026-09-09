@@ -29,8 +29,10 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: "." },
             ],
-            plugins: {
-                interfaces: [emery_source::SOURCE_INTERFACE],
+            link: {
+                interfaces: ["emery:adapter/source@0.1.0"],
+            },
+            plugin: {
                 locations: [
                     { name: ".", path: "." },
                 ],

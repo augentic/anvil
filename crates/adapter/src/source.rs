@@ -27,7 +27,7 @@ pub async fn dispatch_extract<A: crate::SourceAdapter>(
     let input = crate::types::SourceInput::from(input);
     let ctx = crate::types::Context::guest(&id).with_docs(A::docs());
     let ctx = match &input.content {
-        crate::types::SourceContent::Workspace(view) => ctx.lending(view.root.clone()),
+        crate::types::SourceContent::Workspace(root) => ctx.lending(root.clone()),
         crate::types::SourceContent::Value(_) => ctx.without_lend(),
     };
 

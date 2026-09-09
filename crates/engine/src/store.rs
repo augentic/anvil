@@ -17,8 +17,9 @@ use anyhow::Context;
 use omnia_guest::{BlobStore, Error, StateStore, server_error};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use strum::VariantArray as _;
 
-use crate::artifact::{Design, Spec};
+use crate::artifact::{Design, Document, Spec};
 
 /// Keyvalue key holding the current revision id.
 pub const CURRENT: &str = "current-revision";
@@ -114,8 +115,8 @@ impl<'a, S: StateStore + BlobStore> Store<'a, S> {
     // The store is content-addressed: documents that no longer hash to
     // the id they sit under are corruption, not a revision.
     async fn load(&self, id: &str) -> Result<Revision, Error> {
-        let spec = self.read(id, Spec::NAME).await?;
-        let design = self.read(id, Design::NAME).await?;
+        let spec = self.read(id, Document::Spec.file()).await?;
+        let design = self.read(id, Document::Design.file()).await?;
         let revision = Revision { spec, design };
 
         if revision.id() != id {
@@ -151,12 +152,11 @@ pub struct Revision {
 }
 
 impl Revision {
-    /// The content-addressed revision id: SHA-256 over a domain tag,
-    /// then the length-prefixed document names and bodies.
+    /// The content-addressed revision id: SHA-256 over the length-prefixed
+    /// document names and bodies, in digest order.
     #[must_use]
     pub fn id(&self) -> String {
         let mut hasher = Sha256::new();
-        // hasher.update(b"emery-revision/1");
         for (name, body) in self.files() {
             hasher.update((name.len() as u64).to_be_bytes());
             hasher.update(name.as_bytes());
@@ -166,9 +166,26 @@ impl Revision {
         hex::encode(hasher.finalize())
     }
 
-    // The one place a document name meets its field; digest order.
-    fn files(&self) -> [(&'static str, &str); 2] {
-        [(Spec::NAME, &self.spec), (Design::NAME, &self.design)]
+    /// Consumes the revision for one document's body.
+    #[must_use]
+    pub fn into_body(self, document: Document) -> String {
+        match document {
+            Document::Spec => self.spec,
+            Document::Design => self.design,
+        }
+    }
+
+    // The one place a document meets its field.
+    fn body(&self, document: Document) -> &str {
+        match document {
+            Document::Spec => &self.spec,
+            Document::Design => &self.design,
+        }
+    }
+
+    // File name and body per document, in digest order.
+    fn files(&self) -> impl Iterator<Item = (&'static str, &str)> {
+        Document::VARIANTS.iter().map(|document| (document.file(), self.body(*document)))
     }
 }
 
@@ -222,10 +239,9 @@ impl Diff {
     fn between(outgoing: &Revision, incoming: &Revision) -> Self {
         let artifacts = outgoing
             .files()
-            .iter()
             .zip(incoming.files())
             .filter(|((_, old), (_, new))| old != new)
-            .map(|((name, _), _)| (*name).to_string())
+            .map(|((name, _), _)| name.to_string())
             .collect();
 
         let spec = match (outgoing.spec.parse::<Spec>(), incoming.spec.parse::<Spec>()) {
@@ -294,7 +310,7 @@ impl Changes {
 mod tests {
     use omnia_test::guest::Memory;
 
-    use super::{CONTAINER, Revision, Store};
+    use crate::store::{CONTAINER, Revision, Store};
 
     #[tokio::test]
     async fn concurrent_commit_conflicts() {

@@ -11,7 +11,7 @@
 //! failure envelope, and the exit map — is omnia's command façade
 //! (`omnia_guest::api::command`), so this crate owns only what is Emery's.
 
-mod bindings;
+mod config;
 mod text;
 
 use std::borrow::Cow;
@@ -126,7 +126,7 @@ struct SpecifyArgs {
     #[arg(long = "description", short = 'd')]
     descriptions: Vec<String>,
     /// Operator-owned config; the omitted value selects emery.toml.
-    #[arg(long, short = 'c', num_args = 0..=1, default_missing_value = bindings::CONFIG_FILE)]
+    #[arg(long, short = 'c', num_args = 0..=1, default_missing_value = config::CONFIG_FILE)]
     config: Option<String>,
 }
 
@@ -137,8 +137,8 @@ impl SpecifyArgs {
             descriptions,
             config,
         } = self;
-        let bindings = bindings::decode(&adapters, &descriptions, config.as_deref())?;
-        Ok(Specify { bindings })
+        let sources = config::decode(&adapters, &descriptions, config.as_deref())?;
+        Ok(Specify { sources })
     }
 }
 

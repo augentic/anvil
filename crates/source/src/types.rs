@@ -5,14 +5,14 @@
 //! an operation can fail with. These are the types engine and adapter code
 //! work with; the generated wire bindings stay behind them.
 //!
-//! Only the types a model answer is parsed into carry serde derives, since
-//! nothing else in the contract crosses a JSON boundary.
+//! Serde derives sit only on the types that cross a JSON boundary: the
+//! [`Evidence`] a model answer is parsed into, and the [`SourceInput`] shape
+//! the engine's `specify` request carries.
 
 mod source;
 
 pub use source::{
     Authority, Backing, Claim, ClaimKind, Evidence, SourceContent, SourceInput, SourceMetadata,
-    SourceWorkspace,
 };
 
 /// Adapter operation error.

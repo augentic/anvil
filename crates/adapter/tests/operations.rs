@@ -5,9 +5,8 @@
 //! exercise without a wasm build, which is the promise adapter authors' own
 //! test suites depend on.
 
-use emery_adapter::answers::{evidence_schema, evidence_tail};
 use emery_adapter::types::{Context, Error, Evidence, SourceInput, SourceMetadata};
-use emery_adapter::{Model, SourceAdapter, repaired};
+use emery_adapter::{Model, SourceAdapter, evidence};
 use emery_prose::registry::Doc;
 use omnia_test::guest::Scripted;
 
@@ -16,14 +15,13 @@ const DOCS: &[Doc] = &[Doc {
     body: "EXTRACT",
 }];
 
+// The SDK's own version is the default `emery-version` pin.
+const PIN: Option<&str> = Some(env!("CARGO_PKG_VERSION"));
+
 struct Probe;
 
 impl SourceAdapter for Probe {
     const IDENTITY: &str = "probe@0.0.0";
-
-    fn metadata() -> SourceMetadata {
-        SourceMetadata { emery_version: None }
-    }
 
     fn docs() -> &'static [Doc] {
         DOCS
@@ -32,17 +30,13 @@ impl SourceAdapter for Probe {
     async fn extract<P: Model>(
         model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
-        let schema = evidence_schema();
-        repaired(
-            model,
-            ctx,
-            "SYSTEM".to_string(),
-            input.key.clone(),
-            "evidence",
-            &schema,
-            evidence_tail,
-        )
-        .await
+        evidence(model, ctx, "SYSTEM".to_string(), input.key.clone()).await
+    }
+}
+
+fn pinned() -> SourceMetadata {
+    SourceMetadata {
+        emery_version: PIN.map(str::to_string),
     }
 }
 
@@ -65,7 +59,7 @@ async fn source_dispatch() {
     assert_eq!(evidence.claims[0].id.as_deref(), Some("one.claim"));
 
     assert_eq!(<Probe as SourceAdapter>::IDENTITY, "probe@0.0.0");
-    assert_eq!(<Probe as SourceAdapter>::metadata(), SourceMetadata { emery_version: None });
+    assert_eq!(<Probe as SourceAdapter>::metadata(), pinned());
     assert_eq!(<Probe as SourceAdapter>::docs()[0].path, "prompts/extract.md");
 }
 
@@ -73,6 +67,6 @@ async fn source_dispatch() {
 fn fn_pointer_coercion() {
     let metadata: fn() -> SourceMetadata = <Probe as SourceAdapter>::metadata;
     let docs: fn() -> &'static [Doc] = <Probe as SourceAdapter>::docs;
-    assert_eq!(metadata(), SourceMetadata { emery_version: None });
+    assert_eq!(metadata(), pinned());
     assert_eq!(docs().len(), 1);
 }

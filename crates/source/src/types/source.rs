@@ -9,10 +9,10 @@
 //! kind's required extras are declared next to it so the contract states in
 //! one place what a complete claim of that kind looks like.
 
-use std::fmt;
-
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+use crate::claims::DOTTED_KEBAB_PATTERN;
 
 /// Resolve-time source adapter metadata.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -21,26 +21,19 @@ pub struct SourceMetadata {
     pub emery_version: Option<String>,
 }
 
-/// Read-only source workspace.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SourceWorkspace {
-    /// Opaque preparation identity.
-    pub id: String,
-    /// Deployment-local view root.
-    pub root: String,
-}
-
 /// Workspace or inline source content.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum SourceContent {
-    /// Read-only view of a location-backed source.
-    Workspace(SourceWorkspace),
+    /// Deployment-local root of a read-only source view.
+    Workspace(String),
     /// Inline value without a filesystem lend.
     Value(String),
 }
 
 /// Source operation input.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct SourceInput {
     /// Binding key.
     pub key: String,
@@ -49,6 +42,15 @@ pub struct SourceInput {
 }
 
 impl SourceInput {
+    /// Creates workspace input over `root`.
+    #[must_use]
+    pub fn workspace(key: impl Into<String>, root: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            content: SourceContent::Workspace(root.into()),
+        }
+    }
+
     /// Creates inline-value input.
     #[must_use]
     pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
@@ -60,8 +62,9 @@ impl SourceInput {
 }
 
 /// Claim-set authority, ordered `intent` > `documentation` > `behaviour`.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum Authority {
     /// Operator directives.
     Intent,
@@ -83,19 +86,10 @@ impl Authority {
     }
 }
 
-impl fmt::Display for Authority {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Intent => "intent",
-            Self::Documentation => "documentation",
-            Self::Behaviour => "behaviour",
-        })
-    }
-}
-
 /// Closed claim taxonomy; update the workflow contract and schema together.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, JsonSchema, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum ClaimKind {
     /// Operator intent.
     Intent,
@@ -127,27 +121,6 @@ pub enum ClaimKind {
     Leaf,
 }
 
-impl fmt::Display for ClaimKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Intent => "intent",
-            Self::Requirement => "requirement",
-            Self::Criterion => "criterion",
-            Self::Decision => "decision",
-            Self::Section => "section",
-            Self::Diagram => "diagram",
-            Self::Contract => "contract",
-            Self::Example => "example",
-            Self::Excerpt => "excerpt",
-            Self::Type => "type",
-            Self::Call => "call",
-            Self::Region => "region",
-            Self::Container => "container",
-            Self::Leaf => "leaf",
-        })
-    }
-}
-
 /// Claim backing.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -169,6 +142,7 @@ pub struct Claim {
     pub kind: ClaimKind,
     /// Stable dotted-kebab ID; required for requirements, criteria, and examples.
     #[serde(default)]
+    #[schemars(regex(pattern = DOTTED_KEBAB_PATTERN))]
     pub id: Option<String>,
     /// Source anchor: `<path>`, `<path>#L<n>`, or `<path>#L<n>-L<n>`.
     #[serde(default)]

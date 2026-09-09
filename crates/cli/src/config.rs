@@ -12,7 +12,7 @@
 
 use std::path::{Path, PathBuf};
 
-use emery_engine::specify::{BindingContent, SourceBinding};
+use emery_engine::specify::{SourceConfig, SourceContent};
 use emery_engine::{AdapterRef, preopen_path};
 use omnia_guest::{Error, bad_request, server_error};
 
@@ -28,7 +28,7 @@ pub const CONFIG_FILE: &str = "emery.toml";
 /// file, and discovery decoder failures.
 pub fn decode(
     adapters: &[String], descriptions: &[String], config: Option<&str>,
-) -> Result<Vec<SourceBinding>, Error> {
+) -> Result<Vec<SourceConfig>, Error> {
     match config {
         Some(path) => {
             if !adapters.is_empty() || !descriptions.is_empty() {
@@ -36,10 +36,12 @@ pub fn decode(
                     "--config cannot be combined with `<adapter>` or `--description`"
                 ));
             }
+
             let path = preopen_path(Path::new(path)).map_err(|err| {
                 let description = err.description();
                 bad_request!("invalid argument --config: {description}")
             })?;
+
             from_file(&path)
         }
         None if adapters.is_empty() && descriptions.is_empty() => discover(),
@@ -49,23 +51,24 @@ pub fn decode(
 
 // A missing project-root file yields the empty list the engine refuses
 // typed; a parse failure still refuses typed.
-fn discover() -> Result<Vec<SourceBinding>, Error> {
+fn discover() -> Result<Vec<SourceConfig>, Error> {
     let path = Path::new(CONFIG_FILE);
-    let present =
-        path.try_exists().map_err(|source| server_error!("reading {CONFIG_FILE}: {source}"))?;
-    if present { from_file(path) } else { Ok(Vec::new()) }
+    if !path.try_exists().map_err(|e| server_error!("reading {CONFIG_FILE}: {e}"))? {
+        return Ok(Vec::new());
+    }
+    from_file(path)
 }
 
 // Each positional adapter lends the workspace at `.`; each
 // `--description` entry is inline. The key is the adapter name.
-fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceBinding>, Error> {
+fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceConfig>, Error> {
     let mut bindings = Vec::new();
     for value in adapters {
         let adapter: AdapterRef = value.parse()?;
-        bindings.push(SourceBinding {
+        bindings.push(SourceConfig {
             key: adapter.name().to_owned(),
             adapter,
-            content: BindingContent::Workspace(".".to_string()),
+            content: SourceContent::Workspace(".".to_string()),
             digest: None,
             registry: None,
         });
@@ -80,10 +83,10 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
             ));
         };
         let adapter: AdapterRef = selector.parse()?;
-        bindings.push(SourceBinding {
+        bindings.push(SourceConfig {
             key: adapter.name().to_owned(),
             adapter,
-            content: BindingContent::Description(text.to_string()),
+            content: SourceContent::Value(text.to_string()),
             digest: None,
             registry: None,
         });
@@ -93,7 +96,7 @@ fn from_argv(adapters: &[String], descriptions: &[String]) -> Result<Vec<SourceB
 }
 
 // The operator-owned file: parsed fail-closed, never written by the engine.
-fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
+fn from_file(path: &Path) -> Result<Vec<SourceConfig>, Error> {
     let raw = std::fs::read_to_string(path).map_err(|source| {
         let path = path.display();
         server_error!("reading {path}: {source}")
@@ -112,13 +115,14 @@ fn from_file(path: &Path) -> Result<Vec<SourceBinding>, Error> {
 
 // The operator-authored schema: ordered `[[source]]` entries whose
 // `name` is the binding key, with exactly one optional content key.
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Default, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
+#[serde(default)]
 struct ConfigFile {
-    #[serde(default)]
     source: Vec<SourceEntry>,
 }
 
+// `name` and `adapter` are required; every other key is optional.
 #[derive(Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct SourceEntry {
@@ -138,7 +142,7 @@ struct SourceEntry {
     digest: Option<String>,
 }
 
-fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
+fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceConfig, Error> {
     let name = &entry.name;
     // A local component path resolves relative to the file, like Cargo
     // `path` dependencies; other selector kinds pass through unchanged.
@@ -179,14 +183,14 @@ fn binding(entry: &SourceEntry, base: &Path) -> Result<SourceBinding, Error> {
 
     let content = match (&entry.path, &entry.description) {
         (Some(relative), None) => {
-            BindingContent::Workspace(resolved(base, Path::new(relative))?.display().to_string())
+            SourceContent::Workspace(resolved(base, Path::new(relative))?.display().to_string())
         }
-        (None, Some(text)) => BindingContent::Description(text.clone()),
-        (None, None) => BindingContent::Workspace(".".to_string()),
+        (None, Some(text)) => SourceContent::Value(text.clone()),
+        (None, None) => SourceContent::Workspace(".".to_string()),
         (Some(_), Some(_)) => unreachable!("two content keys refused above"),
     };
 
-    Ok(SourceBinding {
+    Ok(SourceConfig {
         key: name.clone(),
         adapter,
         content,

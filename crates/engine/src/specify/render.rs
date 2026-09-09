@@ -13,14 +13,16 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use super::draft::{Block, DesignDraft, Requirement, SpecDraft};
-use super::extract::SourceSet;
-use super::provenance::{Contributor, Provenance, normalise};
+use strum::VariantArray as _;
+
 use crate::artifact::{HEADING, ReqId, SCENARIO, SectionKind, Status};
+use crate::specify::answer::{Block, DesignAnswer, Requirement, SpecAnswer};
+use crate::specify::extract::SourceSet;
+use crate::specify::provenance::{Contributor, Provenance, normalise};
 
 /// Renders `spec.md` from `rows` and their drafted content.
 #[must_use]
-pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
+pub fn spec(rows: &[Provenance], draft: &SpecAnswer) -> String {
     let entries: BTreeMap<&str, &Requirement> =
         draft.requirements.iter().map(|entry| (entry.subject.as_str(), entry)).collect();
 
@@ -37,12 +39,14 @@ pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
             sources = row.sources().collect::<Vec<_>>().join(", "),
             status = row.status(),
         ));
+
         if row.status() != Status::Conflict {
             blocks.extend(drafted.body.iter().map(|paragraph| paragraph.trim().to_string()));
         }
         if let Some(notes) = notes(row) {
             blocks.push(notes);
         }
+
         for scenario in &drafted.scenarios {
             blocks.push(format!("{SCENARIO} {}", scenario.name.trim()));
             let mut bullets = String::new();
@@ -54,13 +58,14 @@ pub fn spec(rows: &[Provenance], draft: &SpecDraft) -> String {
             blocks.push(bullets);
         }
     }
+
     document(&blocks)
 }
 
 /// Renders `design.md` from the drafted sections and the type claims of
 /// `sets`, sections in vocabulary order.
 #[must_use]
-pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
+pub fn design(sets: &[SourceSet], draft: &DesignAnswer) -> String {
     let signatures: BTreeMap<&str, &str> = sets
         .iter()
         .flat_map(SourceSet::types)
@@ -70,7 +75,7 @@ pub fn design(sets: &[SourceSet], draft: &DesignDraft) -> String {
     let mut blocks: Vec<String> = vec!["# Design".to_string()];
     blocks.extend(draft.preamble.iter().map(|paragraph| paragraph.trim().to_string()));
 
-    for kind in SectionKind::ALL {
+    for &kind in SectionKind::VARIANTS {
         let Some(section) = draft.sections.iter().find(|section| section.kind == kind) else {
             continue;
         };
@@ -144,11 +149,11 @@ mod tests {
     use emery_source::types::{Authority, Claim, ClaimKind, Evidence};
     use serde_json::json;
 
-    use super::super::draft::{DesignDraft, SpecDraft};
-    use super::super::extract::SourceSet;
-    use super::super::provenance::floor;
-    use super::super::synthesise::plan;
     use crate::artifact::{Design, SectionKind, Spec, Status};
+    use crate::specify::answer::{DesignAnswer, SpecAnswer};
+    use crate::specify::extract::SourceSet;
+    use crate::specify::provenance::floor;
+    use crate::specify::synthesise::plan;
 
     fn claim(kind: ClaimKind, id: &str, extra: (&str, &str)) -> Claim {
         let mut extras = serde_json::Map::new();
@@ -168,8 +173,7 @@ mod tests {
         evidence.validate().expect("valid claims");
         SourceSet {
             key: key.to_string(),
-            authority,
-            claims: evidence.claims,
+            evidence,
             digest: None,
         }
     }
@@ -194,7 +198,7 @@ mod tests {
         assert_eq!(rows[0].status(), Status::Conflict, "two docs statements tie");
         assert_eq!(rows[1].status(), Status::Agreed, "covered by its criterion");
 
-        let spec_draft: SpecDraft = serde_json::from_value(json!({
+        let spec_draft: SpecAnswer = serde_json::from_value(json!({
             "preamble": ["Two requirements."],
             "requirements": [
                 {"subject": "session.timeout", "body": ["Sessions expire."],
@@ -205,7 +209,7 @@ mod tests {
         }))
         .expect("draft shape");
         spec_draft.check(&rows).expect("draft fits the rows");
-        let spec = super::spec(&rows, &spec_draft);
+        let spec = crate::specify::render::spec(&rows, &spec_draft);
         let read: Spec = spec.parse().expect("the rendering is canonical");
         let subjects: Vec<&str> = read.requirements.iter().map(|r| r.subject.as_str()).collect();
         assert_eq!(subjects, ["login.flow", "session.timeout"], "row order");
@@ -218,7 +222,7 @@ mod tests {
             "{spec}"
         );
 
-        let design_draft: DesignDraft = serde_json::from_value(json!({
+        let design_draft: DesignAnswer = serde_json::from_value(json!({
             "preamble": [],
             "sections": [
                 {"kind": "domain-model", "blocks": [{"type": "session.type"}]},
@@ -227,7 +231,7 @@ mod tests {
         }))
         .expect("draft shape");
         design_draft.check(&plan(&sets), &sets).expect("draft fits the plan");
-        let design = super::design(&sets, &design_draft);
+        let design = crate::specify::render::design(&sets, &design_draft);
         let read: Design = design.parse().expect("the rendering is canonical");
         let kinds: Vec<SectionKind> = read.sections.iter().map(|s| s.kind).collect();
         assert_eq!(kinds, [SectionKind::Overview, SectionKind::DomainModel], "vocabulary order");

@@ -67,7 +67,7 @@ Each leg runs native `cargo build --release --locked --target <triple> --bin eme
 
 Each leg produces `emery-v${VERSION}-${TARGET}.tar.gz` (unix) or `.zip` (Windows) plus a companion `.sha256`; the shared publish workflow attaches both when it creates the GitHub Release. Root `Cargo.toml` carries `[package.metadata.binstall]` pointing at those archive names.
 
-The shipped surface is the `emery` binary alone: the binary is one `omnia::runtime!` command-mode invocation (the native arm of `src/lib.rs`, run by `src/main.rs`) embedding the engine guest as static component bytes, with the CWD-rooted mounts inline — so there is no second binary or component to package.
+The shipped surface is the `emery` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` expanding the `deployment!` macro from the native arm of `src/lib.rs`) embedding the engine guest as static component bytes, with the CWD-rooted mounts inline — so there is no second binary or component to package.
 
 ## Publishing the wasm-pkg packages
 

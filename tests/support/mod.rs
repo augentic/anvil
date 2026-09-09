@@ -52,8 +52,7 @@ pub struct Provider<S = Memory> {
     /// resolves to the fixed `digest("ab")` the `specify` scenarios
     /// assert in their envelopes; a pin that disagrees with a scripted
     /// digest refuses `refused`, mirroring the host's
-    /// verify-before-validate step (proved against the real loader in
-    /// the component rung, `examples/component/tests/component.rs`).
+    /// verify-before-validate step.
     pub plugins: ScriptedLoader,
     /// The scripted storage pair.
     pub storage: Arc<S>,

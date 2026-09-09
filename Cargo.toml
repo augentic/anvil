@@ -40,8 +40,6 @@ wasip3.workspace = true
 [build-dependencies]
 omnia.workspace = true
 
-# The SDK and prose registry serve `examples/adapter` only; the shipped
-# guest and runtime link the contract crate alone.
 [dev-dependencies]
 emery-adapter.workspace = true
 emery-prose.workspace = true
@@ -134,6 +132,7 @@ semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 sha2 = "0.11"
+strum = { version = "0.28", features = ["derive"] }
 tempfile = "3.27.0"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
@@ -149,11 +148,8 @@ emery-engine = { path = "crates/engine" }
 emery-prose = { path = "crates/prose" }
 emery-source = { path = "crates/source" }
 
-# `plugin` is required: the shipped `runtime!` declares `locations:`.
-omnia = { version = "0.36.0", default-features = false, features = ["jit", "plugin"] }
+omnia = { version = "0.36.0", default-features = false, features = ["jit", "link", "plugin"] }
 omnia-core = "0.36.0"
-# `command` is the clap-backed command façade the CLI runs on; the guest
-# routes no HTTP and uses no ORM, so the defaults are off.
 omnia-guest = { version = "0.36.0", default-features = false, features = ["command"] }
 omnia-guest-macros = "0.36.0"
 omnia-host-macros = "0.36.0"

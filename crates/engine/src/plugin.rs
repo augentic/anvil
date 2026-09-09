@@ -15,11 +15,12 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use emery_source::Source;
+use emery_source::claims::is_kebab;
 use omnia_guest::plugins::{Digest, Location, Plugin, PluginCache, PluginRef};
 use omnia_guest::{Error, Plugins, bad_request, not_found};
 use serde::{Deserialize, Serialize};
 
-use crate::{is_kebab, preopen_path};
+use crate::preopen_path;
 
 /// One run's adapter loads over a provider: loads memoize by identity
 /// for the run, so a second binding on the same adapter reuses the held
@@ -55,7 +56,7 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
         let loaded = match selector.request(pin, registry)? {
             Some(request) => Loaded::from(self.cache.ensure(&request).await?),
             None => Loaded {
-                id: format!("source:{name}"),
+                id: dispatch_id(name),
                 digest: None,
             },
         };
@@ -63,6 +64,13 @@ impl<'a, P: Source + Plugins> Loader<'a, P> {
 
         Ok(loaded)
     }
+}
+
+// The id a bare or local adapter dispatches under: the `source:` role
+// prefix over its name. Registry packages dispatch under the package
+// reference itself.
+fn dispatch_id(name: &str) -> String {
+    format!("source:{name}")
 }
 
 // Refuse when the running emery is older than the adapter's minimum.
@@ -258,7 +266,7 @@ impl AdapterRef {
                         "adapter `{path}` did not resolve to a `.wasm` component at {relative}"
                     ));
                 }
-                (format!("source:{name}"), Location::Path(relative.display().to_string()))
+                (dispatch_id(name), Location::Path(relative.display().to_string()))
             }
         };
 
